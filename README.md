@@ -33,8 +33,9 @@ en el cliente. La web hace polling del JSON de resultados.
 ## Puesta en marcha
 
 1. `pip install -r requirements.txt`
-2. Copia `.env.example` a `.env` y rellena `SMTP_USER` / `SMTP_PASSWORD`
-   (Gmail → Contraseña de aplicación, **no** tu contraseña normal).
+2. Copia `.env.example` a `.env` y pon tu `RESEND_API_KEY`
+   (alta gratuita en [resend.com](https://resend.com), 3.000 emails/mes; es una API key
+   revocable, no la contraseña de tu correo).
 3. Edita `config/watchlist.yml` con tus aeropuertos y umbrales.
 4. Prueba en local:
 
@@ -42,10 +43,21 @@ en el cliente. La web hace polling del JSON de resultados.
 python -m tripfinder scan-flights --dry-run
 ```
 
-5. En GitHub: `Settings → Secrets and variables → Actions` añade `SMTP_USER`, `SMTP_PASSWORD`,
+5. En GitHub: `Settings → Secrets and variables → Actions` añade `RESEND_API_KEY`
    y opcionalmente `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`.
 6. `Settings → Pages → Source: GitHub Actions`.
 7. `Settings → Actions → General → Workflow permissions: Read and write`.
+
+## Como te llegan los avisos
+
+`notify.method` en `config/watchlist.yml` elige el transporte, y si falla se prueban los demas
+automaticamente para no perder un chollo por un problema de credenciales:
+
+| Metodo | Credencial | Notas |
+|---|---|---|
+| `resend` (por defecto) | `RESEND_API_KEY` | API key revocable, 3.000 emails/mes gratis. El remitente de pruebas `onboarding@resend.dev` funciona sin dominio propio, pero solo puede escribirte a ti. |
+| `smtp` | `SMTP_USER` + `SMTP_PASSWORD` | Gmail exige contraseña de aplicación (y 2FA activo). |
+| `github_issue` | ninguna | El workflow abre una issue con el chollo y GitHub te manda el email. Cero configuración. |
 
 ## Comandos
 
@@ -53,13 +65,38 @@ python -m tripfinder scan-flights --dry-run
 python -m tripfinder scan-flights            # busca vuelos, guarda y notifica
 python -m tripfinder scan-flights --dry-run  # no escribe ni envía email
 python -m tripfinder scan-stays --offer-id RYR-MAD-FCO-20260910
-python -m tripfinder test-email
+python -m tripfinder test-email                    # usa notify.method
+python -m tripfinder test-email --method github_issue
 ```
 
 ## Estado
 
 Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Escapada de fin de semana
+
+El caso de uso principal es **salir el viernes por la tarde y volver el domingo por la tarde**.
+La búsqueda general de Ryanair devuelve la tarifa más barata por destino, que casi nunca cae en
+finde, así que el provider hace además un **barrido semana a semana**: una consulta por cada
+viernes del horizonte, con filtro de hora (`outboundDepartureTimeFrom`) en la propia API.
+
+Esos vuelos valen sistemáticamente más que uno de un martes cualquiera, así que se puntúan
+contra **su propia referencia**: `max_price_weekend` y `baseline_price_weekend` por ruta, y una
+serie de histórico separada (`MAD-OPO|finde`). Sin eso, mezclar findes y días sueltos falsearía
+las dos medias y no aparecería ninguna escapada.
+
+```yaml
+search:
+  weekend:
+    mode: prefer          # prefer = las prioriza | only = solo findes | off = ignora el día
+    outbound_weekday: 4   # viernes
+    outbound_after: "15:00"
+    outbound_before: "22:00"
+    inbound_weekday: 6    # domingo
+    inbound_after: "15:00"
+    bonus: 18             # puntos extra en el score
+```
 
 ## Notas de implementacion verificadas (2026-08-15, con datos reales)
 
@@ -70,6 +107,8 @@ Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
   El pais es obligatorio para desambiguar: buscar solo "Agadir" devuelve casas en Canarias,
   mientras que `Agadir--Marruecos` acierta. Por eso `destination_country` viaja desde el vuelo
   hasta la busqueda de alojamiento.
+- Ryanair sí acepta filtro de hora (`outboundDepartureTimeFrom` / `...TimeTo`), lo que permite
+  pedir solo salidas de viernes por la tarde sin traerse el día entero.
 - La etiqueta `stay-request` es opcional: el workflow se dispara por el prefijo `[stay] ` del
   titulo, asi que funciona aunque no hayas creado la etiqueta en el repo.
 

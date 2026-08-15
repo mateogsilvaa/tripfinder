@@ -7,11 +7,18 @@ const POLL_MAX_MS = 15 * 60 * 1000;
 const $ = (sel) => document.querySelector(sel);
 const fmtEUR = (n) => `${Math.round(n)} €`;
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const DAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 
-function fmtDate(iso) {
-  if (!iso) return "";
-  const [y, m, d] = iso.split("-").map(Number);
-  return `${d} ${MONTHS[m - 1]}`;
+function parseISO(iso) {
+  const [y, m, d] = (iso || "").split("-").map(Number);
+  return y ? new Date(y, m - 1, d) : null;
+}
+
+function fmtDate(iso, withDay = false) {
+  const d = parseISO(iso);
+  if (!d) return "";
+  const base = `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return withDay ? `${DAYS[d.getDay()]} ${base}` : base;
 }
 
 function esc(s) {
@@ -35,26 +42,19 @@ async function init() {
   try {
     payload = await fetchJSON("data/offers.json");
   } catch {
-    $("#meta").textContent = "Todavia no hay datos. El primer scan los generara.";
+    $("#stats").innerHTML = statBlock("estado", "sin datos aún");
     return;
   }
 
   OFFERS = payload.offers || [];
-  $("#meta").textContent = OFFERS.length
-    ? `${OFFERS.length} ofertas · actualizado ${payload.generated_at || "hoy"}`
-    : "Sin ofertas en el ultimo scan.";
+  renderStats(payload);
 
   if (payload.errors?.length) {
     const box = $("#errors");
     box.hidden = false;
     box.querySelector("ul").innerHTML = payload.errors.map((e) => `<li>${esc(e)}</li>`).join("");
   }
-
-  const origins = [...new Set(OFFERS.map((o) => o.origin))].sort();
-  $("#origin").insertAdjacentHTML(
-    "beforeend",
-    origins.map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join("")
-  );
+  if (!OFFERS.length) return;
 
   const maxPrice = Math.max(60, ...OFFERS.map((o) => o.price));
   const priceInput = $("#price");
@@ -62,28 +62,38 @@ async function init() {
   priceInput.value = priceInput.max;
   $("#priceOut").textContent = priceInput.value;
 
-  document.querySelector(".controls").hidden = OFFERS.length === 0;
-  ["#q", "#origin", "#sort", "#price"].forEach((s) => $(s).addEventListener("input", render));
+  $(".controls").hidden = false;
+  ["#q", "#sort", "#price", "#unique"].forEach((s) => $(s).addEventListener("input", render));
   render();
 
   const target = new URLSearchParams(location.search).get("offer");
   if (target) focusOffer(target);
 }
 
+const statBlock = (label, value, hot = false) =>
+  `<div><dd class="${hot ? "hot" : ""}">${esc(value)}</dd><dt>${esc(label)}</dt></div>`;
+
+function renderStats(payload) {
+  const best = OFFERS.reduce((a, o) => (o.discount_pct > (a?.discount_pct ?? -1) ? o : a), null);
+  const findes = OFFERS.filter((o) => o.weekend).length;
+  $("#stats").innerHTML =
+    statBlock("ofertas vivas", OFFERS.length) +
+    (best ? statBlock("mejor descuento", `−${Math.round(best.discount_pct)}%`, true) : "") +
+    (best ? statBlock("desde", fmtEUR(Math.min(...OFFERS.map((o) => o.price)))) : "") +
+    statBlock("escapadas de finde", findes) +
+    statBlock("actualizado", fmtDate(payload.generated_at) || "hoy");
+}
+
 function currentList() {
   const q = $("#q").value.trim().toLowerCase();
-  const origin = $("#origin").value;
   const max = Number($("#price").value);
   const sort = $("#sort").value;
 
   const list = OFFERS.filter(
     (o) =>
       o.price <= max &&
-      (!origin || o.origin === origin) &&
       (!q ||
-        `${o.destination_name} ${o.destination} ${o.destination_country} ${o.origin_name}`
-          .toLowerCase()
-          .includes(q))
+        `${o.destination_name} ${o.destination} ${o.destination_country}`.toLowerCase().includes(q))
   );
 
   const by = {
@@ -91,26 +101,49 @@ function currentList() {
     price: (a, b) => a.price - b.price,
     date: (a, b) => a.depart_date.localeCompare(b.depart_date),
   }[sort];
-  return list.sort(by);
+  list.sort(by);
+
+  // El barrido de findes devuelve la misma ciudad una vez por fin de semana:
+  // por defecto se muestra solo la mejor de cada destino.
+  if ($("#unique").checked) {
+    const visto = new Set();
+    return list.filter((o) => !visto.has(o.destination) && visto.add(o.destination));
+  }
+  return list;
 }
 
-function card(o) {
-  const nights = o.nights ? ` · ${o.nights} noches` : "";
-  const back = o.return_date ? ` → ${fmtDate(o.return_date)}` : "";
-  const was = o.baseline && o.baseline > o.price ? `<span class="was">${fmtEUR(o.baseline)}</span>` : "";
-  const tag = o.discount_pct >= 5 ? `<span class="tag">−${Math.round(o.discount_pct)}% · score ${o.score}</span>` : "";
+function leg(label, iso, time, highlight) {
+  if (!iso) return "";
+  return `<div><dt>${label}</dt><dd class="${highlight ? "weekend" : ""}">${fmtDate(iso, true)}${
+    time ? ` · ${esc(time)}` : ""
+  }</dd></div>`;
+}
+
+function card(o, i) {
+  const was = o.baseline > o.price ? `<span class="was">${fmtEUR(o.baseline)}</span>` : "";
+  const pill =
+    o.discount_pct >= 5 ? `<span class="pill">−${Math.round(o.discount_pct)}%</span>` : "";
+  const sub = [o.destination_country, o.airline].filter(Boolean).join(" · ");
   return `
-    <article class="card" id="offer-${esc(o.id)}" data-id="${esc(o.id)}">
-      <div>
-        <div class="route">${esc(o.origin_name || o.origin)} → ${esc(o.destination_name || o.destination)}
-          <small>${esc(o.origin)}–${esc(o.destination)}</small>
-        </div>
-        <div class="when">${fmtDate(o.depart_date)}${back}${nights} · ${esc(o.airline || o.provider)}</div>
+    <article class="ticket" id="offer-${esc(o.id)}" style="animation-delay:${Math.min(i, 12) * 45}ms">
+      ${o.weekend ? '<span class="tag-weekend">escapada de finde</span>' : ""}
+      <div class="stub">
+        <span class="trip-kind">${o.return_date ? "ida y vuelta" : "solo ida"}</span>
+        <span class="amount">${Math.round(o.price)}<span>€</span></span>
+        ${was}${pill}
       </div>
-      <div class="priceline"><span class="price">${fmtEUR(o.price)}</span>${was}${tag}</div>
-      <div class="actions">
-        <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
-        <a class="btn ghost" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+      <div class="body">
+        <div class="codes">${esc(o.origin)}<span class="line"></span>${esc(o.destination)}</div>
+        <h2 class="dest">${esc(o.destination_name || o.destination)}<small>${esc(sub)}</small></h2>
+        <dl class="legs">
+          ${leg("Ida", o.depart_date, o.depart_time, o.weekend)}
+          ${leg("Vuelta", o.return_date, o.return_time, o.weekend)}
+          ${o.nights ? `<div><dt>Noches</dt><dd>${o.nights}</dd></div>` : ""}
+        </dl>
+        <div class="actions">
+          <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
+          <a class="btn ghost" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+        </div>
       </div>
     </article>`;
 }
@@ -119,7 +152,7 @@ function render() {
   $("#priceOut").textContent = $("#price").value;
   const list = currentList();
   $("#offers").innerHTML = list.map(card).join("");
-  $("#empty").hidden = list.length > 0 || OFFERS.length === 0;
+  $("#empty").hidden = list.length > 0;
   document.querySelectorAll("[data-stay]").forEach((b) =>
     b.addEventListener("click", () => openStays(b.dataset.stay))
   );
@@ -140,6 +173,7 @@ function closePanel() {
   clearInterval(pollTimer);
   $("#panel").hidden = true;
   $("#backdrop").hidden = true;
+  document.body.style.overflow = "";
 }
 $("#panelClose").addEventListener("click", closePanel);
 $("#backdrop").addEventListener("click", closePanel);
@@ -171,15 +205,15 @@ async function openStays(id) {
 
   $("#panel").hidden = false;
   $("#backdrop").hidden = false;
-  $("#panelTitle").textContent = `Alojamiento en ${offer.destination_name || offer.destination}`;
+  document.body.style.overflow = "hidden";
+  $("#panelTitle").textContent = offer.destination_name || offer.destination;
   $("#panelDates").textContent =
-    `${fmtDate(offer.depart_date)}${offer.return_date ? ` → ${fmtDate(offer.return_date)}` : ""}` +
+    `${fmtDate(offer.depart_date, true)}${offer.return_date ? ` → ${fmtDate(offer.return_date, true)}` : ""}` +
     `${offer.nights ? ` · ${offer.nights} noches` : ""}`;
-  $("#panelBody").innerHTML = '<p class="sub">Comprobando si ya hay resultados…</p>';
+  $("#panelBody").innerHTML = '<p class="status">Comprobando si ya hay resultados…</p>';
 
   try {
-    const data = await fetchJSON(`data/stays/${id}.json`);
-    renderStays(data);
+    renderStays(await fetchJSON(`data/stays/${id}.json`));
   } catch {
     askForSearch(offer);
   }
@@ -188,14 +222,15 @@ async function openStays(id) {
 function askForSearch(offer) {
   $("#panelBody").innerHTML = `
     <div class="status wait">
-      Aun no hemos buscado alojamiento para esta oferta.
-      Al pulsar el boton se abre una issue en GitHub que lanza el scraper
-      (Airbnb, hoteles y comparadores) para <strong>estas fechas exactas</strong>.
-      Tarda 2–3 minutos y esta pagina se actualiza sola.
-    </div>
-    <a class="btn primary" id="launch" href="${issueURL(offer)}" target="_blank" rel="noopener">
-      Lanzar busqueda de alojamiento
-    </a>`;
+      <p>
+        Todavía no hemos buscado cama para estas fechas. El botón abre una issue en GitHub
+        que lanza el scraper (Airbnb, hoteles y comparadores) para
+        <strong>estas fechas exactas</strong>. Tarda 2–3 minutos y esta página se actualiza sola.
+      </p>
+      <a class="btn primary" id="launch" href="${issueURL(offer)}" target="_blank" rel="noopener">
+        Lanzar búsqueda
+      </a>
+    </div>`;
   $("#launch").addEventListener("click", () => startPolling(offer.id));
 }
 
@@ -208,7 +243,7 @@ function startPolling(id) {
     if (Date.now() - started > POLL_MAX_MS) {
       clearInterval(pollTimer);
       $("#panelBody").innerHTML =
-        '<div class="status wait">La busqueda esta tardando mas de lo normal. Revisa la issue en GitHub.</div>';
+        '<div class="status wait">Está tardando más de lo normal. Revisa la issue en GitHub.</div>';
       return;
     }
     try {
@@ -221,32 +256,36 @@ function startPolling(id) {
   }, POLL_EVERY_MS);
 }
 
-function renderStays(data) {
-  const stays = data.stays || [];
-  const priced = stays.filter((s) => s.price_total);
-  const links = stays.filter((s) => !s.price_total);
-
-  const row = (s) => `
+function stayRow(s) {
+  const meta = [s.provider, s.rating ? `★ ${s.rating}` : "", s.note].filter(Boolean).join(" · ");
+  return `
     <div class="stay">
       ${s.image ? `<img src="${esc(s.image)}" alt="" loading="lazy">` : ""}
       <div>
         <div class="name"><a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a></div>
-        <div class="meta">${esc(s.provider)}${s.rating ? ` · ★ ${s.rating}` : ""}${s.note ? ` · ${esc(s.note)}` : ""}</div>
+        <div class="meta">${esc(meta)}</div>
       </div>
       ${
         s.price_total
-          ? `<div class="amount">${fmtEUR(s.price_total)}<small>${
+          ? `<div class="amount-s">${fmtEUR(s.price_total)}<small>${
               s.price_per_night ? `${fmtEUR(s.price_per_night)}/noche` : ""
             }</small></div>`
           : ""
       }
     </div>`;
+}
 
+function renderStays(data) {
+  const stays = data.stays || [];
+  const priced = stays.filter((s) => s.price_total);
+  const links = stays.filter((s) => !s.price_total);
   $("#panelBody").innerHTML = `
-    <div class="status">${priced.length} alojamientos con precio · buscado el ${esc(data.generated_at || "")}</div>
-    ${priced.map(row).join("")}
-    ${links.length ? `<h3 style="font-size:15px;margin:22px 0 4px">Seguir buscando</h3>` : ""}
-    ${links.map(row).join("")}`;
+    <div class="status">${priced.length} alojamientos con precio · buscado el ${esc(
+      data.generated_at || ""
+    )}</div>
+    ${priced.map(stayRow).join("")}
+    ${links.length ? "<h3>Seguir buscando</h3>" : ""}
+    ${links.map(stayRow).join("")}`;
 }
 
 init();

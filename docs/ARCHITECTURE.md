@@ -8,7 +8,7 @@
 | `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. |
 | `tripfinder.scoring` | `src/tripfinder/` | Convierte precio + histórico en un `score` 0-100 y decide si es chollo. |
 | `tripfinder.store` | `src/tripfinder/` | Persistencia en JSON dentro de `data/` (el propio repo es la base de datos). |
-| `tripfinder.notify.email` | `src/tripfinder/notify/` | SMTP + plantilla HTML. |
+| `tripfinder.notify` | `src/tripfinder/notify/` | Resend / SMTP / issue de GitHub + plantillas. Si el metodo elegido falla, prueba los demas. |
 | `web/` | GitHub Pages | Lee `data/offers.json` y `data/stays/*.json`. Cero build. |
 | `.github/workflows/` | GitHub Actions | Cron de vuelos, cola de alojamiento vía issues, deploy de Pages. |
 
@@ -31,6 +31,9 @@
   misma ruta/fecha a lo largo del tiempo y detectar bajadas.
 - **Issues como cola de trabajo.** Ver README: es el único disparador gratis desde una web
   estática que no obliga a publicar un token.
+- **Escapada de finde como consulta, no como filtro.** Filtrar a posteriori no sirve: la API
+  devuelve la tarifa mas barata por destino y esa casi nunca es de viernes. Se pregunta por cada
+  fin de semana, y esas ofertas se puntuan contra su propio historico (`RUTA|finde`).
 - **Fallo tolerado por provider.** Un adapter que revienta se registra y se ignora; el scan sigue.
 - **Nada de scraping agresivo.** Booking se resuelve con deep links; Airbnb es best-effort con
   degradado a deep link. Un `User-Agent` honesto y un intervalo mínimo entre peticiones.

@@ -3,65 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TripFinder · chollos de vuelo</title>
-<meta name="description" content="Ofertas de vuelo por debajo de su precio habitual, con busqueda de alojamiento bajo demanda.">
+<title>TripFinder · chollos desde Madrid</title>
+<meta name="description" content="Vuelos de ida y vuelta desde Madrid por debajo de su precio habitual, con busqueda de alojamiento bajo demanda.">
+<meta name="theme-color" content="#0d0b0a">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div class="grain" aria-hidden="true"></div>
+<div class="glow" aria-hidden="true"></div>
 
-<header class="top">
-  <div class="wrap">
-    <h1>✈️ TripFinder</h1>
-    <p class="sub" id="meta">Cargando ofertas…</p>
+<header class="masthead">
+  <div class="board" aria-hidden="true">
+    <span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>
+    <span class="board-label">salidas · precio total ida y vuelta</span>
+    <span class="board-live"><i></i>en vivo</span>
   </div>
-</header>
 
-<main class="wrap">
-
-  <section class="controls" hidden>
-    <input type="search" id="q" placeholder="Buscar destino…" autocomplete="off">
-    <select id="origin"><option value="">Todos los origenes</option></select>
-    <label class="range">
-      Hasta <output id="priceOut">200</output>&nbsp;€
-      <input type="range" id="price" min="10" max="400" step="5" value="200">
-    </label>
-    <select id="sort">
-      <option value="score">Mejor chollo</option>
-      <option value="price">Precio</option>
-      <option value="date">Fecha de salida</option>
-    </select>
-  </section>
-
-  <section id="offers" class="grid"></section>
-
-  <p id="empty" class="empty" hidden>
-    Ningun vuelo cumple estos filtros. Prueba a subir el precio maximo.
+  <h1>Chollos <em>desde Madrid</em></h1>
+  <p class="lede">
+    Precios que han caído por debajo de su media histórica. Suelen durar horas,
+    no días — el correo te avisa antes de que desaparezcan.
   </p>
 
+  <dl class="stats" id="stats"></dl>
+</header>
+
+<main>
+  <section class="controls" hidden>
+    <div class="field grow">
+      <label for="q">Destino</label>
+      <input type="search" id="q" placeholder="Roma, Italia, FCO…" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="price">Tope <output id="priceOut">200</output> €</label>
+      <input type="range" id="price" min="10" max="400" step="5" value="200">
+    </div>
+    <div class="field">
+      <label for="sort">Ordenar</label>
+      <select id="sort">
+        <option value="score">Mejor chollo</option>
+        <option value="price">Más barato</option>
+        <option value="date">Sale antes</option>
+      </select>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="unique" checked>
+      <span>Una por destino</span>
+    </label>
+  </section>
+
+  <section id="offers" class="tickets"></section>
+
+  <p id="empty" class="empty" hidden>Nada con estos filtros. Sube el tope de precio.</p>
+
   <details id="errors" class="errors" hidden>
-    <summary>Algunos proveedores fallaron en el ultimo scan</summary>
+    <summary>Algunos proveedores fallaron en el último scan</summary>
     <ul></ul>
   </details>
 </main>
 
-<!-- Panel lateral de alojamiento -->
-<aside id="panel" class="panel" hidden>
-  <div class="panel-head">
+<aside id="panel" class="panel" hidden aria-label="Alojamiento">
+  <header class="panel-head">
     <div>
-      <h2 id="panelTitle">Alojamiento</h2>
-      <p id="panelDates" class="sub"></p>
+      <p class="kicker">Alojamiento</p>
+      <h2 id="panelTitle"></h2>
+      <p id="panelDates" class="panel-dates"></p>
     </div>
-    <button id="panelClose" aria-label="Cerrar">×</button>
-  </div>
+    <button id="panelClose" aria-label="Cerrar">✕</button>
+  </header>
   <div id="panelBody" class="panel-body"></div>
 </aside>
 <div id="backdrop" class="backdrop" hidden></div>
 
-<footer class="wrap foot">
-  Datos generados por GitHub Actions ·
-  <a href="https://github.com/mateogsilvaa/tripfinder">codigo</a> ·
-  los precios cambian rapido, confirma siempre en la web de la aerolinea.
+<footer class="foot">
+  <span>Datos recogidos por GitHub Actions cada 12 h.</span>
+  <span>Los precios vuelan: confirma siempre en la aerolínea.</span>
+  <a href="https://github.com/mateogsilvaa/tripfinder">código</a>
 </footer>
 
 <script src="app.js"></script>

@@ -26,11 +26,19 @@ def _setup_logging(verbose: bool) -> None:
 
 
 def _dedupe(offers: list[FlightOffer]) -> list[FlightOffer]:
-    """Misma ruta y fecha desde varios providers: se queda la mas barata."""
+    """Misma ruta y fecha: se queda la mejor.
+
+    "Mejor" = la que encaja con la escapada de finde y, a igualdad, la mas barata.
+    Sin esa preferencia, un vuelo de las 06:00 del mismo dia tumbaria al de la tarde
+    solo por ser dos euros mas barato.
+    """
+    def rank(o: FlightOffer) -> tuple[bool, float]:
+        return (not o.weekend, o.price)
+
     best: dict[str, FlightOffer] = {}
     for o in offers:
         cur = best.get(o.id)
-        if cur is None or o.price < cur.price:
+        if cur is None or rank(o) < rank(cur):
             best[o.id] = o
     return list(best.values())
 
@@ -50,6 +58,8 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
         return 1
 
     min_score = int(cfg.notify.get("min_score", 70))
+    weekend_cfg = cfg.weekend
+    weekend_mode = str(weekend_cfg.get("mode", "prefer"))
     renotify = float(cfg.notify.get("renotify_drop_pct", 12))
 
     found: list[FlightOffer] = []
@@ -66,9 +76,9 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
                 errors.append(msg)
                 continue
             for offer in results:
-                score_offer(offer, history, route)
+                score_offer(offer, history, route, weekend_cfg)
                 found.append(offer)
-                if is_deal(offer, route, min_score):
+                if is_deal(offer, route, min_score, weekend_mode):
                     deals.append(offer)
 
     found = _dedupe(found)
@@ -76,11 +86,18 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     found.sort(key=lambda o: (-o.score, o.price))
     deals.sort(key=lambda o: (-o.score, o.price))
 
-    print(f"\n{len(found)} ofertas encontradas, {len(deals)} superan score {min_score}")
+    findes = sum(1 for o in found if o.weekend)
+    print(
+        f"\n{len(found)} ofertas ({findes} escapadas de finde), "
+        f"{len(deals)} superan score {min_score}"
+    )
     for o in deals[:15]:
+        marca = "FINDE" if o.weekend else "  ·  "
+        horas = f"{o.depart_time or '--:--'}>{o.return_time or '--:--'}"
         print(
-            f"  {o.score:3d}  {o.price:7.2f}{o.currency}  {o.origin}->{o.destination:<4} "
-            f"{o.depart_date} ({o.discount_pct:.0f}% bajo {o.baseline}) {o.destination_name}"
+            f"  {o.score:3d} {marca} {o.price:7.2f}{o.currency}  "
+            f"{o.origin}->{o.destination:<4} {o.depart_date} {horas} "
+            f"(-{o.discount_pct:.0f}% sobre {o.baseline}) {o.destination_name}"
         )
 
     if args.dry_run:
@@ -94,11 +111,15 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     store.save_offers(found[: args.limit], errors=errors)
 
     if to_notify and not args.no_email:
-        from .notify.email import notify_offers  # import tardio: no hace falta para --dry-run
+        from .notify import notify_offers  # import tardio: no hace falta para --dry-run
 
         batch = to_notify[:max_email]
         try:
-            notify_offers(batch, to=cfg.notify.get("to"))
+            used = notify_offers(
+                batch,
+                to=cfg.notify.get("to", ""),
+                method=cfg.notify.get("method", "resend"),
+            )
         except Exception as exc:  # noqa: BLE001
             log.error("No se pudo enviar el email: %s", exc)
             errors.append(f"email: {exc}")
@@ -107,7 +128,7 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
             for o in batch:
                 state.setdefault("notified", {})[o.id] = {"price": o.price, "date": today}
             store.save_state(state)
-            print(f"Email enviado con {len(batch)} ofertas.")
+            print(f"Aviso enviado por {used} con {len(batch)} ofertas.")
     elif args.no_email:
         print(f"{len(to_notify)} ofertas notificables, pero --no-email esta activo.")
     else:
@@ -209,7 +230,10 @@ def _stays_markdown(offer_id: str, req: StayRequest, stays: list[StayOffer]) -> 
 
 # --------------------------------------------------------------------------- #
 def cmd_test_email(args: argparse.Namespace) -> int:
-    from .notify.email import notify_offers
+    from .config import load_config
+    from .notify import notify_offers
+
+    cfg = load_config(args.config)
 
     demo = FlightOffer(
         provider="ryanair",
@@ -227,8 +251,12 @@ def cmd_test_email(args: argparse.Namespace) -> int:
         airline="Ryanair",
         deep_link="https://www.ryanair.com",
     )
-    notify_offers([demo], to=args.to)
-    print("Email de prueba enviado.")
+    used = notify_offers(
+        [demo],
+        to=args.to or cfg.notify.get("to", ""),
+        method=args.method or cfg.notify.get("method", "resend"),
+    )
+    print(f"Aviso de prueba enviado por {used}.")
     return 0
 
 
@@ -257,8 +285,9 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(func=cmd_scan_stays)
 
-    t = sub.add_parser("test-email", help="Envia un email de ejemplo")
+    t = sub.add_parser("test-email", help="Envia un aviso de ejemplo")
     t.add_argument("--to")
+    t.add_argument("--method", choices=["resend", "smtp", "github_issue"])
     t.set_defaults(func=cmd_test_email)
     return p
 

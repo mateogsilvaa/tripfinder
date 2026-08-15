@@ -29,6 +29,9 @@ class FlightOffer:
     deep_link: str = ""
     found_at: str = field(default_factory=_now)
     nights: int | None = None
+    depart_time: str = ""  # HH:MM del vuelo de ida
+    return_time: str = ""  # HH:MM del vuelo de vuelta
+    weekend: bool = False  # encaja con la escapada viernes tarde -> domingo tarde
     # Rellenados por scoring.py
     baseline: float | None = None
     discount_pct: float = 0.0
@@ -42,6 +45,11 @@ class FlightOffer:
     @property
     def route_key(self) -> str:
         return f"{self.origin}-{self.destination}"
+
+    @property
+    def history_key(self) -> str:
+        """Series separadas: mezclar findes y dias sueltos falsea las dos medias."""
+        return self.route_key + ("|finde" if self.weekend else "")
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)

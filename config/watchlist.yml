@@ -1,6 +1,8 @@
 # Configuracion de busqueda. Todo lo que cambies aqui afecta al proximo cron.
 
 notify:
+  # resend | smtp | github_issue  (ver docs/ARCHITECTURE.md)
+  method: resend
   to: mateogonsilva@gmail.com
   # Solo se avisa de ofertas con score >= min_score
   min_score: 70
@@ -28,6 +30,22 @@ search:
   nights_max: 7
   currency: EUR
   market: es-es
+  # Escapada de finde: salir viernes por la tarde, volver domingo por la tarde.
+  # mode: prefer  -> las prioriza (bonus al score) pero deja ver el resto
+  # mode: only    -> descarta todo lo que no cuadre
+  # mode: off     -> ignora el dia de la semana
+  weekend:
+    mode: prefer
+    outbound_weekday: 4   # 0=lunes, 4=viernes
+    outbound_after: "15:00"
+    outbound_before: "22:00"
+    inbound_weekday: 6    # domingo
+    inbound_after: "15:00"
+    inbound_before: "23:59"
+    bonus: 18
+
+  # Pasajeros del vuelo (el precio mostrado es el total de ida y vuelta para todos)
+  adults: 1
   # Segundos minimos entre peticiones a un mismo proveedor
   min_interval_seconds: 2
 
@@ -37,17 +55,16 @@ routes:
     # "any" = cualquier destino que ofrezca el proveedor
     destinations: any
     max_price: 60
-    # Precio de referencia si aun no hay historico suficiente
+    # Tope propio para la escapada de viernes tarde (esos vuelos valen mas)
+    max_price_weekend: 130
+    # Precio de referencia mientras no haya historico suficiente
     baseline_price: 110
-
-  - origin: BCN
-    origin_name: Barcelona
-    destinations: any
-    max_price: 60
-    baseline_price: 110
+    baseline_price_weekend: 200
 
   - origin: MAD
     origin_name: Madrid
     destinations: [FCO, NAP, MXP, LIS, OPO, CDG, BRU, DUB, EDI, BER]
     max_price: 45
+    max_price_weekend: 120
     baseline_price: 95
+    baseline_price_weekend: 190

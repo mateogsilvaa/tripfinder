@@ -24,36 +24,101 @@ BOOKING = "https://www.ryanair.com/es/es/trip/flights/select"
 PAGE_SIZE = 20
 
 
+def _weekdays_ahead(weekday: int, days_ahead: int, limit: int) -> list[date]:
+    """Las proximas fechas que caen en ese dia de la semana (0=lunes)."""
+    today = date.today()
+    first = today + timedelta(days=(weekday - today.weekday()) % 7 or 7)
+    out: list[date] = []
+    d = first
+    while (d - today).days <= days_ahead and len(out) < limit:
+        out.append(d)
+        d += timedelta(days=7)
+    return out
+
+
 @register("ryanair")
 class RyanairProvider(FlightProvider):
     def search(self, route: Route) -> list[FlightOffer]:
+        weekend = self.cfg.get("weekend", {}) or {}
+        mode = str(weekend.get("mode", "prefer"))
+
+        offers: list[FlightOffer] = []
+        if mode in ("prefer", "only"):
+            # La busqueda general devuelve la tarifa mas barata por destino, que casi
+            # nunca cae en viernes-domingo: hay que preguntar fin de semana a fin de semana.
+            offers += self._weekend_sweep(route, weekend)
+        if mode != "only":
+            offers += self._broad_search(route)
+
+        log.info("Ryanair %s: %d tarifas", route.origin, len(offers))
+        return offers
+
+    # -- consultas -------------------------------------------------------
+    def _base_params(self, route: Route) -> dict:
+        params = {
+            "departureAirportIataCode": route.origin,
+            "currency": self.cfg.get("currency", "EUR"),
+            "market": self.cfg.get("market", "es-es"),
+            "adultPaxCount": int(self.cfg.get("adults", 1)),
+            "limit": PAGE_SIZE,
+            "offset": 0,
+        }
+        if route.dest_list:
+            params["arrivalAirportIataCodes"] = ",".join(route.dest_list)
+        return params
+
+    def _broad_search(self, route: Route) -> list[FlightOffer]:
         days_ahead = int(self.cfg.get("days_ahead", 120))
         nights_min = int(self.cfg.get("nights_min", 2))
         nights_max = int(self.cfg.get("nights_max", 7))
-        currency = self.cfg.get("currency", "EUR")
-        interval = float(self.cfg.get("min_interval_seconds", 2))
-        max_results = int(self.cfg.get("max_results_per_route", 100))
-
         today = date.today()
         params = {
-            "departureAirportIataCode": route.origin,
+            **self._base_params(route),
             "outboundDepartureDateFrom": (today + timedelta(days=1)).isoformat(),
             "outboundDepartureDateTo": (today + timedelta(days=days_ahead)).isoformat(),
             "inboundDepartureDateFrom": (today + timedelta(days=1 + nights_min)).isoformat(),
             "inboundDepartureDateTo": (today + timedelta(days=days_ahead + nights_max)).isoformat(),
             "durationFrom": nights_min,
             "durationTo": nights_max,
-            "currency": currency,
-            "market": self.cfg.get("market", "es-es"),
-            "adultPaxCount": 1,
-            "limit": PAGE_SIZE,
-            "offset": 0,
         }
-        if route.dest_list:
-            params["arrivalAirportIataCodes"] = ",".join(route.dest_list)
+        return self._paginate(params, route, int(self.cfg.get("max_results_per_route", 100)))
+
+    def _weekend_sweep(self, route: Route, weekend: dict) -> list[FlightOffer]:
+        """Una consulta por fin de semana, con filtro de hora de salida y regreso."""
+        out_day = int(weekend.get("outbound_weekday", 4))
+        in_day = int(weekend.get("inbound_weekday", 6))
+        max_weeks = int(weekend.get("max_weeks", 16))
+        days_ahead = int(self.cfg.get("days_ahead", 120))
 
         offers: list[FlightOffer] = []
-        for offset in range(0, max_results, PAGE_SIZE):
+        for out_date in _weekdays_ahead(out_day, days_ahead, max_weeks):
+            nights = (in_day - out_day) % 7 or 7
+            in_date = out_date + timedelta(days=nights)
+            params = {
+                **self._base_params(route),
+                "outboundDepartureDateFrom": out_date.isoformat(),
+                "outboundDepartureDateTo": out_date.isoformat(),
+                "inboundDepartureDateFrom": in_date.isoformat(),
+                "inboundDepartureDateTo": in_date.isoformat(),
+                "durationFrom": nights,
+                "durationTo": nights,
+                "outboundDepartureTimeFrom": weekend.get("outbound_after", "15:00"),
+                "outboundDepartureTimeTo": weekend.get("outbound_before", "22:00"),
+                "inboundDepartureTimeFrom": weekend.get("inbound_after", "15:00"),
+                "inboundDepartureTimeTo": weekend.get("inbound_before", "23:59"),
+            }
+            try:
+                offers += self._paginate(params, route, PAGE_SIZE)
+            except Exception as exc:  # noqa: BLE001 - un finde fallido no tumba el resto
+                log.warning("Ryanair finde %s: %s", out_date, exc)
+        log.info("Ryanair %s: %d tarifas de finde", route.origin, len(offers))
+        return offers
+
+    def _paginate(self, params: dict, route: Route, max_results: int) -> list[FlightOffer]:
+        currency = params.get("currency", "EUR")
+        interval = float(self.cfg.get("min_interval_seconds", 2))
+        offers: list[FlightOffer] = []
+        for offset in range(0, max(max_results, PAGE_SIZE), PAGE_SIZE):
             data = get_json(
                 API,
                 params={**params, "offset": offset},
@@ -67,8 +132,6 @@ class RyanairProvider(FlightProvider):
                     offers.append(offer)
             if len(fares) < PAGE_SIZE:  # ultima pagina
                 break
-
-        log.info("Ryanair %s: %d tarifas", route.origin, len(offers))
         return offers
 
     @staticmethod
@@ -87,8 +150,11 @@ class RyanairProvider(FlightProvider):
         if not price:
             return None
 
-        depart = out["departureDate"][:10]
-        ret = (back.get("departureDate") or "")[:10] or None
+        depart_raw = out["departureDate"]
+        back_raw = back.get("departureDate") or ""
+        depart, depart_time = depart_raw[:10], depart_raw[11:16]
+        ret = back_raw[:10] or None
+        return_time = back_raw[11:16]
         nights = (fare.get("summary") or {}).get("tripDurationDays")
         if nights is None and ret:
             nights = (date.fromisoformat(ret) - date.fromisoformat(depart)).days
@@ -111,6 +177,8 @@ class RyanairProvider(FlightProvider):
             depart_date=depart,
             return_date=ret,
             nights=nights,
+            depart_time=depart_time,
+            return_time=return_time,
             price=round(float(price), 2),
             currency=summary_price.get("currencyCode", currency),
             airline="Ryanair",

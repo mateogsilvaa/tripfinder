@@ -28,10 +28,24 @@ class Route:
     destinations: Any = "any"  # "any" o lista de IATA
     max_price: float = 100.0
     baseline_price: float = 150.0
+    # Los vuelos de viernes tarde valen sistematicamente mas que el resto de la semana,
+    # asi que se comparan contra su propia referencia o no apareceria ninguno.
+    max_price_weekend: float | None = None
+    baseline_price_weekend: float | None = None
 
     @property
     def dest_list(self) -> list[str]:
         return [] if self.destinations in ("any", None) else list(self.destinations)
+
+    def max_for(self, weekend: bool) -> float:
+        if weekend and self.max_price_weekend:
+            return float(self.max_price_weekend)
+        return float(self.max_price)
+
+    def baseline_for(self, weekend: bool) -> float:
+        if weekend and self.baseline_price_weekend:
+            return float(self.baseline_price_weekend)
+        return float(self.baseline_price)
 
 
 @dataclass
@@ -45,6 +59,10 @@ class Config:
     @property
     def search(self) -> dict[str, Any]:
         return self.raw.get("search", {})
+
+    @property
+    def weekend(self) -> dict[str, Any]:
+        return self.search.get("weekend", {}) or {}
 
     @property
     def notify(self) -> dict[str, Any]:

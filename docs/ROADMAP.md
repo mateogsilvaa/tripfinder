@@ -50,6 +50,9 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#12 · Plantilla HTML del aviso** `email` `ux`
   - Precio, descuento, fechas, aerolínea, CTA a la web con la oferta abierta.
   - AC: se ve correctamente en Gmail móvil (tablas, sin CSS externo).
+- [x] **#29 · Alternativas a la contraseña de aplicación de Gmail** `email`
+  - `notify.method`: `resend` (API key), `smtp` o `github_issue` (sin credenciales), con
+    reintento automático en cascada si el elegido falla.
 - [ ] **#13 · Resumen semanal (digest)** `email` `nice-to-have`
   - Un email los domingos con el top 5 aunque no haya chollo que supere el umbral.
 
@@ -62,7 +65,12 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
   - El email enlaza a la oferta concreta y la web la abre resaltada.
 - [x] **#16 · Workflow de despliegue a Pages** `infra`
   - AC: cada push a `main` publica `web/` + `data/`.
-- [ ] **#17 · Modo oscuro + PWA instalable** `web` `nice-to-have`
+- [x] **#17 · Identidad visual propia** `web` `ux`
+  - Tema oscuro cálido, tarjetas con troquel de billete, Fraunces + DM Mono, grano y
+    animación de entrada escalonada. Respeta `prefers-reduced-motion`.
+- [x] **#34 · Bug: el panel de alojamiento no se cerraba** `web`
+  - `.panel` tenía `display:flex`, que ganaba al atributo `hidden`. Ahora `[hidden]` es global.
+- [ ] **#35 · PWA instalable** `web` `nice-to-have`
 
 ## M4 · Alojamiento bajo demanda  ✅ hecho el circuito / ⚠️ Airbnb es best-effort
 
@@ -80,6 +88,18 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#23 · Vista de alojamientos en la web con polling** `web`
   - AC: tras lanzar la búsqueda, la web muestra resultados sin recargar a mano.
 - [ ] **#24 · Coste total del viaje (vuelo + alojamiento) y reordenado** `core` `ux`
+
+## M6 · Escapada de fin de semana  ✅ hecho
+
+- [x] **#30 · Barrido semana a semana en Ryanair** `scraper`
+  - Una consulta por viernes con filtro de hora en la API, en vez de filtrar a posteriori.
+  - AC: ✅ verificado — 98 de 123 ofertas encajan viernes tarde → domingo tarde.
+- [x] **#31 · Presupuesto e histórico propios del finde** `core`
+  - `max_price_weekend`, `baseline_price_weekend` y serie `RUTA|finde` separada.
+  - AC: ✅ Oporto vie 16:30 → dom 22:50 por 61 € aparece como chollo; antes no salía ninguno.
+- [x] **#32 · La web muestra día, hora y distintivo de finde** `web` `ux`
+- [ ] **#33 · Ventana de horas por destino** `nice-to-have`
+  - Para vuelos largos quizá interese salir antes del viernes; hoy la ventana es global.
 
 ## M5 · Robustez y calidad
 

@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  issues: write # solo lo usa el metodo de aviso 'github_issue'
 
 concurrency:
   group: tripfinder-data
@@ -33,6 +34,9 @@ jobs:
       - name: Buscar vuelos y notificar
         env:
           PYTHONPATH: src
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM: ${{ secrets.RESEND_FROM }}
+          GITHUB_TOKEN: ${{ github.token }}
           SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
           SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
           SMTP_USER: ${{ secrets.SMTP_USER }}

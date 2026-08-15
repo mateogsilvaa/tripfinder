@@ -59,7 +59,7 @@ class Store:
         history = self.load_history()
         today = date.today().isoformat()
         for o in offers:
-            series = history.setdefault(o.route_key, [])
+            series = history.setdefault(o.history_key, [])
             if any(e["d"] == today and abs(e["p"] - o.price) < 0.01 for e in series):
                 continue
             series.append({"d": today, "p": round(o.price, 2)})
