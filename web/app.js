@@ -67,7 +67,10 @@ async function init() {
   render();
 
   const target = new URLSearchParams(location.search).get("offer");
-  if (target) focusOffer(target);
+  if (target) {
+    ensureVisible(target);
+    focusOffer(target);
+  }
 }
 
 const statBlock = (label, value, hot = false) =>
@@ -119,25 +122,38 @@ function leg(label, iso, time, highlight) {
   }</dd></div>`;
 }
 
-function card(o, i) {
-  const was = o.baseline > o.price ? `<span class="was">${fmtEUR(o.baseline)}</span>` : "";
-  const pill =
-    o.discount_pct >= 5 ? `<span class="pill">−${Math.round(o.discount_pct)}%</span>` : "";
-  const sub = [o.destination_country, o.airline].filter(Boolean).join(" · ");
-  const alts = (o.alternatives || []).length
-    ? `<div class="alts">también ${o.alternatives
-        .map((a) => `<a href="${esc(a.deep_link)}" target="_blank" rel="noopener">${esc(a.airline)} ${fmtEUR(a.price)}</a>`)
-        .join(" · ")}</div>`
-    : "";
+function altsHTML(o) {
+  if (!(o.alternatives || []).length) return "";
+  const links = o.alternatives
+    .map(
+      (a) =>
+        `<a href="${esc(a.deep_link)}" target="_blank" rel="noopener">${esc(a.airline)} ${fmtEUR(
+          a.price
+        )}</a>`
+    )
+    .join(" · ");
+  return `<div class="alts">también ${links}</div>`;
+}
+
+/* El mejor chollo se lleva un billete entero: es lo primero que hay que ver. */
+function heroTicket(o) {
+  const sub = [o.destination_country, o.airline, o.weekend ? "escapada de finde" : ""]
+    .filter(Boolean)
+    .join(" · ");
   return `
-    <article class="ticket" id="offer-${esc(o.id)}" style="animation-delay:${Math.min(i, 12) * 45}ms">
-      ${o.weekend ? '<span class="tag-weekend">escapada de finde</span>' : ""}
+    <article class="ticket" id="offer-${esc(o.id)}">
       <div class="stub">
-        <span class="trip-kind">${o.return_date ? "ida y vuelta" : "solo ida"}</span>
+        <span class="kicker-tag">${o.return_date ? "ida y vuelta" : "solo ida"}</span>
         <span class="amount">${Math.round(o.price)}<span>€</span></span>
-        ${was}${pill}
+        ${o.baseline > o.price ? `<span class="was">${fmtEUR(o.baseline)}</span>` : ""}
+        <span class="per-person">vuelo completo, 1 adulto</span>
       </div>
-      <div class="body">
+      <div class="hero-body">
+        ${
+          o.discount_pct >= 5
+            ? `<div class="stamp">chollo<b>−${Math.round(o.discount_pct)}%</b></div>`
+            : ""
+        }
         <div class="codes">${esc(o.origin)}<span class="line"></span>${esc(o.destination)}</div>
         <h2 class="dest">${esc(o.destination_name || o.destination)}<small>${esc(sub)}</small></h2>
         <dl class="legs">
@@ -145,7 +161,7 @@ function card(o, i) {
           ${leg("Vuelta", o.return_date, o.return_time, o.weekend)}
           ${o.nights ? `<div><dt>Noches</dt><dd>${o.nights}</dd></div>` : ""}
         </dl>
-        ${alts}
+        ${altsHTML(o)}
         <div class="actions">
           <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
           <a class="btn ghost" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
@@ -154,13 +170,53 @@ function card(o, i) {
     </article>`;
 }
 
+/* El resto, como el panel de salidas de un aeropuerto: una línea por vuelo. */
+function boardRow(o, i) {
+  // Si ida y vuelta caen en el mismo mes, el mes no se repite: "vie 13 nov → dom 15".
+  const mismoMes = o.return_date && o.return_date.slice(0, 7) === o.depart_date.slice(0, 7);
+  const vueltaTxt = o.return_date
+    ? mismoMes
+      ? `${DAYS[parseISO(o.return_date).getDay()]} ${parseISO(o.return_date).getDate()}`
+      : fmtDate(o.return_date, true)
+    : "";
+  const vuelta = vueltaTxt ? ` → <b>${vueltaTxt}</b>` : "";
+  const hora = o.depart_time ? ` ${esc(o.depart_time)}` : "";
+  const extra = (o.alternatives || []).length
+    ? `<small>+${o.alternatives.length} compañía${o.alternatives.length > 1 ? "s" : ""}</small>`
+    : o.nights
+    ? `<small>${o.nights} noches</small>`
+    : "";
+  return `
+    <button class="brow" id="offer-${esc(o.id)}" data-stay="${esc(o.id)}"
+            style="animation-delay:${Math.min(i, 14) * 35}ms">
+      <span class="iata">${esc(o.destination)}</span>
+      <span class="dest-cell">
+        <span class="city">${esc(o.destination_name || o.destination)}</span>
+        <span class="country">${esc(o.destination_country || "")}</span>
+      </span>
+      <span class="when ${o.weekend ? "weekend" : ""}"><b>${fmtDate(
+        o.depart_date,
+        true
+      )}</b>${hora}${vuelta}</span>
+      <span class="airline">${esc(o.airline || o.provider)}${extra}</span>
+      <span class="price">${fmtEUR(o.price)}${
+        o.discount_pct >= 5 ? `<small>−${Math.round(o.discount_pct)}%</small>` : ""
+      }</span>
+    </button>`;
+}
+
 function render() {
   $("#priceOut").textContent = $("#price").value;
   const list = currentList();
-  $("#offers").innerHTML = list.map(card).join("");
+
+  $("#hero").innerHTML = list.length ? heroTicket(list[0]) : "";
+  $("#hero").hidden = !list.length;
+  $("#offers").innerHTML = list.slice(1).map(boardRow).join("");
+  $("#boardHead").hidden = list.length < 2;
   $("#empty").hidden = list.length > 0;
-  document.querySelectorAll("[data-stay]").forEach((b) =>
-    b.addEventListener("click", () => openStays(b.dataset.stay))
+
+  document.querySelectorAll("[data-stay]").forEach((el) =>
+    el.addEventListener("click", () => openStays(el.dataset.stay))
   );
 }
 
@@ -170,6 +226,18 @@ function focusOffer(id) {
   el.classList.add("target");
   el.scrollIntoView({ block: "center", behavior: "smooth" });
   openStays(id);
+}
+
+/* El enlace del email apunta a una oferta concreta: si los filtros la dejarían
+   fuera (por precio o por "una por destino"), se relajan para poder enseñarla. */
+function ensureVisible(id) {
+  if (document.getElementById(`offer-${id}`)) return;
+  const o = OFFERS.find((x) => x.id === id);
+  if (!o) return;
+  if (o.price > Number($("#price").value)) $("#price").value = $("#price").max;
+  $("#unique").checked = false;
+  $("#q").value = "";
+  render();
 }
 
 /* ------------------------------------------------------------- alojamiento */

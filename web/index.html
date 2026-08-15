@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripFinder · chollos desde Madrid</title>
-<meta name="description" content="Vuelos de ida y vuelta desde Madrid por debajo de su precio habitual, con busqueda de alojamiento bajo demanda.">
+<meta name="description" content="Escapadas de fin de semana desde Madrid por debajo de su precio habitual, con busqueda de alojamiento bajo demanda.">
 <meta name="theme-color" content="#0d0b0a">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,20 +19,22 @@
 <header class="masthead">
   <div class="board" aria-hidden="true">
     <span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>
-    <span class="board-label">salidas · precio total ida y vuelta</span>
+    <span class="board-label">salidas · escapadas de fin de semana</span>
     <span class="board-live"><i></i>en vivo</span>
   </div>
 
   <h1>Chollos <em>desde Madrid</em></h1>
   <p class="lede">
-    Precios que han caído por debajo de su media histórica. Suelen durar horas,
-    no días — el correo te avisa antes de que desaparezcan.
+    Viernes por la tarde fuera, domingo por la tarde de vuelta. Solo precios que han
+    caído por debajo de lo que cuesta ese mismo viaje habitualmente.
   </p>
 
   <dl class="stats" id="stats"></dl>
 </header>
 
 <main>
+  <section id="hero" class="hero" hidden></section>
+
   <section class="controls" hidden>
     <div class="field grow">
       <label for="q">Destino</label>
@@ -56,7 +58,10 @@
     </label>
   </section>
 
-  <section id="offers" class="tickets"></section>
+  <div class="board-head" id="boardHead" hidden>
+    <span>destino</span><span>fechas</span><span>compañía</span><span>precio</span>
+  </div>
+  <section id="offers" class="rows"></section>
 
   <p id="empty" class="empty" hidden>Nada con estos filtros. Sube el tope de precio.</p>
 
@@ -80,8 +85,8 @@
 <div id="backdrop" class="backdrop" hidden></div>
 
 <footer class="foot">
-  <span>Datos recogidos por GitHub Actions cada 12 h.</span>
-  <span>Los precios vuelan: confirma siempre en la aerolínea.</span>
+  <span>Ryanair, Iberia, Vueling, easyJet y compañía, revisados cada 12 h.</span>
+  <span>Los precios vuelan: confirma siempre antes de reservar.</span>
   <a href="https://github.com/mateogsilvaa/tripfinder">código</a>
 </footer>
 
