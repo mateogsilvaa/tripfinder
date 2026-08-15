@@ -31,6 +31,14 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      - name: Comprobar secretos (sin revelarlos)
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
+        run: |
+          echo "RESEND_API_KEY: ${#RESEND_API_KEY} caracteres"
+          echo "AMADEUS_CLIENT_ID: ${#AMADEUS_CLIENT_ID} caracteres"
+
       - name: Buscar vuelos y notificar
         env:
           PYTHONPATH: src

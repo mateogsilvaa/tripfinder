@@ -50,7 +50,8 @@ def notify_offers(offers: list[FlightOffer], to: str, method: str = "resend") ->
     errors: list[str] = []
     for candidate in candidates:
         if not _configured(candidate):
-            log.debug("Metodo %s sin credenciales, se salta", candidate)
+            log.warning("Aviso: metodo %s descartado por falta de credenciales", candidate)
+            errors.append(f"{candidate}: sin credenciales")
             continue
         try:
             _send_with(candidate, offers, to)
