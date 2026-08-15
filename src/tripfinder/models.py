@@ -12,6 +12,24 @@ def _now() -> str:
 
 
 @dataclass
+class Leg:
+    """Un trayecto suelto. Es la pieza con la que se combinan aerolineas."""
+
+    provider: str
+    airline: str
+    origin: str
+    destination: str
+    date: str  # ISO
+    time: str  # HH:MM
+    price: float
+    currency: str = "EUR"
+    destination_name: str = ""
+    destination_country: str = ""
+    origin_name: str = ""
+    deep_link: str = ""
+
+
+@dataclass
 class FlightOffer:
     """Una oferta de vuelo normalizada, venga del provider que venga."""
 
@@ -26,16 +44,24 @@ class FlightOffer:
     destination_name: str = ""
     destination_country: str = ""
     airline: str = ""
+    airline_back: str = ""  # distinta de airline si el billete combina companias
     deep_link: str = ""
+    deep_link_back: str = ""  # los combinados se reservan en dos webs
     found_at: str = field(default_factory=_now)
     nights: int | None = None
     depart_time: str = ""  # HH:MM del vuelo de ida
     return_time: str = ""  # HH:MM del vuelo de vuelta
     weekend: bool = False  # encaja con la escapada viernes tarde -> domingo tarde
+    # Mismo viaje con otras companias, para no perderlas al quedarnos con la mas barata
+    alternatives: list[dict[str, Any]] = field(default_factory=list)
     # Rellenados por scoring.py
     baseline: float | None = None
     discount_pct: float = 0.0
     score: int = 0
+
+    @property
+    def mixed(self) -> bool:
+        return bool(self.airline_back and self.airline_back != self.airline)
 
     @property
     def id(self) -> str:

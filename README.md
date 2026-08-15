@@ -74,6 +74,21 @@ python -m tripfinder test-email --method github_issue
 Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## De donde salen los precios
+
+| Provider | Clave | Que aporta |
+|---|---|---|
+| `ryanair` | ninguna | Barrido de findes, tarifas base. Es quien mas gana en rutas low cost. |
+| `google_flights` | ninguna | **Todas las aerolineas**: Iberia, Vueling, Air Europa, ITA, easyJet, Wizz, TAP… Contrasta los destinos y fechas que ya han salido y se queda con lo que mejora. |
+| `amadeus` | gratuita | Refuerzo por GDS para rutas con escala. Se desactiva solo si no hay claves. |
+
+Cuando dos companias ofrecen el mismo viaje, gana la mas barata y **las demas se guardan
+como alternativa** en la tarjeta (`también Wizz Air 66 €`), en vez de desaparecer.
+
+Lo que **no** se puede usar, comprobado: easyJet responde 403 a cualquier peticion
+automatizada, Vueling y Wizz no exponen buscador publico, y Kiwi cerro su API abierta
+(ahora exige clave de partner).
+
 ## Escapada de fin de semana
 
 El caso de uso principal es **salir el viernes por la tarde y volver el domingo por la tarde**.
@@ -107,6 +122,12 @@ search:
   El pais es obligatorio para desambiguar: buscar solo "Agadir" devuelve casas en Canarias,
   mientras que `Agadir--Marruecos` acierta. Por eso `destination_country` viaja desde el vuelo
   hasta la busqueda de alojamiento.
+- **Google Flights** sirve los resultados renderizados en el HTML si la busqueda va
+  codificada en el parametro `tfs` (un protobuf en base64, generado a mano en
+  `providers/google_flights.py`, sin dependencias). Hace falta mandar una cookie `SOCS`
+  de consentimiento no personalizado: sin ella solo llega el muro de cookies.
+  Cada resultado trae un `aria-label` en texto plano con precio, aerolinea, hora y
+  escalas — parsear eso aguanta mucho mejor que perseguir clases CSS ofuscadas.
 - Ryanair sí acepta filtro de hora (`outboundDepartureTimeFrom` / `...TimeTo`), lo que permite
   pedir solo salidas de viernes por la tarde sin traerse el día entero.
 - La etiqueta `stay-request` es opcional: el workflow se dispara por el prefijo `[stay] ` del

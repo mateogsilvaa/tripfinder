@@ -36,9 +36,12 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#8 · Deduplicación y anti-spam de avisos** `core`
   - No se re-notifica la misma oferta salvo que baje otro `renotify_drop_pct`.
   - AC: ejecutar dos veces seguidas envía 1 email, no 2.
-- [ ] **#9 · Provider Kiwi/Skyscanner vía API afiliada** `scraper` `nice-to-have`
-  - Requiere alta como afiliado. Aporta cobertura fuera de Ryanair.
-  - AC: se registra en el `ProviderRegistry` sin tocar el resto.
+- [x] **#9 · Cobertura fuera de Ryanair** `scraper`
+  - Resuelto con `google_flights` (sin clave). Descartados por inviables: easyJet (403),
+    Vueling y Wizz (sin buscador público), Kiwi (API cerrada a nuevos partners).
+  - AC: ✅ verificado — aparecen Iberia, ITA, easyJet, Wizz Air, Brussels y Air Europa.
+- [x] **#36 · Alternativas de otras compañías por oferta** `core` `ux`
+  - Al quedarse con la más barata ya no se pierden las demás: van en `alternatives`.
 - [ ] **#10 · Caché de peticiones + rate limiting global** `scraper`
   - Respetar `min_interval_seconds`, caché en disco de 6 h para no repetir llamadas.
 
@@ -100,6 +103,15 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#32 · La web muestra día, hora y distintivo de finde** `web` `ux`
 - [ ] **#33 · Ventana de horas por destino** `nice-to-have`
   - Para vuelos largos quizá interese salir antes del viernes; hoy la ventana es global.
+
+## M7 · Filosofía escapada  ✅ hecho
+
+- [x] **#37 · Viajes de 2 a 4 noches** `core`
+  - Fuera de vacaciones no renta irse 8 días: `nights_max: 4`.
+- [x] **#38 · Nombre de ciudad por IATA** `core`
+  - Google devuelve solo el código; sin esto la búsqueda de alojamiento buscaría "MXP".
+- [ ] **#39 · Puentes y festivos** `nice-to-have`
+  - Detectar jueves-domingo cuando el viernes es festivo en Madrid.
 
 ## M5 · Robustez y calidad
 

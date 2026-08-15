@@ -13,6 +13,7 @@ notify:
 
 providers:
   - ryanair          # sin API key
+  - google_flights   # sin API key: contrasta el resto de aerolineas
   - amadeus          # se desactiva solo si no hay AMADEUS_CLIENT_ID/SECRET
 
 stays:
@@ -25,9 +26,9 @@ stays:
 search:
   # Cuantos dias hacia delante mirar desde hoy
   days_ahead: 120
-  # Duracion del viaje en noches
+  # Filosofia: escapada, no vacaciones. Fuera de agosto no renta irse 8 dias.
   nights_min: 2
-  nights_max: 7
+  nights_max: 4
   currency: EUR
   market: es-es
   # Escapada de finde: salir viernes por la tarde, volver domingo por la tarde.
@@ -44,10 +45,33 @@ search:
     inbound_before: "23:59"
     bonus: 18
 
+  google:
+    # Cada consulta descarga ~2,5 MB de la pagina de Google: pocas y espaciadas.
+    max_queries: 18
+    min_interval_seconds: 4
+
   # Pasajeros del vuelo (el precio mostrado es el total de ida y vuelta para todos)
   adults: 1
   # Segundos minimos entre peticiones a un mismo proveedor
   min_interval_seconds: 2
+
+# Nombre de ciudad por aeropuerto. Lo usa Google Flights (que solo devuelve IATA)
+# y, sobre todo, la busqueda de alojamiento: buscar "MXP" en Airbnb no da nada.
+city_names:
+  FCO: [Roma, Italia]
+  NAP: [Napoles, Italia]
+  MXP: [Milan, Italia]
+  BGY: [Bergamo, Italia]
+  BLQ: [Bolonia, Italia]
+  LIS: [Lisboa, Portugal]
+  OPO: [Oporto, Portugal]
+  CDG: [Paris, Francia]
+  BVA: [Paris, Francia]
+  BRU: [Bruselas, Belgica]
+  CRL: [Bruselas, Belgica]
+  DUB: [Dublin, Irlanda]
+  EDI: [Edimburgo, Reino Unido]
+  BER: [Berlin, Alemania]
 
 routes:
   - origin: MAD

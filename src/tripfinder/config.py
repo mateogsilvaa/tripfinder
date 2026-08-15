@@ -61,6 +61,11 @@ class Config:
         return self.raw.get("search", {})
 
     @property
+    def city_names(self) -> dict[str, tuple[str, str]]:
+        raw = self.raw.get("city_names", {}) or {}
+        return {k: (v[0], v[1] if len(v) > 1 else "") for k, v in raw.items()}
+
+    @property
     def weekend(self) -> dict[str, Any]:
         return self.search.get("weekend", {}) or {}
 

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 import os
+from datetime import date
 from typing import Any, Callable
 
 from ..config import Route
-from ..models import FlightOffer
+from ..models import FlightOffer, Leg
 
 log = logging.getLogger("tripfinder")
 
@@ -37,6 +38,23 @@ class FlightProvider:
 
     def search(self, route: Route) -> list[FlightOffer]:
         raise NotImplementedError
+
+    def search_oneway(
+        self,
+        route: Route,
+        day: "date",
+        *,
+        inbound: bool = False,
+        destinations: list[str] | None = None,
+        time_from: str = "00:00",
+        time_to: str = "23:59",
+    ) -> list[Leg]:
+        """Trayectos sueltos de un dia concreto, para combinar aerolineas.
+
+        Un provider que no lo soporte devuelve lista vacia y simplemente no
+        participa en las combinaciones.
+        """
+        return []
 
 
 def build_providers(names: list[str], search_cfg: dict[str, Any]) -> list[FlightProvider]:

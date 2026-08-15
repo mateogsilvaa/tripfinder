@@ -15,6 +15,7 @@
   --amber-dim: #8a5f14;
   --mint: #7fd6a2;
   --radius: 16px;
+  --stub-w: 132px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -170,7 +171,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .ticket {
-  position: relative; display: grid; grid-template-columns: 132px 1fr;
+  position: relative; display: grid; grid-template-columns: var(--stub-w) 1fr;
   background: linear-gradient(150deg, var(--surface) 0%, var(--bg-2) 100%);
   border: 1px solid var(--line); border-radius: var(--radius);
   transition: transform 0.4s var(--ease), border-color 0.3s, box-shadow 0.4s;
@@ -187,18 +188,25 @@ input[type="range"]::-moz-range-thumb {
 }
 .ticket.target { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(255, 176, 46, 0.16); }
 
-/* troquel: línea de puntos con muescas arriba y abajo */
+/* Troquel real: dos muescas grandes en los extremos y una hilera de agujeros
+   punzados entre ellas, del color del fondo, como en un billete de verdad. */
 .stub {
   position: relative; padding: 22px 18px; display: flex;
   flex-direction: column; justify-content: center; gap: 5px;
-  border-right: 2px dashed rgba(247, 241, 230, 0.16);
 }
 .stub::before, .stub::after {
-  content: ""; position: absolute; right: -9px; width: 16px; height: 16px;
+  content: ""; position: absolute; right: -10px; width: 18px; height: 18px;
   border-radius: 50%; background: var(--bg);
+  box-shadow: inset -1px 0 0 rgba(247, 241, 230, 0.09);
 }
-.stub::before { top: -9px; }
-.stub::after { bottom: -9px; }
+.stub::before { top: -10px; }
+.stub::after { bottom: -10px; }
+.ticket::after {
+  content: ""; position: absolute; top: 14px; bottom: 14px;
+  left: var(--stub-w); width: 5px; transform: translateX(-2.5px);
+  background: radial-gradient(circle at 2.5px 5.5px, var(--bg) 2.4px, transparent 2.6px)
+    0 0 / 5px 13px repeat-y;
+}
 
 .trip-kind {
   font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
@@ -248,6 +256,12 @@ input[type="range"]::-moz-range-thumb {
 }
 .legs dd { margin: 0; font: 400 15px/1.2 "DM Mono", monospace; }
 .legs .weekend { color: var(--amber); }
+
+.alts {
+  font: 400 12px/1.5 "DM Mono", monospace; color: var(--faint);
+}
+.alts a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
+.alts a:hover { color: var(--amber); border-color: currentColor; }
 
 .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
 .btn {
@@ -366,7 +380,7 @@ input[type="range"]::-moz-range-thumb {
 /* --- responsive --------------------------------------------------------- */
 @media (max-width: 620px) {
   .tickets { grid-template-columns: 1fr; }
-  .ticket { grid-template-columns: 108px 1fr; }
+  .ticket { --stub-w: 108px; }
   .amount { font-size: 33px; }
   .board-label { display: none; }
   .stats { gap: 10px 26px; }

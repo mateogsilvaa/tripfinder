@@ -11,13 +11,14 @@ import logging
 from datetime import date, timedelta
 
 from ..config import Route
-from ..models import FlightOffer
+from ..models import FlightOffer, Leg
 from ..util import get_json
 from .base import FlightProvider, register
 
 log = logging.getLogger("tripfinder")
 
 API = "https://services-api.ryanair.com/farfnd/v4/roundTripFares"
+API_ONEWAY = "https://services-api.ryanair.com/farfnd/v4/oneWayFares"
 BOOKING = "https://www.ryanair.com/es/es/trip/flights/select"
 
 # La API rechaza cualquier limit > 20 con {"code": "InvalidLimit"}; hay que paginar.
@@ -113,6 +114,96 @@ class RyanairProvider(FlightProvider):
                 log.warning("Ryanair finde %s: %s", out_date, exc)
         log.info("Ryanair %s: %d tarifas de finde", route.origin, len(offers))
         return offers
+
+    def search_oneway(
+        self,
+        route: Route,
+        day: date,
+        *,
+        inbound: bool = False,
+        destinations: list[str] | None = None,
+        time_from: str = "00:00",
+        time_to: str = "23:59",
+    ) -> list[Leg]:
+        """Tarifas sueltas de un dia.
+
+        Para la vuelta hay que preguntar al reves (destino -> Madrid), porque la
+        API solo filtra por aeropuerto de salida; por eso el llamante pasa la lista
+        de destinos que merece la pena mirar.
+        """
+        if inbound:
+            return [
+                leg
+                for dest in (destinations or [])
+                for leg in self._oneway_from(dest, route, day, time_from, time_to)
+            ]
+
+        params = {
+            **self._base_params(route),
+            "outboundDepartureDateFrom": day.isoformat(),
+            "outboundDepartureDateTo": day.isoformat(),
+            "outboundDepartureTimeFrom": time_from,
+            "outboundDepartureTimeTo": time_to,
+        }
+        if destinations:
+            params["arrivalAirportIataCodes"] = ",".join(destinations)
+        return self._oneway_call(params, route, inbound=False)
+
+    def _oneway_from(
+        self, origin: str, route: Route, day: date, time_from: str, time_to: str
+    ) -> list[Leg]:
+        params = {
+            **self._base_params(route),
+            "departureAirportIataCode": origin,
+            "arrivalAirportIataCodes": route.origin,
+            "outboundDepartureDateFrom": day.isoformat(),
+            "outboundDepartureDateTo": day.isoformat(),
+            "outboundDepartureTimeFrom": time_from,
+            "outboundDepartureTimeTo": time_to,
+        }
+        try:
+            return self._oneway_call(params, route, inbound=True)
+        except Exception as exc:  # noqa: BLE001
+            log.debug("Ryanair vuelta %s->%s %s: %s", origin, route.origin, day, exc)
+            return []
+
+    def _oneway_call(self, params: dict, route: Route, *, inbound: bool) -> list[Leg]:
+        data = get_json(
+            API_ONEWAY,
+            params=params,
+            throttle_key="ryanair",
+            min_interval=float(self.cfg.get("min_interval_seconds", 2)),
+        )
+        legs: list[Leg] = []
+        for fare in (data.get("fares", []) if isinstance(data, dict) else []):
+            out = fare.get("outbound") or {}
+            arr, dep = out.get("arrivalAirport") or {}, out.get("departureAirport") or {}
+            price = (out.get("price") or {}).get("value")
+            when = out.get("departureDate") or ""
+            if not (price and when and arr.get("iataCode")):
+                continue
+            # En la vuelta, el "destino" del viaje es el aeropuerto del que se sale.
+            city = dep if inbound else arr
+            legs.append(
+                Leg(
+                    provider="ryanair",
+                    airline="Ryanair",
+                    origin=dep.get("iataCode", ""),
+                    destination=arr.get("iataCode", ""),
+                    date=when[:10],
+                    time=when[11:16],
+                    price=round(float(price), 2),
+                    currency=(out.get("price") or {}).get("currencyCode", "EUR"),
+                    destination_name=(city.get("city") or {}).get("name") or city.get("iataCode", ""),
+                    destination_country=city.get("countryName", ""),
+                    origin_name=route.origin_name,
+                    deep_link=(
+                        f"{BOOKING}?adults=1&dateOut={when[:10]}&isReturn=false"
+                        f"&originIata={dep.get('iataCode', '')}&destinationIata={arr.get('iataCode', '')}"
+                    ),
+                )
+            )
+        return legs
 
     def _paginate(self, params: dict, route: Route, max_results: int) -> list[FlightOffer]:
         currency = params.get("currency", "EUR")

@@ -124,6 +124,11 @@ function card(o, i) {
   const pill =
     o.discount_pct >= 5 ? `<span class="pill">−${Math.round(o.discount_pct)}%</span>` : "";
   const sub = [o.destination_country, o.airline].filter(Boolean).join(" · ");
+  const alts = (o.alternatives || []).length
+    ? `<div class="alts">también ${o.alternatives
+        .map((a) => `<a href="${esc(a.deep_link)}" target="_blank" rel="noopener">${esc(a.airline)} ${fmtEUR(a.price)}</a>`)
+        .join(" · ")}</div>`
+    : "";
   return `
     <article class="ticket" id="offer-${esc(o.id)}" style="animation-delay:${Math.min(i, 12) * 45}ms">
       ${o.weekend ? '<span class="tag-weekend">escapada de finde</span>' : ""}
@@ -140,6 +145,7 @@ function card(o, i) {
           ${leg("Vuelta", o.return_date, o.return_time, o.weekend)}
           ${o.nights ? `<div><dt>Noches</dt><dd>${o.nights}</dd></div>` : ""}
         </dl>
+        ${alts}
         <div class="actions">
           <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
           <a class="btn ghost" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>

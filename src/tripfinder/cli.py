@@ -25,6 +25,54 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
+def _shortlist(found: list[FlightOffer], cfg: Config, limit: int) -> tuple[list, dict]:
+    """Destinos y fechas que merece la pena contrastar con otras aerolineas.
+
+    Mezcla dos fuentes a proposito: lo que ya han encontrado los demas providers
+    (para ver si otra compania lo mejora) y los destinos declarados en el YAML,
+    porque a esos vuelan Iberia o Vueling aunque Ryanair no los ofrezca.
+    """
+    pairs: list[tuple[str, date, date]] = []
+    names: dict[str, tuple[str, str]] = {}
+
+    vistos: dict[tuple, FlightOffer] = {}
+    for o in sorted(found, key=lambda x: (not x.weekend, -x.score)):
+        if o.return_date:
+            vistos.setdefault((o.destination, o.depart_date, o.return_date), o)
+    for o in list(vistos.values())[: limit // 2]:
+        pairs.append((o.destination, date.fromisoformat(o.depart_date), date.fromisoformat(o.return_date)))
+        names[o.destination] = (
+            o.destination_name or cfg.city_names.get(o.destination, (o.destination, ""))[0],
+            o.destination_country or cfg.city_names.get(o.destination, ("", ""))[1],
+        )
+
+    weekend = cfg.weekend
+    findes = _next_weekends(
+        int(weekend.get("outbound_weekday", 4)),
+        int(weekend.get("inbound_weekday", 6)),
+        weeks=4,
+    )
+    declarados = [d for r in cfg.routes for d in r.dest_list]
+    for out_date, in_date in findes:
+        for dest in declarados:
+            if len(pairs) >= limit:
+                break
+            if (dest, out_date, in_date) not in {(p[0], p[1], p[2]) for p in pairs}:
+                pairs.append((dest, out_date, in_date))
+                names.setdefault(dest, cfg.city_names.get(dest, (dest, "")))
+    return pairs[:limit], names
+
+
+def _next_weekends(out_day: int, in_day: int, weeks: int) -> list[tuple[date, date]]:
+    today = date.today()
+    first = today + timedelta(days=(out_day - today.weekday()) % 7 or 7)
+    nights = (in_day - out_day) % 7 or 7
+    return [
+        (first + timedelta(days=7 * i), first + timedelta(days=7 * i + nights))
+        for i in range(weeks)
+    ]
+
+
 def _dedupe(offers: list[FlightOffer]) -> list[FlightOffer]:
     """Misma ruta y fecha: se queda la mejor.
 
@@ -35,12 +83,28 @@ def _dedupe(offers: list[FlightOffer]) -> list[FlightOffer]:
     def rank(o: FlightOffer) -> tuple[bool, float]:
         return (not o.weekend, o.price)
 
-    best: dict[str, FlightOffer] = {}
+    # La clave ignora el provider a proposito: si Google encuentra el mismo
+    # viaje mas barato con Iberia, esa gana a la tarifa de Ryanair.
+    grupos: dict[str, list[FlightOffer]] = {}
     for o in offers:
-        cur = best.get(o.id)
-        if cur is None or rank(o) < rank(cur):
-            best[o.id] = o
-    return list(best.values())
+        grupos.setdefault(f"{o.route_key}-{o.depart_date}", []).append(o)
+
+    ganadoras: list[FlightOffer] = []
+    for candidatas in grupos.values():
+        candidatas.sort(key=rank)
+        mejor = candidatas[0]
+        # Las demas companias del mismo viaje se guardan como alternativa en vez
+        # de tirarse: "Ryanair 80 €, tambien Vueling 92 € sin equipaje aparte".
+        otras: dict[str, FlightOffer] = {}
+        for c in candidatas[1:]:
+            if c.airline and c.airline != mejor.airline:
+                otras.setdefault(c.airline, c)
+        mejor.alternatives = [
+            {"airline": c.airline, "price": c.price, "deep_link": c.deep_link}
+            for c in sorted(otras.values(), key=lambda x: x.price)[:3]
+        ]
+        ganadoras.append(mejor)
+    return ganadoras
 
 
 # --------------------------------------------------------------------------- #
@@ -68,6 +132,8 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
 
     for route in cfg.routes:
         for provider in providers:
+            if provider.name == "google_flights":
+                continue  # se ejecuta despues, con la lista corta ya construida
             try:
                 results = provider.search(route)
             except Exception as exc:  # noqa: BLE001 - un provider caido no tumba el scan
@@ -80,6 +146,23 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
                 found.append(offer)
                 if is_deal(offer, route, min_score, weekend_mode):
                     deals.append(offer)
+
+    # Google Flights va al final: contrasta con el resto de aerolineas los
+    # destinos y fechas que ya han salido, en vez de buscar a ciegas.
+    google = next((p for p in providers if p.name == "google_flights"), None)
+    if google is not None:
+        pairs, names = _shortlist(found, cfg, int(cfg.search.get("google", {}).get("max_queries", 20)))
+        google.shortlist, google.names = pairs, names
+        for route in cfg.routes[:1]:  # el origen es el mismo en todas
+            try:
+                for offer in google.search(route):
+                    score_offer(offer, history, route, weekend_cfg)
+                    found.append(offer)
+                    if is_deal(offer, route, min_score, weekend_mode):
+                        deals.append(offer)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Google Flights fallo: %s", exc)
+                errors.append(f"google_flights: {exc}")
 
     found = _dedupe(found)
     deals = _dedupe(deals)
