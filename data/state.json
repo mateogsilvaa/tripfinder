@@ -1,3 +1,28 @@
 {
-  "notified": {}
+  "notified": {
+    "ryanair-MAD-BLQ-20261127": {
+      "price": 95.98,
+      "date": "2026-08-15"
+    },
+    "google-MAD-BGY-20261127": {
+      "price": 80.0,
+      "date": "2026-08-15"
+    },
+    "ryanair-MAD-BLQ-20261113": {
+      "price": 100.98,
+      "date": "2026-08-15"
+    },
+    "ryanair-MAD-OPO-20261106": {
+      "price": 61.03,
+      "date": "2026-08-15"
+    },
+    "google-MAD-DUB-20261127": {
+      "price": 81.0,
+      "date": "2026-08-15"
+    },
+    "ryanair-MAD-BGY-20261120": {
+      "price": 84.64,
+      "date": "2026-08-15"
+    }
+  }
 }
