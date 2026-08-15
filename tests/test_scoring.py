@@ -91,3 +91,20 @@ def test_mode_only_descarta_lo_que_no_es_finde():
 
 def test_no_encaja_si_sale_de_madrugada_aunque_sea_viernes():
     assert not weekend_fit(weekend_offer(depart_time="23:40"), None)
+
+
+def test_horas_utiles_descuentan_el_sueno_y_los_vuelos_nocturnos():
+    from tripfinder.scoring import useful_hours
+
+    tarde = weekend_offer(nights=2, arrive_time="18:40", return_time="21:30")
+    noche = weekend_offer(nights=2, arrive_time="23:55", return_time="07:10")
+    assert useful_hours(tarde) > 30
+    assert useful_hours(noche) < 20
+    # Mismo precio y mismas fechas: gana el que deja más viaje aprovechable.
+    assert score_offer(tarde, {}, ROUTE).score > score_offer(noche, {}, ROUTE).score
+
+
+def test_sin_horario_se_estima_por_noches_sin_penalizar():
+    from tripfinder.scoring import useful_hours
+
+    assert useful_hours(weekend_offer(nights=2, arrive_time="", return_time="")) == 24.0

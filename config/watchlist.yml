@@ -1,5 +1,9 @@
 # Configuracion de busqueda. Todo lo que cambies aqui afecta al proximo cron.
 
+# Cuantos viajais. El precio del vuelo es por persona y el del alojamiento para
+# todo el grupo: hace falta saberlo para calcular el coste real de la escapada.
+party_size: 2
+
 notify:
   # resend | smtp | github_issue  (ver docs/ARCHITECTURE.md)
   method: resend
@@ -24,8 +28,9 @@ stays:
   adults: 2
 
 search:
-  # Cuantos dias hacia delante mirar desde hoy
-  days_ahead: 120
+  # Cuantos dias hacia delante mirar. Los chollos de verdad estan a 4-8 meses:
+  # de aqui a un mes ya solo quedan las tarifas caras.
+  days_ahead: 300
   # Filosofia: escapada, no vacaciones. Fuera de agosto no renta irse 8 dias.
   nights_min: 2
   nights_max: 4
@@ -43,7 +48,9 @@ search:
     inbound_weekday: 6    # domingo
     inbound_after: "15:00"
     inbound_before: "23:59"
-    bonus: 18
+    bonus: 15
+    # Cuantos fines de semana barrer (uno por consulta)
+    max_weeks: 26
 
   google:
     # Cada consulta descarga ~2,5 MB de la pagina de Google: pocas y espaciadas.

@@ -76,7 +76,8 @@ class Store:
 
     # -- alojamientos ----------------------------------------------------
     def save_stays(self, offer_id: str, offer: FlightOffer | None, stays: list[StayOffer],
-                   checkin: str, checkout: str, errors: list[str] | None = None) -> Path:
+                   checkin: str, checkout: str, errors: list[str] | None = None,
+                   summary: dict[str, Any] | None = None) -> Path:
         p = self.stays_dir / f"{offer_id}.json"
         p.write_text(
             json.dumps(
@@ -86,6 +87,7 @@ class Store:
                     "checkin": checkin,
                     "checkout": checkout,
                     "generated_at": date.today().isoformat(),
+                    "summary": summary or {},
                     "errors": errors or [],
                     "stays": [s.to_dict() for s in stays],
                 },

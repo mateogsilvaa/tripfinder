@@ -40,6 +40,7 @@ LABEL_RE = re.compile(r'aria-label="([^"]{60,400})"')
 PRICE_RE = re.compile(r"A partir de\s+([\d.]+)\s+euros")
 AIRLINE_RE = re.compile(r"(?:Vuelo directo de|Vuelos? (?:de|operados? por))\s+([^.]+?)\.")
 TIME_RE = re.compile(r"Sale de .*? a las (\d{1,2}:\d{2})")
+ARRIVE_RE = re.compile(r"Llega a .*? a las (\d{1,2}:\d{2})")
 STOPS_RE = re.compile(r"(\d+)\s+escala")
 
 
@@ -154,6 +155,8 @@ class GoogleFlightsProvider(FlightProvider):
                 destination_country=self.names.get(dest, ("", ""))[1],
                 depart_date=out_date.isoformat(),
                 depart_time=hora,
+                arrive_time=(ARRIVE_RE.search(label).group(1).zfill(5)
+                             if ARRIVE_RE.search(label) else ""),
                 return_date=in_date.isoformat(),
                 nights=nights,
                 price=round(float(price_m.group(1).replace(".", "")), 2),

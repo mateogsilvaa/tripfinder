@@ -180,7 +180,8 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
         print(
             f"  {o.score:3d} {marca} {o.price:7.2f}{o.currency}  "
             f"{o.origin}->{o.destination:<4} {o.depart_date} {horas} "
-            f"(-{o.discount_pct:.0f}% sobre {o.baseline}) {o.destination_name}"
+            f"{o.useful_hours:5.1f}h utiles {o.price_per_hour:5.2f}EUR/h "
+            f"(-{o.discount_pct:.0f}%) {o.destination_name}"
         )
 
     if args.dry_run:
@@ -286,15 +287,56 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         print("\n--dry-run: no se escribe nada.")
         return 0
 
-    path = store.save_stays(args.offer_id, offer, stays, req.checkin, req.checkout, errors)
+    resumen = _trip_summary(offer, stays, cfg.party_size, req)
+    if resumen:
+        print(
+            f"\nEscapada completa para {resumen['party']}: {resumen['total']:.0f} EUR "
+            f"({resumen['per_person']:.0f} EUR por cabeza) = vuelos {resumen['flights']:.0f} "
+            f"+ alojamiento {resumen['stay']:.0f}"
+        )
+
+    path = store.save_stays(
+        args.offer_id, offer, stays, req.checkin, req.checkout, errors, summary=resumen
+    )
     print(f"\nGuardado en {path}")
     if args.summary_out:
         with open(args.summary_out, "w", encoding="utf-8") as fh:
-            fh.write(_stays_markdown(args.offer_id, req, stays))
+            fh.write(_stays_markdown(args.offer_id, req, stays, resumen))
     return 0
 
 
-def _stays_markdown(offer_id: str, req: StayRequest, stays: list[StayOffer]) -> str:
+def _trip_summary(
+    offer: FlightOffer | None, stays: list[StayOffer], party: int, req: StayRequest
+) -> dict:
+    """Lo que de verdad cuesta el finde: vuelos de todos + una cama para todos.
+
+    El precio del vuelo es por persona y el del alojamiento para el grupo entero.
+    Sumarlos sin tener eso en cuenta es el error clasico, y es justo el numero
+    que nadie te da: cuanto sale la escapada completa por cabeza.
+    """
+    con_precio = [s.price_total for s in stays if s.price_total]
+    if not (offer and con_precio):
+        return {}
+    vuelos = offer.price * party
+    cama = min(con_precio)
+    total = vuelos + cama
+    return {
+        "party": party,
+        "flights": round(vuelos, 2),
+        "stay": round(cama, 2),
+        "total": round(total, 2),
+        "per_person": round(total / party, 2),
+        "per_person_night": round(total / party / max(1, req.nights), 2),
+        "useful_hours": offer.useful_hours,
+        "cost_per_useful_hour": (
+            round(total / party / offer.useful_hours, 2) if offer.useful_hours else None
+        ),
+    }
+
+
+def _stays_markdown(
+    offer_id: str, req: StayRequest, stays: list[StayOffer], resumen: dict | None = None
+) -> str:
     lines = [
         f"### Alojamiento en {req.city}",
         "",
@@ -303,6 +345,13 @@ def _stays_markdown(offer_id: str, req: StayRequest, stays: list[StayOffer]) -> 
         "| Precio total | Por noche | Sitio | Alojamiento |",
         "| ---: | ---: | --- | --- |",
     ]
+    if resumen:
+        lines[3:3] = [
+            f"**Escapada completa para {resumen['party']}: {resumen['total']:.0f} EUR** "
+            f"({resumen['per_person']:.0f} EUR por persona) = vuelos {resumen['flights']:.0f} "
+            f"+ alojamiento {resumen['stay']:.0f}",
+            "",
+        ]
     for s in stays[:15]:
         total = f"{s.price_total:.0f} €" if s.price_total else "—"
         night = f"{s.price_per_night:.0f} €" if s.price_per_night else "—"

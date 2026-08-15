@@ -8,7 +8,7 @@ en rutas nuevas, donde cualquier precio pareceria un chollo).
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from statistics import median
 from typing import Any
 
@@ -16,6 +16,33 @@ from .config import Route
 from .models import FlightOffer
 
 MIN_SAMPLES = 5
+
+# Horas de sueño que no cuentan como viaje. Un vuelo que aterriza a las 23:25 es
+# barato y es un mal viaje: esto es lo que ningun comparador te dice.
+SLEEP_HOURS = 8
+# A partir de aqui la escapada ya no mejora por ser mas larga (2 dias completos).
+FULL_TRIP_HOURS = 32.0
+
+
+def useful_hours(offer: FlightOffer) -> float:
+    """Horas despierto en destino: de aterrizar a despegar, menos las de dormir.
+
+    Sin horario del vuelo se estima en 12 h por noche, que es lo que da un dia
+    normal de viaje; asi una oferta sin datos no gana ni pierde por defecto.
+    """
+    nights = offer.nights or 0
+    llegada, salida = offer.arrive_time or offer.depart_time, offer.return_time
+    if not (offer.return_date and llegada and salida):
+        return round(nights * 12.0, 1)
+
+    try:
+        inicio = datetime.fromisoformat(f"{offer.depart_date}T{llegada}")
+        fin = datetime.fromisoformat(f"{offer.return_date}T{salida}")
+    except ValueError:
+        return round(nights * 12.0, 1)
+
+    total = (fin - inicio) / timedelta(hours=1)
+    return round(max(0.0, total - SLEEP_HOURS * nights), 1)
 
 # Escapada tipica: salir el viernes por la tarde y volver el domingo por la tarde.
 WEEKEND_DEFAULTS = {
@@ -26,7 +53,7 @@ WEEKEND_DEFAULTS = {
     "inbound_weekday": 6,
     "inbound_after": "15:00",
     "inbound_before": "23:59",
-    "bonus": 18,
+    "bonus": 15,
 }
 
 
@@ -74,19 +101,25 @@ def score_offer(
     discount = 0.0 if baseline <= 0 else (baseline - offer.price) / baseline * 100
     offer.discount_pct = round(max(0.0, discount), 1)
 
-    # Componente descuento: un 50% de rebaja ya satura los 70 puntos.
-    discount_pts = min(offer.discount_pct, 50.0) / 50.0 * 70.0
+    # Componente descuento: un 50% de rebaja ya satura sus puntos.
+    discount_pts = min(offer.discount_pct, 50.0) / 50.0 * 55.0
 
     # Componente presupuesto: cuanto mas lejos por debajo del maximo, mejor.
     max_price = route.max_for(offer.weekend)
     budget_pts = 0.0
     if max_price > 0 and offer.price <= max_price:
-        budget_pts = (max_price - offer.price) / max_price * 30.0
+        budget_pts = (max_price - offer.price) / max_price * 20.0
+
+    # Componente aprovechamiento: entre dos vuelos al mismo precio, gana el que
+    # te deja mas horas de viaje utiles.
+    offer.useful_hours = useful_hours(offer)
+    offer.price_per_hour = round(offer.price / offer.useful_hours, 2) if offer.useful_hours else 0.0
+    hours_pts = min(offer.useful_hours, FULL_TRIP_HOURS) / FULL_TRIP_HOURS * 20.0
 
     # Bonus de escapada: dos ofertas iguales, gana la que sale viernes tarde.
-    weekend_pts = float((weekend_cfg or WEEKEND_DEFAULTS).get("bonus", 18)) if offer.weekend else 0.0
+    weekend_pts = float((weekend_cfg or WEEKEND_DEFAULTS).get("bonus", 15)) if offer.weekend else 0.0
 
-    offer.score = int(round(min(100.0, discount_pts + budget_pts + weekend_pts)))
+    offer.score = int(round(min(100.0, discount_pts + budget_pts + weekend_pts + hours_pts)))
     return offer
 
 

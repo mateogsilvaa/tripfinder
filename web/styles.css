@@ -303,6 +303,11 @@ input[type="range"]::-moz-range-thumb {
 }
 .brow .when b { color: var(--ink); font-weight: 400; }
 .brow .when.weekend b { color: var(--amber); }
+.brow .when small {
+  display: block; margin-top: 3px; font-size: 11.5px; color: var(--faint);
+}
+.legs .useful { color: var(--mint); }
+
 .brow .airline { font-size: 13.5px; color: var(--muted); }
 .brow .airline small { display: block; color: var(--faint); font-size: 11.5px; }
 .brow .price {
@@ -322,6 +327,25 @@ input[type="range"]::-moz-range-thumb {
   font: 400 12.5px "DM Mono", monospace; color: var(--faint);
 }
 .foot a { color: var(--muted); }
+
+/* El numero que no da ningun comparador: cuanto cuesta el finde entero. */
+.total {
+  border: 1px solid rgba(255, 176, 46, 0.3); border-radius: 14px;
+  background: linear-gradient(150deg, rgba(255, 176, 46, 0.1), transparent 70%);
+  padding: 18px 20px; margin-bottom: 20px;
+}
+.total-head {
+  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
+  letter-spacing: 0.16em; color: var(--faint);
+}
+.total-figure {
+  margin: 10px 0 8px; font: 500 38px/1 "DM Mono", monospace;
+  letter-spacing: -0.04em; color: var(--amber);
+}
+.total-figure span {
+  display: block; margin-top: 7px; font-size: 13px; letter-spacing: 0; color: var(--ink);
+}
+.total-break { font: 400 12px/1.5 "DM Mono", monospace; color: var(--muted); }
 
 /* --- panel de alojamiento ----------------------------------------------- */
 .backdrop {
@@ -409,7 +433,12 @@ input[type="range"]::-moz-range-thumb {
   .brow .iata { grid-area: iata; }
   .brow .dest-cell { grid-area: city; }
   .brow .when { grid-area: when; }
-  .brow .airline { grid-area: airline; }
+  .brow .when small {
+  display: block; margin-top: 3px; font-size: 11.5px; color: var(--faint);
+}
+.legs .useful { color: var(--mint); }
+
+.brow .airline { grid-area: airline; }
   .brow .price { grid-area: price; }
 }
 

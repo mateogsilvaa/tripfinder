@@ -74,6 +74,24 @@ python -m tripfinder test-email --method github_issue
 Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Lo que no te da ningun comparador
+
+Buscadores de vuelos hay cientos. Estas dos cosas no las hace ninguno, y son las
+que deciden si una escapada merece la pena:
+
+**1. Horas de viaje real.** Un vuelo que aterriza a las 23:55 y vuelve el domingo a
+las 07:10 cuesta lo mismo que uno que llega el viernes a las 18:40 y vuelve el
+domingo a las 21:30 — pero el primero te deja **15 h** en destino y el segundo **35 h**.
+TripFinder calcula las horas despierto en destino (de aterrizar a despegar, menos
+8 h de sueno por noche), las puntua en el score y te deja ordenar por **euros por
+hora de viaje**. Es la diferencia entre un finde y un aeropuerto.
+
+**2. Coste real de la escapada.** El vuelo es por persona, el alojamiento es para
+todo el grupo: sumarlos bien da el unico numero que importa. Cuando pides
+alojamiento para una oferta, la web te responde con *"escapada completa para 2:
+264 €, 132 € por cabeza"*, desglosado en vuelos y cama. Ningun comparador cruza
+las dos cosas porque cada uno vive de vender una.
+
 ## De donde salen los precios
 
 | Provider | Clave | Que aporta |

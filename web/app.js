@@ -103,6 +103,7 @@ function currentList() {
     score: (a, b) => b.score - a.score || a.price - b.price,
     price: (a, b) => a.price - b.price,
     date: (a, b) => a.depart_date.localeCompare(b.depart_date),
+    hours: (a, b) => (a.price_per_hour || 99) - (b.price_per_hour || 99),
   }[sort];
   list.sort(by);
 
@@ -160,6 +161,13 @@ function heroTicket(o) {
           ${leg("Ida", o.depart_date, o.depart_time, o.weekend)}
           ${leg("Vuelta", o.return_date, o.return_time, o.weekend)}
           ${o.nights ? `<div><dt>Noches</dt><dd>${o.nights}</dd></div>` : ""}
+          ${
+            o.useful_hours
+              ? `<div><dt>Viaje real</dt><dd class="useful">${Math.round(
+                  o.useful_hours
+                )} h · ${o.price_per_hour} €/h</dd></div>`
+              : ""
+          }
         </dl>
         ${altsHTML(o)}
         <div class="actions">
@@ -197,7 +205,9 @@ function boardRow(o, i) {
       <span class="when ${o.weekend ? "weekend" : ""}"><b>${fmtDate(
         o.depart_date,
         true
-      )}</b>${hora}${vuelta}</span>
+      )}</b>${hora}${vuelta}${
+        o.useful_hours ? `<small>${Math.round(o.useful_hours)} h de viaje real</small>` : ""
+      }</span>
       <span class="airline">${esc(o.airline || o.provider)}${extra}</span>
       <span class="price">${fmtEUR(o.price)}${
         o.discount_pct >= 5 ? `<small>−${Math.round(o.discount_pct)}%</small>` : ""
@@ -349,11 +359,25 @@ function stayRow(s) {
     </div>`;
 }
 
+function tripTotal(s) {
+  if (!s || !s.total) return "";
+  return `
+    <div class="total">
+      <div class="total-head">Escapada completa para ${s.party}</div>
+      <div class="total-figure">${fmtEUR(s.total)}<span>${fmtEUR(s.per_person)} por persona</span></div>
+      <div class="total-break">
+        vuelos ${fmtEUR(s.flights)} + alojamiento ${fmtEUR(s.stay)}
+        ${s.cost_per_useful_hour ? ` · ${s.cost_per_useful_hour} €/hora de viaje` : ""}
+      </div>
+    </div>`;
+}
+
 function renderStays(data) {
   const stays = data.stays || [];
   const priced = stays.filter((s) => s.price_total);
   const links = stays.filter((s) => !s.price_total);
   $("#panelBody").innerHTML = `
+    ${tripTotal(data.summary)}
     <div class="status">${priced.length} alojamientos con precio · buscado el ${esc(
       data.generated_at || ""
     )}</div>

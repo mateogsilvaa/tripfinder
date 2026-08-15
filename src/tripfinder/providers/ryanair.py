@@ -244,6 +244,7 @@ class RyanairProvider(FlightProvider):
         depart_raw = out["departureDate"]
         back_raw = back.get("departureDate") or ""
         depart, depart_time = depart_raw[:10], depart_raw[11:16]
+        arrive_time = (out.get("arrivalDate") or "")[11:16]
         ret = back_raw[:10] or None
         return_time = back_raw[11:16]
         nights = (fare.get("summary") or {}).get("tripDurationDays")
@@ -269,6 +270,7 @@ class RyanairProvider(FlightProvider):
             return_date=ret,
             nights=nights,
             depart_time=depart_time,
+            arrive_time=arrive_time,
             return_time=return_time,
             price=round(float(price), 2),
             currency=summary_price.get("currencyCode", currency),

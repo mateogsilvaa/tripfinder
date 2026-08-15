@@ -49,8 +49,12 @@ class FlightOffer:
     deep_link_back: str = ""  # los combinados se reservan en dos webs
     found_at: str = field(default_factory=_now)
     nights: int | None = None
-    depart_time: str = ""  # HH:MM del vuelo de ida
-    return_time: str = ""  # HH:MM del vuelo de vuelta
+    depart_time: str = ""  # HH:MM de salida de la ida
+    arrive_time: str = ""  # HH:MM de llegada al destino
+    return_time: str = ""  # HH:MM de salida del vuelo de vuelta
+    # Horas que de verdad pasas en destino, descontando las de dormir
+    useful_hours: float = 0.0
+    price_per_hour: float = 0.0
     weekend: bool = False  # encaja con la escapada viernes tarde -> domingo tarde
     # Mismo viaje con otras companias, para no perderlas al quedarnos con la mas barata
     alternatives: list[dict[str, Any]] = field(default_factory=list)

@@ -34,6 +34,11 @@ def _offer_row(offer: FlightOffer) -> str:
         else ""
     )
     trip = "ida y vuelta" if offer.return_date else "solo ida"
+    horas = (
+        f" &middot; {offer.useful_hours:.0f} h de viaje real ({offer.price_per_hour:.1f} &euro;/h)"
+        if offer.useful_hours
+        else ""
+    )
     return f"""
     <tr><td style="padding:0 0 16px 0">
       <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e8eb;border-radius:12px">
@@ -53,7 +58,7 @@ def _offer_row(offer: FlightOffer) -> str:
               -{offer.discount_pct:.0f}% &middot; score {offer.score}
             </span>
             <div style="font:400 12px/1.5 sans-serif;color:#8a8f98;padding-top:6px">
-              precio total {trip}, 1 adulto
+              precio total {trip}, 1 adulto{horas}
             </div>
           </div>
           <div style="padding-top:16px">

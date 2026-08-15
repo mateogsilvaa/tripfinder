@@ -90,7 +90,9 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#22 · Deep links Booking/Kayak (sin scraping)** `scraper`
 - [x] **#23 · Vista de alojamientos en la web con polling** `web`
   - AC: tras lanzar la búsqueda, la web muestra resultados sin recargar a mano.
-- [ ] **#24 · Coste total del viaje (vuelo + alojamiento) y reordenado** `core` `ux`
+- [x] **#24 · Coste total de la escapada (vuelo + alojamiento)** `core` `ux`
+  - Cuenta el vuelo por persona y la cama para el grupo (`party_size`).
+  - AC: ✅ Bérgamo — "escapada completa para 2: 264 €, 132 € por cabeza".
 
 ## M6 · Escapada de fin de semana  ✅ hecho
 
@@ -112,6 +114,19 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
   - Google devuelve solo el código; sin esto la búsqueda de alojamiento buscaría "MXP".
 - [ ] **#39 · Puentes y festivos** `nice-to-have`
   - Detectar jueves-domingo cuando el viernes es festivo en Madrid.
+
+## M8 · Lo diferencial  ✅ hecho
+
+- [x] **#40 · Horas de viaje real** `core` `ux`
+  - De aterrizar a despegar menos 8 h de sueño por noche. Entra en el score y
+    permite ordenar por euros/hora.
+  - AC: ✅ dos vuelos al mismo precio y fechas dan 15,2 h y 34,8 h — y ahora se distinguen.
+- [x] **#41 · Horizonte largo** `core`
+  - 300 días y 26 findes barridos: los chollos están a 4-8 meses, no la semana que viene.
+- [ ] **#42 · Aviso de "esto es lo más barato del año"** `nice-to-have`
+  - Con suficiente histórico, marcar cuando un precio es mínimo histórico de la ruta.
+- [ ] **#43 · Coste total también en el listado** `ux`
+  - Hoy el total sale al pedir alojamiento; podría precalcularse para el top de ofertas.
 
 ## M5 · Robustez y calidad
 
