@@ -1,0 +1,101 @@
+name: Buscar alojamiento (bajo demanda)
+
+# Se dispara cuando la web abre una issue "[stay] <offer_id>".
+# Solo se atienden issues del propietario del repo: cualquiera puede abrir una
+# issue publica y no queremos que un tercero consuma minutos de Actions.
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: tripfinder-data
+  cancel-in-progress: false
+
+jobs:
+  stays:
+    if: >
+      github.event.issue.user.login == github.repository_owner &&
+      startsWith(github.event.issue.title, '[stay] ')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Extraer datos de la issue
+        id: parse
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          offer_id="${TITLE#\[stay\] }"
+          echo "offer_id=${offer_id}" >> "$GITHUB_OUTPUT"
+          # Campos opcionales del bloque yaml del cuerpo, por si la oferta ya rotó de offers.json
+          for key in city country iata checkin checkout; do
+            value=$(printf '%s' "$BODY" | grep -m1 "^${key}:" | cut -d' ' -f2- | tr -d '\r')
+            echo "${key}=${value}" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Buscar alojamiento
+        env:
+          PYTHONPATH: src
+          AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
+          AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          OFFER_ID: ${{ steps.parse.outputs.offer_id }}
+          CITY: ${{ steps.parse.outputs.city }}
+          COUNTRY: ${{ steps.parse.outputs.country }}
+          IATA: ${{ steps.parse.outputs.iata }}
+          CHECKIN: ${{ steps.parse.outputs.checkin }}
+          CHECKOUT: ${{ steps.parse.outputs.checkout }}
+        run: |
+          # Los flags opcionales se anaden solo si la issue los traia.
+          args=()
+          if [ -n "$CITY" ];     then args+=(--city "$CITY"); fi
+          if [ -n "$COUNTRY" ];  then args+=(--country "$COUNTRY"); fi
+          if [ -n "$IATA" ];     then args+=(--iata "$IATA"); fi
+          if [ -n "$CHECKIN" ];  then args+=(--checkin "$CHECKIN"); fi
+          if [ -n "$CHECKOUT" ]; then args+=(--checkout "$CHECKOUT"); fi
+          python -m tripfinder scan-stays \
+            --offer-id "$OFFER_ID" \
+            "${args[@]}" \
+            --summary-out summary.md
+
+      - name: Publicar resultados
+        run: |
+          git config user.name  "tripfinder-bot"
+          git config user.email "actions@github.com"
+          git add data
+          if git diff --staged --quiet; then
+            echo "Sin cambios"
+          else
+            git commit -m "data: alojamiento para ${{ steps.parse.outputs.offer_id }}"
+            git pull --rebase --autostash
+            git push
+          fi
+
+      - name: Comentar y cerrar la issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body-file summary.md
+          gh issue close ${{ github.event.issue.number }} \
+            --comment "Resultados publicados en la web (tarda ~1 min en desplegarse)."
+
+      - name: Avisar si algo fallo
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "La busqueda de alojamiento fallo. Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

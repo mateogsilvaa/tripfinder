@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripFinder · chollos de vuelo</title>
+<meta name="description" content="Ofertas de vuelo por debajo de su precio habitual, con busqueda de alojamiento bajo demanda.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <h1>✈️ TripFinder</h1>
+    <p class="sub" id="meta">Cargando ofertas…</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="controls" hidden>
+    <input type="search" id="q" placeholder="Buscar destino…" autocomplete="off">
+    <select id="origin"><option value="">Todos los origenes</option></select>
+    <label class="range">
+      Hasta <output id="priceOut">200</output>&nbsp;€
+      <input type="range" id="price" min="10" max="400" step="5" value="200">
+    </label>
+    <select id="sort">
+      <option value="score">Mejor chollo</option>
+      <option value="price">Precio</option>
+      <option value="date">Fecha de salida</option>
+    </select>
+  </section>
+
+  <section id="offers" class="grid"></section>
+
+  <p id="empty" class="empty" hidden>
+    Ningun vuelo cumple estos filtros. Prueba a subir el precio maximo.
+  </p>
+
+  <details id="errors" class="errors" hidden>
+    <summary>Algunos proveedores fallaron en el ultimo scan</summary>
+    <ul></ul>
+  </details>
+</main>
+
+<!-- Panel lateral de alojamiento -->
+<aside id="panel" class="panel" hidden>
+  <div class="panel-head">
+    <div>
+      <h2 id="panelTitle">Alojamiento</h2>
+      <p id="panelDates" class="sub"></p>
+    </div>
+    <button id="panelClose" aria-label="Cerrar">×</button>
+  </div>
+  <div id="panelBody" class="panel-body"></div>
+</aside>
+<div id="backdrop" class="backdrop" hidden></div>
+
+<footer class="wrap foot">
+  Datos generados por GitHub Actions ·
+  <a href="https://github.com/mateogsilvaa/tripfinder">codigo</a> ·
+  los precios cambian rapido, confirma siempre en la web de la aerolinea.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+# Configuracion de busqueda. Todo lo que cambies aqui afecta al proximo cron.
+
+notify:
+  to: mateogonsilva@gmail.com
+  # Solo se avisa de ofertas con score >= min_score
+  min_score: 70
+  # Si una oferta ya avisada baja este % adicional, se vuelve a avisar
+  renotify_drop_pct: 12
+  # Maximo de ofertas por email
+  max_offers_per_email: 6
+
+providers:
+  - ryanair          # sin API key
+  - amadeus          # se desactiva solo si no hay AMADEUS_CLIENT_ID/SECRET
+
+stays:
+  providers:
+    - airbnb
+    - amadeus_hotels
+    - deeplinks      # Booking / Kayak / Google Hotels, sin scraping
+  adults: 2
+
+search:
+  # Cuantos dias hacia delante mirar desde hoy
+  days_ahead: 120
+  # Duracion del viaje en noches
+  nights_min: 2
+  nights_max: 7
+  currency: EUR
+  market: es-es
+  # Segundos minimos entre peticiones a un mismo proveedor
+  min_interval_seconds: 2
+
+routes:
+  - origin: MAD
+    origin_name: Madrid
+    # "any" = cualquier destino que ofrezca el proveedor
+    destinations: any
+    max_price: 60
+    # Precio de referencia si aun no hay historico suficiente
+    baseline_price: 110
+
+  - origin: BCN
+    origin_name: Barcelona
+    destinations: any
+    max_price: 60
+    baseline_price: 110
+
+  - origin: MAD
+    origin_name: Madrid
+    destinations: [FCO, NAP, MXP, LIS, OPO, CDG, BRU, DUB, EDI, BER]
+    max_price: 45
+    baseline_price: 95

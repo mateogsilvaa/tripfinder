@@ -1,0 +1,75 @@
+"""Modelos de datos. Todo lo que se persiste en data/ pasa por aqui."""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from typing import Any
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+@dataclass
+class FlightOffer:
+    """Una oferta de vuelo normalizada, venga del provider que venga."""
+
+    provider: str
+    origin: str
+    destination: str
+    depart_date: str  # ISO YYYY-MM-DD
+    price: float
+    currency: str = "EUR"
+    return_date: str | None = None
+    origin_name: str = ""
+    destination_name: str = ""
+    destination_country: str = ""
+    airline: str = ""
+    deep_link: str = ""
+    found_at: str = field(default_factory=_now)
+    nights: int | None = None
+    # Rellenados por scoring.py
+    baseline: float | None = None
+    discount_pct: float = 0.0
+    score: int = 0
+
+    @property
+    def id(self) -> str:
+        """Identificador estable: NO incluye el precio, para poder seguir la ruta en el tiempo."""
+        return f"{self.provider}-{self.origin}-{self.destination}-{self.depart_date.replace('-', '')}"
+
+    @property
+    def route_key(self) -> str:
+        return f"{self.origin}-{self.destination}"
+
+    def to_dict(self) -> dict[str, Any]:
+        d = asdict(self)
+        d["id"] = self.id
+        return d
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "FlightOffer":
+        known = {k: v for k, v in d.items() if k in cls.__dataclass_fields__}
+        return cls(**known)
+
+
+@dataclass
+class StayOffer:
+    """Un alojamiento (hotel, piso entero, o simplemente un enlace de busqueda)."""
+
+    provider: str
+    name: str
+    url: str
+    kind: str = "stay"  # stay | hotel | link
+    price_total: float | None = None
+    price_per_night: float | None = None
+    currency: str = "EUR"
+    rating: float | None = None
+    reviews: int | None = None
+    area: str = ""
+    image: str = ""
+    note: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
