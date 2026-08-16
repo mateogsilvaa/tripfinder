@@ -206,7 +206,7 @@ function altsHTML(o) {
       (a) =>
         `<a href="${esc(a.deep_link)}" target="_blank" rel="noopener">${esc(a.airline)} ${fmtEUR(
           a.price
-        )}</a>`
+        )}${a.depart_time ? ` (sale ${esc(a.depart_time)})` : ""}</a>`
     )
     .join(" · ");
   return `<div class="alts">también ${links}</div>`;

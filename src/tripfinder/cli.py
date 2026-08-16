@@ -99,8 +99,17 @@ def _dedupe(offers: list[FlightOffer]) -> list[FlightOffer]:
         for c in candidatas[1:]:
             if c.airline and c.airline != mejor.airline:
                 otras.setdefault(c.airline, c)
+        # Se guarda la hora porque una alternativa puede ser MAS barata que la
+        # ganadora y quedar segunda por salir de madrugada: sin el horario
+        # delante, eso parece un error del programa.
         mejor.alternatives = [
-            {"airline": c.airline, "price": c.price, "deep_link": c.deep_link}
+            {
+                "airline": c.airline,
+                "price": c.price,
+                "deep_link": c.deep_link,
+                "depart_time": c.depart_time,
+                "weekend": c.weekend,
+            }
             for c in sorted(otras.values(), key=lambda x: x.price)[:3]
         ]
         ganadoras.append(mejor)
