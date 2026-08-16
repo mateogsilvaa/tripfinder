@@ -15,7 +15,10 @@ permissions:
   issues: write
 
 concurrency:
-  group: tripfinder-data
+  # Un grupo por busqueda: con un grupo comun, al encolar una nueva GitHub
+  # cancelaba la anterior que estaba esperando y desaparecia sin decir nada.
+  # Los commits no chocan porque cada una escribe su fichero y hay rebase.
+  group: busqueda-${{ github.event.client_payload.dest || github.event.issue.number || github.run_id }}
   cancel-in-progress: false
 
 jobs:

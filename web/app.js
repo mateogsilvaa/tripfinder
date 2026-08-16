@@ -718,11 +718,8 @@ $("#finderForm").addEventListener("submit", async (e) => {
   const aviso = (html) => ($("#searches").innerHTML = html + $("#searches").innerHTML);
   const r = await dispatch("search", payload);
   if (r.ok) {
-    aviso(
-      `<div class="saved"><b>${esc(payload.label)}</b>
-        <span class="meta"><span class="spin"></span>buscando… tarda 2–3 min y aparece aquí sola</span></div>`
-    );
-    setTimeout(loadSearches, 90000);
+    anadirPendiente(payload.label);
+    loadSearches();
     return;
   }
   if (r.reason === "sin-token" || r.reason === "token-invalido") {
@@ -742,9 +739,19 @@ async function loadSearches() {
     return;
   }
   const guardadas = indice.searches || [];
-  if (!guardadas.length) return;
 
-  $("#searches").innerHTML = guardadas
+  // Lo que ya esta en el indice deja de estar pendiente.
+  const etiquetas = new Set(guardadas.map((s) => s.label));
+  let pend = pendientes().filter((p) => !etiquetas.has(p.label));
+  guardarPendientes(pend);
+  const ahora = Date.now();
+  const cabecera = pend
+    .map((p) => pendienteHTML(p, ahora - p.desde > MAX_ESPERA_MS))
+    .join("");
+
+  if (!guardadas.length && !cabecera) return;
+
+  $("#searches").innerHTML = cabecera + guardadas
     .map(
       (s) => `
       <div class="saved" data-slug="${esc(s.slug)}">
@@ -756,6 +763,27 @@ async function loadSearches() {
       </div>`
     )
     .join("");
+
+  $("#searches")
+    .querySelectorAll("[data-olvidar]")
+    .forEach((b) =>
+      b.addEventListener("click", () => {
+        guardarPendientes(pendientes().filter((p) => p.label !== b.dataset.olvidar));
+        loadSearches();
+      })
+    );
+
+  // Mientras haya algo en marcha se refresca solo hasta que aparezca.
+  if (pend.length && !window.__esperando) {
+    window.__esperando = setInterval(() => {
+      if (!pendientes().length) {
+        clearInterval(window.__esperando);
+        window.__esperando = null;
+        return;
+      }
+      loadSearches();
+    }, 30000);
+  }
 
   document.querySelectorAll("[data-borrar]").forEach((b) =>
     b.addEventListener("click", async (ev) => {
@@ -818,6 +846,36 @@ cargarWatches();
    se sabe que es cada punto. Para ELEGIR funciona mejor una lista que se
    busca escribiendo, agrupada por pais y con el pais entero seleccionable. */
 let DESTINOS = null;
+
+/* Las busquedas lanzadas se guardan en el navegador hasta que aparecen en el
+   indice. Antes el "buscando..." lo borraba el siguiente refresco de la lista
+   y parecia que la busqueda se hubiera esfumado. */
+const PEND_KEY = "tf_pendientes";
+const MAX_ESPERA_MS = 12 * 60 * 1000;
+
+const pendientes = () => {
+  try {
+    return JSON.parse(localStorage.getItem(PEND_KEY) || "[]");
+  } catch {
+    return [];
+  }
+};
+const guardarPendientes = (lista) => localStorage.setItem(PEND_KEY, JSON.stringify(lista));
+
+function anadirPendiente(label) {
+  const lista = pendientes().filter((p) => p.label !== label);
+  lista.unshift({ label, desde: Date.now() });
+  guardarPendientes(lista);
+}
+
+function pendienteHTML(p, caducada) {
+  return caducada
+    ? `<div class="saved"><b>${esc(p.label)}</b>
+         <span class="meta">no llegó a terminar · vuelve a lanzarla</span>
+         <button class="quitar" data-olvidar="${esc(p.label)}">✕</button></div>`
+    : `<div class="saved"><b>${esc(p.label)}</b>
+         <span class="meta"><span class="spin"></span>buscando… tarda 2–3 min</span></div>`;
+}
 
 async function cargarDestinos() {
   if (DESTINOS) return DESTINOS;
