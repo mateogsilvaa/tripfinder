@@ -81,6 +81,35 @@ async function dispatch(evento, payload) {
   return { ok: false, reason: `error ${r.status}. ${detalle}` };
 }
 
+/* Prueba el token contra un endpoint inofensivo y dice exactamente que pasa.
+   Sin esto, un permiso mal puesto se manifiesta como "el boton no hace nada". */
+async function probarToken() {
+  const token = getToken();
+  if (!token) return "No hay ningún token guardado en este navegador.";
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
+    });
+    if (r.status === 200) {
+      const permisos = r.headers.get("x-accepted-github-permissions") || "";
+      const d = await dispatch("ping", { origen: "prueba" });
+      return d.ok
+        ? "Token correcto y con permiso para lanzar búsquedas. ✓"
+        : `El token lee el repo, pero no puede lanzar búsquedas → ${d.reason}` +
+          (permisos ? ` (GitHub espera: ${permisos})` : "");
+    }
+    if (r.status === 401) return "Token inválido o caducado (401). Crea uno nuevo.";
+    if (r.status === 404)
+      return (
+        "404: el token no tiene acceso a este repositorio. Al crearlo hay que elegir " +
+        `"Only select repositories" → ${REPO}, no "Public repositories".`
+      );
+    return `GitHub responde ${r.status}.`;
+  } catch (err) {
+    return `No se pudo contactar con GitHub: ${err.message}`;
+  }
+}
+
 function tokenBox(alTerminar) {
   const nuevo = `https://github.com/settings/personal-access-tokens/new`;
   return {
@@ -92,16 +121,29 @@ function tokenBox(alTerminar) {
         (fine-grained, solo este repo, permiso <em>Contents: Read and write</em>).
         <input type="password" id="tokenInput" placeholder="github_pat_…" autocomplete="off">
         <button class="btn ghost small" id="tokenSave">Guardar en este navegador</button>
+        <button class="btn ghost small" id="tokenTest">Probar conexión</button>
+        <p class="token-status" id="tokenStatus"></p>
       </div>`,
     wire: () => {
-      const b = document.getElementById("tokenSave");
-      if (!b) return;
-      b.addEventListener("click", () => {
-        const v = document.getElementById("tokenInput").value.trim();
-        if (!v) return;
-        localStorage.setItem(TOKEN_KEY, v);
-        alTerminar();
-      });
+      const guardar = document.getElementById("tokenSave");
+      const probar = document.getElementById("tokenTest");
+      const estado = document.getElementById("tokenStatus");
+      if (guardar) {
+        guardar.addEventListener("click", () => {
+          const v = document.getElementById("tokenInput").value.trim();
+          if (!v) return;
+          localStorage.setItem(TOKEN_KEY, v);
+          alTerminar();
+        });
+      }
+      if (probar) {
+        probar.addEventListener("click", async () => {
+          const v = document.getElementById("tokenInput").value.trim();
+          if (v) localStorage.setItem(TOKEN_KEY, v);
+          estado.textContent = "Probando…";
+          estado.textContent = await probarToken();
+        });
+      }
     },
   };
 }

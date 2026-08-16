@@ -242,6 +242,8 @@ h1 em {
   font: 400 13px "DM Mono", monospace;
 }
 .token-box a { color: var(--mint); }
+.token-box .btn { margin-right: 8px; }
+.token-status { margin: 12px 0 0; font: 400 13px/1.5 "DM Mono", monospace; color: var(--amber); }
 .finder-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .finder-form input {
   background: var(--bg-2); color: var(--ink); border: 1px solid var(--line);
