@@ -336,6 +336,15 @@ input[type="range"]::-moz-range-thumb {
 }
 .brow:hover, .brow:focus-visible { background: rgba(255, 176, 46, 0.045); }
 .brow:hover::before, .brow:focus-visible::before { transform: scaleY(1); }
+.brow-detail {
+  grid-column: 1 / -1; padding: 4px 0 10px;
+  display: flex; flex-direction: column; gap: 14px;
+  animation: fade-in 0.3s var(--ease);
+}
+.brow.open { background: rgba(255, 176, 46, 0.05); }
+.brow.open::before { transform: scaleY(1); }
+.brow .btn { font-size: 13.5px; padding: 10px 15px; }
+
 .brow.target { background: var(--amber-soft); }
 
 .iata {

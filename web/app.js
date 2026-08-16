@@ -35,6 +35,7 @@ const fetchJSON = (path) =>
   });
 
 let OFFERS = [];
+const SEARCH_OFFERS = {}; // ofertas de busquedas guardadas, por id
 
 /* --------------------------------------------------------------- disparador
    Para lanzar un scraper hace falta que corra algo fuera del navegador. En vez
@@ -321,8 +322,8 @@ function boardRow(o, i) {
   const horaVuelta = o.return_time ? ` ${esc(o.return_time)}` : "";
   const vuelta = vueltaTxt ? ` → <b>${vueltaTxt}</b>${horaVuelta}` : "";
   return `
-    <button class="brow" id="offer-${esc(o.id)}" data-stay="${esc(o.id)}"
-            style="animation-delay:${Math.min(i, 14) * 35}ms">
+    <div class="brow" id="offer-${esc(o.id)}" data-open="${esc(o.id)}" role="button" tabindex="0"
+         style="animation-delay:${Math.min(i, 14) * 35}ms">
       <span class="iata ${o.hidden_city ? "hidden" : ""}">${esc(o.destination)}</span>
       <span class="dest-cell">
         <span class="city">${esc(o.destination_name || o.destination)}</span>
@@ -340,7 +341,68 @@ function boardRow(o, i) {
       <span class="price">${fmtEUR(o.price)}${
         o.discount_pct >= 5 ? `<small>−${Math.round(o.discount_pct)}%</small>` : ""
       }</span>
-    </button>`;
+      <div class="brow-detail" hidden></div>
+    </div>`;
+}
+
+/* Cualquier viaje se abre y enseña sus vuelos, no solo el destacado. */
+function detalleHTML(o) {
+  return `
+    ${o.hidden_city ? AVISO_HIDDEN : ""}
+    <dl class="legs">
+      ${leg("Ida", o.depart_date, o.depart_time, o.arrive_time, o.weekend)}
+      ${leg("Vuelta", o.return_date, o.return_time, o.return_arrive_time, o.weekend)}
+      <div><dt>Vuelo</dt><dd>${escalas(o)}</dd></div>
+      ${
+        o.useful_hours
+          ? `<div><dt>Viaje real</dt><dd class="useful">${Math.round(o.useful_hours)} h · ${
+              o.price_per_hour
+            } €/h</dd></div>`
+          : ""
+      }
+    </dl>
+    ${altsHTML(o)}
+    <div class="actions">
+      <a class="btn primary" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+      <button class="btn ghost" data-stay="${esc(o.id)}">Buscar alojamiento</button>
+    </div>`;
+}
+
+function toggleRow(fila) {
+  const caja = fila.querySelector(".brow-detail");
+  if (!caja) return;
+  if (!caja.hidden) {
+    caja.hidden = true;
+    fila.classList.remove("open");
+    return;
+  }
+  const o = OFFERS.find((x) => x.id === fila.dataset.open) || SEARCH_OFFERS[fila.dataset.open];
+  if (!o) return;
+  caja.innerHTML = detalleHTML(o);
+  caja.hidden = false;
+  fila.classList.add("open");
+  caja.querySelectorAll("[data-stay]").forEach((b) =>
+    b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (!OFFERS.some((x) => x.id === o.id)) OFFERS.push(o);
+      openStays(o.id);
+    })
+  );
+}
+
+function wireRows(raiz = document) {
+  raiz.querySelectorAll(".brow[data-open]").forEach((fila) => {
+    fila.addEventListener("click", (ev) => {
+      if (ev.target.closest("a, button")) return; // los enlaces hacen lo suyo
+      toggleRow(fila);
+    });
+    fila.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        toggleRow(fila);
+      }
+    });
+  });
 }
 
 function render() {
@@ -353,9 +415,10 @@ function render() {
   $("#boardHead").hidden = list.length < 2;
   $("#empty").hidden = list.length > 0;
 
-  document.querySelectorAll("[data-stay]").forEach((el) =>
+  document.querySelectorAll(".hero [data-stay]").forEach((el) =>
     el.addEventListener("click", () => openStays(el.dataset.stay))
   );
+  wireRows();
 }
 
 function focusOffer(id) {
@@ -697,20 +760,12 @@ async function toggleSearch(el) {
   try {
     const data = await fetchJSON(`data/searches/${el.dataset.slug}.json`);
     const ofertas = data.offers || [];
+    ofertas.forEach((o) => (SEARCH_OFFERS[o.id] = o));
     caja.innerHTML = ofertas.length
       ? ofertas.map((o, i) => boardRow(o, i)).join("")
       : '<p class="meta">Nada dentro de ese presupuesto. Sube el tope o amplía los meses.</p>';
     caja.dataset.cargado = "1";
-    caja.querySelectorAll("[data-stay]").forEach((b) =>
-      b.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        const oferta = ofertas.find((o) => o.id === b.dataset.stay);
-        if (oferta) {
-          if (!OFFERS.some((x) => x.id === oferta.id)) OFFERS.push(oferta);
-          openStays(oferta.id);
-        }
-      })
-    );
+    wireRows(caja);
   } catch {
     caja.innerHTML = '<p class="meta">No se pudo cargar.</p>';
   }
