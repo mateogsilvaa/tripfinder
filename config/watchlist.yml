@@ -20,6 +20,7 @@ notify:
 
 providers:
   - ryanair          # sin API key
+  - wizzair          # su propia API, descubriendo la version en cada ejecucion
   - google_flights   # sin API key: contrasta el resto de aerolineas
   - amadeus          # se desactiva solo si no hay AMADEUS_CLIENT_ID/SECRET
 
@@ -54,6 +55,10 @@ search:
     bonus: 15
     # Cuantos fines de semana barrer (uno por consulta)
     max_weeks: 26
+
+  # Wizz: cuantos destinos y cuantos meses mirar (una peticion por mes y destino)
+  wizz_max_destinations: 18
+  wizz_months: 4
 
   google:
     # Cada consulta descarga ~2,5 MB de la pagina de Google: pocas y espaciadas.

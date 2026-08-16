@@ -116,6 +116,24 @@ def _dedupe(offers: list[FlightOffer]) -> list[FlightOffer]:
     return ganadoras
 
 
+def _nombre_mundial(iata: str) -> tuple[str, str]:
+    """Ciudad y pais desde el listado mundial, para que no salga solo "JFK"."""
+    from .config import DATA_DIR
+
+    cache = _nombre_mundial.__dict__.setdefault("cache", {})
+    if not cache:
+        import json
+
+        f = DATA_DIR / "airports_world.json"
+        if f.exists():
+            try:
+                for a in json.loads(f.read_text(encoding="utf-8")):
+                    cache[a["code"]] = (a.get("ciudad") or a["code"], a.get("pais", ""))
+            except (json.JSONDecodeError, KeyError):
+                pass
+    return cache.get(iata, (iata, ""))
+
+
 def _publicables(found: list[FlightOffer], limite: int) -> list[FlightOffer]:
     """Que ofertas van a la web.
 
@@ -208,7 +226,7 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
             salida = date.today() + timedelta(days=30 * (i + 1))
             for dest in lh["destinations"]:
                 pares.append((dest, salida, salida + timedelta(days=noches)))
-                nombres[dest] = cfg.city_names.get(dest, (dest, ""))
+                nombres[dest] = cfg.city_names.get(dest) or _nombre_mundial(dest)
         google.shortlist = pares[: int(lh.get("max_queries", 16))]
         google.names.update(nombres)
         ruta_lh = Route(
@@ -230,6 +248,11 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
         except Exception as exc:  # noqa: BLE001
             log.warning("Largo radio fallo: %s", exc)
             errors.append(f"long_haul: {exc}")
+
+    for o in found:
+        if not o.destination_name or o.destination_name == o.destination:
+            o.destination_name, pais = _nombre_mundial(o.destination)
+            o.destination_country = o.destination_country or pais
 
     found = _dedupe(found)
     deals = _dedupe(deals)
