@@ -515,7 +515,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(func=cmd_scan_stays)
 
     b = sub.add_parser("search", help="Busqueda personalizada a un destino concreto")
-    b.add_argument("--dest", required=True, help="IATA (FCO) o ciudad (Roma)")
+    b.add_argument("--dest", default="", help="IATA (FCO) o ciudad (Roma). Vacio = a cualquier sitio")
     b.add_argument("--label", help="Nombre de la busqueda para la web")
     b.add_argument("--max-price", type=float, dest="max_price")
     b.add_argument("--nights", help="2, o un rango como 2-4")

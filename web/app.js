@@ -57,11 +57,28 @@ async function dispatch(evento, payload) {
     body: JSON.stringify({ event_type: evento, client_payload: payload }),
   });
   if (r.status === 204) return { ok: true };
-  if (r.status === 401 || r.status === 403) {
+
+  let detalle = "";
+  try {
+    detalle = (await r.json()).message || "";
+  } catch {
+    /* GitHub no siempre contesta con JSON */
+  }
+  if (r.status === 401) {
     localStorage.removeItem(TOKEN_KEY);
     return { ok: false, reason: "token-invalido" };
   }
-  return { ok: false, reason: `error ${r.status}` };
+  if (r.status === 403 || r.status === 404) {
+    // 404 aqui casi siempre es un token sin permiso sobre el repo, no un repo
+    // inexistente: GitHub lo disfraza para no filtrar repos privados.
+    return {
+      ok: false,
+      reason:
+        `${r.status}: al token le falta permiso "Contents: Read and write" sobre ` +
+        `${REPO}, o no le has dado acceso a este repositorio. ${detalle}`,
+    };
+  }
+  return { ok: false, reason: `error ${r.status}. ${detalle}` };
 }
 
 function tokenBox(alTerminar) {
@@ -400,9 +417,13 @@ function askForSearch(offer, aviso = "") {
       caja.wire();
       return;
     }
-    // Ultimo recurso: la issue de siempre.
-    window.open(issueURL(offer, adultos), "_blank", "noopener");
-    startPolling(offer.id);
+    // Se muestra el motivo y se deja la issue como ultimo recurso.
+    $("#panelBody").insertAdjacentHTML(
+      "beforeend",
+      `<div class="status wait"><p>No se pudo lanzar: ${esc(r.reason)}</p>
+       <a class="btn ghost small" href="${issueURL(offer, adultos)}" target="_blank"
+          rel="noopener">Lanzarlo por issue</a></div>`
+    );
   });
 }
 
@@ -503,46 +524,75 @@ function searchIssueURL(f) {
   );
 }
 
+/* El formulario cambia segun lo que el usuario tenga decidido y lo que no:
+   sitio concreto o donde sea, fechas exactas, un finde cualquiera o da igual. */
+const HINTS = {
+  "any|weekend": "Un fin de semana donde sea: se recorren todos los findes del horizonte.",
+  "any|exact": "Ese fin de semana concreto, a cualquier destino que haya.",
+  "any|anytime": "Cualquier destino y cualquier fecha: lo más barato del horizonte.",
+  "one|weekend": "Ese destino, el finde que salga más barato de aquí a los meses que pongas.",
+  "one|exact": "Ese destino en esas fechas exactas.",
+  "one|anytime": "Ese destino, cualquier día de la semana.",
+};
+
+function syncFinder() {
+  const donde = $("#fWhere").value;
+  const cuando = $("#fWhen").value;
+  $("#destWrap").hidden = donde !== "one";
+  $("#departWrap").hidden = cuando !== "exact";
+  $("#returnWrap").hidden = cuando !== "exact";
+  $("#nightsWrap").hidden = cuando === "exact";
+  $("#monthsWrap").hidden = cuando === "exact";
+  $("#finderHint").textContent = HINTS[`${donde}|${cuando}`] || "";
+}
+["#fWhere", "#fWhen"].forEach((s) => $(s).addEventListener("change", syncFinder));
+syncFinder();
+
 $("#finderForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const f = {
-    dest: $("#fDest").value.trim(),
-    max: Number($("#fMax").value) || 150,
-    nights: $("#fNights").value.trim() || "2-3",
-    months: Number($("#fMonths").value) || 12,
-    adults: Number($("#fAdults").value) || 2,
-    weekend: $("#fWeekend").checked,
-    depart: $("#fDepart").value,
-    return_date: $("#fReturn").value,
-  };
-  if (!f.dest) return;
-
-  const r = await dispatch("search", {
-    dest: f.dest,
-    label: f.depart ? `${f.dest} · ${f.depart}` : `${f.dest} · hasta ${f.max} €`,
-    max_price: String(f.max),
-    nights: f.nights,
-    months: String(f.months),
-    adults: String(f.adults),
-    weekend: f.weekend ? "si" : "no",
-    depart: f.depart || "",
-    return_date: f.return_date || "",
-  });
-  if (!r.ok) {
-    if (r.reason === "sin-token" || r.reason === "token-invalido") {
-      const caja = tokenBox(() => $("#finderForm").requestSubmit());
-      $("#searches").innerHTML = caja.html;
-      caja.wire();
-      return;
-    }
-    window.open(searchIssueURL(f), "_blank", "noopener");
+  const donde = $("#fWhere").value;
+  const cuando = $("#fWhen").value;
+  const dest = donde === "one" ? $("#fDest").value.trim() : "";
+  if (donde === "one" && !dest) {
+    $("#fDest").focus();
+    return;
   }
-  $("#searches").insertAdjacentHTML(
-    "afterbegin",
-    `<div class="saved"><b>${esc(f.dest)}</b>
-      <span class="meta"><span class="spin"></span>buscando… tarda 2–3 min y aparece aquí sola</span></div>`
-  );
-  setTimeout(loadSearches, 60000);
+  if (cuando === "exact" && !$("#fDepart").value) {
+    $("#fDepart").focus();
+    return;
+  }
+
+  const payload = {
+    dest,
+    label:
+      (dest || "Donde sea") +
+      (cuando === "exact" ? ` · ${$("#fDepart").value}` : ` · hasta ${$("#fMax").value} €`),
+    max_price: $("#fMax").value,
+    nights: $("#fNights").value.trim() || "2-3",
+    months: $("#fMonths").value || "12",
+    adults: $("#fAdults").value || "2",
+    weekend: cuando === "weekend" ? "si" : "no",
+    depart: cuando === "exact" ? $("#fDepart").value : "",
+    return_date: cuando === "exact" ? $("#fReturn").value : "",
+  };
+
+  const aviso = (html) => ($("#searches").innerHTML = html + $("#searches").innerHTML);
+  const r = await dispatch("search", payload);
+  if (r.ok) {
+    aviso(
+      `<div class="saved"><b>${esc(payload.label)}</b>
+        <span class="meta"><span class="spin"></span>buscando… tarda 2–3 min y aparece aquí sola</span></div>`
+    );
+    setTimeout(loadSearches, 90000);
+    return;
+  }
+  if (r.reason === "sin-token" || r.reason === "token-invalido") {
+    const caja = tokenBox(() => $("#finderForm").requestSubmit());
+    $("#searches").innerHTML = caja.html;
+    caja.wire();
+    return;
+  }
+  aviso(`<div class="saved"><span class="meta">No se pudo lanzar: ${esc(r.reason)}</span></div>`);
 });
 
 async function loadSearches() {

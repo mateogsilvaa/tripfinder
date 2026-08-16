@@ -39,7 +39,7 @@ class SearchRequest:
 
     @property
     def slug(self) -> str:
-        base = f"{self.origin}-{self.destination}-{self.nights_min}{self.nights_max}"
+        base = f"{self.origin}-{self.destination or 'todos'}-{self.nights_min}{self.nights_max}"
         extra = f"-{int(self.max_price)}" if self.max_price else ""
         return re.sub(r"[^A-Za-z0-9-]", "", base + extra).lower()
 
@@ -179,11 +179,18 @@ def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, 
 
 
 def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int = 45) -> SearchResult:
-    iata, ciudad, pais = resolve_destination(req.destination, cfg)
+    # Sin destino se busca a todas partes: "un finde donde sea, por menos de X".
+    if req.destination.strip():
+        iata, ciudad, pais = resolve_destination(req.destination, cfg)
+        destinos: Any = [iata]
+    else:
+        iata, ciudad, pais = "", "", ""
+        destinos = "any"
+
     route = Route(
         origin=req.origin,
         origin_name="Madrid",
-        destinations=[iata],
+        destinations=destinos,
         max_price=req.max_price or 1e6,
         max_price_weekend=req.max_price or 1e6,
         baseline_price=req.max_price * 2 if req.max_price else 200,
@@ -201,7 +208,12 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
     ryanair = proveedores[0]
 
     fechas = _candidate_trips(req, weekend_cfg)[:max_queries]
-    log.info("Busqueda %s: %d ventanas hasta %s", iata, len(fechas), fechas[-1][0] if fechas else "?")
+    log.info(
+        "Busqueda %s: %d ventanas hasta %s",
+        iata or "cualquier destino",
+        len(fechas),
+        fechas[-1][0] if fechas else "?",
+    )
 
     encontradas: dict[str, FlightOffer] = {}
     for salida, regreso in fechas:
@@ -222,10 +234,10 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
                 inboundDepartureTimeTo=weekend_cfg.get("inbound_before", "23:59"),
             )
         try:
-            for oferta in ryanair._paginate(params, route, 20):  # noqa: SLF001
-                if oferta.destination != iata:
+            for oferta in ryanair._paginate(params, route, 60):  # noqa: SLF001
+                if iata and oferta.destination != iata:
                     continue
-                oferta.destination_name = oferta.destination_name or ciudad
+                oferta.destination_name = oferta.destination_name or ciudad or oferta.destination
                 oferta.destination_country = oferta.destination_country or pais
                 anterior = encontradas.get(oferta.id)
                 if anterior is None or oferta.price < anterior.price:
@@ -242,6 +254,10 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
         ofertas = [o for o in ofertas if o.price <= req.max_price]
 
     ofertas.sort(key=lambda o: o.price)
-    resultado.offers = ofertas[:25]
-    log.info("Busqueda %s: %d viajes dentro de presupuesto", iata, len(resultado.offers))
+    resultado.offers = ofertas[:40]
+    log.info(
+        "Busqueda %s: %d viajes dentro de presupuesto",
+        iata or "cualquier destino",
+        len(resultado.offers),
+    )
     return resultado

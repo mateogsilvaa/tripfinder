@@ -124,9 +124,11 @@ class GoogleFlightsProvider(FlightProvider):
             timeout=40,
         )
 
-        weekend = self.cfg.get("weekend", {}) or {}
-        after = str(weekend.get("outbound_after", "00:00"))
-        before = str(weekend.get("outbound_before", "23:59"))
+        # Aqui NO se filtra por hora a proposito. Aplicar la franja de la
+        # escapada (15:00-22:00) descartaba a Iberia, Vueling o TAP solo por
+        # volar de mañana, y dejaba a Ryanair ganando siempre por descarte.
+        # Que salga en el listado lo decide despues el scoring; aunque no sea
+        # la ganadora, la tarifa queda como alternativa de esa ruta y fecha.
         nights = (in_date - out_date).days
 
         best_por_aerolinea: dict[str, FlightOffer] = {}
@@ -138,8 +140,6 @@ class GoogleFlightsProvider(FlightProvider):
                 continue
 
             hora = time_m.group(1).zfill(5)  # "9:00" -> "09:00"
-            if not after <= hora <= before:
-                continue  # fuera de la franja de la escapada
 
             airline_m = AIRLINE_RE.search(label)
             airline = (airline_m.group(1).strip() if airline_m else "Varias")[:40]
