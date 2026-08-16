@@ -96,6 +96,23 @@ class Store:
         )
         return p
 
+    def delete_search(self, slug: str) -> bool:
+        """Borra una busqueda guardada y rehace el indice."""
+        f = self.searches_dir / f"{slug}.json"
+        if not f.exists():
+            return False
+        f.unlink()
+        # save_search reconstruye el indice entero, asi que basta con reescribir
+        # cualquiera de las que quedan; si no queda ninguna, indice vacio.
+        restantes = [x for x in self.searches_dir.glob("*.json") if x.name != "index.json"]
+        if restantes:
+            self.save_search(json.loads(restantes[0].read_text(encoding="utf-8")))
+        else:
+            (self.searches_dir / "index.json").write_text(
+                json.dumps({"searches": []}, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        return True
+
     def purge_expired_stays(self) -> int:
         """Los alojamientos scrapeados se quedan hasta que pasa la fecha del viaje.
 

@@ -548,6 +548,11 @@ def cmd_watch(args: argparse.Namespace) -> int:
         print("Borrado." if W.borrar(args.id or "") else "No existe ese seguimiento.")
         return 0
 
+    if args.accion == "remove-search":
+        borrada = Store().delete_search(args.id or "")
+        print("Busqueda borrada." if borrada else "No existe esa busqueda.")
+        return 0
+
     # run: lo que ejecuta el cron cada dia
     store = Store()
     caducados = W.limpiar_caducados()
@@ -717,7 +722,7 @@ def build_parser() -> argparse.ArgumentParser:
     k.set_defaults(func=cmd_skiplag)
 
     v = sub.add_parser("watch", help="Seguimientos: viajes que se vigilan a diario")
-    v.add_argument("accion", choices=["add", "list", "remove", "run"])
+    v.add_argument("accion", choices=["add", "list", "remove", "remove-search", "run"])
     v.add_argument("--id")
     v.add_argument("--dest", default="")
     v.add_argument("--label")

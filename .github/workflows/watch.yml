@@ -5,7 +5,7 @@ name: Seguir un viaje
 
 on:
   repository_dispatch:
-    types: [watch, unwatch]
+    types: [watch, unwatch, delete_search]
 
 permissions:
   contents: write
@@ -43,6 +43,8 @@ jobs:
         run: |
           if [ "$TIPO" = "unwatch" ]; then
             python -m tripfinder watch remove --id "$ID"
+          elif [ "$TIPO" = "delete_search" ]; then
+            python -m tripfinder watch remove-search --id "$ID"
           else
             args=()
             if [ -n "$DEST" ];        then args+=(--dest "$DEST"); fi

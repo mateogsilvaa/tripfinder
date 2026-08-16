@@ -652,3 +652,11 @@ input[type="range"]::-moz-range-thumb {
 .dias .dia[disabled] { color: var(--faint); opacity: .35; cursor: default; }
 .dias .dia.extremo { background: var(--amber); color: #1a1206; font-weight: 500; }
 .dias .dia.dentro { background: rgba(255,176,46,.14); }
+
+.quitar {
+  margin-left: auto; background: none; border: 1px solid var(--line);
+  border-radius: 8px; color: var(--faint); cursor: pointer;
+  font-size: 12px; line-height: 1; padding: 6px 9px; transition: color .2s, border-color .2s;
+}
+.quitar:hover { color: #ff8f6b; border-color: rgba(255, 143, 107, .5); }
+.quitar[disabled] { opacity: .4; cursor: default; }

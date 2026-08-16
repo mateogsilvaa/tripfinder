@@ -751,15 +751,27 @@ async function loadSearches() {
         <b>${esc(s.label)}</b>
         <span class="meta">${s.count} viajes · buscado ${esc(desde(s.generated_at))}</span>
         ${s.best_price ? `<span class="best">desde ${fmtEUR(s.best_price)}</span>` : ""}
+        <button class="quitar" data-borrar="${esc(s.slug)}" title="Quitar esta búsqueda">✕</button>
         <div class="saved-rows" hidden></div>
       </div>`
     )
     .join("");
 
+  document.querySelectorAll("[data-borrar]").forEach((b) =>
+    b.addEventListener("click", async (ev) => {
+      ev.stopPropagation();
+      b.disabled = true;
+      const r = await dispatch("delete_search", { tipo: "delete_search", id: b.dataset.borrar });
+      b.closest(".saved").style.opacity = r.ok ? 0.4 : 1;
+      if (r.ok) setTimeout(loadSearches, 45000);
+      else b.disabled = false;
+    })
+  );
+
   document.querySelectorAll(".saved[data-slug]").forEach((el) =>
     el.addEventListener("click", (ev) => {
       // Sin esto, abrir un viaje de dentro cerraba la busqueda que lo contiene.
-      if (ev.target.closest(".saved-rows")) return;
+      if (ev.target.closest(".saved-rows") || ev.target.closest("[data-borrar]")) return;
       toggleSearch(el);
     })
   );
@@ -864,8 +876,13 @@ function pintarDestinos(filtro = "") {
 }
 
 function elegirDestino(valor) {
-  $("#fDest").value = valor;
-  $("#destBtn").textContent = valor;
+  if (destinoPara === "wDest") {
+    $("#wDest").value = valor;
+    $("#wDestBtn").textContent = valor;
+  } else {
+    $("#fDest").value = valor;
+    $("#destBtn").textContent = valor;
+  }
   cerrarDestinos();
 }
 
@@ -883,7 +900,10 @@ function cerrarDestinos() {
   document.body.style.overflow = "";
 }
 
-$("#destBtn").addEventListener("click", abrirDestinos);
+$("#destBtn").addEventListener("click", () => {
+  destinoPara = "fDest";
+  abrirDestinos();
+});
 $("#destClose").addEventListener("click", cerrarDestinos);
 $("#destModal").addEventListener("click", (e) => {
   if (e.target.id === "destModal") cerrarDestinos();
@@ -894,40 +914,42 @@ document.addEventListener("keydown", (e) => {
 });
 
 /* ------------------------------------------------------------ seguimientos
-   Lo mismo que una busqueda, pero en vez de contestarte ahora se queda
-   apuntado y lo revisa el cron cada dia, avisando por correo solo si aparece
-   algo que cumple o si baja del mejor precio visto. */
-function datosFormulario() {
-  const donde = $("#fWhere").value;
-  const cuando = $("#fWhen").value;
-  return {
-    dest: donde === "one" ? $("#fDest").value.trim() : "",
-    max_price: $("#fMax").value,
-    nights: $("#fNights").value.trim() || "2-3",
-    months: $("#fMonths").value || "6",
-    adults: $("#fAdults").value || "2",
-    weekend: cuando === "weekend" ? "si" : "no",
-    depart: cuando === "exact" ? $("#fDepart").value : "",
-    return_date: cuando === "exact" ? $("#fReturn").value : "",
-  };
-}
+   Cosa aparte de la busqueda: no contesta ahora, se queda apuntado y lo revisa
+   el cron cada dia. Avisa si entra en el tope o si baja de su propio minimo. */
+let destinoPara = "fDest"; // que campo rellena el selector de destinos
 
-$("#watchBtn").addEventListener("click", async () => {
-  const d = datosFormulario();
-  const etiqueta =
-    (d.dest || "Donde sea") + (d.depart ? ` · ${d.depart}` : ` · hasta ${d.max_price} €`);
-  const r = await dispatch("watch", { ...d, tipo: "watch", label: etiqueta });
+$("#wDestBtn").addEventListener("click", () => {
+  destinoPara = "wDest";
+  abrirDestinos();
+});
+
+$("#watchForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const dest = $("#wDest").value.trim();
+  const fecha = $("#wDate").value;
+  const etiqueta = (dest || "Donde sea") + (fecha ? ` · ${fecha}` : ` · hasta ${$("#wMax").value} €`);
+  const r = await dispatch("watch", {
+    tipo: "watch",
+    dest,
+    label: etiqueta,
+    depart: fecha,
+    max_price: $("#wMax").value,
+    months: $("#wMonths").value || "6",
+    adults: $("#wAdults").value || "2",
+    weekend: $("#wWeekend").checked ? "si" : "no",
+    nights: "2-3",
+  });
   if (r.ok) {
     $("#watches").insertAdjacentHTML(
       "afterbegin",
       `<div class="watch"><b>${esc(etiqueta)}</b>
-        <span class="meta">apuntado · se revisa cada día y te escribe si aparece algo</span></div>`
+        <span class="meta">apuntado · se revisa cada día</span></div>`
     );
     setTimeout(cargarWatches, 45000);
     return;
   }
   if (r.reason === "sin-token" || r.reason === "token-invalido") {
-    const caja = tokenBox(() => $("#watchBtn").click());
+    const caja = tokenBox(() => $("#watchForm").requestSubmit());
     $("#watches").innerHTML = caja.html;
     caja.wire();
     return;
@@ -947,7 +969,7 @@ async function cargarWatches() {
   const vivos = (datos.watches || []).filter((w) => w.active !== false);
   if (!vivos.length) return;
   $("#watches").innerHTML =
-    `<h3 class="watch-head">Siguiendo a diario</h3>` +
+    '<h3 class="watch-head">Siguiendo a diario</h3>' +
     vivos
       .map(
         (w) => `
@@ -958,9 +980,22 @@ async function cargarWatches() {
           }${w.max_price ? ` · hasta ${Math.round(w.max_price)} €` : ""}${
           w.best_price ? ` · mejor visto ${Math.round(w.best_price)} €` : ""
         }${w.last_checked ? ` · revisado ${esc(desde(w.last_checked))}` : ""}</span>
+          <button class="quitar" data-unwatch="${esc(w.id)}" title="Dejar de seguir">✕</button>
         </div>`
       )
       .join("");
+
+  $("#watches")
+    .querySelectorAll("[data-unwatch]")
+    .forEach((b) =>
+      b.addEventListener("click", async () => {
+        b.disabled = true;
+        const r = await dispatch("unwatch", { tipo: "unwatch", id: b.dataset.unwatch });
+        b.closest(".watch").style.opacity = r.ok ? 0.4 : 1;
+        if (r.ok) setTimeout(cargarWatches, 45000);
+        else b.disabled = false;
+      })
+    );
 }
 
 /* ---------------------------------------------------------- calendario
