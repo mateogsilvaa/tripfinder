@@ -981,10 +981,34 @@ $("#wDestBtn").addEventListener("click", () => {
   abrirDestinos();
 });
 
+const HINTS_W = {
+  "any|weekend": "Cualquier destino, cualquier finde: avisa cuando algo baje del tope.",
+  "any|exact": "Cualquier destino, ese día concreto.",
+  "any|anytime": "Cualquier destino y cualquier fecha del horizonte.",
+  "one|weekend": "Ese destino, el finde que sea.",
+  "one|exact": "Ese destino, ese día.",
+  "one|anytime": "Ese destino, cualquier día.",
+};
+
+function syncWatch() {
+  const donde = $("#wWhere").value;
+  const cuando = $("#wWhen").value;
+  $("#wDestWrap").hidden = donde !== "one";
+  $("#wDateWrap").hidden = cuando !== "exact";
+  $("#wMonthsWrap").hidden = cuando === "exact";
+  $("#watchHint").textContent = HINTS_W[`${donde}|${cuando}`] || "";
+}
+["#wWhere", "#wWhen"].forEach((s) => $(s).addEventListener("change", syncWatch));
+syncWatch();
+
 $("#watchForm").addEventListener("submit", async (e) => {
   e.preventDefault();
-  const dest = $("#wDest").value.trim();
-  const fecha = $("#wDate").value;
+  const donde = $("#wWhere").value;
+  const cuando = $("#wWhen").value;
+  const dest = donde === "one" ? $("#wDest").value.trim() : "";
+  const fecha = cuando === "exact" ? $("#wDate").value : "";
+  if (donde === "one" && !dest) return;
+  if (cuando === "exact" && !fecha) return;
   const etiqueta = (dest || "Donde sea") + (fecha ? ` · ${fecha}` : ` · hasta ${$("#wMax").value} €`);
   const r = await dispatch("watch", {
     tipo: "watch",
@@ -994,7 +1018,7 @@ $("#watchForm").addEventListener("submit", async (e) => {
     max_price: $("#wMax").value,
     months: $("#wMonths").value || "6",
     adults: $("#wAdults").value || "2",
-    weekend: $("#wWeekend").checked ? "si" : "no",
+    weekend: cuando === "weekend" ? "si" : "no",
     nights: "2-3",
   });
   if (r.ok) {

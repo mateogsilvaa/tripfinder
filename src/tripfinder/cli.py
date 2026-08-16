@@ -504,6 +504,27 @@ def _search_markdown(resultado) -> str:
     return "\n".join(lines)
 
 
+def cmd_reindex(args: argparse.Namespace) -> int:
+    """Rehace data/searches/index.json a partir de los ficheros que haya.
+
+    Con varias busquedas a la vez, dos runs tocan el indice y el rebase choca.
+    En vez de resolver el conflicto a mano, se regenera: el indice es un
+    derivado, nunca la fuente de la verdad.
+    """
+    import json as _json
+
+    store = Store()
+    ficheros = [f for f in store.searches_dir.glob("*.json") if f.name != "index.json"]
+    if ficheros:
+        store.save_search(_json.loads(ficheros[0].read_text(encoding="utf-8")))
+    else:
+        (store.searches_dir / "index.json").write_text(
+            _json.dumps({"searches": []}, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    print(f"Indice rehecho con {len(ficheros)} busquedas.")
+    return 0
+
+
 # --------------------------------------------------------------------------- #
 # watch
 # --------------------------------------------------------------------------- #
@@ -735,6 +756,8 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--any-day", action="store_true")
     v.add_argument("--no-email", action="store_true")
     v.set_defaults(func=cmd_watch)
+
+    sub.add_parser("reindex", help="Rehace el indice de busquedas").set_defaults(func=cmd_reindex)
 
     t = sub.add_parser("test-email", help="Envia un aviso de ejemplo")
     t.add_argument("--to")

@@ -103,11 +103,18 @@ jobs:
           git add data
           if git diff --staged --quiet; then
             echo "Sin cambios"
-          else
-            git commit -m "data: busqueda ${{ steps.parse.outputs.dest }}"
-            git pull --rebase --autostash
-            git push
+            exit 0
           fi
+          git commit -m "data: busqueda"
+          # Varias busquedas a la vez tocan el indice y el rebase choca. El
+          # indice es un derivado, asi que se regenera y se sigue.
+          for intento in 1 2 3; do
+            if git pull --rebase --autostash; then break; fi
+            PYTHONPATH=src python -m tripfinder reindex || true
+            git add data
+            GIT_EDITOR=true git rebase --continue || git rebase --skip || true
+          done
+          git push || (git pull --rebase --autostash && git push)
 
       - name: Redesplegar la web
         env:
