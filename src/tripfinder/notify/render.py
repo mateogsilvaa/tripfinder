@@ -1,15 +1,47 @@
-"""Plantillas del aviso, independientes del transporte (SMTP, Resend o issue)."""
+"""Plantillas del aviso, con la misma estetica que la web.
+
+Panel de salidas nocturno: negro calido, ambar y numeros en monoespaciada.
+Todo va con tablas y estilos en linea porque los clientes de correo ignoran
+hojas de estilo, clases y tipografias externas: Georgia y las monoespaciadas
+del sistema son las que estan en todas partes.
+"""
 
 from __future__ import annotations
 
 from ..config import site_url
 from ..models import FlightOffer
 
+BG = "#0d0b0a"
+CARD = "#17130f"
+INK = "#f7f1e6"
+MUTED = "#a2937f"
+FAINT = "#6d6154"
+AMBER = "#ffb02e"
+MINT = "#7fd6a2"
+LINE = "#2a2320"
+
+MONO = "'DM Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace"
+SERIF = "Georgia,'Times New Roman',serif"
+SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"
+
+DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+
+def _fecha(iso: str) -> str:
+    from datetime import date
+
+    try:
+        d = date.fromisoformat(iso)
+    except (ValueError, TypeError):
+        return iso or ""
+    return f"{DIAS[d.weekday()]} {d.day} {MESES[d.month - 1]}"
+
 
 def subject_for(offers: list[FlightOffer]) -> str:
     best = offers[0]
     text = (
-        f"[TripFinder] {best.origin} -> {best.destination_name or best.destination} "
+        f"[TripFinder] {best.destination_name or best.destination} "
         f"{best.price:.0f}EUR ida y vuelta (-{best.discount_pct:.0f}%)"
     )
     if len(offers) > 1:
@@ -17,103 +49,147 @@ def subject_for(offers: list[FlightOffer]) -> str:
     return text
 
 
-def _dates(offer: FlightOffer) -> str:
-    text = offer.depart_date
-    if offer.return_date:
-        text += f" &rarr; {offer.return_date}"
-        if offer.nights:
-            text += f" ({offer.nights} noches)"
-    return text
+def _flap(letra: str) -> str:
+    return (
+        f'<span style="display:inline-block;background:#241d18;border:1px solid {LINE};'
+        f'border-radius:4px;color:{AMBER};font:500 13px {MONO};padding:5px 6px;margin-right:3px">'
+        f"{letra}</span>"
+    )
 
 
-def _offer_row(offer: FlightOffer) -> str:
+def _ticket(offer: FlightOffer) -> str:
     url = f"{site_url()}/?offer={offer.id}"
-    baseline = (
-        f'<span style="color:#8a8f98;text-decoration:line-through">{offer.baseline:.0f}&euro;</span>'
-        if offer.baseline
+    tachado = (
+        f'<span style="color:{FAINT};font:400 13px {MONO};text-decoration:line-through">'
+        f"{offer.baseline:.0f}&euro;</span>"
+        if offer.baseline and offer.baseline > offer.price
         else ""
     )
-    trip = "ida y vuelta" if offer.return_date else "solo ida"
+    sello = (
+        f'<span style="border:1px solid {AMBER};color:{AMBER};border-radius:99px;'
+        f'font:500 11px {MONO};padding:5px 9px;white-space:nowrap">'
+        f"&minus;{offer.discount_pct:.0f}%</span>"
+        if offer.discount_pct >= 5
+        else ""
+    )
+    escalas = "directo" if not offer.stops else f"{offer.stops} escala{'s' if offer.stops > 1 else ''}"
     horas = (
-        f" &middot; {offer.useful_hours:.0f} h de viaje real ({offer.price_per_hour:.1f} &euro;/h)"
+        f" &middot; {offer.useful_hours:.0f} h de viaje real"
         if offer.useful_hours
         else ""
     )
+
+    def tramo(titulo: str, iso: str, sale: str, llega: str) -> str:
+        if not iso:
+            return ""
+        reloj = f"{sale}{f' &rarr; {llega}' if llega else ''}" if sale else ""
+        return f"""
+        <td width="50%" valign="top" style="padding:0 10px 0 0">
+          <div style="font:500 10px {MONO};letter-spacing:.14em;color:{FAINT};text-transform:uppercase">{titulo}</div>
+          <div style="font:400 15px {MONO};color:{INK};padding-top:5px">{_fecha(iso)}</div>
+          <div style="font:400 13px {MONO};color:{MUTED};padding-top:3px">{reloj}</div>
+        </td>"""
+
     return f"""
-    <tr><td style="padding:0 0 16px 0">
-      <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e6e8eb;border-radius:12px">
-        <tr><td style="padding:18px 20px">
-          <div style="font:600 19px/1.3 -apple-system,Segoe UI,Roboto,sans-serif;color:#0f1115">
-            {offer.origin_name or offer.origin} &rarr; {offer.destination_name or offer.destination}
+    <tr><td style="padding:0 0 14px 0">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+             style="background:{CARD};border:1px solid {LINE};border-radius:14px">
+        <tr><td style="padding:22px 24px">
+
+          <div style="font:500 11px {MONO};letter-spacing:.18em;color:{MUTED}">
+            {offer.origin} &nbsp;&#9992;&nbsp; {offer.destination}
           </div>
-          <div style="font:400 14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#5c6370;padding-top:4px">
-            {_dates(offer)} &middot; {offer.airline}
+          <div style="font:400 30px/1.1 {SERIF};color:{INK};padding:8px 0 4px">
+            {offer.destination_name or offer.destination}
           </div>
-          <div style="padding-top:12px">
-            <span style="font:700 30px/1 -apple-system,Segoe UI,Roboto,sans-serif;color:#0f1115">
-              {offer.price:.0f}&euro;
-            </span>
-            &nbsp;{baseline}
-            <span style="background:#e8f7ee;color:#0a7a3d;font:600 13px/1 sans-serif;padding:6px 9px;border-radius:99px;margin-left:8px">
-              -{offer.discount_pct:.0f}% &middot; score {offer.score}
-            </span>
-            <div style="font:400 12px/1.5 sans-serif;color:#8a8f98;padding-top:6px">
-              precio total {trip}, 1 adulto{horas}
+          <div style="font:400 13px {SANS};color:{MUTED};padding-bottom:16px">
+            {offer.destination_country} &middot; {offer.airline} &middot; {escalas}{horas}
+          </div>
+
+          <table width="100%" cellpadding="0" cellspacing="0" role="presentation"
+                 style="border-top:1px solid {LINE};border-bottom:1px solid {LINE}">
+            <tr>{tramo("Ida", offer.depart_date, offer.depart_time, offer.arrive_time)}
+                {tramo("Vuelta", offer.return_date, offer.return_time, offer.return_arrive_time)}
+            </tr>
+          </table>
+
+          <div style="padding-top:18px">
+            <span style="font:500 36px {MONO};color:{INK};letter-spacing:-.03em">{offer.price:.0f}&euro;</span>
+            &nbsp;{tachado}&nbsp;{sello}
+            <div style="font:400 11px {MONO};color:{FAINT};padding-top:7px">
+              ida y vuelta, 1 adulto{f" &middot; {offer.price_per_hour:.1f} &euro;/hora de viaje" if offer.price_per_hour else ""}
             </div>
           </div>
-          <div style="padding-top:16px">
-            <a href="{url}" style="background:#0f1115;color:#fff;text-decoration:none;font:600 14px sans-serif;padding:11px 18px;border-radius:8px;display:inline-block">
+
+          <div style="padding-top:20px">
+            <a href="{url}" style="background:{AMBER};color:#1a1206;text-decoration:none;
+               font:600 14px {SANS};padding:12px 18px;border-radius:9px;display:inline-block">
               Ver y buscar alojamiento
             </a>
-            <a href="{offer.deep_link}" style="color:#5c6370;text-decoration:none;font:600 14px sans-serif;padding:11px 14px;display:inline-block">
-              Reservar vuelo
-            </a>
+            <a href="{offer.deep_link}" style="color:{MUTED};text-decoration:none;
+               font:600 14px {SANS};padding:12px 14px;display:inline-block">Reservar vuelo</a>
           </div>
+
         </td></tr>
       </table>
     </td></tr>"""
 
 
 def render_html(offers: list[FlightOffer]) -> str:
-    rows = "".join(_offer_row(o) for o in offers)
-    plural = "s" if len(offers) != 1 else ""
+    findes = sum(1 for o in offers if o.weekend)
+    resumen = (
+        f"{findes} escapada{'s' if findes != 1 else ''} de fin de semana"
+        if findes
+        else "por debajo de su precio habitual"
+    )
     return f"""<!doctype html>
-<html><body style="margin:0;background:#f6f7f9;padding:24px 12px">
-  <table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
-    <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px">
-      <tr><td style="padding-bottom:18px">
-        <div style="font:700 22px/1.2 -apple-system,Segoe UI,Roboto,sans-serif;color:#0f1115">
-          {len(offers)} chollo{plural} de vuelo
+<html><body style="margin:0;background:{BG};padding:26px 12px">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+   <tr><td align="center">
+    <table width="580" cellpadding="0" cellspacing="0" role="presentation" style="max-width:580px">
+
+      <tr><td style="padding-bottom:22px">
+        <div style="padding-bottom:14px">
+          {_flap("M")}{_flap("A")}{_flap("D")}
+          <span style="font:500 11px {MONO};letter-spacing:.16em;color:{MUTED};
+                       text-transform:uppercase;padding-left:8px">salidas</span>
         </div>
-        <div style="font:400 14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;color:#5c6370;padding-top:4px">
-          Ida y vuelta por debajo de su media historica. Suelen durar horas.
+        <div style="font:400 30px/1.1 {SERIF};color:{INK}">
+          {len(offers)} chollo{'s' if len(offers) != 1 else ''}
+          <span style="color:{AMBER};font-style:italic">desde Madrid</span>
+        </div>
+        <div style="font:400 14px/1.5 {SANS};color:{MUTED};padding-top:8px">
+          {resumen}. Los precios de verdad duran horas, no dias.
         </div>
       </td></tr>
-      {rows}
-      <tr><td style="padding-top:8px;font:400 12px/1.6 sans-serif;color:#8a8f98">
-        TripFinder &middot; <a href="{site_url()}" style="color:#8a8f98">ver todas las ofertas</a>
-        &middot; ajusta umbrales en config/watchlist.yml
+
+      {"".join(_ticket(o) for o in offers)}
+
+      <tr><td style="padding-top:10px;font:400 12px/1.7 {MONO};color:{FAINT}">
+        <a href="{site_url()}" style="color:{MINT};text-decoration:none">ver todo en la web</a>
+        &middot; el aviso solo salta con chollos excepcionales o los domingos
       </td></tr>
+
     </table>
-  </td></tr></table>
+   </td></tr>
+  </table>
 </body></html>"""
 
 
 def render_markdown(offers: list[FlightOffer]) -> str:
     """Version para el aviso via issue de GitHub."""
     lines = [
-        f"**{len(offers)}** vuelos de ida y vuelta por debajo de su media historica.",
+        f"**{len(offers)}** escapadas por debajo de su precio habitual.",
         "",
-        "| Precio | Ruta | Fechas | Descuento | |",
+        "| Precio | Ruta | Fechas | Viaje real | |",
         "| ---: | --- | --- | ---: | --- |",
     ]
     for o in offers:
-        fechas = o.depart_date + (f" → {o.return_date}" if o.return_date else "")
+        fechas = _fecha(o.depart_date) + (f" → {_fecha(o.return_date)}" if o.return_date else "")
         lines.append(
-            f"| **{o.price:.0f} €** | {o.origin_name or o.origin} → "
-            f"{o.destination_name or o.destination} | {fechas} "
-            f"({o.nights or '?'} noches) | −{o.discount_pct:.0f}% | "
+            f"| **{o.price:.0f} €** | {o.origin} → {o.destination_name or o.destination} | "
+            f"{fechas} ({o.nights or '?'}n) | {o.useful_hours:.0f} h | "
             f"[web]({site_url()}/?offer={o.id}) · [reservar]({o.deep_link}) |"
         )
-    lines += ["", "_Precio total ida y vuelta para 1 adulto. Cierra esta issue cuando la hayas visto._"]
+    lines += ["", "_Precio total ida y vuelta para 1 adulto._"]
     return "\n".join(lines)
