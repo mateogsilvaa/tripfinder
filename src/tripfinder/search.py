@@ -80,6 +80,21 @@ def _airport_directory() -> list[dict]:
     from .config import DATA_DIR
     from .util import get_json
 
+    # El listado mundial manda; el de Ryanair queda de reserva.
+    mundial = DATA_DIR / "airports_world.json"
+    if mundial.exists():
+        import json
+
+        try:
+            crudo = json.loads(mundial.read_text(encoding="utf-8"))
+            return [
+                {"code": a["code"], "city": {"name": a["ciudad"]}, "name": a["ciudad"],
+                 "country": {"name": a["pais"]}}
+                for a in crudo
+            ]
+        except (json.JSONDecodeError, KeyError):
+            pass
+
     cache = DATA_DIR / "airports.json"
     if cache.exists():
         import json

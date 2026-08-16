@@ -540,30 +540,75 @@ input[type="range"]::-moz-range-thumb {
   .codes { padding-right: 0; }
 }
 
+@media (max-width: 620px) {
+  .finder-form { gap: 10px; }
+  .finder-form .field, .finder-form .switch, .finder-form .btn { width: 100%; }
+  .finder-form input, .finder-form select, .date-btn {
+    width: 100%; font-size: 16px; /* menos de 16px hace que iOS haga zoom solo */
+  }
+  .finder-form input[type="number"] { width: 100%; }
+  .controls { gap: 10px; }
+  .controls .field, .controls .switch { width: 100%; }
+  .controls input[type="range"] { width: 100%; }
+  .modal-caja { max-height: 92vh; padding: 16px 16px 0; }
+  .meses { grid-template-columns: 1fr; }
+  .cal { max-height: 60vh; }
+  .dias .dia { font-size: 15px; }
+  .panel { width: 100%; }
+  .stats { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 14px 16px; }
+  .stats dd { font-size: 21px; }
+  .foot { flex-direction: column; align-items: flex-start; gap: 6px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
 }
 
-/* --- mapa de destinos ---------------------------------------------------- */
-.map { margin-top: 18px; }
-.mapa {
-  width: 100%; height: auto; display: block;
-  background: radial-gradient(70% 90% at 45% 35%, rgba(255,176,46,.05), transparent 70%);
-  border: 1px solid var(--line); border-radius: var(--radius);
+/* --- selector de destino en ventana -------------------------------------- */
+.modal {
+  position: fixed; inset: 0; z-index: 12; display: flex; align-items: flex-end;
+  justify-content: center; background: rgba(6, 5, 4, 0.75); backdrop-filter: blur(3px);
+  animation: fade 0.25s var(--ease);
 }
-.pin { cursor: pointer; }
-.pin-hit { fill: transparent; }
-.pin-dot { fill: var(--muted); transition: fill .2s, r .2s; }
-.pin text {
-  fill: var(--ink); font: 500 9px "DM Mono", monospace; text-anchor: middle;
-  opacity: 0; transition: opacity .18s; pointer-events: none;
+.modal-caja {
+  width: min(680px, 100%); max-height: 88vh; display: flex; flex-direction: column;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 18px 18px 0 0; padding: 20px 20px 0;
+  animation: sube 0.3s var(--ease);
 }
-.pin:hover .pin-dot { fill: var(--amber); r: 5; }
-.pin:hover text { opacity: 1; }
-.pin.sel .pin-dot { fill: var(--amber); r: 6; }
-.pin.sel text { opacity: 1; fill: var(--amber); }
-.map-hint { margin: 10px 0 0; font: 400 12px "DM Mono", monospace; color: var(--faint); }
+@keyframes sube { from { transform: translateY(24px); opacity: 0; } }
+.modal-head { display: flex; justify-content: space-between; align-items: center; }
+.modal-head h2 { margin: 0; font: 500 22px "Fraunces", Georgia, serif; }
+.modal-head button {
+  background: none; border: 1px solid var(--line); border-radius: 9px;
+  color: var(--muted); font-size: 15px; cursor: pointer; padding: 9px 11px;
+}
+#destSearch {
+  width: 100%; margin: 16px 0 12px; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 10px; padding: 13px 14px;
+  font: 400 16px "Familjen Grotesk", sans-serif;
+}
+.dest-list { overflow-y: auto; padding-bottom: 24px; }
+.pais { border-top: 1px solid var(--line-2); padding: 12px 0; }
+.pais-todo {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  width: 100%; background: none; border: 0; cursor: pointer; text-align: left;
+  color: var(--ink); padding: 6px 4px; border-radius: 8px;
+}
+.pais-todo:hover { background: rgba(255, 176, 46, 0.1); }
+.pais-todo span { font: 500 17px "Fraunces", Georgia, serif; }
+.pais-todo em {
+  font: 400 11px "DM Mono", monospace; color: var(--faint); font-style: normal;
+}
+.ciudades { display: flex; flex-wrap: wrap; gap: 7px; padding: 8px 4px 0; }
+.ciudad {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 99px;
+  color: var(--muted); cursor: pointer; padding: 8px 13px;
+  font: 400 13.5px "Familjen Grotesk", sans-serif;
+}
+.ciudad i { font-style: normal; font-family: "DM Mono", monospace; color: var(--faint); font-size: 11px; }
+.ciudad:hover { border-color: var(--amber); color: var(--ink); }
 
 /* --- calendario de un solo campo ---------------------------------------- */
 .date-btn {

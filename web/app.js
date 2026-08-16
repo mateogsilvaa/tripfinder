@@ -784,63 +784,97 @@ async function toggleSearch(el) {
 init();
 loadSearches();
 
-/* ------------------------------------------------------ mapa de destinos
-   Sin librerias ni tiles: los aeropuertos ya traen coordenadas, asi que se
-   proyectan como puntos sobre un SVG. Encaja con el resto (constelacion
-   ambar sobre negro) y pesa cero. */
-const MAPA = { x0: -19, x1: 42, y0: 72, y1: 27 }; // ventana: Europa + Marruecos
+/* --------------------------------------------------- selector de destino
+   El mapa de puntos quedaba precioso y era inutil: sin costas ni fronteras no
+   se sabe que es cada punto. Para ELEGIR funciona mejor una lista que se
+   busca escribiendo, agrupada por pais y con el pais entero seleccionable. */
+let DESTINOS = null;
 
-function proyecta(lat, lon, w, h) {
-  return [
-    ((lon - MAPA.x0) / (MAPA.x1 - MAPA.x0)) * w,
-    ((MAPA.y0 - lat) / (MAPA.y0 - MAPA.y1)) * h,
-  ];
-}
-
-async function pintarMapa() {
-  const caja = $("#map");
-  if (caja.dataset.listo) return;
-  let aeropuertos;
+async function cargarDestinos() {
+  if (DESTINOS) return DESTINOS;
+  let lista = [];
   try {
-    aeropuertos = await fetchJSON("data/airports.json");
+    lista = await fetchJSON("data/airports_world.json");
   } catch {
-    return; // sin lista no hay mapa, y el campo de texto sigue funcionando
+    return (DESTINOS = []);
   }
-  const W = 900;
-  const H = 560;
-  const puntos = aeropuertos
-    .filter((a) => a.coordinates)
-    .map((a) => {
-      const [x, y] = proyecta(a.coordinates.latitude, a.coordinates.longitude, W, H);
-      const ciudad = (a.city && a.city.name) || a.name;
-      return { x, y, code: a.code, ciudad, pais: (a.country && a.country.name) || "" };
-    })
-    .filter((p) => p.x > 0 && p.x < W && p.y > 0 && p.y < H);
-
-  caja.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" class="mapa" role="group" aria-label="Mapa de destinos">
-      ${puntos
-        .map(
-          (p) => `<g class="pin" data-code="${esc(p.code)}" data-ciudad="${esc(p.ciudad)}"
-                     transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)})">
-                   <circle r="11" class="pin-hit"></circle>
-                   <circle r="3.2" class="pin-dot"></circle>
-                   <text y="-9">${esc(p.ciudad)}</text>
-                 </g>`
-        )
-        .join("")}
-    </svg>
-    <p class="map-hint">Pincha un destino. Cada punto es un aeropuerto con vuelo desde Madrid.</p>`;
-  caja.dataset.listo = "1";
-
-  caja.querySelectorAll(".pin").forEach((g) =>
-    g.addEventListener("click", () => {
-      $("#fDest").value = g.dataset.ciudad;
-      caja.querySelectorAll(".pin.sel").forEach((s) => s.classList.remove("sel"));
-      g.classList.add("sel");
-    })
-  );
+  const porPais = {};
+  lista.forEach((a) => {
+    (porPais[a.pais || "Otros"] ||= []).push({ code: a.code, ciudad: a.ciudad });
+  });
+  DESTINOS = Object.entries(porPais)
+    .map(([pais, aeropuertos]) => ({
+      pais,
+      aeropuertos: aeropuertos.sort((x, y) => x.ciudad.localeCompare(y.ciudad)),
+    }))
+    .sort((a, b) => a.pais.localeCompare(b.pais));
+  return DESTINOS;
 }
+
+function pintarDestinos(filtro = "") {
+  const q = filtro.trim().toLowerCase();
+  const html = (DESTINOS || [])
+    .map((p) => {
+      const coincidePais = p.pais.toLowerCase().includes(q);
+      const aeropuertos = coincidePais
+        ? p.aeropuertos
+        : p.aeropuertos.filter(
+            (a) => a.ciudad.toLowerCase().includes(q) || a.code.toLowerCase() === q
+          );
+      if (!aeropuertos.length) return "";
+      return `
+        <div class="pais">
+          <button type="button" class="pais-todo" data-valor="${esc(p.pais)}">
+            <span>${esc(p.pais)}</span>
+            <em>todo el país · ${p.aeropuertos.length} aeropuertos</em>
+          </button>
+          <div class="ciudades">
+            ${aeropuertos
+              .map(
+                (a) =>
+                  `<button type="button" class="ciudad" data-valor="${esc(a.ciudad)}">
+                     ${esc(a.ciudad)} <i>${esc(a.code)}</i></button>`
+              )
+              .join("")}
+          </div>
+        </div>`;
+    })
+    .join("");
+  $("#destList").innerHTML = html || '<p class="meta">Nada con ese nombre.</p>';
+  $("#destList")
+    .querySelectorAll("[data-valor]")
+    .forEach((b) => b.addEventListener("click", () => elegirDestino(b.dataset.valor)));
+}
+
+function elegirDestino(valor) {
+  $("#fDest").value = valor;
+  $("#destBtn").textContent = valor;
+  cerrarDestinos();
+}
+
+function abrirDestinos() {
+  $("#destModal").hidden = false;
+  document.body.style.overflow = "hidden";
+  cargarDestinos().then(() => {
+    pintarDestinos($("#destSearch").value);
+    $("#destSearch").focus();
+  });
+}
+
+function cerrarDestinos() {
+  $("#destModal").hidden = true;
+  document.body.style.overflow = "";
+}
+
+$("#destBtn").addEventListener("click", abrirDestinos);
+$("#destClose").addEventListener("click", cerrarDestinos);
+$("#destModal").addEventListener("click", (e) => {
+  if (e.target.id === "destModal") cerrarDestinos();
+});
+$("#destSearch").addEventListener("input", (e) => pintarDestinos(e.target.value));
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !$("#destModal").hidden) cerrarDestinos();
+});
 
 /* ---------------------------------------------------------- calendario
    Un solo calendario: el primer clic pone la ida, el segundo la vuelta.
@@ -907,9 +941,6 @@ $("#dateBtn").addEventListener("click", () => {
 const syncOriginal = syncFinder;
 syncFinder = function () {
   syncOriginal();
-  const donde = $("#fWhere").value;
-  $("#map").hidden = donde !== "one";
-  if (donde === "one") pintarMapa();
   if ($("#fWhen").value !== "exact") $("#cal").hidden = true;
 };
 ["#fWhere", "#fWhen"].forEach((s) => $(s).addEventListener("change", syncFinder));
