@@ -1015,10 +1015,10 @@ $("#wDestBtn").addEventListener("click", () => {
 
 const HINTS_W = {
   "any|weekend": "Cualquier destino, cualquier finde: avisa cuando algo baje del tope.",
-  "any|exact": "Cualquier destino, ese día concreto.",
+  "any|exact": "Cualquier destino, para esas fechas exactas.",
   "any|anytime": "Cualquier destino y cualquier fecha del horizonte.",
   "one|weekend": "Ese destino, el finde que sea.",
-  "one|exact": "Ese destino, ese día.",
+  "one|exact": "Ese destino, para esas fechas exactas.",
   "one|anytime": "Ese destino, cualquier día.",
 };
 
@@ -1028,6 +1028,7 @@ function syncWatch() {
   $("#wDestWrap").hidden = donde !== "one";
   $("#wDateWrap").hidden = cuando !== "exact";
   $("#wMonthsWrap").hidden = cuando === "exact";
+  if (cuando !== "exact") $("#wCal").hidden = true;
   $("#watchHint").textContent = HINTS_W[`${donde}|${cuando}`] || "";
 }
 ["#wWhere", "#wWhen"].forEach((s) => $(s).addEventListener("change", syncWatch));
@@ -1038,7 +1039,8 @@ $("#watchForm").addEventListener("submit", async (e) => {
   const donde = $("#wWhere").value;
   const cuando = $("#wWhen").value;
   const dest = donde === "one" ? $("#wDest").value.trim() : "";
-  const fecha = cuando === "exact" ? $("#wDate").value : "";
+  const fecha = cuando === "exact" ? $("#wDepart").value : "";
+  const vuelta = cuando === "exact" ? $("#wReturn").value : "";
   if (donde === "one" && !dest) return;
   if (cuando === "exact" && !fecha) return;
   const etiqueta = (dest || "Donde sea") + (fecha ? ` · ${fecha}` : ` · hasta ${$("#wMax").value} €`);
@@ -1047,6 +1049,7 @@ $("#watchForm").addEventListener("submit", async (e) => {
     dest,
     label: etiqueta,
     depart: fecha,
+    return_date: vuelta,
     max_price: $("#wMax").value,
     months: $("#wMonths").value || "6",
     adults: $("#wAdults").value || "2",
@@ -1119,11 +1122,15 @@ async function cargarWatches() {
 }
 
 /* ---------------------------------------------------------- calendario
-   Un solo calendario: el primer clic pone la ida, el segundo la vuelta.
-   Si el segundo es anterior, se empieza de nuevo desde ahi. */
-let rango = { ida: null, vuelta: null };
+   Un solo calendario reutilizable: el primer clic pone la ida y el segundo la
+   vuelta. Lo usan el buscador y los seguimientos, cada uno con sus campos. */
+const CALS = {
+  buscar: { btn: "#dateBtn", cal: "#cal", ida: "#fDepart", vuelta: "#fReturn", rango: {} },
+  seguir: { btn: "#wDateBtn", cal: "#wCal", ida: "#wDepart", vuelta: "#wReturn", rango: {} },
+};
 
-function pintarCalendario() {
+function pintarCalendario(clave) {
+  const c = CALS[clave];
   const hoy = new Date();
   const meses = [];
   for (let m = 0; m < 12; m++) {
@@ -1138,10 +1145,9 @@ function pintarCalendario() {
         d
       ).padStart(2, "0")}`;
       const pasado = f < new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
-      const esIda = rango.ida === iso;
-      const esVuelta = rango.vuelta === iso;
-      const dentro = rango.ida && rango.vuelta && iso > rango.ida && iso < rango.vuelta;
-      celdas += `<button type="button" class="dia${esIda || esVuelta ? " extremo" : ""}${
+      const extremo = c.rango.ida === iso || c.rango.vuelta === iso;
+      const dentro = c.rango.ida && c.rango.vuelta && iso > c.rango.ida && iso < c.rango.vuelta;
+      celdas += `<button type="button" class="dia${extremo ? " extremo" : ""}${
         dentro ? " dentro" : ""
       }" data-iso="${iso}"${pasado ? " disabled" : ""}>${d}</button>`;
     }
@@ -1152,32 +1158,37 @@ function pintarCalendario() {
         <div class="dias">${celdas}</div>
       </div>`);
   }
-  $("#cal").innerHTML = `<div class="meses">${meses.join("")}</div>`;
-  $("#cal").querySelectorAll(".dia:not([disabled])").forEach((b) =>
-    b.addEventListener("click", () => elegirDia(b.dataset.iso))
-  );
+  $(c.cal).innerHTML = `<div class="meses">${meses.join("")}</div>`;
+  $(c.cal)
+    .querySelectorAll(".dia:not([disabled])")
+    .forEach((b) => b.addEventListener("click", () => elegirDia(clave, b.dataset.iso)));
 }
 
-function elegirDia(iso) {
-  if (!rango.ida || rango.vuelta || iso < rango.ida) {
-    rango = { ida: iso, vuelta: null };
+function elegirDia(clave, iso) {
+  const c = CALS[clave];
+  if (!c.rango.ida || c.rango.vuelta || iso < c.rango.ida) {
+    c.rango = { ida: iso, vuelta: null };
   } else {
-    rango.vuelta = iso;
+    c.rango.vuelta = iso;
   }
-  $("#fDepart").value = rango.ida || "";
-  $("#fReturn").value = rango.vuelta || "";
-  $("#dateBtn").textContent = rango.ida
-    ? `${fmtDate(rango.ida, true)}${rango.vuelta ? ` → ${fmtDate(rango.vuelta, true)}` : " → elige la vuelta"}`
+  $(c.ida).value = c.rango.ida || "";
+  $(c.vuelta).value = c.rango.vuelta || "";
+  $(c.btn).textContent = c.rango.ida
+    ? `${fmtDate(c.rango.ida, true)}${
+        c.rango.vuelta ? ` → ${fmtDate(c.rango.vuelta, true)}` : " → elige la vuelta"
+      }`
     : "Elegir en el calendario";
-  pintarCalendario();
-  if (rango.ida && rango.vuelta) setTimeout(() => ($("#cal").hidden = true), 250);
+  pintarCalendario(clave);
+  if (c.rango.ida && c.rango.vuelta) setTimeout(() => ($(c.cal).hidden = true), 250);
 }
 
-$("#dateBtn").addEventListener("click", () => {
-  const c = $("#cal");
-  c.hidden = !c.hidden;
-  if (!c.hidden) pintarCalendario();
-});
+Object.entries(CALS).forEach(([clave, c]) =>
+  $(c.btn).addEventListener("click", () => {
+    const caja = $(c.cal);
+    caja.hidden = !caja.hidden;
+    if (!caja.hidden) pintarCalendario(clave);
+  })
+);
 
 /* El mapa solo aparece cuando eliges un sitio concreto. */
 const syncOriginal = syncFinder;
