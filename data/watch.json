@@ -14,7 +14,7 @@
       "max_price": 80.0,
       "created": "2026-08-16",
       "best_price": null,
-      "last_checked": "",
+      "last_checked": "2026-08-16",
       "active": true
     },
     {
@@ -30,7 +30,7 @@
       "max_price": 40.0,
       "created": "2026-08-16",
       "best_price": null,
-      "last_checked": "",
+      "last_checked": "2026-08-16",
       "active": true
     },
     {
@@ -46,7 +46,7 @@
       "max_price": 80.0,
       "created": "2026-08-16",
       "best_price": null,
-      "last_checked": "",
+      "last_checked": "2026-08-16",
       "active": true
     },
     {
@@ -62,7 +62,7 @@
       "max_price": 120.0,
       "created": "2026-08-16",
       "best_price": null,
-      "last_checked": "",
+      "last_checked": "2026-08-16",
       "active": true
     }
   ]
