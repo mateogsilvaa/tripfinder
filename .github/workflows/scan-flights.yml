@@ -59,6 +59,9 @@ jobs:
           python -m tripfinder scan-flights ${{ inputs.no_email && '--no-email' || '' }}
 
       - name: Revisar seguimientos
+        # Nunca puede tumbar el scan: los vuelos ya estan buscados y tienen que
+        # publicarse aunque el parte de seguimientos falle.
+        continue-on-error: true
         # Los encargos del usuario: destinos o fechas concretas que vigila a
         # diario y por los que avisa solo cuando aparece algo que cumple.
         env:

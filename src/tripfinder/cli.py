@@ -637,8 +637,10 @@ def cmd_watch(args: argparse.Namespace) -> int:
     if caducados:
         print(f"{caducados} seguimientos caducados retirados.")
 
-    hallazgos = W.revisar_todos(cfg, store.load_history())
-    print(f"\n{len(hallazgos)} seguimientos con novedades")
+    # revisar_todos devuelve el estado de TODOS: los que traen algo y los que no.
+    estado = W.revisar_todos(cfg, store.load_history())
+    hallazgos = [(w, ofertas) for w, ofertas in estado if ofertas]
+    print(f"\n{len(estado)} seguimientos revisados, {len(hallazgos)} con novedades")
     for w, ofertas in hallazgos:
         print(f"  {w.label or w.id}:")
         for o in ofertas:
