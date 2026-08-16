@@ -99,6 +99,45 @@ def _airport_directory() -> list[dict]:
     return datos
 
 
+def resolve_many(texto: str, cfg: Config) -> list[tuple[str, str, str]]:
+    """Como resolve_destination pero admite un pais entero.
+
+    Escribir "Alemania" antes reventaba la busqueda; ahora devuelve todos los
+    aeropuertos de ese pais y se buscan todos.
+    """
+    objetivo = (texto or "").strip().lower()
+    paises = []
+    for a in _airport_directory():
+        pais = ((a.get("country") or {}).get("name") or "").lower()
+        if pais and pais == objetivo:
+            paises.append(
+                (
+                    a["code"],
+                    (a.get("city") or {}).get("name") or a.get("name", a["code"]),
+                    (a.get("country") or {}).get("name", ""),
+                )
+            )
+    if paises:
+        log.info("'%s' es un pais: %d aeropuertos", texto, len(paises))
+        return paises[:12]
+    return [resolve_destination(texto, cfg)]
+
+
+def sugerencias(texto: str, limite: int = 6) -> list[str]:
+    """Nombres parecidos, para cuando no se reconoce lo que se ha escrito."""
+    objetivo = (texto or "").strip().lower()[:4]
+    if not objetivo:
+        return []
+    vistos = []
+    for a in _airport_directory():
+        ciudad = (a.get("city") or {}).get("name") or a.get("name", "")
+        if ciudad.lower().startswith(objetivo) and ciudad not in vistos:
+            vistos.append(f"{ciudad} ({a['code']})")
+        if len(vistos) >= limite:
+            break
+    return vistos
+
+
 def resolve_destination(texto: str, cfg: Config) -> tuple[str, str, str]:
     """De lo que escriba el usuario saca (IATA, ciudad, pais).
 
@@ -132,9 +171,11 @@ def resolve_destination(texto: str, cfg: Config) -> tuple[str, str, str]:
             (a.get("country") or {}).get("name", ""),
         )
 
+    pistas = sugerencias(texto)
+    extra = f" Quiza querias: {', '.join(pistas)}." if pistas else ""
     raise ValueError(
-        f"No se reconoce el destino {texto!r}. Prueba con el codigo IATA (FCO) "
-        f"o con el nombre de la ciudad."
+        f"No se reconoce el destino {texto!r}. Usa el codigo IATA (FCO), el nombre "
+        f"de la ciudad o el de un pais entero.{extra}"
     )
 
 
@@ -181,11 +222,15 @@ def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, 
 def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int = 45) -> SearchResult:
     # Sin destino se busca a todas partes: "un finde donde sea, por menos de X".
     if req.destination.strip():
-        iata, ciudad, pais = resolve_destination(req.destination, cfg)
-        destinos: Any = [iata]
+        encontrados_dest = resolve_many(req.destination, cfg)
+        destinos: Any = [d[0] for d in encontrados_dest]
+        iata = destinos[0] if len(destinos) == 1 else ""
+        ciudad, pais = (encontrados_dest[0][1], encontrados_dest[0][2]) if iata else ("", "")
+        nombres_dest = {d[0]: (d[1], d[2]) for d in encontrados_dest}
     else:
         iata, ciudad, pais = "", "", ""
         destinos = "any"
+        nombres_dest = {}
 
     route = Route(
         origin=req.origin,
@@ -241,10 +286,11 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
             )
         try:
             for oferta in ryanair._paginate(params, route, 60):  # noqa: SLF001
-                if iata and oferta.destination != iata:
+                if nombres_dest and oferta.destination not in nombres_dest:
                     continue
-                oferta.destination_name = oferta.destination_name or ciudad or oferta.destination
-                oferta.destination_country = oferta.destination_country or pais
+                n, pa = nombres_dest.get(oferta.destination, (ciudad, pais))
+                oferta.destination_name = oferta.destination_name or n or oferta.destination
+                oferta.destination_country = oferta.destination_country or pa
                 anterior = encontradas.get(oferta.id)
                 if anterior is None or oferta.price < anterior.price:
                     encontradas[oferta.id] = oferta
@@ -255,11 +301,16 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
     # Ryanair no vuela a todo ni es siempre el mas barato: Wizz, Iberia o Vueling
     # solo aparecen si se pregunta a Google, y antes la busqueda no lo hacia.
     if google is not None:
-        if iata:
-            candidatas = [(iata, s, r) for s, r in fechas[:10]]
-            nombres = {iata: (ciudad, pais)}
+        if nombres_dest:
+            # Google mira las mismas fechas que Ryanair (hasta 12 ventanas por
+            # destino): si solo se le dieran 6, la lista final volveria a ser
+            # casi toda de Ryanair por cobertura, no por precio.
+            candidatas = [
+                (d, s, r) for d in list(nombres_dest)[:4] for s, r in fechas[:12]
+            ]
+            nombres = dict(nombres_dest)
         else:
-            mejores = sorted(encontradas.values(), key=lambda o: o.price)[:8]
+            mejores = sorted(encontradas.values(), key=lambda o: o.price)[:14]
             candidatas = [
                 (o.destination, date.fromisoformat(o.depart_date), date.fromisoformat(o.return_date))
                 for o in mejores

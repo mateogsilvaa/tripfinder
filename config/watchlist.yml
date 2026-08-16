@@ -125,6 +125,24 @@ city_names:
   LCA: [Larnaca, Chipre]
   RAK: [Marrakech, Marruecos]
   FNC: [Funchal, Portugal]
+  # Aeropuertos fuera de la red de Ryanair: aqui solo llega Google Flights
+  STR: [Stuttgart, Alemania]
+  DUS: [Dusseldorf, Alemania]
+  HAJ: [Hannover, Alemania]
+  LEJ: [Leipzig, Alemania]
+  GVA: [Ginebra, Suiza]
+  LYS: [Lyon, Francia]
+  NCE: [Niza, Francia]
+  TLS: [Toulouse, Francia]
+  LIN: [Milan-Linate, Italia]
+  TRN: [Turin, Italia]
+  GOA: [Genova, Italia]
+  HEL: [Helsinki, Finlandia]
+  OSL: [Oslo, Noruega]
+  ARN: [Estocolmo, Suecia]
+  TLL: [Tallin, Estonia]
+  RIX: [Riga, Letonia]
+  IST: [Estambul, Turquia]
 
 routes:
   - origin: MAD

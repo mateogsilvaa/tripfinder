@@ -544,3 +544,54 @@ input[type="range"]::-moz-range-thumb {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
 }
+
+/* --- mapa de destinos ---------------------------------------------------- */
+.map { margin-top: 18px; }
+.mapa {
+  width: 100%; height: auto; display: block;
+  background: radial-gradient(70% 90% at 45% 35%, rgba(255,176,46,.05), transparent 70%);
+  border: 1px solid var(--line); border-radius: var(--radius);
+}
+.pin { cursor: pointer; }
+.pin-hit { fill: transparent; }
+.pin-dot { fill: var(--muted); transition: fill .2s, r .2s; }
+.pin text {
+  fill: var(--ink); font: 500 9px "DM Mono", monospace; text-anchor: middle;
+  opacity: 0; transition: opacity .18s; pointer-events: none;
+}
+.pin:hover .pin-dot { fill: var(--amber); r: 5; }
+.pin:hover text { opacity: 1; }
+.pin.sel .pin-dot { fill: var(--amber); r: 6; }
+.pin.sel text { opacity: 1; fill: var(--amber); }
+.map-hint { margin: 10px 0 0; font: 400 12px "DM Mono", monospace; color: var(--faint); }
+
+/* --- calendario de un solo campo ---------------------------------------- */
+.date-btn {
+  background: var(--bg-2); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 14px; cursor: pointer; text-align: left;
+  font: 400 15px "Familjen Grotesk", sans-serif; width: 100%;
+}
+.date-btn:hover { border-color: rgba(255,176,46,.45); }
+.cal {
+  margin-top: 16px; border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px; background: var(--bg-2);
+  max-height: 340px; overflow-y: auto;
+}
+.meses { display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.mes h4 {
+  margin: 0 0 10px; font: 500 13px "DM Mono", monospace; text-transform: uppercase;
+  letter-spacing: .12em; color: var(--amber);
+}
+.semana, .dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.semana i {
+  font: 400 10px "DM Mono", monospace; color: var(--faint);
+  text-align: center; font-style: normal; padding-bottom: 4px;
+}
+.dias .dia, .dias span {
+  aspect-ratio: 1; display: grid; place-items: center; border: 0; border-radius: 7px;
+  background: none; color: var(--ink); font: 400 13px "DM Mono", monospace; cursor: pointer;
+}
+.dias .dia:hover:not([disabled]) { background: rgba(255,176,46,.16); }
+.dias .dia[disabled] { color: var(--faint); opacity: .35; cursor: default; }
+.dias .dia.extremo { background: var(--amber); color: #1a1206; font-weight: 500; }
+.dias .dia.dentro { background: rgba(255,176,46,.14); }

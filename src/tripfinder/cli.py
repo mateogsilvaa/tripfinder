@@ -443,8 +443,22 @@ def cmd_search(args: argparse.Namespace) -> int:
     try:
         resultado = run_search(req, cfg, store.load_history())
     except ValueError as exc:
-        log.error("%s", exc)
-        return 1
+        # Un destino que no se reconoce es un aviso para el usuario, no un
+        # fallo del sistema: se guarda con el motivo y la web lo enseña.
+        log.warning("%s", exc)
+        store.save_search(
+            {
+                "slug": req.slug,
+                "label": req.label or args.dest,
+                "request": req.to_dict(),
+                "generated_at": date.today().isoformat(),
+                "errors": [str(exc)],
+                "count": 0,
+                "offers": [],
+            }
+        )
+        print(f"\n{exc}")
+        return 0
 
     print(f"\n{req.label or req.destination}: {len(resultado.offers)} viajes")
     for o in resultado.offers[:12]:

@@ -661,9 +661,9 @@ const HINTS = {
 function syncFinder() {
   const donde = $("#fWhere").value;
   const cuando = $("#fWhen").value;
+  // Ida y vuelta comparten ya un solo control, asi que #returnWrap no existe.
   $("#destWrap").hidden = donde !== "one";
   $("#departWrap").hidden = cuando !== "exact";
-  $("#returnWrap").hidden = cuando !== "exact";
   $("#nightsWrap").hidden = cuando === "exact";
   $("#monthsWrap").hidden = cuando === "exact";
   $("#finderHint").textContent = HINTS[`${donde}|${cuando}`] || "";
@@ -783,3 +783,134 @@ async function toggleSearch(el) {
 
 init();
 loadSearches();
+
+/* ------------------------------------------------------ mapa de destinos
+   Sin librerias ni tiles: los aeropuertos ya traen coordenadas, asi que se
+   proyectan como puntos sobre un SVG. Encaja con el resto (constelacion
+   ambar sobre negro) y pesa cero. */
+const MAPA = { x0: -19, x1: 42, y0: 72, y1: 27 }; // ventana: Europa + Marruecos
+
+function proyecta(lat, lon, w, h) {
+  return [
+    ((lon - MAPA.x0) / (MAPA.x1 - MAPA.x0)) * w,
+    ((MAPA.y0 - lat) / (MAPA.y0 - MAPA.y1)) * h,
+  ];
+}
+
+async function pintarMapa() {
+  const caja = $("#map");
+  if (caja.dataset.listo) return;
+  let aeropuertos;
+  try {
+    aeropuertos = await fetchJSON("data/airports.json");
+  } catch {
+    return; // sin lista no hay mapa, y el campo de texto sigue funcionando
+  }
+  const W = 900;
+  const H = 560;
+  const puntos = aeropuertos
+    .filter((a) => a.coordinates)
+    .map((a) => {
+      const [x, y] = proyecta(a.coordinates.latitude, a.coordinates.longitude, W, H);
+      const ciudad = (a.city && a.city.name) || a.name;
+      return { x, y, code: a.code, ciudad, pais: (a.country && a.country.name) || "" };
+    })
+    .filter((p) => p.x > 0 && p.x < W && p.y > 0 && p.y < H);
+
+  caja.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" class="mapa" role="group" aria-label="Mapa de destinos">
+      ${puntos
+        .map(
+          (p) => `<g class="pin" data-code="${esc(p.code)}" data-ciudad="${esc(p.ciudad)}"
+                     transform="translate(${p.x.toFixed(1)},${p.y.toFixed(1)})">
+                   <circle r="11" class="pin-hit"></circle>
+                   <circle r="3.2" class="pin-dot"></circle>
+                   <text y="-9">${esc(p.ciudad)}</text>
+                 </g>`
+        )
+        .join("")}
+    </svg>
+    <p class="map-hint">Pincha un destino. Cada punto es un aeropuerto con vuelo desde Madrid.</p>`;
+  caja.dataset.listo = "1";
+
+  caja.querySelectorAll(".pin").forEach((g) =>
+    g.addEventListener("click", () => {
+      $("#fDest").value = g.dataset.ciudad;
+      caja.querySelectorAll(".pin.sel").forEach((s) => s.classList.remove("sel"));
+      g.classList.add("sel");
+    })
+  );
+}
+
+/* ---------------------------------------------------------- calendario
+   Un solo calendario: el primer clic pone la ida, el segundo la vuelta.
+   Si el segundo es anterior, se empieza de nuevo desde ahi. */
+let rango = { ida: null, vuelta: null };
+
+function pintarCalendario() {
+  const hoy = new Date();
+  const meses = [];
+  for (let m = 0; m < 12; m++) {
+    const base = new Date(hoy.getFullYear(), hoy.getMonth() + m, 1);
+    const primero = (base.getDay() + 6) % 7; // lunes primero
+    const dias = new Date(base.getFullYear(), base.getMonth() + 1, 0).getDate();
+    let celdas = "";
+    for (let i = 0; i < primero; i++) celdas += "<span></span>";
+    for (let d = 1; d <= dias; d++) {
+      const f = new Date(base.getFullYear(), base.getMonth(), d);
+      const iso = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}-${String(
+        d
+      ).padStart(2, "0")}`;
+      const pasado = f < new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+      const esIda = rango.ida === iso;
+      const esVuelta = rango.vuelta === iso;
+      const dentro = rango.ida && rango.vuelta && iso > rango.ida && iso < rango.vuelta;
+      celdas += `<button type="button" class="dia${esIda || esVuelta ? " extremo" : ""}${
+        dentro ? " dentro" : ""
+      }" data-iso="${iso}"${pasado ? " disabled" : ""}>${d}</button>`;
+    }
+    meses.push(`
+      <div class="mes">
+        <h4>${MONTHS[base.getMonth()]} ${base.getFullYear()}</h4>
+        <div class="semana"><i>L</i><i>M</i><i>X</i><i>J</i><i>V</i><i>S</i><i>D</i></div>
+        <div class="dias">${celdas}</div>
+      </div>`);
+  }
+  $("#cal").innerHTML = `<div class="meses">${meses.join("")}</div>`;
+  $("#cal").querySelectorAll(".dia:not([disabled])").forEach((b) =>
+    b.addEventListener("click", () => elegirDia(b.dataset.iso))
+  );
+}
+
+function elegirDia(iso) {
+  if (!rango.ida || rango.vuelta || iso < rango.ida) {
+    rango = { ida: iso, vuelta: null };
+  } else {
+    rango.vuelta = iso;
+  }
+  $("#fDepart").value = rango.ida || "";
+  $("#fReturn").value = rango.vuelta || "";
+  $("#dateBtn").textContent = rango.ida
+    ? `${fmtDate(rango.ida, true)}${rango.vuelta ? ` → ${fmtDate(rango.vuelta, true)}` : " → elige la vuelta"}`
+    : "Elegir en el calendario";
+  pintarCalendario();
+  if (rango.ida && rango.vuelta) setTimeout(() => ($("#cal").hidden = true), 250);
+}
+
+$("#dateBtn").addEventListener("click", () => {
+  const c = $("#cal");
+  c.hidden = !c.hidden;
+  if (!c.hidden) pintarCalendario();
+});
+
+/* El mapa solo aparece cuando eliges un sitio concreto. */
+const syncOriginal = syncFinder;
+syncFinder = function () {
+  syncOriginal();
+  const donde = $("#fWhere").value;
+  $("#map").hidden = donde !== "one";
+  if (donde === "one") pintarMapa();
+  if ($("#fWhen").value !== "exact") $("#cal").hidden = true;
+};
+["#fWhere", "#fWhen"].forEach((s) => $(s).addEventListener("change", syncFinder));
+syncFinder();
