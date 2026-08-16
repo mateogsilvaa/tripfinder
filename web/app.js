@@ -36,6 +36,59 @@ const fetchJSON = (path) =>
 
 let OFFERS = [];
 
+/* --------------------------------------------------------------- disparador
+   Para lanzar un scraper hace falta que corra algo fuera del navegador. En vez
+   de abrir una issue (que era un rodeo horrible), la web llama directamente a
+   la API de GitHub con un token que se guarda SOLO en este navegador
+   (localStorage) y no viaja a ningun sitio que no sea api.github.com. */
+const TOKEN_KEY = "tf_token";
+const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+
+async function dispatch(evento, payload) {
+  const token = getToken();
+  if (!token) return { ok: false, reason: "sin-token" };
+  const r = await fetch(`https://api.github.com/repos/${REPO}/dispatches`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ event_type: evento, client_payload: payload }),
+  });
+  if (r.status === 204) return { ok: true };
+  if (r.status === 401 || r.status === 403) {
+    localStorage.removeItem(TOKEN_KEY);
+    return { ok: false, reason: "token-invalido" };
+  }
+  return { ok: false, reason: `error ${r.status}` };
+}
+
+function tokenBox(alTerminar) {
+  const nuevo = `https://github.com/settings/personal-access-tokens/new`;
+  return {
+    html: `
+      <div class="token-box">
+        <strong>Una sola vez:</strong> pega aquí un token de GitHub para que la web
+        pueda lanzar los scrapers sola, sin abrir issues.
+        <a href="${nuevo}" target="_blank" rel="noopener">Crear token</a>
+        (fine-grained, solo este repo, permiso <em>Contents: Read and write</em>).
+        <input type="password" id="tokenInput" placeholder="github_pat_…" autocomplete="off">
+        <button class="btn ghost small" id="tokenSave">Guardar en este navegador</button>
+      </div>`,
+    wire: () => {
+      const b = document.getElementById("tokenSave");
+      if (!b) return;
+      b.addEventListener("click", () => {
+        const v = document.getElementById("tokenInput").value.trim();
+        if (!v) return;
+        localStorage.setItem(TOKEN_KEY, v);
+        alTerminar();
+      });
+    },
+  };
+}
+
 /* ------------------------------------------------------------------ ofertas */
 async function init() {
   let payload;
@@ -324,10 +377,30 @@ function askForSearch(offer, aviso = "") {
       <button class="btn primary" id="launch">Buscar alojamiento</button>
     </div>`;
 
-  $("#launch").addEventListener("click", () => {
-    const adultos = Math.min(8, Math.max(1, Number($("#party").value) || 2));
+  $("#launch").addEventListener("click", async () => {
     // El precio del alojamiento depende de cuántos vais, así que el número
     // viaja en la petición: buscar para 2 y reservar para 4 no vale de nada.
+    const adultos = Math.min(8, Math.max(1, Number($("#party").value) || 2));
+    const r = await dispatch("stay", {
+      offer_id: offer.id,
+      city: offer.destination_name || offer.destination,
+      country: offer.destination_country || "",
+      iata: offer.destination,
+      checkin: offer.depart_date,
+      checkout: offer.return_date || "",
+      adults: String(adultos),
+    });
+    if (r.ok) {
+      startPolling(offer.id);
+      return;
+    }
+    if (r.reason === "sin-token" || r.reason === "token-invalido") {
+      const caja = tokenBox(() => askForSearch(offer));
+      $("#panelBody").insertAdjacentHTML("beforeend", caja.html);
+      caja.wire();
+      return;
+    }
+    // Ultimo recurso: la issue de siempre.
     window.open(issueURL(offer, adultos), "_blank", "noopener");
     startPolling(offer.id);
   });
@@ -430,7 +503,7 @@ function searchIssueURL(f) {
   );
 }
 
-$("#finderForm").addEventListener("submit", (e) => {
+$("#finderForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const f = {
     dest: $("#fDest").value.trim(),
@@ -439,9 +512,31 @@ $("#finderForm").addEventListener("submit", (e) => {
     months: Number($("#fMonths").value) || 12,
     adults: Number($("#fAdults").value) || 2,
     weekend: $("#fWeekend").checked,
+    depart: $("#fDepart").value,
+    return_date: $("#fReturn").value,
   };
   if (!f.dest) return;
-  window.open(searchIssueURL(f), "_blank", "noopener");
+
+  const r = await dispatch("search", {
+    dest: f.dest,
+    label: f.depart ? `${f.dest} · ${f.depart}` : `${f.dest} · hasta ${f.max} €`,
+    max_price: String(f.max),
+    nights: f.nights,
+    months: String(f.months),
+    adults: String(f.adults),
+    weekend: f.weekend ? "si" : "no",
+    depart: f.depart || "",
+    return_date: f.return_date || "",
+  });
+  if (!r.ok) {
+    if (r.reason === "sin-token" || r.reason === "token-invalido") {
+      const caja = tokenBox(() => $("#finderForm").requestSubmit());
+      $("#searches").innerHTML = caja.html;
+      caja.wire();
+      return;
+    }
+    window.open(searchIssueURL(f), "_blank", "noopener");
+  }
   $("#searches").insertAdjacentHTML(
     "afterbegin",
     `<div class="saved"><b>${esc(f.dest)}</b>

@@ -403,6 +403,8 @@ def cmd_search(args: argparse.Namespace) -> int:
         months=args.months,
         weekend_only=not args.any_day,
         adults=args.adults or cfg.party_size,
+        depart=args.depart or "",
+        return_date=getattr(args, "return") or "",
     )
 
     try:
@@ -519,6 +521,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--nights", help="2, o un rango como 2-4")
     b.add_argument("--months", type=int, default=12, help="Hasta cuantos meses buscar")
     b.add_argument("--any-day", action="store_true", help="No limitarse a fines de semana")
+    b.add_argument("--depart", help="Fecha exacta de ida (YYYY-MM-DD)")
+    b.add_argument("--return", dest="return", help="Fecha exacta de vuelta (YYYY-MM-DD)")
     b.add_argument("--adults", type=int)
     b.add_argument("--summary-out")
     b.add_argument("--dry-run", action="store_true")

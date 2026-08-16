@@ -34,6 +34,8 @@ class SearchRequest:
     weekend_only: bool = True
     adults: int = 2
     origin: str = "MAD"
+    depart: str = ""  # fecha exacta de ida (ISO); si esta, manda sobre todo lo demas
+    return_date: str = ""
 
     @property
     def slug(self) -> str:
@@ -66,11 +68,42 @@ class SearchResult:
         }
 
 
+AIRPORTS_URL = "https://www.ryanair.com/api/views/locate/5/airports/es/active"
+
+
+def _airport_directory() -> list[dict]:
+    """Todos los aeropuertos con nombre en español, cacheados en disco.
+
+    Sirve para que el buscador acepte "Palermo" o "Cracovia" sin tener que
+    mantener a mano una lista de ciudades en el YAML.
+    """
+    from .config import DATA_DIR
+    from .util import get_json
+
+    cache = DATA_DIR / "airports.json"
+    if cache.exists():
+        import json
+
+        try:
+            return json.loads(cache.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            pass
+    try:
+        datos = get_json(AIRPORTS_URL, throttle_key="ryanair", min_interval=1)
+    except Exception as exc:  # noqa: BLE001 - sin lista se sigue con city_names
+        log.warning("No se pudo bajar la lista de aeropuertos: %s", exc)
+        return []
+    import json
+
+    cache.write_text(json.dumps(datos, ensure_ascii=False), encoding="utf-8")
+    return datos
+
+
 def resolve_destination(texto: str, cfg: Config) -> tuple[str, str, str]:
     """De lo que escriba el usuario saca (IATA, ciudad, pais).
 
-    Acepta el codigo directamente o el nombre de la ciudad tal y como aparece
-    en `city_names`, para no obligar a nadie a saberse los IATA.
+    Acepta el codigo IATA, un nombre de `city_names` o el nombre de cualquier
+    aeropuerto o ciudad de la red, para no obligar a nadie a saberse los codigos.
     """
     texto = (texto or "").strip()
     if re.fullmatch(r"[A-Za-z]{3}", texto):
@@ -82,9 +115,26 @@ def resolve_destination(texto: str, cfg: Config) -> tuple[str, str, str]:
     for iata, (ciudad, pais) in cfg.city_names.items():
         if ciudad.lower() == objetivo or objetivo in ciudad.lower():
             return iata, ciudad, pais
+
+    candidatos = []
+    for a in _airport_directory():
+        nombre = (a.get("name") or "").lower()
+        ciudad = ((a.get("city") or {}).get("name") or "").lower()
+        if objetivo in (nombre, ciudad):
+            candidatos.insert(0, a)  # coincidencia exacta primero
+        elif objetivo in nombre or objetivo in ciudad:
+            candidatos.append(a)
+    if candidatos:
+        a = candidatos[0]
+        return (
+            a["code"],
+            (a.get("city") or {}).get("name") or a.get("name", a["code"]),
+            (a.get("country") or {}).get("name", ""),
+        )
+
     raise ValueError(
-        f"No se reconoce el destino {texto!r}. Usa el codigo IATA (FCO) o "
-        f"anadelo a city_names en config/watchlist.yml."
+        f"No se reconoce el destino {texto!r}. Prueba con el codigo IATA (FCO) "
+        f"o con el nombre de la ciudad."
     )
 
 
@@ -92,6 +142,19 @@ def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, 
     """Fechas a probar: los findes del horizonte, o el dia 1 y 15 de cada mes."""
     hoy = date.today()
     fin = hoy + timedelta(days=int(req.months * 30.4))
+
+    # Fechas exactas: si el usuario ya sabe cuando viaja, no hay nada que barrer.
+    if req.depart:
+        try:
+            ida = date.fromisoformat(req.depart)
+            vuelta = (
+                date.fromisoformat(req.return_date)
+                if req.return_date
+                else ida + timedelta(days=req.nights_min)
+            )
+            return [(ida, vuelta)]
+        except ValueError:
+            log.warning("Fechas exactas invalidas (%s / %s), se ignoran", req.depart, req.return_date)
 
     if req.weekend_only:
         salida = int(weekend_cfg.get("outbound_weekday", 4))

@@ -5,6 +5,10 @@ name: Buscar alojamiento (bajo demanda)
 # issue publica y no queremos que un tercero consuma minutos de Actions.
 
 on:
+  # La web dispara esto directamente (sin crear ninguna issue). El trigger por
+  # issue se queda como plan B por si algun dia no hay token en el navegador.
+  repository_dispatch:
+    types: [stay]
   issues:
     types: [opened, labeled]
 
@@ -20,8 +24,9 @@ concurrency:
 jobs:
   stays:
     if: >
-      github.event.issue.user.login == github.repository_owner &&
-      startsWith(github.event.issue.title, '[stay] ')
+      github.event_name == 'repository_dispatch' ||
+      (github.event.issue.user.login == github.repository_owner &&
+       startsWith(github.event.issue.title, '[stay] '))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,12 +38,30 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Extraer datos de la issue
+      - name: Extraer los datos de la peticion
         id: parse
         env:
+          EVENT: ${{ github.event_name }}
           TITLE: ${{ github.event.issue.title }}
           BODY: ${{ github.event.issue.body }}
+          P_OFFER: ${{ github.event.client_payload.offer_id }}
+          P_CITY: ${{ github.event.client_payload.city }}
+          P_COUNTRY: ${{ github.event.client_payload.country }}
+          P_IATA: ${{ github.event.client_payload.iata }}
+          P_CHECKIN: ${{ github.event.client_payload.checkin }}
+          P_CHECKOUT: ${{ github.event.client_payload.checkout }}
+          P_ADULTS: ${{ github.event.client_payload.adults }}
         run: |
+          # La web dispara repository_dispatch con los datos ya estructurados;
+          # el camino de la issue se queda de reserva.
+          if [ "$EVENT" = "repository_dispatch" ]; then
+            {
+              echo "offer_id=$P_OFFER"; echo "city=$P_CITY"; echo "country=$P_COUNTRY"
+              echo "iata=$P_IATA"; echo "checkin=$P_CHECKIN"; echo "checkout=$P_CHECKOUT"
+              echo "adults=$P_ADULTS"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           offer_id="${TITLE#\[stay\] }"
           echo "offer_id=${offer_id}" >> "$GITHUB_OUTPUT"
           # Campos opcionales del bloque yaml del cuerpo, por si la oferta ya rotó de offers.json
@@ -96,6 +119,7 @@ jobs:
         run: gh workflow run pages.yml --ref main
 
       - name: Comentar y cerrar la issue
+        if: github.event_name == 'issues'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -104,7 +128,7 @@ jobs:
             --comment "Resultados publicados en la web (tarda ~1 min en desplegarse)."
 
       - name: Avisar si algo fallo
-        if: failure()
+        if: failure() && github.event_name == 'issues'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

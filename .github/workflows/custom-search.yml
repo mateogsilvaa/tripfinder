@@ -4,6 +4,8 @@ name: Busqueda personalizada
 # Igual que el alojamiento: la web es estatica, asi que la issue es la cola.
 
 on:
+  repository_dispatch:
+    types: [search]
   issues:
     types: [opened, labeled]
 
@@ -19,8 +21,9 @@ concurrency:
 jobs:
   buscar:
     if: >
-      github.event.issue.user.login == github.repository_owner &&
-      startsWith(github.event.issue.title, '[buscar] ')
+      github.event_name == 'repository_dispatch' ||
+      (github.event.issue.user.login == github.repository_owner &&
+       startsWith(github.event.issue.title, '[buscar] '))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,14 +35,33 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Leer los parametros de la issue
+      - name: Leer los parametros
         id: parse
         env:
+          EVENT: ${{ github.event_name }}
           TITLE: ${{ github.event.issue.title }}
           BODY: ${{ github.event.issue.body }}
+          P_DEST: ${{ github.event.client_payload.dest }}
+          P_LABEL: ${{ github.event.client_payload.label }}
+          P_MAX: ${{ github.event.client_payload.max_price }}
+          P_NIGHTS: ${{ github.event.client_payload.nights }}
+          P_MONTHS: ${{ github.event.client_payload.months }}
+          P_WEEKEND: ${{ github.event.client_payload.weekend }}
+          P_ADULTS: ${{ github.event.client_payload.adults }}
+          P_DEPART: ${{ github.event.client_payload.depart }}
+          P_RETURN: ${{ github.event.client_payload.return_date }}
         run: |
+          # Igual que en el alojamiento: la web manda los datos ya estructurados.
+          if [ "$EVENT" = "repository_dispatch" ]; then
+            {
+              echo "dest=$P_DEST"; echo "label=$P_LABEL"; echo "max_price=$P_MAX"
+              echo "nights=$P_NIGHTS"; echo "months=$P_MONTHS"; echo "weekend=$P_WEEKEND"
+              echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
+            } >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           echo "label=${TITLE#\[buscar\] }" >> "$GITHUB_OUTPUT"
-          for key in dest max_price nights months weekend adults; do
+          for key in dest max_price nights months weekend adults depart return_date; do
             value=$(printf '%s' "$BODY" | grep -m1 "^${key}:" | cut -d' ' -f2- | tr -d '\r')
             echo "${key}=${value}" >> "$GITHUB_OUTPUT"
           done
@@ -55,12 +77,16 @@ jobs:
           MONTHS: ${{ steps.parse.outputs.months }}
           WEEKEND: ${{ steps.parse.outputs.weekend }}
           ADULTS: ${{ steps.parse.outputs.adults }}
+          DEPART: ${{ steps.parse.outputs.depart }}
+          RETURN_DATE: ${{ steps.parse.outputs.return_date }}
         run: |
           args=()
           if [ -n "$MAX_PRICE" ]; then args+=(--max-price "$MAX_PRICE"); fi
           if [ -n "$NIGHTS" ];    then args+=(--nights "$NIGHTS"); fi
           if [ -n "$MONTHS" ];    then args+=(--months "$MONTHS"); fi
           if [ -n "$ADULTS" ];    then args+=(--adults "$ADULTS"); fi
+          if [ -n "$DEPART" ];    then args+=(--depart "$DEPART"); fi
+          if [ -n "$RETURN_DATE" ]; then args+=(--return "$RETURN_DATE"); fi
           # weekend: "no" busca cualquier dia de la semana
           if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
           python -m tripfinder search \
@@ -86,6 +112,7 @@ jobs:
         run: gh workflow run pages.yml --ref main
 
       - name: Contestar en la issue
+        if: github.event_name == 'issues'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -94,7 +121,7 @@ jobs:
             --comment "Resultados publicados en la web (tarda ~1 min en desplegarse)."
 
       - name: Avisar si algo fallo
-        if: failure()
+        if: failure() && github.event_name == 'issues'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

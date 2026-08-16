@@ -216,13 +216,32 @@ h1 em {
 /* --- buscador personalizado --------------------------------------------- */
 .finder {
   border: 1px solid var(--line); border-radius: var(--radius);
-  background: linear-gradient(160deg, rgba(127, 214, 162, 0.05), transparent 60%);
-  padding: 26px 28px; margin-bottom: 34px;
+  background: linear-gradient(160deg, rgba(127, 214, 162, 0.04), transparent 60%);
+  margin-top: 40px;
 }
-.finder-head h2 {
-  margin: 0; font: 500 26px/1.1 "Fraunces", Georgia, serif; letter-spacing: -0.02em;
+.finder > summary {
+  cursor: pointer; padding: 20px 24px; list-style: none;
+  font: 500 20px "Fraunces", Georgia, serif; color: var(--ink);
 }
-.finder-head p { margin: 10px 0 20px; color: var(--muted); font-size: 14.5px; max-width: 62ch; }
+.finder > summary::-webkit-details-marker { display: none; }
+.finder > summary::before { content: "+ "; color: var(--amber); }
+.finder[open] > summary::before { content: "− "; }
+.finder-body { padding: 0 24px 24px; }
+.finder-lede { margin: 0 0 20px; color: var(--muted); font-size: 14.5px; max-width: 64ch; }
+.hint { margin: 14px 0 0; font: 400 12px "DM Mono", monospace; color: var(--faint); }
+.finder-form input[type="date"] {
+  font-family: "DM Mono", monospace; font-size: 13px; color-scheme: dark;
+}
+.token-box {
+  border: 1px dashed var(--line); border-radius: 12px; padding: 16px 18px;
+  margin-top: 16px; font-size: 14px; color: var(--muted);
+}
+.token-box input {
+  width: 100%; margin: 10px 0; background: var(--bg-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
+  font: 400 13px "DM Mono", monospace;
+}
+.token-box a { color: var(--mint); }
 .finder-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
 .finder-form input {
   background: var(--bg-2); color: var(--ink); border: 1px solid var(--line);
