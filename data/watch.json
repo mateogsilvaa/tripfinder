@@ -32,6 +32,22 @@
       "best_price": null,
       "last_checked": "",
       "active": true
+    },
+    {
+      "id": "estonia-12",
+      "label": "Estonia · hasta 80 €",
+      "destination": "Estonia",
+      "depart": "",
+      "return_date": "",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 1,
+      "max_price": 80.0,
+      "created": "2026-08-16",
+      "best_price": null,
+      "last_checked": "",
+      "active": true
     }
   ]
 }
