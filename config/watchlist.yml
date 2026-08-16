@@ -57,7 +57,8 @@ search:
 
   google:
     # Cada consulta descarga ~2,5 MB de la pagina de Google: pocas y espaciadas.
-    max_queries: 18
+    # Subido para que de tiempo a mirar los destinos donde Ryanair no vuela.
+    max_queries: 40
     min_interval_seconds: 4
 
   # Pasajeros del vuelo (el precio mostrado es el total de ida y vuelta para todos)
@@ -101,6 +102,20 @@ city_names:
   DUB: [Dublin, Irlanda]
   EDI: [Edimburgo, Reino Unido]
   BER: [Berlin, Alemania]
+  AMS: [Amsterdam, Paises Bajos]
+  MUC: [Munich, Alemania]
+  FRA: [Frankfurt, Alemania]
+  ZRH: [Zurich, Suiza]
+  VIE: [Viena, Austria]
+  CPH: [Copenhague, Dinamarca]
+  PRG: [Praga, Chequia]
+  BUD: [Budapest, Hungria]
+  WAW: [Varsovia, Polonia]
+  ATH: [Atenas, Grecia]
+  VCE: [Venecia, Italia]
+  FLR: [Florencia, Italia]
+  PMO: [Palermo, Italia]
+  CTA: [Catania, Italia]
 
 routes:
   - origin: MAD
@@ -121,3 +136,14 @@ routes:
     max_price_weekend: 120
     baseline_price: 95
     baseline_price_weekend: 190
+
+  # Destinos donde Ryanair no vuela desde Madrid o no es competitivo: aqui la
+  # oferta la pone Iberia, Vueling, Air Europa, ITA, Lufthansa o KLM. Los topes
+  # son mas altos porque estas rutas nunca van a valer 30 EUR.
+  - origin: MAD
+    origin_name: Madrid
+    destinations: [AMS, MUC, FRA, ZRH, VIE, CPH, PRG, BUD, WAW, ATH, VCE, FLR, PMO, CTA]
+    max_price: 130
+    max_price_weekend: 220
+    baseline_price: 230
+    baseline_price_weekend: 330
