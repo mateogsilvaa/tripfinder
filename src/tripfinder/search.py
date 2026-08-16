@@ -193,13 +193,19 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
         destinations=destinos,
         max_price=req.max_price or 1e6,
         max_price_weekend=req.max_price or 1e6,
-        baseline_price=req.max_price * 2 if req.max_price else 200,
-        baseline_price_weekend=req.max_price * 2 if req.max_price else 250,
+        # Sin referencia inventada: si no hay historico de la ruta no hay
+        # descuento que ensenar. Antes salia "-90%" comparando con un numero
+        # sacado del propio presupuesto, que no significaba nada.
+        baseline_price=0,
+        baseline_price_weekend=0,
     )
 
-    search_cfg = {**cfg.search, "adults": 1}
+    # El precio se pide para todo el grupo, que es como se compara de verdad.
+    search_cfg = {**cfg.search, "adults": max(1, req.adults)}
     weekend_cfg = cfg.weekend
-    proveedores = [p for p in build_providers(cfg.providers, search_cfg) if p.name == "ryanair"]
+    activos = build_providers(cfg.providers, search_cfg)
+    proveedores = [p for p in activos if p.name == "ryanair"]
+    google = next((p for p in activos if p.name == "google_flights"), None)
 
     resultado = SearchResult(request=req, generated_at=date.today().isoformat())
     if not proveedores:
@@ -245,6 +251,30 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
         except Exception as exc:  # noqa: BLE001 - una ventana fallida no tumba la busqueda
             log.warning("Busqueda %s %s: %s", iata, salida, exc)
             resultado.errors.append(f"{salida}: {exc}")
+
+    # Ryanair no vuela a todo ni es siempre el mas barato: Wizz, Iberia o Vueling
+    # solo aparecen si se pregunta a Google, y antes la busqueda no lo hacia.
+    if google is not None:
+        if iata:
+            candidatas = [(iata, s, r) for s, r in fechas[:10]]
+            nombres = {iata: (ciudad, pais)}
+        else:
+            mejores = sorted(encontradas.values(), key=lambda o: o.price)[:8]
+            candidatas = [
+                (o.destination, date.fromisoformat(o.depart_date), date.fromisoformat(o.return_date))
+                for o in mejores
+                if o.return_date
+            ]
+            nombres = {o.destination: (o.destination_name, o.destination_country) for o in mejores}
+        google.shortlist, google.names = candidatas, nombres
+        try:
+            for oferta in google.search(route):
+                anterior = encontradas.get(oferta.id)
+                if anterior is None or oferta.price < anterior.price:
+                    encontradas[oferta.id] = oferta
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Busqueda: Google fallo (%s)", exc)
+            resultado.errors.append(f"google: {exc}")
 
     ofertas = list(encontradas.values())
     for o in ofertas:
