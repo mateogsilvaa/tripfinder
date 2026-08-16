@@ -2,9 +2,15 @@
   "updated": "2026-08-16",
   "watches": [
     {
+<<<<<<< HEAD
       "id": "lituania-12",
       "label": "Lituania · hasta 80 €",
       "destination": "Lituania",
+=======
+      "id": "estonia-12",
+      "label": "Estonia · hasta 80 €",
+      "destination": "Estonia",
+>>>>>>> 9fe7bfc (data: seguimientos)
       "depart": "",
       "return_date": "",
       "months": 12,
