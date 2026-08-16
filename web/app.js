@@ -78,8 +78,10 @@ async function dispatch(evento, payload) {
       reason:
         `${r.status}: al token le falta permiso "Contents: Read and write" sobre ` +
         `${REPO}, o no le has dado acceso a este repositorio. ${detalle}`,
+      _apuntado: typeof tfApuntar === "function" && tfApuntar("token", `${evento}: ${r.status}`, detalle),
     };
   }
+  if (typeof tfApuntar === "function") tfApuntar("dispatch", `${evento}: ${r.status}`, detalle);
   return { ok: false, reason: `error ${r.status}. ${detalle}` };
 }
 

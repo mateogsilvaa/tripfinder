@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TripFinder · registro de errores</title>
+<meta name="theme-color" content="#0d0b0a">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=19">
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="masthead">
+  <div class="board" aria-hidden="true">
+    <span class="flap">L</span><span class="flap">O</span><span class="flap">G</span>
+    <span class="board-label">registro de errores</span>
+  </div>
+  <h1>Qué ha <em>fallado</em></h1>
+  <p class="lede">
+    Todo lo que peta en esta web queda apuntado aquí, en tu navegador. Exporta el CSV
+    y pásamelo: con eso se arregla en un rato lo que a ciegas cuesta media tarde.
+  </p>
+  <dl class="stats" id="stats"></dl>
+</header>
+
+<main>
+  <section class="controls" style="margin-top:26px">
+    <button class="btn primary" id="csv">Exportar CSV</button>
+    <button class="btn ghost" id="copiar">Copiar al portapapeles</button>
+    <button class="btn ghost" id="runs">Traer fallos de GitHub Actions</button>
+    <button class="btn ghost" id="vaciar">Vaciar</button>
+    <a class="btn ghost" href="./">← Volver</a>
+  </section>
+
+  <div id="aviso" class="hint"></div>
+  <section id="tabla" class="rows"></section>
+</main>
+
+<footer class="foot">
+  <span>El registro vive solo en este navegador. No se envía a ningún sitio.</span>
+</footer>
+
+<script src="log.js?v=19"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+function pintar() {
+  const errores = tfLeerLog();
+  const porTipo = errores.reduce((a, e) => ((a[e.tipo] = (a[e.tipo] || 0) + 1), a), {});
+  $("#stats").innerHTML =
+    `<div><dd>${errores.length}</dd><dt>errores guardados</dt></div>` +
+    Object.entries(porTipo)
+      .map(([t, n]) => `<div><dd>${n}</dd><dt>${esc(t)}</dt></div>`)
+      .join("") +
+    (errores.length
+      ? `<div><dd class="hot">${esc(errores[0].cuando.slice(0, 16).replace("T", " "))}</dd><dt>el último</dt></div>`
+      : "");
+
+  $("#tabla").innerHTML = errores.length
+    ? errores
+        .map(
+          (e) => `
+      <div class="brow" style="grid-template-columns: 92px 1fr">
+        <span class="iata">${esc(e.tipo)}</span>
+        <span class="dest-cell">
+          <span class="city" style="font-size:15px">${esc(e.mensaje)}</span>
+          <span class="country">${esc(e.cuando.replace("T", " ").slice(0, 19))} · ${esc(e.donde)}</span>
+          ${e.detalle ? `<span class="country">${esc(e.detalle)}</span>` : ""}
+        </span>
+      </div>`
+        )
+        .join("")
+    : '<p class="empty">Nada roto por ahora. Si algo falla, aparecerá aquí solo.</p>';
+}
+
+function comoCSV() {
+  const filas = [["cuando", "tipo", "mensaje", "detalle", "donde", "navegador"]];
+  tfLeerLog().forEach((e) =>
+    filas.push([e.cuando, e.tipo, e.mensaje, e.detalle, e.donde, e.navegador])
+  );
+  return filas
+    .map((f) => f.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+}
+
+$("#csv").addEventListener("click", () => {
+  const blob = new Blob(["﻿" + comoCSV()], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `tripfinder-errores-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+$("#copiar").addEventListener("click", async () => {
+  await navigator.clipboard.writeText(comoCSV());
+  $("#aviso").textContent = "Copiado. Pégamelo tal cual.";
+});
+
+$("#vaciar").addEventListener("click", () => {
+  tfVaciarLog();
+  pintar();
+});
+
+/* Los fallos de los workflows no los ve el navegador: se piden a GitHub con
+   el mismo token que ya usa la web para lanzar búsquedas. */
+$("#runs").addEventListener("click", async () => {
+  const token = localStorage.getItem("tf_token") || "";
+  if (!token) {
+    $("#aviso").textContent = "No hay token guardado: entra en la web principal y añádelo.";
+    return;
+  }
+  $("#aviso").textContent = "Consultando GitHub…";
+  try {
+    const r = await fetch(
+      "https://api.github.com/repos/mateogsilvaa/tripfinder/actions/runs?status=failure&per_page=15",
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" } }
+    );
+    const d = await r.json();
+    (d.workflow_runs || []).forEach((run) =>
+      tfApuntar(
+        "actions",
+        `${run.name}: ${run.conclusion}`,
+        `${run.created_at} · ${run.html_url}`
+      )
+    );
+    $("#aviso").textContent = `Añadidos ${(d.workflow_runs || []).length} fallos de Actions.`;
+    pintar();
+  } catch (err) {
+    $("#aviso").textContent = "No se pudo consultar GitHub: " + err.message;
+  }
+});
+
+pintar();
+</script>
+</body>
+</html>
