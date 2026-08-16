@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write
+  actions: write # para lanzar el deploy de Pages
   issues: write # solo lo usa el metodo de aviso 'github_issue'
 
 concurrency:
