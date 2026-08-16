@@ -48,6 +48,22 @@
       "best_price": null,
       "last_checked": "",
       "active": true
+    },
+    {
+      "id": "todos-2027-01-22",
+      "label": "Donde sea · 2027-01-22",
+      "destination": "",
+      "depart": "2027-01-22",
+      "return_date": "2027-01-24",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 2,
+      "max_price": 120.0,
+      "created": "2026-08-16",
+      "best_price": null,
+      "last_checked": "",
+      "active": true
     }
   ]
 }
