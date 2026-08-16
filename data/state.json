@@ -71,6 +71,30 @@
     "ryanair-MAD-BGY-20261218": {
       "price": 72.98,
       "date": "2026-08-16"
+    },
+    "ryanair-MAD-PRG-20270115": {
+      "price": 103.48,
+      "date": "2026-08-16"
+    },
+    "ryanair-MAD-PRG-20270129": {
+      "price": 114.98,
+      "date": "2026-08-16"
+    },
+    "ryanair-MAD-PRG-20270101": {
+      "price": 141.68,
+      "date": "2026-08-16"
+    },
+    "google-MAD-PRG-20270108": {
+      "price": 82.0,
+      "date": "2026-08-16"
+    },
+    "ryanair-MAD-PRG-20270212": {
+      "price": 153.98,
+      "date": "2026-08-16"
+    },
+    "ryanair-MAD-PRG-20261113": {
+      "price": 156.93,
+      "date": "2026-08-16"
     }
   }
 }
