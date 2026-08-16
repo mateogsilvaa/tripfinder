@@ -40,6 +40,7 @@ LABEL_RE = re.compile(r'aria-label="([^"]{60,400})"')
 CARD_RE = re.compile(r'<li class="pIav2d"[^>]*>(.*?)</li>', re.S)
 TAGS_RE = re.compile(r"<[^>]+>")
 CARD_PRICE_RE = re.compile(r"(\d[\d.]*)\s*€")
+CARD_TIME_RE = re.compile(r"(\d{1,2}:\d{2})")
 CARD_AIRLINE_RE = re.compile(r"\d{1,2}:\d{2} el \w+, \d+ \w+ ([A-Za-zÀ-ÿ][\wÀ-ÿ',.\- ]{2,40}?) \d+\s*h")
 PRICE_RE = re.compile(r"A partir de\s+([\d.]+)\s+euros")
 AIRLINE_RE = re.compile(r"(?:Vuelo directo de|Vuelos? (?:de|operados? por))\s+([^.]+?)\.")
@@ -89,6 +90,18 @@ def build_tfs(origin: str, destination: str, out_date: str, in_date: str, adults
     return base64.b64encode(body).decode().rstrip("=")
 
 
+def _tarjetas(html: str) -> list[str]:
+    """Trocea la pagina por resultados.
+
+    Cortar en el primer </li> parecia lo natural y era el fallo: las tarjetas
+    llevan listas anidadas dentro, asi que se quedaba media tarjeta y el precio
+    se perdia (visto en MAD-STR, con 18 vuelos de SWISS y Lufthansa invisibles).
+    Se corta por el comienzo del siguiente resultado.
+    """
+    partes = html.split('<li class="pIav2d"')
+    return partes[1:] if len(partes) > 1 else []
+
+
 @register("google_flights")
 class GoogleFlightsProvider(FlightProvider):
     def __init__(self, search_cfg):
@@ -119,10 +132,10 @@ class GoogleFlightsProvider(FlightProvider):
     def _desde_tarjetas(self, html, route, dest, out_date, in_date, url, nights) -> list[FlightOffer]:
         """Lee el texto visible de cada resultado cuando falta la etiqueta."""
         mejores: dict[str, FlightOffer] = {}
-        for card in CARD_RE.findall(html):
+        for card in _tarjetas(html):
             texto = re.sub(r"\s+", " ", TAGS_RE.sub(" ", card)).strip()
             precio = CARD_PRICE_RE.search(texto)
-            horas = re.findall(r"(\d{1,2}:\d{2})", texto)
+            horas = CARD_TIME_RE.findall(texto)
             if not (precio and horas):
                 continue
             aero = CARD_AIRLINE_RE.search(texto)

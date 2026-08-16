@@ -89,7 +89,7 @@ def _limpia_aerolinea(texto: str) -> str:
 def _parse_cards(html: str, destino: str) -> list[tuple]:
     """Saca (precio, hora_salida, aerolinea, duracion_escala) de cada tarjeta."""
     salida = []
-    for card in CARD_RE.findall(html):
+    for card in html.split('<li class="pIav2d"')[1:]:
         texto = _card_text(card)
         lay = LAYOVER_RE.search(texto)
         if not lay or lay.group(2) != destino:
