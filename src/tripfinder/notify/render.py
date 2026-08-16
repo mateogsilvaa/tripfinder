@@ -193,3 +193,65 @@ def render_markdown(offers: list[FlightOffer]) -> str:
         )
     lines += ["", "_Precio total ida y vuelta para 1 adulto._"]
     return "\n".join(lines)
+
+
+def render_watch_digest(estado: list[tuple]) -> str:
+    """Parte diario de los viajes que sigues.
+
+    Aunque no haya novedades se manda: si el scan corre y no dice nada, no
+    sabes si es que no hay chollo o es que se ha roto algo.
+    """
+    filas = []
+    for w, ofertas in estado:
+        if ofertas:
+            mejor = min(ofertas, key=lambda o: o.price)
+            detalle = (
+                f'<span style="color:{MINT}">{mejor.price:.0f}&euro;</span> '
+                f'<span style="color:{MUTED}">{_fecha(mejor.depart_date)}'
+                f'{" &middot; " + mejor.airline if mejor.airline else ""}</span>'
+            )
+        elif w.best_price:
+            detalle = f'<span style="color:{MUTED}">sin novedad &middot; mejor visto {w.best_price:.0f}&euro;</span>'
+        else:
+            detalle = f'<span style="color:{FAINT}">todavia sin resultados</span>'
+        filas.append(
+            f"""<tr>
+              <td style="padding:12px 0;border-bottom:1px solid {LINE}">
+                <div style="font:400 17px {SERIF};color:{INK}">{w.label or w.destination or "Donde sea"}</div>
+                <div style="font:400 13px {MONO};padding-top:4px">{detalle}</div>
+              </td></tr>"""
+        )
+
+    con_novedad = sum(1 for _, o in estado if o)
+    titulo = (
+        f"{con_novedad} de tus {len(estado)} seguimientos tienen algo nuevo"
+        if con_novedad
+        else f"Tus {len(estado)} seguimientos, sin novedad"
+    )
+    return f"""<!doctype html>
+<html><body style="margin:0;background:{BG};padding:26px 12px">
+  <table width="100%" cellpadding="0" cellspacing="0" role="presentation"><tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" role="presentation" style="max-width:560px">
+      <tr><td style="padding-bottom:18px">
+        <div style="padding-bottom:12px">{_flap("M")}{_flap("A")}{_flap("D")}
+          <span style="font:500 11px {MONO};letter-spacing:.16em;color:{MUTED};
+                       text-transform:uppercase;padding-left:8px">parte diario</span></div>
+        <div style="font:400 26px/1.2 {SERIF};color:{INK}">{titulo}</div>
+      </td></tr>
+      <tr><td><table width="100%" cellpadding="0" cellspacing="0">{"".join(filas)}</table></td></tr>
+      <tr><td style="padding-top:16px;font:400 12px/1.7 {MONO};color:{FAINT}">
+        <a href="{site_url()}" style="color:{MINT};text-decoration:none">ver en la web</a>
+        &middot; se avisa cuando algo entra en tu tope o baja de su minimo
+      </td></tr>
+    </table>
+  </td></tr></table>
+</body></html>"""
+
+
+def subject_watch_digest(estado: list[tuple]) -> str:
+    con_novedad = [w for w, o in estado if o]
+    if not con_novedad:
+        return f"[TripFinder] Sin novedad en tus {len(estado)} seguimientos"
+    primero = con_novedad[0]
+    extra = f" y {len(con_novedad) - 1} mas" if len(con_novedad) > 1 else ""
+    return f"[TripFinder] Novedad en {primero.label or primero.destination}{extra}"

@@ -153,6 +153,11 @@ def revisar(w: Watch, cfg: Config, history: dict) -> tuple[list[FlightOffer], Wa
 
 
 def revisar_todos(cfg: Config, history: dict) -> list[tuple[Watch, list[FlightOffer]]]:
+    """Revisa todos y devuelve el estado de cada uno, tenga novedad o no.
+
+    Devolver solo los que encuentran algo dejaba el parte diario mudo cuando no
+    habia nada, y entonces no se distingue "no hay chollo" de "esto se ha roto".
+    """
     lista = _cargar()
     salida = []
     for i, w in enumerate(lista):
@@ -160,7 +165,6 @@ def revisar_todos(cfg: Config, history: dict) -> list[tuple[Watch, list[FlightOf
             continue
         avisos, actualizado = revisar(w, cfg, history)
         lista[i] = actualizado
-        if avisos:
-            salida.append((actualizado, avisos[:4]))
+        salida.append((actualizado, avisos[:4]))
     _guardar(lista)
     return salida

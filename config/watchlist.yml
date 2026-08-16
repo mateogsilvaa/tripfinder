@@ -63,7 +63,7 @@ search:
   google:
     # Cada consulta descarga ~2,5 MB de la pagina de Google: pocas y espaciadas.
     # Subido para que de tiempo a mirar los destinos donde Ryanair no vuela.
-    max_queries: 60
+    max_queries: 80
     min_interval_seconds: 4
 
   # Pasajeros del vuelo (el precio mostrado es el total de ida y vuelta para todos)

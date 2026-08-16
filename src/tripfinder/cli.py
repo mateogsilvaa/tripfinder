@@ -647,20 +647,40 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 f"{o.destination_name} ({o.airline})"
             )
 
-    if hallazgos and not args.no_email:
-        from .notify import notify_offers
+    # El parte va siempre que haya algo que seguir: saber que se ha mirado y
+    # no hay nada es informacion, y ademas confirma que el sistema sigue vivo.
+    if estado and not args.no_email:
+        from .notify import _send_with, render  # noqa: PLC0415
 
-        todas = [o for _, ofertas in hallazgos for o in ofertas]
-        etiquetas = ", ".join(w.label or w.id for w, _ in hallazgos)
-        try:
-            usado = notify_offers(
-                todas[:6],
-                to=cfg.notify.get("to", ""),
-                method=cfg.notify.get("method", "resend"),
-            )
-            print(f"Aviso de seguimientos enviado por {usado} ({etiquetas}).")
-        except Exception as exc:  # noqa: BLE001
-            log.error("No se pudo avisar de los seguimientos: %s", exc)
+        metodo = cfg.notify.get("method", "resend")
+        asunto = render.subject_watch_digest(estado)
+        cuerpo = render.render_watch_digest(estado)
+        enviado = False
+        for candidato in [metodo, "resend", "smtp", "github_issue"]:
+            try:
+                from .notify import _configured
+
+                if not _configured(candidato):
+                    continue
+                if candidato == "github_issue":
+                    from .notify import github_issue
+
+                    github_issue.send(asunto, "Parte diario de seguimientos.")
+                elif candidato == "resend":
+                    from .notify import resend
+
+                    resend.send(asunto, cuerpo, cfg.notify.get("to", ""))
+                else:
+                    from .notify import smtp
+
+                    smtp.send_email(asunto, cuerpo, cfg.notify.get("to", ""))
+                print(f"Parte diario enviado por {candidato}.")
+                enviado = True
+                break
+            except Exception as exc:  # noqa: BLE001
+                log.warning("Parte diario por %s fallo: %s", candidato, exc)
+        if not enviado:
+            log.error("No se pudo mandar el parte diario de seguimientos")
     return 0
 
 
