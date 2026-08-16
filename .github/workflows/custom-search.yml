@@ -100,21 +100,29 @@ jobs:
         run: |
           git config user.name  "tripfinder-bot"
           git config user.email "actions@github.com"
-          git add data
-          if git diff --staged --quiet; then
-            echo "Sin cambios"
-            exit 0
-          fi
-          git commit -m "data: busqueda"
-          # Varias busquedas a la vez tocan el indice y el rebase choca. El
-          # indice es un derivado, asi que se regenera y se sigue.
-          for intento in 1 2 3; do
-            if git pull --rebase --autostash; then break; fi
-            PYTHONPATH=src python -m tripfinder reindex || true
+          # El resultado de esta busqueda, aparte, para poder reaplicarlo si
+          # otra busqueda publica antes que nosotros.
+          mkdir -p /tmp/tf && cp -r data/searches/. /tmp/tf/ 2>/dev/null || true
+          for intento in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p data/searches
+            cp -r /tmp/tf/. data/searches/ 2>/dev/null || true
+            PYTHONPATH=src python -m tripfinder reindex
             git add data
-            GIT_EDITOR=true git rebase --continue || git rebase --skip || true
+            if git diff --staged --quiet; then
+              echo "Sin cambios"
+              exit 0
+            fi
+            git commit -m "data: busqueda ${{ steps.parse.outputs.dest }}"
+            if git push; then
+              echo "Publicado al intento $intento"
+              exit 0
+            fi
+            echo "Otra busqueda publico antes; se reintenta"
+            sleep $((RANDOM % 6 + 2))
           done
-          git push || (git pull --rebase --autostash && git push)
+          exit 1
 
       - name: Redesplegar la web
         env:

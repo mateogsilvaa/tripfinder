@@ -1,7 +1,7 @@
 name: Seguir un viaje
 
-# La web manda un repository_dispatch con lo que quieres vigilar y esto lo
-# apunta en data/watch.json. A partir de ahi lo revisa el cron cada dia.
+# La web manda un repository_dispatch con lo que quieres vigilar (o quitar) y
+# esto lo apunta en data/watch.json. A partir de ahi lo revisa el cron cada dia.
 
 on:
   repository_dispatch:
@@ -28,10 +28,9 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt
 
-      - name: Apuntar o quitar el seguimiento
+      - name: Aplicar el cambio sobre lo ultimo publicado
         env:
           PYTHONPATH: src
-          ACCION: ${{ github.event.action }}
           TIPO: ${{ github.event.client_payload.tipo }}
           ID: ${{ github.event.client_payload.id }}
           DEST: ${{ github.event.client_payload.dest }}
@@ -43,42 +42,51 @@ jobs:
           ADULTS: ${{ github.event.client_payload.adults }}
           WEEKEND: ${{ github.event.client_payload.weekend }}
         run: |
-          if [ "$TIPO" = "unwatch" ]; then
-            python -m tripfinder watch remove --id "$ID"
-          elif [ "$TIPO" = "delete_search" ]; then
-            python -m tripfinder watch remove-search --id "$ID"
-          else
-            args=()
-            if [ -n "$DEST" ];        then args+=(--dest "$DEST"); fi
-            if [ -n "$LABEL" ];       then args+=(--label "$LABEL"); fi
-            if [ -n "$DEPART" ];      then args+=(--depart "$DEPART"); fi
-            if [ -n "$RETURN_DATE" ]; then args+=(--return "$RETURN_DATE"); fi
-            if [ -n "$MAXP" ];        then args+=(--max-price "$MAXP"); fi
-            if [ -n "$MONTHS" ];      then args+=(--months "$MONTHS"); fi
-            if [ -n "$ADULTS" ];      then args+=(--adults "$ADULTS"); fi
-            if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
-            python -m tripfinder watch add "${args[@]}"
-          fi
-
-      - name: Publicar resultados
-        run: |
           git config user.name  "tripfinder-bot"
           git config user.email "actions@github.com"
-          git add data
-          if git diff --staged --quiet; then
-            echo "Sin cambios"
-            exit 0
-          fi
-          git commit -m "data: seguimientos"
-          # Varias busquedas a la vez tocan el indice y el rebase choca. El
-          # indice es un derivado, asi que se regenera y se sigue.
-          for intento in 1 2 3; do
-            if git pull --rebase --autostash; then break; fi
-            PYTHONPATH=src python -m tripfinder reindex || true
+
+          aplicar() {
+            if [ "$TIPO" = "unwatch" ]; then
+              python -m tripfinder watch remove --id "$ID"
+            elif [ "$TIPO" = "delete_search" ]; then
+              python -m tripfinder watch remove-search --id "$ID"
+            else
+              args=()
+              if [ -n "$DEST" ];        then args+=(--dest "$DEST"); fi
+              if [ -n "$LABEL" ];       then args+=(--label "$LABEL"); fi
+              if [ -n "$DEPART" ];      then args+=(--depart "$DEPART"); fi
+              if [ -n "$RETURN_DATE" ]; then args+=(--return "$RETURN_DATE"); fi
+              if [ -n "$MAXP" ];        then args+=(--max-price "$MAXP"); fi
+              if [ -n "$MONTHS" ];      then args+=(--months "$MONTHS"); fi
+              if [ -n "$ADULTS" ];      then args+=(--adults "$ADULTS"); fi
+              if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
+              python -m tripfinder watch add "${args[@]}"
+            fi
+          }
+
+          # Si añades tres seguimientos seguidos, los tres workflows arrancan a
+          # la vez desde el mismo fichero y al hacer push se pisan: sobrevivia
+          # solo el ultimo. Por eso cada intento se resincroniza con lo que ya
+          # esta publicado y vuelve a aplicar el cambio encima.
+          for intento in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            aplicar
             git add data
-            GIT_EDITOR=true git rebase --continue || git rebase --skip || true
+            if git diff --staged --quiet; then
+              echo "Sin cambios que guardar"
+              exit 0
+            fi
+            git commit -m "data: seguimientos"
+            if git push; then
+              echo "Guardado al intento $intento"
+              exit 0
+            fi
+            echo "Otro cambio llego antes; se reintenta"
+            sleep $((RANDOM % 6 + 2))
           done
-          git push || (git pull --rebase --autostash && git push)
+          echo "No se pudo guardar tras varios intentos"
+          exit 1
 
       - name: Redesplegar la web
         env:
