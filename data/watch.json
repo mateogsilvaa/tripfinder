@@ -16,6 +16,22 @@
       "best_price": null,
       "last_checked": "",
       "active": true
+    },
+    {
+      "id": "lituania-12",
+      "label": "Lituania · hasta 80 €",
+      "destination": "Lituania",
+      "depart": "",
+      "return_date": "",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 1,
+      "max_price": 80.0,
+      "created": "2026-08-16",
+      "best_price": null,
+      "last_checked": "",
+      "active": true
     }
   ]
 }
