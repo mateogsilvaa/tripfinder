@@ -1,0 +1,21 @@
+{
+  "updated": "2026-08-16",
+  "watches": [
+    {
+      "id": "roma-6",
+      "label": "Roma barato",
+      "destination": "Roma",
+      "depart": "",
+      "return_date": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 2,
+      "max_price": 130.0,
+      "created": "2026-08-16",
+      "best_price": null,
+      "last_checked": "",
+      "active": true
+    }
+  ]
+}

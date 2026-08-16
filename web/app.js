@@ -799,6 +799,7 @@ async function toggleSearch(el) {
 
 init();
 loadSearches();
+cargarWatches();
 
 /* --------------------------------------------------- selector de destino
    El mapa de puntos quedaba precioso y era inutil: sin costas ni fronteras no
@@ -891,6 +892,76 @@ $("#destSearch").addEventListener("input", (e) => pintarDestinos(e.target.value)
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !$("#destModal").hidden) cerrarDestinos();
 });
+
+/* ------------------------------------------------------------ seguimientos
+   Lo mismo que una busqueda, pero en vez de contestarte ahora se queda
+   apuntado y lo revisa el cron cada dia, avisando por correo solo si aparece
+   algo que cumple o si baja del mejor precio visto. */
+function datosFormulario() {
+  const donde = $("#fWhere").value;
+  const cuando = $("#fWhen").value;
+  return {
+    dest: donde === "one" ? $("#fDest").value.trim() : "",
+    max_price: $("#fMax").value,
+    nights: $("#fNights").value.trim() || "2-3",
+    months: $("#fMonths").value || "6",
+    adults: $("#fAdults").value || "2",
+    weekend: cuando === "weekend" ? "si" : "no",
+    depart: cuando === "exact" ? $("#fDepart").value : "",
+    return_date: cuando === "exact" ? $("#fReturn").value : "",
+  };
+}
+
+$("#watchBtn").addEventListener("click", async () => {
+  const d = datosFormulario();
+  const etiqueta =
+    (d.dest || "Donde sea") + (d.depart ? ` · ${d.depart}` : ` · hasta ${d.max_price} €`);
+  const r = await dispatch("watch", { ...d, tipo: "watch", label: etiqueta });
+  if (r.ok) {
+    $("#watches").insertAdjacentHTML(
+      "afterbegin",
+      `<div class="watch"><b>${esc(etiqueta)}</b>
+        <span class="meta">apuntado · se revisa cada día y te escribe si aparece algo</span></div>`
+    );
+    setTimeout(cargarWatches, 45000);
+    return;
+  }
+  if (r.reason === "sin-token" || r.reason === "token-invalido") {
+    const caja = tokenBox(() => $("#watchBtn").click());
+    $("#watches").innerHTML = caja.html;
+    caja.wire();
+    return;
+  }
+  $("#watches").innerHTML = `<div class="watch"><span class="meta">No se pudo apuntar: ${esc(
+    r.reason
+  )}</span></div>`;
+});
+
+async function cargarWatches() {
+  let datos;
+  try {
+    datos = await fetchJSON("data/watch.json");
+  } catch {
+    return;
+  }
+  const vivos = (datos.watches || []).filter((w) => w.active !== false);
+  if (!vivos.length) return;
+  $("#watches").innerHTML =
+    `<h3 class="watch-head">Siguiendo a diario</h3>` +
+    vivos
+      .map(
+        (w) => `
+        <div class="watch">
+          <b>${esc(w.label || w.destination || "Donde sea")}</b>
+          <span class="meta">${
+            w.depart ? esc(w.depart) : `próximos ${w.months} meses`
+          }${w.max_price ? ` · hasta ${Math.round(w.max_price)} €` : ""}${
+          w.best_price ? ` · mejor visto ${Math.round(w.best_price)} €` : ""
+        }${w.last_checked ? ` · revisado ${esc(desde(w.last_checked))}` : ""}</span>
+        </div>`
+      )
+      .join("");
+}
 
 /* ---------------------------------------------------------- calendario
    Un solo calendario: el primer clic pone la ida, el segundo la vuelta.

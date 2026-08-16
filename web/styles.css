@@ -610,6 +610,18 @@ input[type="range"]::-moz-range-thumb {
 .ciudad i { font-style: normal; font-family: "DM Mono", monospace; color: var(--faint); font-size: 11px; }
 .ciudad:hover { border-color: var(--amber); color: var(--ink); }
 
+.watches { margin-top: 20px; }
+.watch-head {
+  font: 500 11px/1 "DM Mono", monospace; text-transform: uppercase;
+  letter-spacing: .16em; color: var(--faint); margin: 0 0 8px;
+}
+.watch {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  padding: 11px 0; border-top: 1px solid var(--line-2);
+}
+.watch b { font: 500 16px "Fraunces", Georgia, serif; }
+.watch .meta { font: 400 12px "DM Mono", monospace; color: var(--faint); }
+
 /* --- calendario de un solo campo ---------------------------------------- */
 .date-btn {
   background: var(--bg-2); color: var(--ink); border: 1px solid var(--line);

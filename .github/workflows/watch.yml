@@ -1,0 +1,75 @@
+name: Seguir un viaje
+
+# La web manda un repository_dispatch con lo que quieres vigilar y esto lo
+# apunta en data/watch.json. A partir de ahi lo revisa el cron cada dia.
+
+on:
+  repository_dispatch:
+    types: [watch, unwatch]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: tripfinder-data
+  cancel-in-progress: false
+
+jobs:
+  seguir:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Apuntar o quitar el seguimiento
+        env:
+          PYTHONPATH: src
+          ACCION: ${{ github.event.action }}
+          TIPO: ${{ github.event.client_payload.tipo }}
+          ID: ${{ github.event.client_payload.id }}
+          DEST: ${{ github.event.client_payload.dest }}
+          LABEL: ${{ github.event.client_payload.label }}
+          DEPART: ${{ github.event.client_payload.depart }}
+          RETURN_DATE: ${{ github.event.client_payload.return_date }}
+          MAXP: ${{ github.event.client_payload.max_price }}
+          MONTHS: ${{ github.event.client_payload.months }}
+          ADULTS: ${{ github.event.client_payload.adults }}
+          WEEKEND: ${{ github.event.client_payload.weekend }}
+        run: |
+          if [ "$TIPO" = "unwatch" ]; then
+            python -m tripfinder watch remove --id "$ID"
+          else
+            args=()
+            if [ -n "$DEST" ];        then args+=(--dest "$DEST"); fi
+            if [ -n "$LABEL" ];       then args+=(--label "$LABEL"); fi
+            if [ -n "$DEPART" ];      then args+=(--depart "$DEPART"); fi
+            if [ -n "$RETURN_DATE" ]; then args+=(--return "$RETURN_DATE"); fi
+            if [ -n "$MAXP" ];        then args+=(--max-price "$MAXP"); fi
+            if [ -n "$MONTHS" ];      then args+=(--months "$MONTHS"); fi
+            if [ -n "$ADULTS" ];      then args+=(--adults "$ADULTS"); fi
+            if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
+            python -m tripfinder watch add "${args[@]}"
+          fi
+
+      - name: Guardar
+        run: |
+          git config user.name  "tripfinder-bot"
+          git config user.email "actions@github.com"
+          git add data
+          if git diff --staged --quiet; then
+            echo "Sin cambios"
+          else
+            git commit -m "data: seguimientos"
+            git pull --rebase --autostash
+            git push
+          fi
+
+      - name: Redesplegar la web
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

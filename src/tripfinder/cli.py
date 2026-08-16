@@ -505,6 +505,83 @@ def _search_markdown(resultado) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# watch
+# --------------------------------------------------------------------------- #
+def cmd_watch(args: argparse.Namespace) -> int:
+    from . import watch as W
+
+    cfg: Config = load_config(args.config)
+
+    if args.accion == "list":
+        seguimientos = W.listar(incluir_caducados=True)
+        print(f"\n{len(seguimientos)} seguimientos")
+        for w in seguimientos:
+            estado = "caducado" if w.caducado else "activo"
+            print(
+                f"  [{estado:8}] {w.id}: {w.label or w.destination or 'donde sea'} "
+                f"{w.depart or f'proximos {w.months} meses'} "
+                f"{'<= ' + str(int(w.max_price)) + ' EUR' if w.max_price else ''} "
+                f"{'(mejor visto ' + str(int(w.best_price)) + ')' if w.best_price else ''}"
+            )
+        return 0
+
+    if args.accion == "add":
+        ident = args.id or f"{(args.dest or 'todos').lower()}-{args.depart or args.months}"
+        W.anadir(
+            W.Watch(
+                id=ident,
+                label=args.label or args.dest or "Donde sea",
+                destination=args.dest or "",
+                depart=args.depart or "",
+                return_date=getattr(args, "return") or "",
+                months=args.months,
+                nights=args.nights or "2-3",
+                weekend_only=not args.any_day,
+                adults=args.adults or cfg.party_size,
+                max_price=args.max_price,
+            )
+        )
+        print(f"Seguimiento '{ident}' guardado.")
+        return 0
+
+    if args.accion == "remove":
+        print("Borrado." if W.borrar(args.id or "") else "No existe ese seguimiento.")
+        return 0
+
+    # run: lo que ejecuta el cron cada dia
+    store = Store()
+    caducados = W.limpiar_caducados()
+    if caducados:
+        print(f"{caducados} seguimientos caducados retirados.")
+
+    hallazgos = W.revisar_todos(cfg, store.load_history())
+    print(f"\n{len(hallazgos)} seguimientos con novedades")
+    for w, ofertas in hallazgos:
+        print(f"  {w.label or w.id}:")
+        for o in ofertas:
+            print(
+                f"     {o.price:7.2f}EUR  {o.depart_date} {o.depart_time or ''} "
+                f"{o.destination_name} ({o.airline})"
+            )
+
+    if hallazgos and not args.no_email:
+        from .notify import notify_offers
+
+        todas = [o for _, ofertas in hallazgos for o in ofertas]
+        etiquetas = ", ".join(w.label or w.id for w, _ in hallazgos)
+        try:
+            usado = notify_offers(
+                todas[:6],
+                to=cfg.notify.get("to", ""),
+                method=cfg.notify.get("method", "resend"),
+            )
+            print(f"Aviso de seguimientos enviado por {usado} ({etiquetas}).")
+        except Exception as exc:  # noqa: BLE001
+            log.error("No se pudo avisar de los seguimientos: %s", exc)
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 # skiplag
 # --------------------------------------------------------------------------- #
 def cmd_skiplag(args: argparse.Namespace) -> int:
@@ -638,6 +715,21 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Precio del vuelo directo con el que comparar")
     k.add_argument("--dry-run", action="store_true")
     k.set_defaults(func=cmd_skiplag)
+
+    v = sub.add_parser("watch", help="Seguimientos: viajes que se vigilan a diario")
+    v.add_argument("accion", choices=["add", "list", "remove", "run"])
+    v.add_argument("--id")
+    v.add_argument("--dest", default="")
+    v.add_argument("--label")
+    v.add_argument("--depart")
+    v.add_argument("--return", dest="return")
+    v.add_argument("--nights")
+    v.add_argument("--months", type=int, default=6)
+    v.add_argument("--adults", type=int)
+    v.add_argument("--max-price", type=float, dest="max_price")
+    v.add_argument("--any-day", action="store_true")
+    v.add_argument("--no-email", action="store_true")
+    v.set_defaults(func=cmd_watch)
 
     t = sub.add_parser("test-email", help="Envia un aviso de ejemplo")
     t.add_argument("--to")

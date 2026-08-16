@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=15">
+<link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>
@@ -127,9 +127,11 @@
           <input id="fAdults" type="number" min="1" max="8" value="2">
         </div>
         <button class="btn primary" type="submit">Buscar</button>
+        <button class="btn ghost" type="button" id="watchBtn">Seguir a diario</button>
       </form>
       <div id="cal" class="cal" hidden></div>
       <p class="hint" id="finderHint"></p>
+      <div id="watches" class="watches"></div>
       <div id="searches" class="searches"></div>
     </div>
   </details>
@@ -170,6 +172,6 @@
   <a href="https://github.com/mateogsilvaa/tripfinder">código</a>
 </footer>
 
-<script src="app.js?v=15"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>
