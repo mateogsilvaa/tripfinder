@@ -37,6 +37,10 @@ URL = "https://www.google.com/travel/flights"
 CONSENT_COOKIE = "SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVzIAEaBgiA_LyaBg"
 
 LABEL_RE = re.compile(r'aria-label="([^"]{60,400})"')
+CARD_RE = re.compile(r'<li class="pIav2d"[^>]*>(.*?)</li>', re.S)
+TAGS_RE = re.compile(r"<[^>]+>")
+CARD_PRICE_RE = re.compile(r"(\d[\d.]*)\s*€")
+CARD_AIRLINE_RE = re.compile(r"\d{1,2}:\d{2} el \w+, \d+ \w+ ([A-Za-zÀ-ÿ][\wÀ-ÿ',.\- ]{2,40}?) \d+\s*h")
 PRICE_RE = re.compile(r"A partir de\s+([\d.]+)\s+euros")
 AIRLINE_RE = re.compile(r"(?:Vuelo directo de|Vuelos? (?:de|operados? por))\s+([^.]+?)\.")
 TIME_RE = re.compile(r"Sale de .*? a las (\d{1,2}:\d{2})")
@@ -112,6 +116,41 @@ class GoogleFlightsProvider(FlightProvider):
                  route.origin, len(offers), min(len(pairs), max_queries))
         return offers
 
+    def _desde_tarjetas(self, html, route, dest, out_date, in_date, url, nights) -> list[FlightOffer]:
+        """Lee el texto visible de cada resultado cuando falta la etiqueta."""
+        mejores: dict[str, FlightOffer] = {}
+        for card in CARD_RE.findall(html):
+            texto = re.sub(r"\s+", " ", TAGS_RE.sub(" ", card)).strip()
+            precio = CARD_PRICE_RE.search(texto)
+            horas = re.findall(r"(\d{1,2}:\d{2})", texto)
+            if not (precio and horas):
+                continue
+            aero = CARD_AIRLINE_RE.search(texto)
+            escalas_m = re.search(r"(\d+)\s+escalas?", texto)
+            aerolinea = (aero.group(1).strip() if aero else "Varias")[:40]
+            oferta = FlightOffer(
+                provider="google",
+                origin=route.origin,
+                origin_name=route.origin_name,
+                destination=dest,
+                destination_name=self.names.get(dest, (dest, ""))[0],
+                destination_country=self.names.get(dest, ("", ""))[1],
+                depart_date=out_date.isoformat(),
+                depart_time=horas[0].zfill(5),
+                arrive_time=(horas[1].zfill(5) if len(horas) > 1 else ""),
+                return_date=in_date.isoformat(),
+                nights=nights,
+                price=round(float(precio.group(1).replace(".", "")), 2),
+                airline=aerolinea,
+                stops=int(escalas_m.group(1)) if escalas_m else 0,
+                deep_link=url,
+            )
+            previa = mejores.get(aerolinea)
+            if previa is None or oferta.price < previa.price:
+                mejores[aerolinea] = oferta
+        log.info("Google (texto de tarjeta) %s: %d companias", dest, len(mejores))
+        return sorted(mejores.values(), key=lambda o: o.price)[:4]
+
     def _one_search(self, route: Route, dest: str, out_date: date, in_date: date) -> list[FlightOffer]:
         throttle("google", float(self.gcfg.get("min_interval_seconds", 4)))
         tfs = build_tfs(route.origin, dest, out_date.isoformat(), in_date.isoformat(),
@@ -132,9 +171,14 @@ class GoogleFlightsProvider(FlightProvider):
         nights = (in_date - out_date).days
 
         best_por_aerolinea: dict[str, FlightOffer] = {}
-        for label in LABEL_RE.findall(html):
-            if "euros" not in label or "Sale de" not in label:
-                continue
+        etiquetas = [l for l in LABEL_RE.findall(html) if "euros" in l and "Sale de" in l]
+        if not etiquetas:
+            # En algunas rutas Google no pone la etiqueta de accesibilidad con el
+            # precio (visto en MAD-STR: 18 vuelos de SWISS y Lufthansa que se
+            # perdian enteros). El texto de la tarjeta si lo trae siempre.
+            return self._desde_tarjetas(html, route, dest, out_date, in_date, url, nights)
+
+        for label in etiquetas:
             price_m, time_m = PRICE_RE.search(label), TIME_RE.search(label)
             if not (price_m and time_m):
                 continue

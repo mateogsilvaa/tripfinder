@@ -35,6 +35,7 @@ const fetchJSON = (path) =>
   });
 
 let OFFERS = [];
+let CONTINENTES = {}; // IATA -> continente, para filtrar
 const SEARCH_OFFERS = {}; // ofertas de busquedas guardadas, por id
 
 /* --------------------------------------------------------------- disparador
@@ -175,8 +176,21 @@ async function init() {
   priceInput.value = priceInput.max;
   $("#priceOut").textContent = priceInput.value;
 
+  // El continente no viene en la oferta: se cruza con el listado de aeropuertos.
+  try {
+    const aer = await fetchJSON("data/airports_world.json");
+    aer.forEach((a) => (CONTINENTES[a.code] = a.cont));
+    const presentes = [...new Set(OFFERS.map((o) => CONTINENTES[o.destination]).filter(Boolean))].sort();
+    $("#cont").insertAdjacentHTML(
+      "beforeend",
+      presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")
+    );
+  } catch {
+    $("#cont").parentElement.hidden = true;
+  }
+
   $(".controls").hidden = false;
-  ["#q", "#sort", "#price", "#unique", "#onlyWeekend"].forEach((s) => $(s).addEventListener("input", render));
+  ["#q", "#sort", "#price", "#unique", "#onlyWeekend", "#cont"].forEach((s) => $(s).addEventListener("input", render));
   render();
 
   const target = new URLSearchParams(location.search).get("offer");
@@ -206,10 +220,12 @@ function currentList() {
   const sort = $("#sort").value;
 
   const soloFindes = $("#onlyWeekend").checked;
+  const continente = $("#cont").value;
   const list = OFFERS.filter(
     (o) =>
       o.price <= max &&
       (!soloFindes || o.weekend) &&
+      (!continente || CONTINENTES[o.destination] === continente) &&
       (!q ||
         `${o.destination_name} ${o.destination} ${o.destination_country}`.toLowerCase().includes(q))
   );
