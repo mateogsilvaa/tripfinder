@@ -116,6 +116,30 @@ def _dedupe(offers: list[FlightOffer]) -> list[FlightOffer]:
     return ganadoras
 
 
+def _publicables(found: list[FlightOffer], limite: int) -> list[FlightOffer]:
+    """Que ofertas van a la web.
+
+    Ordenar por score y cortar por lo sano dejaba fuera cualquier destino donde
+    no vuele una low cost: Amsterdam o Zurich nunca van a puntuar como Bergamo.
+    Asi que primero entra la mejor de CADA destino y luego se rellena por score.
+    """
+    mejor_por_destino: dict[str, FlightOffer] = {}
+    for o in found:
+        actual = mejor_por_destino.get(o.destination)
+        if actual is None or o.score > actual.score:
+            mejor_por_destino[o.destination] = o
+
+    publicadas = list(mejor_por_destino.values())
+    ya = {id(o) for o in publicadas}
+    for o in found:
+        if len(publicadas) >= limite:
+            break
+        if id(o) not in ya:
+            publicadas.append(o)
+    publicadas.sort(key=lambda o: (-o.score, o.price))
+    return publicadas
+
+
 # --------------------------------------------------------------------------- #
 # scan-flights
 # --------------------------------------------------------------------------- #
@@ -220,7 +244,7 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
         print(f"{caducados} busquedas de alojamiento caducadas (el viaje ya paso).")
 
     store.record_prices(found)
-    store.save_offers(found[: args.limit], errors=errors)
+    store.save_offers(_publicables(found, args.limit), errors=errors)
 
     if to_notify and not args.no_email:
         from .notify import notify_offers  # import tardio: no hace falta para --dry-run
