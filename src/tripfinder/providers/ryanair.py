@@ -247,6 +247,7 @@ class RyanairProvider(FlightProvider):
         arrive_time = (out.get("arrivalDate") or "")[11:16]
         ret = back_raw[:10] or None
         return_time = back_raw[11:16]
+        return_arrive_time = (back.get("arrivalDate") or "")[11:16]
         nights = (fare.get("summary") or {}).get("tripDurationDays")
         if nights is None and ret:
             nights = (date.fromisoformat(ret) - date.fromisoformat(depart)).days
@@ -272,6 +273,8 @@ class RyanairProvider(FlightProvider):
             depart_time=depart_time,
             arrive_time=arrive_time,
             return_time=return_time,
+            return_arrive_time=return_arrive_time,
+            stops=0,  # Ryanair no opera vuelos con escala
             price=round(float(price), 2),
             currency=summary_price.get("currencyCode", currency),
             airline="Ryanair",

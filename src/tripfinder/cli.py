@@ -121,7 +121,7 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
         log.error("Ningun provider activo. Revisa 'providers:' en el YAML y los secretos.")
         return 1
 
-    min_score = int(cfg.notify.get("min_score", 70))
+    min_score = int(cfg.notify.get("min_score", 88))
     weekend_cfg = cfg.weekend
     weekend_mode = str(weekend_cfg.get("mode", "prefer"))
     renotify = float(cfg.notify.get("renotify_drop_pct", 12))
@@ -188,8 +188,27 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
         print("\n--dry-run: no se escribe nada ni se envia email.")
         return 0
 
-    to_notify = [o for o in deals if should_notify(o, state, renotify)]
+    # Dos motivos para escribir: un chollo excepcional en cualquier momento, o
+    # el resumen del domingo. Asi no llega un correo cada dia por costumbre.
     max_email = int(cfg.notify.get("max_offers_per_email", 6))
+    digest_day = int(cfg.notify.get("digest_weekday", 6))
+    digest_min = int(cfg.notify.get("digest_min_score", 70))
+
+    excepcionales = [o for o in deals if should_notify(o, state, renotify)]
+    es_dia_de_digest = date.today().weekday() == digest_day
+    if excepcionales:
+        to_notify, motivo = excepcionales, "chollo excepcional"
+    elif es_dia_de_digest:
+        to_notify = [o for o in deals if o.score >= digest_min][:max_email]
+        motivo = "resumen semanal"
+    else:
+        to_notify, motivo = [], ""
+    if to_notify:
+        log.info("Motivo del aviso: %s", motivo)
+
+    caducados = store.purge_expired_stays()
+    if caducados:
+        print(f"{caducados} busquedas de alojamiento caducadas (el viaje ya paso).")
 
     store.record_prices(found)
     store.save_offers(found[: args.limit], errors=errors)
@@ -287,7 +306,7 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         print("\n--dry-run: no se escribe nada.")
         return 0
 
-    resumen = _trip_summary(offer, stays, cfg.party_size, req)
+    resumen = _trip_summary(offer, stays, req.adults, req)
     if resumen:
         print(
             f"\nEscapada completa para {resumen['party']}: {resumen['total']:.0f} EUR "
@@ -361,6 +380,82 @@ def _stays_markdown(
 
 
 # --------------------------------------------------------------------------- #
+# search
+# --------------------------------------------------------------------------- #
+def cmd_search(args: argparse.Namespace) -> int:
+    from .search import SearchRequest, run_search
+
+    cfg: Config = load_config(args.config)
+    store = Store()
+
+    noches = str(args.nights or "2-3")
+    if "-" in noches:
+        nmin, nmax = (int(x) for x in noches.split("-", 1))
+    else:
+        nmin = nmax = int(noches)
+
+    req = SearchRequest(
+        destination=args.dest,
+        label=args.label or "",
+        max_price=args.max_price,
+        nights_min=nmin,
+        nights_max=nmax,
+        months=args.months,
+        weekend_only=not args.any_day,
+        adults=args.adults or cfg.party_size,
+    )
+
+    try:
+        resultado = run_search(req, cfg, store.load_history())
+    except ValueError as exc:
+        log.error("%s", exc)
+        return 1
+
+    print(f"\n{req.label or req.destination}: {len(resultado.offers)} viajes")
+    for o in resultado.offers[:12]:
+        print(
+            f"  {o.price:7.2f}EUR  {o.depart_date} {o.depart_time}>{o.return_time} "
+            f"{o.nights}n  {o.useful_hours:5.1f}h utiles  {o.destination_name}"
+        )
+    if not resultado.offers:
+        print("  Nada dentro de ese presupuesto. Prueba a subirlo o ampliar meses.")
+
+    if args.dry_run:
+        return 0
+
+    ruta = store.save_search(resultado.to_dict())
+    print(f"\nGuardado en {ruta}")
+    if args.summary_out:
+        with open(args.summary_out, "w", encoding="utf-8") as fh:
+            fh.write(_search_markdown(resultado))
+    return 0
+
+
+def _search_markdown(resultado) -> str:
+    req = resultado.request
+    lines = [
+        f"### {req.label or req.destination}",
+        "",
+        f"Hasta {req.months} meses vista · {req.nights_min}-{req.nights_max} noches"
+        + (f" · maximo {req.max_price:.0f} €" if req.max_price else "")
+        + (" · solo findes" if req.weekend_only else ""),
+        "",
+    ]
+    if not resultado.offers:
+        lines.append("**Nada dentro de ese presupuesto.** Sube el tope o amplia el horizonte.")
+        return "\n".join(lines)
+
+    lines += ["| Precio | Fechas | Horario | Viaje real |", "| ---: | --- | --- | ---: |"]
+    for o in resultado.offers[:15]:
+        lines.append(
+            f"| **{o.price:.0f} €** | {o.depart_date} → {o.return_date} ({o.nights}n) | "
+            f"{o.depart_time}–{o.return_time} | {o.useful_hours:.0f} h |"
+        )
+    lines += ["", f"Ver en la web: {site_url()}/?search={req.slug}"]
+    return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
 def cmd_test_email(args: argparse.Namespace) -> int:
     from .config import load_config
     from .notify import notify_offers
@@ -416,6 +511,18 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--summary-out", help="Escribe un resumen en markdown en este fichero")
     s.add_argument("--dry-run", action="store_true")
     s.set_defaults(func=cmd_scan_stays)
+
+    b = sub.add_parser("search", help="Busqueda personalizada a un destino concreto")
+    b.add_argument("--dest", required=True, help="IATA (FCO) o ciudad (Roma)")
+    b.add_argument("--label", help="Nombre de la busqueda para la web")
+    b.add_argument("--max-price", type=float, dest="max_price")
+    b.add_argument("--nights", help="2, o un rango como 2-4")
+    b.add_argument("--months", type=int, default=12, help="Hasta cuantos meses buscar")
+    b.add_argument("--any-day", action="store_true", help="No limitarse a fines de semana")
+    b.add_argument("--adults", type=int)
+    b.add_argument("--summary-out")
+    b.add_argument("--dry-run", action="store_true")
+    b.set_defaults(func=cmd_search)
 
     t = sub.add_parser("test-email", help="Envia un aviso de ejemplo")
     t.add_argument("--to")

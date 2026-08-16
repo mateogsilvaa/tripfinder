@@ -66,3 +66,11 @@ jobs:
           git commit -m "data: scan de vuelos $(date -u +%Y-%m-%dT%H:%M)"
           git pull --rebase --autostash
           git push
+
+      - name: Redesplegar la web
+        # Un push hecho con GITHUB_TOKEN no dispara otros workflows (regla
+        # anti-bucle de GitHub), asi que Pages hay que lanzarlo explicitamente
+        # o los datos nuevos nunca llegan a la web.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

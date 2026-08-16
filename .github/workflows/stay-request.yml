@@ -41,7 +41,7 @@ jobs:
           offer_id="${TITLE#\[stay\] }"
           echo "offer_id=${offer_id}" >> "$GITHUB_OUTPUT"
           # Campos opcionales del bloque yaml del cuerpo, por si la oferta ya rotó de offers.json
-          for key in city country iata checkin checkout; do
+          for key in city country iata checkin checkout adults; do
             value=$(printf '%s' "$BODY" | grep -m1 "^${key}:" | cut -d' ' -f2- | tr -d '\r')
             echo "${key}=${value}" >> "$GITHUB_OUTPUT"
           done
@@ -58,6 +58,7 @@ jobs:
           IATA: ${{ steps.parse.outputs.iata }}
           CHECKIN: ${{ steps.parse.outputs.checkin }}
           CHECKOUT: ${{ steps.parse.outputs.checkout }}
+          ADULTS: ${{ steps.parse.outputs.adults }}
         run: |
           # Los flags opcionales se anaden solo si la issue los traia.
           args=()
@@ -66,6 +67,7 @@ jobs:
           if [ -n "$IATA" ];     then args+=(--iata "$IATA"); fi
           if [ -n "$CHECKIN" ];  then args+=(--checkin "$CHECKIN"); fi
           if [ -n "$CHECKOUT" ]; then args+=(--checkout "$CHECKOUT"); fi
+          if [ -n "$ADULTS" ];   then args+=(--adults "$ADULTS"); fi
           python -m tripfinder scan-stays \
             --offer-id "$OFFER_ID" \
             "${args[@]}" \
@@ -83,6 +85,14 @@ jobs:
             git pull --rebase --autostash
             git push
           fi
+
+      - name: Redesplegar la web
+        # Un push hecho con GITHUB_TOKEN no dispara otros workflows (regla
+        # anti-bucle de GitHub), asi que Pages hay que lanzarlo explicitamente
+        # o los datos nuevos nunca llegan a la web.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
 
       - name: Comentar y cerrar la issue
         env:

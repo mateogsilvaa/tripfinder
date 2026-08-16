@@ -1,0 +1,101 @@
+name: Busqueda personalizada
+
+# Se dispara cuando la web abre una issue "[buscar] <lo que sea>".
+# Igual que el alojamiento: la web es estatica, asi que la issue es la cola.
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: tripfinder-data
+  cancel-in-progress: false
+
+jobs:
+  buscar:
+    if: >
+      github.event.issue.user.login == github.repository_owner &&
+      startsWith(github.event.issue.title, '[buscar] ')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Leer los parametros de la issue
+        id: parse
+        env:
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+        run: |
+          echo "label=${TITLE#\[buscar\] }" >> "$GITHUB_OUTPUT"
+          for key in dest max_price nights months weekend adults; do
+            value=$(printf '%s' "$BODY" | grep -m1 "^${key}:" | cut -d' ' -f2- | tr -d '\r')
+            echo "${key}=${value}" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Buscar
+        env:
+          PYTHONPATH: src
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          DEST: ${{ steps.parse.outputs.dest }}
+          LABEL: ${{ steps.parse.outputs.label }}
+          MAX_PRICE: ${{ steps.parse.outputs.max_price }}
+          NIGHTS: ${{ steps.parse.outputs.nights }}
+          MONTHS: ${{ steps.parse.outputs.months }}
+          WEEKEND: ${{ steps.parse.outputs.weekend }}
+          ADULTS: ${{ steps.parse.outputs.adults }}
+        run: |
+          args=()
+          if [ -n "$MAX_PRICE" ]; then args+=(--max-price "$MAX_PRICE"); fi
+          if [ -n "$NIGHTS" ];    then args+=(--nights "$NIGHTS"); fi
+          if [ -n "$MONTHS" ];    then args+=(--months "$MONTHS"); fi
+          if [ -n "$ADULTS" ];    then args+=(--adults "$ADULTS"); fi
+          # weekend: "no" busca cualquier dia de la semana
+          if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
+          python -m tripfinder search \
+            --dest "$DEST" --label "$LABEL" "${args[@]}" \
+            --summary-out summary.md
+
+      - name: Publicar resultados
+        run: |
+          git config user.name  "tripfinder-bot"
+          git config user.email "actions@github.com"
+          git add data
+          if git diff --staged --quiet; then
+            echo "Sin cambios"
+          else
+            git commit -m "data: busqueda ${{ steps.parse.outputs.dest }}"
+            git pull --rebase --autostash
+            git push
+          fi
+
+      - name: Redesplegar la web
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
+
+      - name: Contestar en la issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} --body-file summary.md
+          gh issue close ${{ github.event.issue.number }} \
+            --comment "Resultados publicados en la web (tarda ~1 min en desplegarse)."
+
+      - name: Avisar si algo fallo
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment ${{ github.event.issue.number }} \
+            --body "La busqueda fallo. Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

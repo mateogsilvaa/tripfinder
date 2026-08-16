@@ -194,6 +194,7 @@ h1 em {
 }
 .legs dd { margin: 0; font: 400 15px/1.2 "DM Mono", monospace; }
 .legs .weekend { color: var(--amber); }
+.legs .hhmm { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); }
 
 .alts { font: 400 12px/1.6 "DM Mono", monospace; color: var(--faint); }
 .alts a { color: var(--muted); text-decoration: none; border-bottom: 1px solid var(--line); }
@@ -211,6 +212,34 @@ h1 em {
 .btn.primary:hover { background: #ffc667; }
 .btn.ghost { color: var(--muted); border-color: var(--line); }
 .btn.ghost:hover { color: var(--ink); border-color: rgba(255, 176, 46, 0.45); }
+
+/* --- buscador personalizado --------------------------------------------- */
+.finder {
+  border: 1px solid var(--line); border-radius: var(--radius);
+  background: linear-gradient(160deg, rgba(127, 214, 162, 0.05), transparent 60%);
+  padding: 26px 28px; margin-bottom: 34px;
+}
+.finder-head h2 {
+  margin: 0; font: 500 26px/1.1 "Fraunces", Georgia, serif; letter-spacing: -0.02em;
+}
+.finder-head p { margin: 10px 0 20px; color: var(--muted); font-size: 14.5px; max-width: 62ch; }
+.finder-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+.finder-form input {
+  background: var(--bg-2); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 10px; padding: 11px 13px; font: 400 15px "Familjen Grotesk", sans-serif;
+}
+.finder-form .field.grow input { width: 100%; }
+.finder-form input[type="number"] { width: 96px; font-family: "DM Mono", monospace; }
+
+.searches { margin-top: 22px; }
+.saved {
+  border-top: 1px solid var(--line-2); padding: 14px 0;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.saved b { font: 500 17px "Fraunces", Georgia, serif; font-weight: 500; }
+.saved .meta { font: 400 12.5px "DM Mono", monospace; color: var(--faint); }
+.saved .best { margin-left: auto; font: 500 20px "DM Mono", monospace; color: var(--amber); }
+.saved-rows { width: 100%; }
 
 /* --- filtros ------------------------------------------------------------ */
 .controls {
@@ -346,6 +375,25 @@ input[type="range"]::-moz-range-thumb {
   display: block; margin-top: 7px; font-size: 13px; letter-spacing: 0; color: var(--ink);
 }
 .total-break { font: 400 12px/1.5 "DM Mono", monospace; color: var(--muted); }
+
+.party {
+  display: flex; align-items: center; gap: 12px; margin: 4px 0 14px;
+  font: 400 14px "Familjen Grotesk", sans-serif; color: var(--ink);
+}
+.party input {
+  width: 68px; background: var(--bg-2); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px;
+  font: 500 16px "DM Mono", monospace; text-align: center;
+}
+.rescan {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; padding-bottom: 6px; margin-bottom: 6px;
+  font: 400 12.5px "DM Mono", monospace; color: var(--faint);
+}
+.btn.small { padding: 8px 12px; font-size: 13px; }
+.stay { text-decoration: none; color: inherit; }
+.stay:hover .name { color: var(--amber); }
+.link-tag { font: 500 13px "DM Mono", monospace; color: var(--muted); }
 
 /* --- panel de alojamiento ----------------------------------------------- */
 .backdrop {

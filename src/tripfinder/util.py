@@ -57,9 +57,47 @@ def get_json(
     raise RuntimeError(f"GET {url} fallo tras {retries} intentos: {last}")
 
 
-def get_text(url: str, *, params=None, headers=None, timeout: int = 25) -> str:
+def _scrapling_text(url: str, params, headers, timeout: int) -> str | None:
+    """Descarga con Scrapling si esta instalado.
+
+    Su `Fetcher` habla por curl_cffi imitando el handshake TLS y las cabeceras
+    de un Chrome real, que es lo que miran los antibot antes de servirte nada.
+    Sigue siendo una peticion HTTP normal: ni abre navegador ni resuelve
+    captchas, solo deja de parecer un script. Si no esta instalado, se usa
+    requests y el scraper funciona igual (peor, pero funciona).
+    """
+    try:
+        from scrapling.fetchers import Fetcher
+    except ImportError:
+        return None
+    try:
+        r = Fetcher.get(
+            url,
+            params=params,
+            headers=headers or {},
+            stealthy_headers=True,
+            timeout=timeout,
+        )
+    except Exception as exc:  # noqa: BLE001 - se reintenta con requests
+        log.warning("Scrapling fallo (%s), se usa requests", exc)
+        return None
+    if r is None or getattr(r, "status", 0) >= 400:
+        log.warning("Scrapling devolvio %s, se usa requests", getattr(r, "status", "?"))
+        return None
+    return r.html_content
+
+
+def get_text(
+    url: str, *, params=None, headers=None, timeout: int = 25, stealth: bool = False
+) -> str:
     h = {"User-Agent": USER_AGENT, "Accept-Language": "es-ES,es;q=0.9,en;q=0.8"}
     h.update(headers or {})
+
+    if stealth:
+        texto = _scrapling_text(url, params, headers, timeout)
+        if texto:
+            return texto
+
     r = requests.get(url, params=params, headers=h, timeout=timeout)
     r.raise_for_status()
     return r.text

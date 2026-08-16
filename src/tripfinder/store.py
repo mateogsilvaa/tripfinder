@@ -17,8 +17,10 @@ class Store:
     def __init__(self, root: Path | str = DATA_DIR):
         self.root = Path(root)
         self.stays_dir = self.root / "stays"
+        self.searches_dir = self.root / "searches"
         self.root.mkdir(parents=True, exist_ok=True)
         self.stays_dir.mkdir(parents=True, exist_ok=True)
+        self.searches_dir.mkdir(parents=True, exist_ok=True)
 
     # -- helpers ---------------------------------------------------------
     def _read(self, name: str, default: Any) -> Any:
@@ -66,6 +68,51 @@ class Store:
             del series[:-MAX_HISTORY_PER_ROUTE]
         self._write("history.json", history)
         return history
+
+    def save_search(self, payload: dict[str, Any]) -> Path:
+        """Guarda una busqueda y refresca el indice que lee la web."""
+        p = self.searches_dir / f"{payload['slug']}.json"
+        p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        indice = []
+        for f in sorted(self.searches_dir.glob("*.json")):
+            if f.name == "index.json":
+                continue
+            try:
+                d = json.loads(f.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            indice.append(
+                {
+                    "slug": d.get("slug"),
+                    "label": d.get("label"),
+                    "count": d.get("count", 0),
+                    "generated_at": d.get("generated_at"),
+                    "best_price": min((o["price"] for o in d.get("offers", [])), default=None),
+                }
+            )
+        (self.searches_dir / "index.json").write_text(
+            json.dumps({"searches": indice}, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        return p
+
+    def purge_expired_stays(self) -> int:
+        """Los alojamientos scrapeados se quedan hasta que pasa la fecha del viaje.
+
+        Nada de caducar por antiguedad: si la escapada es en enero, esos precios
+        siguen siendo utiles en diciembre. Solo se borra lo que ya no sirve.
+        """
+        hoy = date.today().isoformat()
+        borrados = 0
+        for f in self.stays_dir.glob("*.json"):
+            try:
+                datos = json.loads(f.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            if (datos.get("checkout") or "9999") < hoy:
+                f.unlink()
+                borrados += 1
+        return borrados
 
     # -- estado de notificaciones ---------------------------------------
     def load_state(self) -> dict[str, Any]:

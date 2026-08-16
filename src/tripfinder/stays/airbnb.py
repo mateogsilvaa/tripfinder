@@ -66,43 +66,38 @@ def _listing_id(item: dict) -> str:
 
 
 def _prices(item: dict, nights: int) -> tuple[float | None, float | None]:
-    """Devuelve (total, por_noche) leyendo la caja de precio del resultado."""
+    """Devuelve (total, por_noche).
+
+    Solo se lee el TOTAL de la caja de precio y el por-noche se divide aqui.
+    El desglose de Airbnb mezcla tarifas con y sin descuento y daba numeros
+    absurdos (180 EUR de total con "23 EUR/noche" en un viaje de 3 noches).
+    """
     block = item.get("structuredDisplayPrice") or {}
     primary = block.get("primaryLine") or {}
-    total = per_night = None
+    total = None
 
-    # 1) Componentes ordenados: el descontado manda sobre el original.
+    # El componente con descuento manda sobre el precio original tachado.
     for comp in primary.get("orderedComponents") or []:
-        value = _to_number(comp.get("discountedPrice") or comp.get("price"))
-        if value is not None and comp.get("__typename", "").startswith("Discounted"):
-            total = value
-        elif value is not None and total is None:
-            total = value
+        tipo = comp.get("__typename", "")
+        valor = _to_number(comp.get("discountedPrice") or comp.get("price"))
+        if valor is None:
+            continue
+        if tipo.startswith("Discounted"):
+            total = valor
+            break
+        if total is None:
+            total = valor
 
     label = primary.get("accessibilityLabel") or ""
     if total is None:
         total = _to_number(label)
+    if total is None:
+        return None, None
 
-    # 2) "3 noches por 90,00 €" en el desglose da el precio por noche exacto.
-    for detail in _walk(block.get("explanationData") or {}):
-        desc = detail.get("description") or ""
-        m = NIGHTS_RE.search(desc)
-        if m:
-            noches = int(m.group(1)) or nights
-            importe = _to_number(desc.split("por")[-1]) if "por" in desc else None
-            if importe:
-                per_night = round(importe / noches, 2) if noches and importe > 60 else importe
-                break
-
-    lowered = label.lower()
-    if total is not None and "total" not in lowered and per_night is None:
-        # La etiqueta era un precio por noche, no un total.
-        per_night, total = total, round(total * nights, 2)
-    if total is None and per_night is not None:
-        total = round(per_night * nights, 2)
-    if per_night is None and total is not None:
-        per_night = round(total / nights, 2)
-    return total, per_night
+    # Si la etiqueta no dice "total", Airbnb esta mostrando el precio por noche.
+    if "total" not in label.lower():
+        return round(total * nights, 2), round(total, 2)
+    return round(total, 2), round(total / max(1, nights), 2)
 
 
 def _rating(item: dict) -> tuple[float | None, int | None]:
@@ -129,7 +124,7 @@ class AirbnbProvider(StayProvider):
         if req.max_total:
             params["price_max"] = int(req.max_total)
 
-        html = get_text(url, params=params)
+        html = get_text(url, params=params, stealth=True, timeout=40)
         m = STATE_RE.search(html)
         if not m:
             log.warning("Airbnb: no se encontro el estado embebido (markup cambiado)")

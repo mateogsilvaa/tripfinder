@@ -161,10 +161,9 @@ class GoogleFlightsProvider(FlightProvider):
                 nights=nights,
                 price=round(float(price_m.group(1).replace(".", "")), 2),
                 airline=airline,
+                stops=escalas,
                 deep_link=url,
             )
-            if escalas:
-                offer.airline = f"{airline} ({escalas} escala{'s' if escalas > 1 else ''})"
 
             previa = best_por_aerolinea.get(airline)
             if previa is None or offer.price < previa.price:

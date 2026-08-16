@@ -41,6 +41,11 @@ def useful_hours(offer: FlightOffer) -> float:
     except ValueError:
         return round(nights * 12.0, 1)
 
+    # Un vuelo que sale a las 21:55 aterriza al dia siguiente: sin esto, la
+    # llegada se fecha 24 h antes y el viaje parece un dia mas largo.
+    if offer.depart_time and llegada < offer.depart_time:
+        inicio += timedelta(days=1)
+
     total = (fin - inicio) / timedelta(hours=1)
     return round(max(0.0, total - SLEEP_HOURS * nights), 1)
 

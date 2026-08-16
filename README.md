@@ -74,6 +74,20 @@ python -m tripfinder test-email --method github_issue
 Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
+## Buscador personalizado
+
+Los chollos automaticos responden a "que hay barato ahora". El buscador responde a
+lo contrario: **"quiero ir a Roma un finde por menos de 120 €, avisame cuando se
+pueda"**. Recorre fin de semana a fin de semana hasta 12 meses vista y guarda el
+resultado en la web.
+
+Desde la web se rellena el formulario (destino, tope, noches, meses, personas) y se
+abre una issue `[buscar] ...` que dispara `custom-search.yml`. En local:
+
+```bash
+python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
+```
+
 ## Lo que no te da ningun comparador
 
 Buscadores de vuelos hay cientos. Estas dos cosas no las hace ninguno, y son las
@@ -98,6 +112,7 @@ las dos cosas porque cada uno vive de vender una.
 |---|---|---|
 | `ryanair` | ninguna | Barrido de findes, tarifas base. Es quien mas gana en rutas low cost. |
 | `google_flights` | ninguna | **Todas las aerolineas**: Iberia, Vueling, Air Europa, ITA, easyJet, Wizz, TAP… Contrasta los destinos y fechas que ya han salido y se queda con lo que mejora. |
+| `scrapling` | ninguna | No es un provider: es el fetcher que usan los scrapers de alojamiento. Habla por curl_cffi imitando el TLS y las cabeceras de un Chrome real, que es lo que miran los antibot. Si no esta instalado, se cae a `requests` y todo sigue. |
 | `amadeus` | gratuita | Refuerzo por GDS para rutas con escala. Se desactiva solo si no hay claves. |
 
 Cuando dos companias ofrecen el mismo viaje, gana la mas barata y **las demas se guardan

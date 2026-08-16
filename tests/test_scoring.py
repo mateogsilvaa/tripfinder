@@ -96,8 +96,8 @@ def test_no_encaja_si_sale_de_madrugada_aunque_sea_viernes():
 def test_horas_utiles_descuentan_el_sueno_y_los_vuelos_nocturnos():
     from tripfinder.scoring import useful_hours
 
-    tarde = weekend_offer(nights=2, arrive_time="18:40", return_time="21:30")
-    noche = weekend_offer(nights=2, arrive_time="23:55", return_time="07:10")
+    tarde = weekend_offer(nights=2, depart_time="16:30", arrive_time="18:40", return_time="21:30")
+    noche = weekend_offer(nights=2, depart_time="21:40", arrive_time="23:55", return_time="07:10")
     assert useful_hours(tarde) > 30
     assert useful_hours(noche) < 20
     # Mismo precio y mismas fechas: gana el que deja más viaje aprovechable.
@@ -108,3 +108,10 @@ def test_sin_horario_se_estima_por_noches_sin_penalizar():
     from tripfinder.scoring import useful_hours
 
     assert useful_hours(weekend_offer(nights=2, arrive_time="", return_time="")) == 24.0
+
+
+def test_un_vuelo_que_aterriza_pasada_medianoche_no_regala_un_dia():
+    from tripfinder.scoring import useful_hours
+
+    nocturno = weekend_offer(nights=2, depart_time="21:55", arrive_time="00:05", return_time="16:45")
+    assert 20 < useful_hours(nocturno) < 30

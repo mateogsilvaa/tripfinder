@@ -8,10 +8,13 @@ notify:
   # resend | smtp | github_issue  (ver docs/ARCHITECTURE.md)
   method: resend
   to: mateogonsilva@gmail.com
-  # Solo se avisa de ofertas con score >= min_score
-  min_score: 70
+  # Aviso inmediato solo si es un chollo excepcional (evita el correo diario)
+  min_score: 88
+  # Ademas, resumen semanal aunque no haya nada excepcional. 6 = domingo
+  digest_weekday: 6
+  digest_min_score: 70
   # Si una oferta ya avisada baja este % adicional, se vuelve a avisar
-  renotify_drop_pct: 12
+  renotify_drop_pct: 15
   # Maximo de ofertas por email
   max_offers_per_email: 6
 
