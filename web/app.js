@@ -248,7 +248,11 @@ const AVISO_HIDDEN = `
 
 function leg(label, iso, sale, llega, highlight) {
   if (!iso) return "";
-  const horario = sale ? `${esc(sale)}${llega ? ` → ${esc(llega)}` : ""}` : "";
+  // Google no publica el horario del vuelo de vuelta en su listado: mejor
+  // decirlo que dejar un hueco que parece un fallo.
+  const horario = sale
+    ? `${esc(sale)}${llega ? ` → ${esc(llega)}` : ""}`
+    : "<i>horario en el enlace</i>";
   return `<div><dt>${label}</dt><dd class="${highlight ? "weekend" : ""}">${fmtDate(iso, true)}
     ${horario ? `<span class="hhmm">${horario}</span>` : ""}</dd></div>`;
 }
@@ -320,7 +324,9 @@ function boardRow(o, i) {
     : "";
   const hora = o.depart_time ? ` ${esc(o.depart_time)}` : "";
   const horaVuelta = o.return_time ? ` ${esc(o.return_time)}` : "";
-  const vuelta = vueltaTxt ? ` → <b>${vueltaTxt}</b>${horaVuelta}` : "";
+  const vuelta = vueltaTxt
+    ? ` → <b>${vueltaTxt}</b>${horaVuelta || " <i>(hora en el enlace)</i>"}`
+    : "";
   return `
     <div class="brow" id="offer-${esc(o.id)}" data-open="${esc(o.id)}" role="button" tabindex="0"
          style="animation-delay:${Math.min(i, 14) * 35}ms">
@@ -735,7 +741,11 @@ async function loadSearches() {
     .join("");
 
   document.querySelectorAll(".saved[data-slug]").forEach((el) =>
-    el.addEventListener("click", () => toggleSearch(el))
+    el.addEventListener("click", (ev) => {
+      // Sin esto, abrir un viaje de dentro cerraba la busqueda que lo contiene.
+      if (ev.target.closest(".saved-rows")) return;
+      toggleSearch(el);
+    })
   );
 
   const pedida = new URLSearchParams(location.search).get("search");

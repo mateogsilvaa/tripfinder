@@ -58,7 +58,7 @@ search:
   google:
     # Cada consulta descarga ~2,5 MB de la pagina de Google: pocas y espaciadas.
     # Subido para que de tiempo a mirar los destinos donde Ryanair no vuela.
-    max_queries: 40
+    max_queries: 60
     min_interval_seconds: 4
 
   # Pasajeros del vuelo (el precio mostrado es el total de ida y vuelta para todos)
@@ -116,6 +116,15 @@ city_names:
   FLR: [Florencia, Italia]
   PMO: [Palermo, Italia]
   CTA: [Catania, Italia]
+  OTP: [Bucarest, Rumania]
+  SOF: [Sofia, Bulgaria]
+  PSA: [Pisa, Italia]
+  TIA: [Tirana, Albania]
+  KRK: [Cracovia, Polonia]
+  SKG: [Salonica, Grecia]
+  LCA: [Larnaca, Chipre]
+  RAK: [Marrakech, Marruecos]
+  FNC: [Funchal, Portugal]
 
 routes:
   - origin: MAD
@@ -142,7 +151,8 @@ routes:
   # son mas altos porque estas rutas nunca van a valer 30 EUR.
   - origin: MAD
     origin_name: Madrid
-    destinations: [AMS, MUC, FRA, ZRH, VIE, CPH, PRG, BUD, WAW, ATH, VCE, FLR, PMO, CTA]
+    destinations: [AMS, MUC, FRA, ZRH, VIE, CPH, PRG, BUD, WAW, ATH, VCE, FLR, PMO, CTA,
+                   OTP, SOF, PSA, TIA, KRK, SKG, LCA, RAK, FNC]
     max_price: 130
     max_price_weekend: 220
     baseline_price: 230
