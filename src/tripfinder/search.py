@@ -349,6 +349,12 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
     if req.max_price:
         ofertas = [o for o in ofertas if o.price <= req.max_price]
 
+    # Ryanair y Google devuelven el mismo viaje: se fusionan por ruta y fecha
+    # como en el scan, quedandose con la mas barata y guardando el resto como
+    # alternativa. Sin esto cada destino salia dos veces en la lista.
+    from .cli import _dedupe
+
+    ofertas = _dedupe(ofertas)
     ofertas.sort(key=lambda o: o.price)
     resultado.offers = ofertas[:40]
     log.info(

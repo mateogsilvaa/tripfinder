@@ -104,10 +104,12 @@ def test_horas_utiles_descuentan_el_sueno_y_los_vuelos_nocturnos():
     assert score_offer(tarde, {}, ROUTE).score > score_offer(noche, {}, ROUTE).score
 
 
-def test_sin_horario_se_estima_por_noches_sin_penalizar():
+def test_sin_horario_no_se_inventan_horas():
     from tripfinder.scoring import useful_hours
 
-    assert useful_hours(weekend_offer(nights=2, arrive_time="", return_time="")) == 24.0
+    # Ensenar "36 h de viaje" sin saber el horario es peor que no ensenar nada:
+    # parece un dato y no lo es.
+    assert useful_hours(weekend_offer(nights=2, arrive_time="", return_time="")) == 0.0
 
 
 def test_un_vuelo_que_aterriza_pasada_medianoche_no_regala_un_dia():

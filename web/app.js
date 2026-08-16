@@ -183,9 +183,11 @@ async function init() {
     const aer = await fetchJSON("data/airports_world.json");
     aer.forEach((a) => (CONTINENTES[a.code] = a.cont));
     const presentes = [...new Set(OFFERS.map((o) => CONTINENTES[o.destination]).filter(Boolean))].sort();
+    const hayLejos = OFFERS.some((o) => o.long_haul);
     $("#cont").insertAdjacentHTML(
       "beforeend",
-      presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")
+      (hayLejos ? '<option value="__lejos__">Otros continentes</option>' : "") +
+        presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")
     );
   } catch {
     $("#cont").parentElement.hidden = true;
@@ -223,11 +225,15 @@ function currentList() {
 
   const soloFindes = $("#onlyWeekend").checked;
   const continente = $("#cont").value;
+  // Europa y el largo radio no compiten en la misma lista: un vuelo a Bangkok
+  // nunca puntuara como un finde a Bergamo, asi que van en secciones aparte.
+  const lejos = $("#cont").value === "__lejos__";
   const list = OFFERS.filter(
     (o) =>
       o.price <= max &&
       (!soloFindes || o.weekend) &&
-      (!continente || CONTINENTES[o.destination] === continente) &&
+      (lejos ? o.long_haul : !continente || CONTINENTES[o.destination] === continente) &&
+      (lejos || !o.long_haul) &&
       (!q ||
         `${o.destination_name} ${o.destination} ${o.destination_country}`.toLowerCase().includes(q))
   );
@@ -361,7 +367,7 @@ function boardRow(o, i) {
       }</span>
       <span class="airline">${esc(o.airline || o.provider)}<small>${escalas(o)}${
         o.useful_hours ? ` · ${Math.round(o.useful_hours)} h de viaje` : ""
-      }</small></span>
+      }${o.long_haul ? " · larga distancia" : ""}</small></span>
       <span class="price">${fmtEUR(o.price)}${
         o.discount_pct >= 5 ? `<small>−${Math.round(o.discount_pct)}%</small>` : ""
       }</span>

@@ -33,7 +33,9 @@ def useful_hours(offer: FlightOffer) -> float:
     nights = offer.nights or 0
     llegada, salida = offer.arrive_time or offer.depart_time, offer.return_time
     if not (offer.return_date and llegada and salida):
-        return round(nights * 12.0, 1)
+        # Sin horario no se estima nada: poner "36 h" donde no hay dato es
+        # peor que dejarlo vacio, porque parece informacion y no lo es.
+        return 0.0
 
     try:
         inicio = datetime.fromisoformat(f"{offer.depart_date}T{llegada}")

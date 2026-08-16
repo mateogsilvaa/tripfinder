@@ -100,16 +100,26 @@ jobs:
         run: |
           git config user.name  "tripfinder-bot"
           git config user.email "actions@github.com"
-          # El resultado de esta busqueda, aparte, para poder reaplicarlo si
-          # otra busqueda publica antes que nosotros.
-          mkdir -p /tmp/tf && cp -r data/searches/. /tmp/tf/ 2>/dev/null || true
+
+          # Solo el fichero que ha generado ESTA busqueda. Antes se guardaba
+          # una copia de la carpeta entera y al reaplicarla resucitaba lo que
+          # otro run habia borrado y pisaba lo que otro habia escrito: de ahi
+          # que las busquedas aparecieran y desaparecieran solas.
+          nuevos=$(git status --porcelain data/searches | awk '{print $2}' | grep -v index.json || true)
+          if [ -z "$nuevos" ]; then
+            echo "La busqueda no genero fichero"
+            exit 0
+          fi
+          mkdir -p /tmp/tf
+          for f in $nuevos; do cp "$f" /tmp/tf/; done
+
           for intento in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
             mkdir -p data/searches
-            cp -r /tmp/tf/. data/searches/ 2>/dev/null || true
+            for f in /tmp/tf/*.json; do cp "$f" data/searches/; done
             PYTHONPATH=src python -m tripfinder reindex
-            git add data
+            git add data/searches
             if git diff --staged --quiet; then
               echo "Sin cambios"
               exit 0
@@ -119,7 +129,7 @@ jobs:
               echo "Publicado al intento $intento"
               exit 0
             fi
-            echo "Otra busqueda publico antes; se reintenta"
+            echo "Otra publicacion se adelanto; se reintenta"
             sleep $((RANDOM % 6 + 2))
           done
           exit 1

@@ -55,6 +55,7 @@ class FlightOffer:
     return_arrive_time: str = ""  # HH:MM de llegada de vuelta a casa
     stops: int = 0  # 0 = directo
     # Skiplagging: el billete va mas lejos y te bajas en la escala
+    long_haul: bool = False  # otro continente, se enseña en su propia seccion
     hidden_city: bool = False
     hidden_city_ticket_to: str = ""
     # Horas que de verdad pasas en destino, descontando las de dormir

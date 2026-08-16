@@ -65,6 +65,10 @@ class Config:
         return int(self.raw.get("party_size", 2))
 
     @property
+    def long_haul(self) -> dict[str, Any]:
+        return self.raw.get("long_haul", {}) or {}
+
+    @property
     def city_names(self) -> dict[str, tuple[str, str]]:
         raw = self.raw.get("city_names", {}) or {}
         return {k: (v[0], v[1] if len(v) > 1 else "") for k, v in raw.items()}

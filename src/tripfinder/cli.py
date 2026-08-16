@@ -7,7 +7,7 @@ import logging
 import sys
 from datetime import date, timedelta
 
-from .config import Config, load_config, site_url
+from .config import Config, Route, load_config, site_url
 from .models import FlightOffer, StayOffer
 from .providers import build_providers
 from .scoring import is_deal, score_offer, should_notify
@@ -196,6 +196,40 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
             except Exception as exc:  # noqa: BLE001
                 log.warning("Google Flights fallo: %s", exc)
                 errors.append(f"google_flights: {exc}")
+
+    # Otros continentes: estancias largas y presupuesto propio. Van aparte
+    # porque un vuelo a Bangkok jamas competira con un finde a Bergamo, pero
+    # un ofertón de largo radio no se puede dejar pasar.
+    lh = cfg.long_haul
+    if google is not None and lh.get("enabled", True) and lh.get("destinations"):
+        noches = int(lh.get("nights", 8))
+        pares, nombres = [], {}
+        for i in range(int(lh.get("months", 8))):
+            salida = date.today() + timedelta(days=30 * (i + 1))
+            for dest in lh["destinations"]:
+                pares.append((dest, salida, salida + timedelta(days=noches)))
+                nombres[dest] = cfg.city_names.get(dest, (dest, ""))
+        google.shortlist = pares[: int(lh.get("max_queries", 16))]
+        google.names.update(nombres)
+        ruta_lh = Route(
+            origin=cfg.routes[0].origin,
+            origin_name=cfg.routes[0].origin_name,
+            destinations=list(lh["destinations"]),
+            max_price=float(lh.get("max_price", 650)),
+            max_price_weekend=float(lh.get("max_price", 650)),
+            baseline_price=float(lh.get("max_price", 650)) * 1.6,
+            baseline_price_weekend=float(lh.get("max_price", 650)) * 1.6,
+        )
+        try:
+            for offer in google.search(ruta_lh):
+                offer.long_haul = True
+                score_offer(offer, history, ruta_lh, weekend_cfg)
+                found.append(offer)
+                if is_deal(offer, ruta_lh, min_score, "prefer"):
+                    deals.append(offer)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Largo radio fallo: %s", exc)
+            errors.append(f"long_haul: {exc}")
 
     found = _dedupe(found)
     deals = _dedupe(deals)

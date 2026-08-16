@@ -66,6 +66,17 @@ search:
   # Segundos minimos entre peticiones a un mismo proveedor
   min_interval_seconds: 2
 
+# Largo radio: otros continentes. Nunca van a competir con un finde a Bergamo
+# por 60 EUR, asi que van aparte, con estancias largas y su propio presupuesto.
+# Solo se publican si de verdad son ofertones para esa ruta.
+long_haul:
+  enabled: true
+  destinations: [JFK, EWR, MIA, CUN, MEX, BOG, LIM, GRU, EZE, BKK, DXB, DOH, NRT, ICN, SIN, DEL, YYZ, LAX, JNB, CPT]
+  nights: 8
+  months: 8          # cuantos meses vista muestrear
+  max_price: 650     # por persona, ida y vuelta
+  max_queries: 16
+
 # Skiplagging (hidden-city): comprar un billete mas lejos y bajarse en la escala.
 # Solo tiene sentido cuando el destino es un hub, porque es donde paran los
 # vuelos hacia otros sitios. Para cada hub, adonde mirar "mas alla".
