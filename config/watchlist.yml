@@ -65,6 +65,25 @@ search:
   # Segundos minimos entre peticiones a un mismo proveedor
   min_interval_seconds: 2
 
+# Skiplagging (hidden-city): comprar un billete mas lejos y bajarse en la escala.
+# Solo tiene sentido cuando el destino es un hub, porque es donde paran los
+# vuelos hacia otros sitios. Para cada hub, adonde mirar "mas alla".
+skiplagging:
+  enabled: true
+  beyond:
+    CDG: [OTP, WAW, PRG, ATH, TLV, CMN]
+    ORY: [OTP, ALG, TUN, CMN]
+    FCO: [OTP, ATH, TLV, CAI, SOF]
+    MXP: [OTP, TIA, SOF, ATH]
+    AMS: [OTP, WAW, KRK, BUD, TLL]
+    MUC: [OTP, SOF, KRK, BUD]
+    FRA: [OTP, SOF, KRK, TLV]
+    LIS: [OPO, FNC, SID, RAI]
+    BCN: [PMI, IBZ, MAH, AGP]
+    IST: [TBS, EVN, BEY, ALA]
+    VIE: [OTP, SOF, KRK, TLV]
+    BRU: [OTP, WAW, KRK]
+
 # Nombre de ciudad por aeropuerto. Lo usa Google Flights (que solo devuelve IATA)
 # y, sobre todo, la busqueda de alojamiento: buscar "MXP" en Airbnb no da nada.
 city_names:

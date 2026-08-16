@@ -467,6 +467,60 @@ def _search_markdown(resultado) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# skiplag
+# --------------------------------------------------------------------------- #
+def cmd_skiplag(args: argparse.Namespace) -> int:
+    from .search import resolve_destination
+    from .skiplag import find_hidden_city
+
+    cfg: Config = load_config(args.config)
+    store = Store()
+    try:
+        iata, ciudad, pais = resolve_destination(args.dest, cfg)
+    except ValueError as exc:
+        log.error("%s", exc)
+        return 1
+
+    dia = date.fromisoformat(args.depart)
+    directo = args.direct_price
+    if directo is None:
+        # Referencia: lo mas barato que tengamos guardado para ese dia y destino
+        mismos = [
+            o.price for o in store.load_offers()
+            if o.destination == iata and o.depart_date == args.depart
+        ]
+        directo = min(mismos) if mismos else None
+
+    hallazgos = find_hidden_city(iata, dia, cfg, directo)
+    print(f"\n{ciudad} el {args.depart}: {len(hallazgos)} billetes con escala ahi")
+    if directo:
+        print(f"  (referencia directa: {directo:.0f} EUR)")
+    for h in hallazgos[:10]:
+        print(
+            f"  {h.price:7.2f}EUR  billete a {h.ticket_to}  sale {h.depart_time}  "
+            f"escala de {h.layover_hours} en {h.destination}  {h.airline}"
+        )
+    if hallazgos:
+        print("\n  OJO: solo ida, sin equipaje facturado, y la vuelta del billete se cancela.")
+
+    if args.dry_run or not hallazgos:
+        return 0
+
+    ofertas = [h.to_offer(ciudad, pais) for h in hallazgos]
+    payload = {
+        "slug": f"skiplag-{iata.lower()}-{args.depart.replace('-', '')}",
+        "label": f"Bajarse en la escala · {ciudad} · {args.depart}",
+        "request": {"destination": iata, "depart": args.depart, "hidden_city": True},
+        "generated_at": date.today().isoformat(),
+        "errors": [],
+        "count": len(ofertas),
+        "offers": [o.to_dict() for o in ofertas],
+    }
+    print(f"\nGuardado en {store.save_search(payload)}")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
 def cmd_test_email(args: argparse.Namespace) -> int:
     from .config import load_config
     from .notify import notify_offers
@@ -536,6 +590,16 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--summary-out")
     b.add_argument("--dry-run", action="store_true")
     b.set_defaults(func=cmd_search)
+
+    k = sub.add_parser(
+        "skiplag", help="Billetes que hacen escala en tu destino y salen mas baratos"
+    )
+    k.add_argument("--dest", required=True, help="Donde quieres bajarte (IATA o ciudad)")
+    k.add_argument("--depart", required=True, help="Fecha de ida (YYYY-MM-DD)")
+    k.add_argument("--direct-price", type=float, dest="direct_price",
+                   help="Precio del vuelo directo con el que comparar")
+    k.add_argument("--dry-run", action="store_true")
+    k.set_defaults(func=cmd_skiplag)
 
     t = sub.add_parser("test-email", help="Envia un aviso de ejemplo")
     t.add_argument("--to")

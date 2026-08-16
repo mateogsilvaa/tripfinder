@@ -54,6 +54,9 @@ class FlightOffer:
     return_time: str = ""  # HH:MM de salida del vuelo de vuelta
     return_arrive_time: str = ""  # HH:MM de llegada de vuelta a casa
     stops: int = 0  # 0 = directo
+    # Skiplagging: el billete va mas lejos y te bajas en la escala
+    hidden_city: bool = False
+    hidden_city_ticket_to: str = ""
     # Horas que de verdad pasas en destino, descontando las de dormir
     useful_hours: float = 0.0
     price_per_hour: float = 0.0

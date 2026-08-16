@@ -231,8 +231,19 @@ function currentList() {
 }
 
 function escalas(o) {
+  if (o.hidden_city) return `te bajas en la escala (billete a ${esc(o.hidden_city_ticket_to)})`;
   return o.stops ? `${o.stops} escala${o.stops > 1 ? "s" : ""}` : "directo";
 }
+
+/* El aviso no es decorativo: sin equipaje facturado y sin vuelta, esto sale
+   caro si te pilla por sorpresa. */
+const AVISO_HIDDEN = `
+  <div class="hidden-warn">
+    <strong>Te bajas en la escala.</strong> El billete va más lejos y tú te quedas aquí.
+    Es legal, pero: <b>solo ida</b> (la aerolínea cancela el resto del billete, así que
+    no vale para ida y vuelta), <b>sin equipaje facturado</b> (la maleta sigue al destino
+    final) y sin tarjeta de fidelización, que algunas compañías cierran cuentas.
+  </div>`;
 
 function leg(label, iso, sale, llega, highlight) {
   if (!iso) return "";
@@ -268,6 +279,7 @@ function heroTicket(o) {
         <span class="per-person">vuelo completo, 1 adulto</span>
       </div>
       <div class="hero-body">
+        ${o.hidden_city ? AVISO_HIDDEN : ""}
         ${
           o.discount_pct >= 5
             ? `<div class="stamp">chollo<b>−${Math.round(o.discount_pct)}%</b></div>`
@@ -311,7 +323,7 @@ function boardRow(o, i) {
   return `
     <button class="brow" id="offer-${esc(o.id)}" data-stay="${esc(o.id)}"
             style="animation-delay:${Math.min(i, 14) * 35}ms">
-      <span class="iata">${esc(o.destination)}</span>
+      <span class="iata ${o.hidden_city ? "hidden" : ""}">${esc(o.destination)}</span>
       <span class="dest-cell">
         <span class="city">${esc(o.destination_name || o.destination)}</span>
         <span class="country">${esc(o.destination_country || "")}</span>
