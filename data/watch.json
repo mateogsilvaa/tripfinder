@@ -64,6 +64,22 @@
       "best_price": null,
       "last_checked": "2026-08-16",
       "active": true
+    },
+    {
+      "id": "todos-2026-11-06",
+      "label": "Donde sea · 2026-11-06",
+      "destination": "",
+      "depart": "2026-11-06",
+      "return_date": "2026-11-09",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 2,
+      "max_price": 300.0,
+      "created": "2026-08-16",
+      "best_price": null,
+      "last_checked": "",
+      "active": true
     }
   ]
 }
