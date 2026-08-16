@@ -733,6 +733,25 @@ $("#finderForm").addEventListener("submit", async (e) => {
   aviso(`<div class="saved"><span class="meta">No se pudo lanzar: ${esc(r.reason)}</span></div>`);
 });
 
+/* Un workflow tarda entre uno y tres minutos: refrescar a los 45 segundos y
+   rendirse hacia que pareciera que nada funcionaba. */
+function esperarCambios() {
+  if (window.__esperando) return;
+  let vueltas = 0;
+  window.__esperando = setInterval(async () => {
+    vueltas += 1;
+    const quedan =
+      pendientes().length || JSON.parse(localStorage.getItem("tf_borrando") || "[]").length;
+    if (!quedan || vueltas > 20) {
+      clearInterval(window.__esperando);
+      window.__esperando = null;
+      if (!quedan) return;
+    }
+    await loadSearches();
+    await cargarWatches();
+  }, 20000);
+}
+
 async function loadSearches() {
   let indice;
   try {
@@ -766,6 +785,21 @@ async function loadSearches() {
     )
     .join("");
 
+  // Lo que se ha mandado borrar sigue marcado hasta que desaparece de verdad.
+  const borrando = JSON.parse(localStorage.getItem("tf_borrando") || "[]");
+  borrando.forEach((slug) => {
+    const fila = $("#searches").querySelector(`[data-slug="${slug}"]`);
+    if (fila) {
+      fila.style.opacity = 0.45;
+      const m = fila.querySelector(".meta");
+      if (m) m.innerHTML = '<span class="spin"></span>borrando…';
+    }
+  });
+  const vivas = new Set(guardadas.map((s) => s.slug));
+  const siguen = borrando.filter((s) => vivas.has(s));
+  localStorage.setItem("tf_borrando", JSON.stringify(siguen));
+  if (siguen.length) esperarCambios();
+
   $("#searches")
     .querySelectorAll("[data-olvidar]")
     .forEach((b) =>
@@ -775,26 +809,22 @@ async function loadSearches() {
       })
     );
 
-  // Mientras haya algo en marcha se refresca solo hasta que aparezca.
-  if (pend.length && !window.__esperando) {
-    window.__esperando = setInterval(() => {
-      if (!pendientes().length) {
-        clearInterval(window.__esperando);
-        window.__esperando = null;
-        return;
-      }
-      loadSearches();
-    }, 30000);
-  }
+  if (pend.length) esperarCambios();
 
   document.querySelectorAll("[data-borrar]").forEach((b) =>
     b.addEventListener("click", async (ev) => {
       ev.stopPropagation();
       b.disabled = true;
       const r = await dispatch("delete_search", { tipo: "delete_search", id: b.dataset.borrar });
-      b.closest(".saved").style.opacity = r.ok ? 0.4 : 1;
-      if (r.ok) setTimeout(loadSearches, 45000);
-      else b.disabled = false;
+      if (r.ok) {
+        const cola = JSON.parse(localStorage.getItem("tf_borrando") || "[]");
+        cola.push(b.dataset.borrar);
+        localStorage.setItem("tf_borrando", JSON.stringify(cola));
+        loadSearches();
+      } else {
+        b.disabled = false;
+        alert("No se pudo borrar: " + r.reason);
+      }
     })
   );
 
@@ -1075,9 +1105,15 @@ async function cargarWatches() {
       b.addEventListener("click", async () => {
         b.disabled = true;
         const r = await dispatch("unwatch", { tipo: "unwatch", id: b.dataset.unwatch });
-        b.closest(".watch").style.opacity = r.ok ? 0.4 : 1;
-        if (r.ok) setTimeout(cargarWatches, 45000);
-        else b.disabled = false;
+        if (r.ok) {
+          const fila = b.closest(".watch");
+          fila.style.opacity = 0.45;
+          fila.querySelector(".meta").innerHTML = '<span class="spin"></span>quitando…';
+          esperarCambios();
+        } else {
+          b.disabled = false;
+          alert("No se pudo quitar: " + r.reason);
+        }
       })
     );
 }

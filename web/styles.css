@@ -660,3 +660,5 @@ input[type="range"]::-moz-range-thumb {
 }
 .quitar:hover { color: #ff8f6b; border-color: rgba(255, 143, 107, .5); }
 .quitar[disabled] { opacity: .4; cursor: default; }
+
+.build { margin-left: auto; opacity: .6; }
