@@ -9,20 +9,6 @@
   "stays": [
     {
       "provider": "airbnb",
-      "name": "Chalet Un Sueño Más • Vista, Chimenea y Cascada",
-      "url": "https://www.airbnb.es/rooms/1137188115375603862?check_in=2026-11-06&check_out=2026-11-09&adults=2",
-      "kind": "stay",
-      "price_total": 211.0,
-      "price_per_night": 70.33,
-      "currency": "EUR",
-      "rating": 5.0,
-      "reviews": 103,
-      "area": "Chalet en Sapucaí-Mirim, Brasil",
-      "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-1137188115375603862/original/6e983a5b-8aee-4a04-9090-1877ea8a8919.jpeg",
-      "note": ""
-    },
-    {
-      "provider": "airbnb",
       "name": "Cabaña con vistas al lago y sauna en Bullaren, Bohuslän",
       "url": "https://www.airbnb.es/rooms/1697979870730884963?check_in=2026-11-06&check_out=2026-11-09&adults=2",
       "kind": "stay",
@@ -47,20 +33,6 @@
       "reviews": null,
       "area": "Cabaña en Timbó, Brasil",
       "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-1735028341272860857/original/9757b58a-1acb-475e-917f-0181ddb1a199.jpeg",
-      "note": ""
-    },
-    {
-      "provider": "airbnb",
-      "name": "De Sluishoeve - Disfrutar del campo en Zelanda",
-      "url": "https://www.airbnb.es/rooms/1689668695844006132?check_in=2026-11-06&check_out=2026-11-09&adults=2",
-      "kind": "stay",
-      "price_total": 300.0,
-      "price_per_night": 100.0,
-      "currency": "EUR",
-      "rating": 5.0,
-      "reviews": 7,
-      "area": "Casa de invitados en Nieuwerkerk, Países Bajos",
-      "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-1689668695844006132/original/fbdbbf04-4c40-42d4-ba77-6072b2a3f47d.jpeg",
       "note": ""
     },
     {
@@ -107,20 +79,6 @@
     },
     {
       "provider": "airbnb",
-      "name": "The Summerhouse ",
-      "url": "https://www.airbnb.es/rooms/1714987450621012633?check_in=2026-11-06&check_out=2026-11-09&adults=2",
-      "kind": "stay",
-      "price_total": 409.0,
-      "price_per_night": 136.33,
-      "currency": "EUR",
-      "rating": 5.0,
-      "reviews": 3,
-      "area": "Cabaña en Gwynedd, Reino Unido",
-      "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-1714987450621012633/original/34add36c-5166-4af5-8044-2476554975b0.jpeg",
-      "note": ""
-    },
-    {
-      "provider": "airbnb",
       "name": "Refugio para parejas a 1600 metros de altitud ",
       "url": "https://www.airbnb.es/rooms/797342283568364117?check_in=2026-11-06&check_out=2026-11-09&adults=2",
       "kind": "stay",
@@ -131,6 +89,20 @@
       "reviews": 5,
       "area": "Cabaña en Córrego do Bom Jesus, Brasil",
       "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-797342283568364117/original/c15e1093-4ba9-405b-b3be-ea15cd03e51a.jpeg",
+      "note": ""
+    },
+    {
+      "provider": "airbnb",
+      "name": "Refugio romántico con bañera | Aguimô.",
+      "url": "https://www.airbnb.es/rooms/1577685787280460255?check_in=2026-11-06&check_out=2026-11-09&adults=2",
+      "kind": "stay",
+      "price_total": 427.0,
+      "price_per_night": 142.33,
+      "currency": "EUR",
+      "rating": 5.0,
+      "reviews": 51,
+      "area": "Cabaña en Nova Friburgo, Brasil",
+      "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-1577685787280460255/original/eec9367f-f7d8-4625-82ff-0a34d3f404e0.jpeg",
       "note": ""
     },
     {
@@ -163,6 +135,20 @@
     },
     {
       "provider": "airbnb",
+      "name": "Refugio moderno Haven | Bañera de hidromasaje y ducha exterior",
+      "url": "https://www.airbnb.es/rooms/1686503817583874672?check_in=2026-11-06&check_out=2026-11-09&adults=2",
+      "kind": "stay",
+      "price_total": 549.0,
+      "price_per_night": 183.0,
+      "currency": "EUR",
+      "rating": 5.0,
+      "reviews": 25,
+      "area": "Vivienda en Sagle, Idaho, Estados Unidos",
+      "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-1686503817583874672/original/3ae1f531-fcae-47ca-928d-53370a5dcdfd.jpeg",
+      "note": ""
+    },
+    {
+      "provider": "airbnb",
       "name": "Reconexión y rejuvenecimiento para parejas. Calor, frío, repite$",
       "url": "https://www.airbnb.es/rooms/1728473997766426984?check_in=2026-11-06&check_out=2026-11-09&adults=2",
       "kind": "stay",
@@ -187,6 +173,20 @@
       "reviews": null,
       "area": "Casa del árbol en Libin, Bélgica",
       "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-1670484601394753263/original/c081506e-647e-4eec-8ad0-689652350ee8.jpeg",
+      "note": ""
+    },
+    {
+      "provider": "airbnb",
+      "name": "Cabaña galardonada | Sauna | Bañera de hidromasaje | Ducha al aire libre",
+      "url": "https://www.airbnb.es/rooms/1682340894897151062?check_in=2026-11-06&check_out=2026-11-09&adults=2",
+      "kind": "stay",
+      "price_total": 844.0,
+      "price_per_night": 281.33,
+      "currency": "EUR",
+      "rating": 5.0,
+      "reviews": 5,
+      "area": "Cabaña en Paris, Texas, Estados Unidos",
+      "image": "https://a0.muscache.com/im/pictures/hosting/Hosting-1682340894897151062/original/18897a9c-507a-464a-b2f5-a0ec8ca35dfc.jpeg",
       "note": ""
     },
     {
