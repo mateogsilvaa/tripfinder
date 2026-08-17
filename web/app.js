@@ -2,6 +2,8 @@
 
 const REPO = "mateogsilvaa/tripfinder";
 const POLL_EVERY_MS = 20000;
+// 45 vueltas x 20 s = 15 min, de sobra para una busqueda de las largas.
+const MAX_VUELTAS = 45;
 const POLL_MAX_MS = 15 * 60 * 1000;
 
 const $ = (sel) => document.querySelector(sel);
@@ -767,8 +769,11 @@ on("#finderForm", "submit", async (e) => {
   aviso(`<div class="saved"><span class="meta">No se pudo lanzar: ${esc(r.reason)}</span></div>`);
 });
 
-/* Un workflow tarda entre uno y tres minutos: refrescar a los 45 segundos y
-   rendirse hacia que pareciera que nada funcionaba. */
+/* Cuanto se espera a que el workflow termine y publique su fichero.
+   Antes se daba por perdido a los 6-7 minutos, que valia cuando una busqueda
+   preguntaba a Ryanair y poco mas. Ahora se barren ~105 destinos con una
+   consulta a Google cada uno, asi que una busqueda "donde sea" tarda del orden
+   de 8 minutos y se rendia justo antes de que llegara el resultado. */
 function esperarCambios() {
   if (window.__esperando) return;
   let vueltas = 0;
@@ -776,17 +781,25 @@ function esperarCambios() {
     vueltas += 1;
     const quedan =
       pendientes().length || JSON.parse(localStorage.getItem("tf_borrando") || "[]").length;
-    if (!quedan || vueltas > 20) {
+    if (!quedan || vueltas > MAX_VUELTAS) {
       clearInterval(window.__esperando);
       window.__esperando = null;
       if (!quedan) return;
     }
-    await loadSearches();
-    await cargarWatches();
-  }, 20000);
+    // Las dos, pase lo que pase con la otra: cada una se protege sola, pero si
+    // una tirara la callback la siguiente no llegaria a correr nunca.
+    await Promise.allSettled([loadSearches(), cargarWatches()]);
+  }, POLL_EVERY_MS);
 }
 
 async function loadSearches() {
+  // Esta caja solo existe en buscar.html, pero app.js es el mismo en las cuatro
+  // paginas. Sin esta linea, en el indice y en seguimientos petaba con
+  // "Cannot set properties of null" y, lo importante, se llevaba por delante el
+  // resto: en seguimientos.html el refresco automatico hace
+  // `await loadSearches(); await cargarWatches();`, asi que al reventar la
+  // primera la segunda no llegaba a correr y lo que sigues no se actualizaba.
+  if (!$("#searches")) return;
   let indice;
   try {
     indice = await fetchJSON("data/searches/index.json");
@@ -917,7 +930,7 @@ let DESTINOS = null;
    indice. Antes el "buscando..." lo borraba el siguiente refresco de la lista
    y parecia que la busqueda se hubiera esfumado. */
 const PEND_KEY = "tf_pendientes";
-const MAX_ESPERA_MS = 12 * 60 * 1000;
+const MAX_ESPERA_MS = 18 * 60 * 1000;  // cuando una busqueda pendiente se marca como colgada
 
 const pendientes = () => {
   try {
@@ -1112,6 +1125,7 @@ on("#watchForm", "submit", async (e) => {
 });
 
 async function cargarWatches() {
+  if (!$("#watches")) return;  // solo existe en seguimientos.html
   let datos;
   try {
     datos = await fetchJSON("data/watch.json");

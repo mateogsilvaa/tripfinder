@@ -59,3 +59,45 @@ window.fetch = async function (...args) {
     throw err;
   }
 };
+
+
+/* --- interruptor de tema -------------------------------------------------
+   El tema ya se aplica en un <script> del <head> (si no, se ve el fogonazo del
+   tema claro antes de que cargue esto). Aqui solo va el boton, que vive en las
+   cuatro paginas porque log.js es el unico script que cargan todas. */
+(function () {
+  const boton = document.getElementById("tema");
+  if (!boton) return;
+  const raiz = document.documentElement;
+  const texto = boton.querySelector(".tema-txt");
+
+  const pintar = () => {
+    const oscuro = raiz.dataset.tema === "oscuro";
+    // La etiqueta dice a donde vas, no donde estas.
+    if (texto) texto.textContent = oscuro ? "claro" : "oscuro";
+    boton.setAttribute("aria-pressed", String(oscuro));
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", oscuro ? "#0d0b0a" : "#ece6da");
+  };
+
+  boton.addEventListener("click", () => {
+    // Sin esto, cada elemento con `transition` cruza a su propio ritmo y el
+    // cambio de tema se ve como un charco de colores durante medio segundo.
+    const corte = document.createElement("style");
+    corte.textContent = "*,*::before,*::after{transition:none!important}";
+    document.head.appendChild(corte);
+    requestAnimationFrame(() => requestAnimationFrame(() => corte.remove()));
+
+    const oscuro = raiz.dataset.tema === "oscuro";
+    if (oscuro) delete raiz.dataset.tema;
+    else raiz.dataset.tema = "oscuro";
+    try {
+      localStorage.setItem("tf_tema", oscuro ? "claro" : "oscuro");
+    } catch (e) {
+      /* navegacion privada: el tema dura lo que la pestaña */
+    }
+    pintar();
+  });
+
+  pintar();
+})();

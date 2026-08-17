@@ -86,7 +86,10 @@ search:
 # Solo se publican si de verdad son ofertones para esa ruta.
 long_haul:
   enabled: true
-  destinations: [JFK, EWR, MIA, CUN, MEX, BOG, LIM, GRU, EZE, BKK, DXB, DOH, NRT, ICN, SIN, DEL, YYZ, LAX, JNB, CPT]
+  # Tambien es la lista de hubs que se usa al buscar un continente entero:
+  # escribir "Asia" busca los de aqui, no los 956 aeropuertos del listado.
+  destinations: [JFK, EWR, MIA, CUN, MEX, BOG, LIM, GRU, EZE, BKK, DXB, DOH, NRT, ICN, SIN, DEL, YYZ, LAX, JNB, CPT,
+                 SYD, MEL, AKL]
   nights: 8
   months: 8          # cuantos meses vista muestrear
   max_price: 650     # por persona, ida y vuelta

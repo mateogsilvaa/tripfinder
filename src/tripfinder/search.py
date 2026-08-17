@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import unicodedata
 from dataclasses import asdict, dataclass, field
 from datetime import date, timedelta
 from typing import Any
@@ -90,7 +91,7 @@ def _airport_directory() -> list[dict]:
             crudo = json.loads(mundial.read_text(encoding="utf-8"))
             return [
                 {"code": a["code"], "city": {"name": a["ciudad"]}, "name": a["ciudad"],
-                 "country": {"name": a["pais"]}}
+                 "country": {"name": a["pais"]}, "cont": a.get("cont", "")}
                 for a in crudo
             ]
         except (json.JSONDecodeError, KeyError):
@@ -115,16 +116,113 @@ def _airport_directory() -> list[dict]:
     return datos
 
 
+def _norm(texto: str) -> str:
+    """Sin acentos, en minusculas y sin espacios de sobra.
+
+    `airports_world.json` mezcla idiomas sin ningun criterio: los paises estan
+    casi todos en español ("Japon", "Tailandia") pero las ciudades vienen en
+    ingles la mitad de las veces ("New York", "Seoul", "Cairo"), y algunas ni
+    siquiera son la ciudad sino el municipio del aeropuerto ("Sepang" por Kuala
+    Lumpur, "Kuta, Badung" por Bali). Comparar en crudo hacia que "Nueva York"
+    o "Sofia" no existieran.
+    """
+    limpio = unicodedata.normalize("NFKD", (texto or "").strip().lower())
+    return " ".join("".join(c for c in limpio if not unicodedata.combining(c)).split())
+
+
+# Como se dicen en español los sitios que el listado guarda en ingles (o con el
+# nombre del municipio). Van a IATA directamente: es lo unico que no se presta
+# a interpretaciones.
+ALIAS: dict[str, str] = {
+    "nueva york": "JFK", "new york": "JFK", "nueva jersey": "EWR",
+    "los angeles": "LAX", "san francisco": "SFO", "chicago": "ORD",
+    "washington": "IAD", "boston": "BOS", "miami": "MIA", "orlando": "MCO",
+    "toronto": "YYZ", "montreal": "YUL", "vancouver": "YVR",
+    "ciudad de mexico": "MEX", "mexico df": "MEX", "cancun": "CUN",
+    "la habana": "HAV", "habana": "HAV", "punta cana": "PUJ",
+    "buenos aires": "EZE", "sao paulo": "GRU", "rio de janeiro": "GIG",
+    "bogota": "BOG", "lima": "LIM", "santiago de chile": "SCL",
+    "tokio": "HND", "tokyo": "HND", "osaka": "KIX", "kioto": "KIX",
+    "seul": "ICN", "pekin": "PEK", "pequin": "PEK", "shanghai": "PVG",
+    "hong kong": "HKG", "taipei": "TPE", "taipeh": "TPE",
+    "nueva delhi": "DEL", "delhi": "DEL", "bombay": "BOM", "mumbai": "BOM",
+    "bangkok": "BKK", "singapur": "SIN", "kuala lumpur": "KUL",
+    "bali": "DPS", "yakarta": "CGK", "saigon": "SGN", "ho chi minh": "SGN",
+    "hanoi": "HAN", "manila": "MNL", "maldivas": "MLE",
+    "dubai": "DXB", "abu dabi": "AUH", "doha": "DOH", "estambul": "IST",
+    "tel aviv": "TLV", "el cairo": "CAI", "cairo": "CAI",
+    "johannesburgo": "JNB", "ciudad del cabo": "CPT", "nairobi": "NBO",
+    "sidney": "SYD", "sydney": "SYD", "melbourne": "MEL", "auckland": "AKL",
+}
+
+# Un continente puede ser mas de uno: "America" a secas son las dos.
+CONTINENTES: dict[str, tuple[str, ...]] = {
+    "europa": ("Europa",),
+    "asia": ("Asia",),
+    "africa": ("Africa",),
+    "america": ("America del Norte", "America del Sur"),
+    "las americas": ("America del Norte", "America del Sur"),
+    "america del norte": ("America del Norte",),
+    "norteamerica": ("America del Norte",),
+    "america del sur": ("America del Sur",),
+    "sudamerica": ("America del Sur",),
+    "suramerica": ("America del Sur",),
+    "latinoamerica": ("America del Sur", "America del Norte"),
+    "oceania": ("Oceania",),
+    "australia y oceania": ("Oceania",),
+}
+
+
+def _hubs_del_continente(continentes: tuple[str, ...], cfg: Config) -> list[tuple[str, str, str]]:
+    """Los aeropuertos que merece la pena mirar de un continente entero.
+
+    Asia tiene 956 aeropuertos en el listado: preguntarlos todos no es una
+    busqueda, es un castigo. Se usan los que ya estan elegidos a mano en el
+    YAML (`long_haul.destinations` y `city_names`), que son justamente los
+    grandes, y se filtran por continente.
+    """
+    candidatos = list(cfg.long_haul.get("destinations", []) or []) + list(cfg.city_names)
+    salida: list[tuple[str, str, str]] = []
+    vistos = set()
+    for a in _airport_directory():
+        code = a["code"]
+        if code in vistos or code not in candidatos:
+            continue
+        if _norm(a.get("cont", "")) not in {_norm(c) for c in continentes}:
+            continue
+        vistos.add(code)
+        salida.append(
+            (
+                code,
+                (a.get("city") or {}).get("name") or a.get("name", code),
+                (a.get("country") or {}).get("name", ""),
+            )
+        )
+    return salida
+
+
 def resolve_many(texto: str, cfg: Config) -> list[tuple[str, str, str]]:
     """Como resolve_destination pero admite un pais entero.
 
     Escribir "Alemania" antes reventaba la busqueda; ahora devuelve todos los
     aeropuertos de ese pais y se buscan todos.
     """
-    objetivo = (texto or "").strip().lower()
+    objetivo = _norm(texto)
+
+    # Un continente entero: solo sus hubs, o la busqueda no termina nunca.
+    if objetivo in CONTINENTES:
+        hubs = _hubs_del_continente(CONTINENTES[objetivo], cfg)
+        if hubs:
+            log.info("'%s' es un continente: %d hubs", texto, len(hubs))
+            return hubs
+        raise ValueError(
+            f"No hay ningun destino de {texto} en la lista. Añade alguno a "
+            f"`long_haul.destinations` o `city_names` en config/watchlist.yml."
+        )
+
     paises = []
     for a in _airport_directory():
-        pais = ((a.get("country") or {}).get("name") or "").lower()
+        pais = _norm((a.get("country") or {}).get("name") or "")
         if pais and pais == objetivo:
             paises.append(
                 (
@@ -134,6 +232,11 @@ def resolve_many(texto: str, cfg: Config) -> list[tuple[str, str, str]]:
                 )
             )
     if paises:
+        # Ordenar importa: sin esto, "Japon" devolvia Akita, Tokunoshima y
+        # Amami —los doce primeros por codigo— y ni rastro de Tokio. Van
+        # delante los que estan elegidos a mano en el YAML.
+        conocidos = set(cfg.long_haul.get("destinations", []) or []) | set(cfg.city_names)
+        paises.sort(key=lambda a: a[0] not in conocidos)
         log.info("'%s' es un pais: %d aeropuertos", texto, len(paises))
         return paises[:12]
     return [resolve_destination(texto, cfg)]
@@ -141,13 +244,13 @@ def resolve_many(texto: str, cfg: Config) -> list[tuple[str, str, str]]:
 
 def sugerencias(texto: str, limite: int = 6) -> list[str]:
     """Nombres parecidos, para cuando no se reconoce lo que se ha escrito."""
-    objetivo = (texto or "").strip().lower()[:4]
+    objetivo = _norm(texto)[:4]
     if not objetivo:
         return []
     vistos = []
     for a in _airport_directory():
         ciudad = (a.get("city") or {}).get("name") or a.get("name", "")
-        if ciudad.lower().startswith(objetivo) and ciudad not in vistos:
+        if _norm(ciudad).startswith(objetivo) and ciudad not in vistos:
             vistos.append(f"{ciudad} ({a['code']})")
         if len(vistos) >= limite:
             break
@@ -166,15 +269,29 @@ def resolve_destination(texto: str, cfg: Config) -> tuple[str, str, str]:
         ciudad, pais = cfg.city_names.get(iata, (iata, ""))
         return iata, ciudad, pais
 
-    objetivo = texto.lower()
+    objetivo = _norm(texto)
+
+    # "Nueva York", "Tokio", "Pekin": el listado los guarda en ingles o con el
+    # nombre del municipio, asi que se traducen a IATA antes de buscar.
+    if objetivo in ALIAS:
+        iata = ALIAS[objetivo]
+        for a in _airport_directory():
+            if a["code"] == iata:
+                return (
+                    iata,
+                    (a.get("city") or {}).get("name") or texto.strip(),
+                    (a.get("country") or {}).get("name", ""),
+                )
+        return iata, texto.strip(), ""
+
     for iata, (ciudad, pais) in cfg.city_names.items():
-        if ciudad.lower() == objetivo or objetivo in ciudad.lower():
+        if _norm(ciudad) == objetivo or objetivo in _norm(ciudad):
             return iata, ciudad, pais
 
     candidatos = []
     for a in _airport_directory():
-        nombre = (a.get("name") or "").lower()
-        ciudad = ((a.get("city") or {}).get("name") or "").lower()
+        nombre = _norm(a.get("name") or "")
+        ciudad = _norm((a.get("city") or {}).get("name") or "")
         if objetivo in (nombre, ciudad):
             candidatos.insert(0, a)  # coincidencia exacta primero
         elif objetivo in nombre or objetivo in ciudad:

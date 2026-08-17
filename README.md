@@ -81,12 +81,36 @@ lo contrario: **"quiero ir a Roma un finde por menos de 120 €, avisame cuando 
 pueda"**. Recorre fin de semana a fin de semana hasta 12 meses vista y guarda el
 resultado en la web.
 
+Acepta el codigo IATA, una ciudad, **un pais entero** ("Alemania") o **un continente**
+("Asia", "America"). Para un continente no se preguntan los 956 aeropuertos que tiene
+Asia en el listado: se usan los hubs que ya estan elegidos a mano en `long_haul.destinations`
+y `city_names`. Los nombres se comparan sin acentos y con una tabla de alias, porque
+`airports_world.json` guarda los paises en español pero las ciudades en ingles a medias
+("New York", "Seoul", "Sepang" por Kuala Lumpur): sin eso, escribir "Nueva York" o "Tokio"
+no encontraba nada.
+
+Una busqueda "donde sea" tarda **unos 8 minutos**: son ~105 destinos y a Google se le
+pregunta uno a uno. La web hace polling durante 15 minutos.
+
 Desde la web se rellena el formulario (destino, tope, noches, meses, personas) y se
 abre una issue `[buscar] ...` que dispara `custom-search.yml`. En local:
 
 ```bash
 python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
 ```
+
+## Dos temas
+
+La web va en claro por defecto —papel de billete impreso: fondo manila con la trama
+de seguridad, tinta azul, sello de goma y los datos en monoespaciada— y se cambia al
+panel de salidas nocturno de siempre con el boton de la esquina. La eleccion se guarda
+en el navegador y se aplica en un `<script>` del `<head>`, antes de pintar, para que no
+pegue el fogonazo blanco al entrar.
+
+Todo el CSS usa tokens semanticos (`--paper`, `--card`, `--ink`, `--azul`, `--sello`),
+asi que el tema oscuro son los mismos tokens con valores de noche mas cuatro cosas
+estructurales: la trama del papel, los degradados del fondo, el troquelado y las filas
+del panel.
 
 ## Lo que no te da ningun comparador
 
