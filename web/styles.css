@@ -662,3 +662,16 @@ input[type="range"]::-moz-range-thumb {
 .quitar[disabled] { opacity: .4; cursor: default; }
 
 .build { margin-left: auto; opacity: .6; }
+
+/* --- zonas y frescura ---------------------------------------------------- */
+.zonas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
+.zona {
+  padding: 10px 16px; border: 1px solid var(--line); border-radius: 99px;
+  color: var(--muted); text-decoration: none;
+  font: 500 13.5px "Familjen Grotesk", sans-serif; transition: all .2s;
+}
+.zona:hover { color: var(--ink); border-color: rgba(255,176,46,.45); }
+.zona.activa { background: var(--amber); color: #1a1206; border-color: var(--amber); }
+#frescura.viejo { color: var(--amber); }
+.watch { cursor: pointer; }
+.watch-rows { width: 100%; padding-top: 6px; }

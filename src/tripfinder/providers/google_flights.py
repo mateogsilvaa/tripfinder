@@ -111,6 +111,7 @@ class GoogleFlightsProvider(FlightProvider):
         # providers, para no disparar consultas a ciegas contra todo el mapa.
         self.shortlist: list[tuple[str, date, date]] = []
         self.names: dict[str, tuple[str, str]] = {}  # IATA -> (ciudad, pais)
+        self.bloqueado = False
 
     def search(self, route: Route) -> list[FlightOffer]:
         pairs = self.shortlist
@@ -125,8 +126,16 @@ class GoogleFlightsProvider(FlightProvider):
                 offers += self._one_search(route, dest, out_date, in_date)
             except Exception as exc:  # noqa: BLE001 - una consulta fallida no tumba el scan
                 log.warning("Google Flights %s %s: %s", dest, out_date, exc)
-        log.info("Google Flights %s: %d tarifas en %d consultas",
-                 route.origin, len(offers), min(len(pairs), max_queries))
+        consultas = min(len(pairs), max_queries)
+        log.info("Google Flights %s: %d tarifas en %d consultas", route.origin, len(offers), consultas)
+        # Paginas vacias en cadena = nos han capado. Es importante que se vea:
+        # antes parecia "no hay vuelos" cuando en realidad no nos contestaban.
+        if consultas >= 5 and len(offers) < consultas * 0.2:
+            log.warning(
+                "Google devuelve casi todo vacio (%d/%d): probablemente limite de peticiones",
+                len(offers), consultas,
+            )
+            self.bloqueado = True
         return offers
 
     def _desde_tarjetas(self, html, route, dest, out_date, in_date, url, nights) -> list[FlightOffer]:

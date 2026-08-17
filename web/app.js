@@ -5,6 +5,13 @@ const POLL_EVERY_MS = 20000;
 const POLL_MAX_MS = 15 * 60 * 1000;
 
 const $ = (sel) => document.querySelector(sel);
+/* La web esta partida en tres zonas y cada pagina solo tiene su parte, asi que
+   engancharse a un elemento que no existe no puede tumbar el resto. */
+const on = (sel, evento, fn) => {
+  const el = document.querySelector(sel);
+  if (el) el.addEventListener(evento, fn);
+};
+const existe = (sel) => !!document.querySelector(sel);
 const fmtEUR = (n) => `${Math.round(n)} €`;
 const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const DAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
@@ -158,9 +165,10 @@ async function init() {
   try {
     payload = await fetchJSON("data/offers.json");
   } catch {
-    $("#stats").innerHTML = statBlock("estado", "sin datos aún");
+    if (existe("#stats")) $("#stats").innerHTML = statBlock("estado", "sin datos aún");
     return;
   }
+  frescura(payload.generated_at);
 
   OFFERS = payload.offers || [];
   renderStats(payload);
@@ -170,7 +178,7 @@ async function init() {
     box.hidden = false;
     box.querySelector("ul").innerHTML = payload.errors.map((e) => `<li>${esc(e)}</li>`).join("");
   }
-  if (!OFFERS.length) return;
+  if (!OFFERS.length || !existe("#offers")) return;
 
   const maxPrice = Math.max(60, ...OFFERS.map((o) => o.price));
   const priceInput = $("#price");
@@ -207,7 +215,25 @@ async function init() {
 const statBlock = (label, value, hot = false) =>
   `<div><dd class="${hot ? "hot" : ""}">${esc(value)}</dd><dt>${esc(label)}</dt></div>`;
 
+/* Cuanto hace que se actualizo: sin esto no sabes si miras datos de hoy o de
+   hace tres dias, que en precios de vuelo es toda la diferencia. */
+function frescura(iso) {
+  const el = document.getElementById("frescura");
+  if (!el) return;
+  const d = parseISO(iso);
+  if (!d) {
+    el.textContent = "sin datos todavía";
+    return;
+  }
+  const horas = Math.round((Date.now() - d.getTime()) / 3600000);
+  const texto =
+    horas < 1 ? "hace menos de una hora" : horas < 24 ? `hace ${horas} h` : `hace ${Math.round(horas / 24)} días`;
+  el.textContent = `Actualizado ${texto} · se revisa cada 12 h`;
+  el.className = horas > 36 ? "viejo" : "";
+}
+
 function renderStats(payload) {
+  if (!existe("#stats")) return;
   const best = OFFERS.reduce((a, o) => (o.discount_pct > (a?.discount_pct ?? -1) ? o : a), null);
   const findes = OFFERS.filter((o) => o.weekend).length;
   $("#stats").innerHTML =
@@ -436,6 +462,7 @@ function wireRows(raiz = document) {
 }
 
 function render() {
+  if (!existe("#offers")) return;
   $("#priceOut").textContent = $("#price").value;
   const list = currentList();
 
@@ -480,8 +507,8 @@ function closePanel() {
   $("#backdrop").hidden = true;
   document.body.style.overflow = "";
 }
-$("#panelClose").addEventListener("click", closePanel);
-$("#backdrop").addEventListener("click", closePanel);
+on("#panelClose", "click", closePanel);
+on("#backdrop", "click", closePanel);
 document.addEventListener("keydown", (e) => e.key === "Escape" && closePanel());
 
 function issueURL(o, adultos) {
@@ -683,6 +710,7 @@ const HINTS = {
 };
 
 function syncFinder() {
+  if (!existe("#finderForm")) return;
   const donde = $("#fWhere").value;
   const cuando = $("#fWhen").value;
   // Ida y vuelta comparten ya un solo control, asi que #returnWrap no existe.
@@ -692,10 +720,10 @@ function syncFinder() {
   $("#monthsWrap").hidden = cuando === "exact";
   $("#finderHint").textContent = HINTS[`${donde}|${cuando}`] || "";
 }
-["#fWhere", "#fWhen"].forEach((s) => $(s).addEventListener("change", syncFinder));
-syncFinder();
+["#fWhere", "#fWhen"].forEach((s) => on(s, "change", syncFinder));
+if (existe("#finderForm")) syncFinder();
 
-$("#finderForm").addEventListener("submit", async (e) => {
+on("#finderForm", "submit", async (e) => {
   e.preventDefault();
   const donde = $("#fWhere").value;
   const cuando = $("#fWhen").value;
@@ -996,15 +1024,15 @@ function cerrarDestinos() {
   document.body.style.overflow = "";
 }
 
-$("#destBtn").addEventListener("click", () => {
+on("#destBtn", "click", () => {
   destinoPara = "fDest";
   abrirDestinos();
 });
-$("#destClose").addEventListener("click", cerrarDestinos);
-$("#destModal").addEventListener("click", (e) => {
+on("#destClose", "click", cerrarDestinos);
+on("#destModal", "click", (e) => {
   if (e.target.id === "destModal") cerrarDestinos();
 });
-$("#destSearch").addEventListener("input", (e) => pintarDestinos(e.target.value));
+on("#destSearch", "input", (e) => pintarDestinos(e.target.value));
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !$("#destModal").hidden) cerrarDestinos();
 });
@@ -1014,7 +1042,7 @@ document.addEventListener("keydown", (e) => {
    el cron cada dia. Avisa si entra en el tope o si baja de su propio minimo. */
 let destinoPara = "fDest"; // que campo rellena el selector de destinos
 
-$("#wDestBtn").addEventListener("click", () => {
+on("#wDestBtn", "click", () => {
   destinoPara = "wDest";
   abrirDestinos();
 });
@@ -1029,6 +1057,7 @@ const HINTS_W = {
 };
 
 function syncWatch() {
+  if (!existe("#watchForm")) return;
   const donde = $("#wWhere").value;
   const cuando = $("#wWhen").value;
   $("#wDestWrap").hidden = donde !== "one";
@@ -1037,10 +1066,10 @@ function syncWatch() {
   if (cuando !== "exact") $("#wCal").hidden = true;
   $("#watchHint").textContent = HINTS_W[`${donde}|${cuando}`] || "";
 }
-["#wWhere", "#wWhen"].forEach((s) => $(s).addEventListener("change", syncWatch));
-syncWatch();
+["#wWhere", "#wWhen"].forEach((s) => on(s, "change", syncWatch));
+if (existe("#watchForm")) syncWatch();
 
-$("#watchForm").addEventListener("submit", async (e) => {
+on("#watchForm", "submit", async (e) => {
   e.preventDefault();
   const donde = $("#wWhere").value;
   const cuando = $("#wWhen").value;
@@ -1096,17 +1125,44 @@ async function cargarWatches() {
     vivos
       .map(
         (w) => `
-        <div class="watch">
+        <div class="watch" data-abrir="${esc(w.id)}">
           <b>${esc(w.label || w.destination || "Donde sea")}</b>
           <span class="meta">${
             w.depart ? esc(w.depart) : `próximos ${w.months} meses`
           }${w.max_price ? ` · hasta ${Math.round(w.max_price)} €` : ""}${
           w.best_price ? ` · mejor visto ${Math.round(w.best_price)} €` : ""
-        }${w.last_checked ? ` · revisado ${esc(desde(w.last_checked))}` : ""}</span>
+        }${w.last_checked ? ` · revisado ${esc(desde(w.last_checked))}` : ""}${
+          (w.last_offers || []).length ? ` · ${w.last_offers.length} resultados` : " · sin resultados aún"
+        }</span>
           <button class="quitar" data-unwatch="${esc(w.id)}" title="Dejar de seguir">✕</button>
+          <div class="watch-rows" hidden></div>
         </div>`
       )
       .join("");
+
+  // Cada seguimiento enseña lo ultimo que encontro, sin esperar a que salte
+  // un aviso: asi se ve que esta trabajando aunque no haya chollo.
+  $("#watches")
+    .querySelectorAll(".watch[data-abrir]")
+    .forEach((fila) =>
+      fila.addEventListener("click", (ev) => {
+        if (ev.target.closest("button, a")) return;
+        const caja = fila.querySelector(".watch-rows");
+        const w = vivos.find((x) => x.id === fila.dataset.abrir);
+        if (!caja || !w) return;
+        if (!caja.hidden) {
+          caja.hidden = true;
+          return;
+        }
+        const ofertas = w.last_offers || [];
+        ofertas.forEach((o) => (SEARCH_OFFERS[o.id] = o));
+        caja.innerHTML = ofertas.length
+          ? ofertas.map((o, i) => boardRow(o, i)).join("")
+          : '<p class="meta">Todavía no ha encontrado nada dentro de tu tope.</p>';
+        caja.hidden = false;
+        wireRows(caja);
+      })
+    );
 
   $("#watches")
     .querySelectorAll("[data-unwatch]")
@@ -1137,6 +1193,7 @@ const CALS = {
 
 function pintarCalendario(clave) {
   const c = CALS[clave];
+  if (!existe(c.cal)) return;
   const hoy = new Date();
   const meses = [];
   for (let m = 0; m < 12; m++) {
@@ -1189,7 +1246,7 @@ function elegirDia(clave, iso) {
 }
 
 Object.entries(CALS).forEach(([clave, c]) =>
-  $(c.btn).addEventListener("click", () => {
+  on(c.btn, "click", () => {
     const caja = $(c.cal);
     caja.hidden = !caja.hidden;
     if (!caja.hidden) pintarCalendario(clave);
@@ -1202,5 +1259,5 @@ syncFinder = function () {
   syncOriginal();
   if ($("#fWhen").value !== "exact") $("#cal").hidden = true;
 };
-["#fWhere", "#fWhen"].forEach((s) => $(s).addEventListener("change", syncFinder));
-syncFinder();
+["#fWhere", "#fWhen"].forEach((s) => on(s, "change", syncFinder));
+if (existe("#finderForm")) syncFinder();

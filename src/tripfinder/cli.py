@@ -214,6 +214,11 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
             except Exception as exc:  # noqa: BLE001
                 log.warning("Google Flights fallo: %s", exc)
                 errors.append(f"google_flights: {exc}")
+        if getattr(google, "bloqueado", False):
+            errors.append(
+                "Google Flights devolvio casi todo vacio: probable limite de peticiones. "
+                "Esta tanda trae menos aerolineas de lo normal."
+            )
 
     # Otros continentes: estancias largas y presupuesto propio. Van aparte
     # porque un vuelo a Bangkok jamas competira con un finde a Bergamo, pero

@@ -44,6 +44,8 @@ class Watch:
     best_price: float | None = None  # el mejor precio visto hasta hoy
     last_checked: str = ""
     active: bool = True
+    # Lo ultimo encontrado, para poder verlo en la web sin esperar a un aviso
+    last_offers: list[dict] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -149,6 +151,11 @@ def revisar(w: Watch, cfg: Config, history: dict) -> tuple[list[FlightOffer], Wa
     if resultado.offers:
         minimo = min(o.price for o in resultado.offers)
         w.best_price = minimo if w.best_price is None else min(w.best_price, minimo)
+        # Se guarda lo encontrado aunque no merezca aviso: si no, en la web no
+        # hay nada que ver hasta que salta una alerta, y parece que no funciona.
+        w.last_offers = [o.to_dict() for o in sorted(resultado.offers, key=lambda x: x.price)[:6]]
+    else:
+        w.last_offers = []
     return avisos, w
 
 
