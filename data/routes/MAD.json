@@ -1,0 +1,326 @@
+{
+ "origen": "MAD",
+ "generado": "2026-08-17T10:20:04+00:00",
+ "destinos": {
+  "ACE": [
+   "Lanzarote",
+   "España"
+  ],
+  "AGA": [
+   "Agadir",
+   "Marruecos"
+  ],
+  "AHO": [
+   "Alguer",
+   "Italia"
+  ],
+  "AMM": [
+   "Amman",
+   "Jordania"
+  ],
+  "BBU": [
+   "",
+   ""
+  ],
+  "BDS": [
+   "Brindisi",
+   "Italia"
+  ],
+  "BEG": [
+   "",
+   ""
+  ],
+  "BER": [
+   "Berlín",
+   "Alemania"
+  ],
+  "BGY": [
+   "Bergamo",
+   "Italia"
+  ],
+  "BHX": [
+   "Birmingham",
+   "Reino Unido"
+  ],
+  "BLQ": [
+   "Bolonia",
+   "Italia"
+  ],
+  "BRI": [
+   "Bari",
+   "Italia"
+  ],
+  "BRS": [
+   "Bristol",
+   "Reino Unido"
+  ],
+  "BRU": [
+   "Bruselas",
+   "Bélgica"
+  ],
+  "BUD": [
+   "Budapest",
+   "Hungría"
+  ],
+  "BVA": [
+   "París",
+   "Francia"
+  ],
+  "CAG": [
+   "Cagliari",
+   "Italia"
+  ],
+  "CGN": [
+   "Colonia",
+   "Alemania"
+  ],
+  "CLJ": [
+   "",
+   ""
+  ],
+  "CPH": [
+   "Copenhagen",
+   "Dinamarca"
+  ],
+  "CRA": [
+   "",
+   ""
+  ],
+  "CRL": [
+   "Charleroi",
+   "Bélgica"
+  ],
+  "CTA": [
+   "Catania",
+   "Italia"
+  ],
+  "DUB": [
+   "Dublín",
+   "Irlanda"
+  ],
+  "EDI": [
+   "Edimburgo",
+   "Reino Unido"
+  ],
+  "EIN": [
+   "Eindhoven",
+   "Países Bajos"
+  ],
+  "ESU": [
+   "Essaouira",
+   "Marruecos"
+  ],
+  "FAO": [
+   "Faro",
+   "Portugal"
+  ],
+  "FCO": [
+   "Roma",
+   "Italia"
+  ],
+  "FEZ": [
+   "Fes",
+   "Marruecos"
+  ],
+  "FUE": [
+   "Fuerteventura",
+   "España"
+  ],
+  "GDN": [
+   "Dánzig",
+   "Polonia"
+  ],
+  "IAS": [
+   "",
+   ""
+  ],
+  "IBZ": [
+   "Ibiza",
+   "España"
+  ],
+  "KRK": [
+   "Cracovia",
+   "Polonia"
+  ],
+  "KTW": [
+   "",
+   ""
+  ],
+  "KUN": [
+   "Kaunas",
+   "Lituania"
+  ],
+  "KUT": [
+   "",
+   ""
+  ],
+  "LCA": [
+   "",
+   ""
+  ],
+  "LIS": [
+   "Lisboa",
+   "Portugal"
+  ],
+  "LPA": [
+   "Gran Canaria",
+   "España"
+  ],
+  "LPL": [
+   "Liverpool",
+   "Reino Unido"
+  ],
+  "LTN": [
+   "",
+   ""
+  ],
+  "LUX": [
+   "Luxembourg",
+   "Luxembourg"
+  ],
+  "MAH": [
+   "Menorca",
+   "España"
+  ],
+  "MAN": [
+   "Manchester",
+   "Reino Unido"
+  ],
+  "MLA": [
+   "Malta",
+   "Malta"
+  ],
+  "MRS": [
+   "Marsella",
+   "Francia"
+  ],
+  "MXP": [
+   "Milán",
+   "Italia"
+  ],
+  "NAP": [
+   "Nápoles",
+   "Italia"
+  ],
+  "NDR": [
+   "Nador",
+   "Marruecos"
+  ],
+  "NRN": [
+   "Düsseldorf",
+   "Alemania"
+  ],
+  "OPO": [
+   "Oporto",
+   "Portugal"
+  ],
+  "OTP": [
+   "Bucarest",
+   "Rumanía"
+  ],
+  "OVD": [
+   "",
+   ""
+  ],
+  "PMI": [
+   "Palma",
+   "España"
+  ],
+  "PMO": [
+   "Palermo",
+   "Italia"
+  ],
+  "PRG": [
+   "Praga",
+   "República Checa"
+  ],
+  "PSA": [
+   "Pisa",
+   "Italia"
+  ],
+  "RAK": [
+   "Marrakech",
+   "Marruecos"
+  ],
+  "RBA": [
+   "Rabat",
+   "Marruecos"
+  ],
+  "SBZ": [
+   "",
+   ""
+  ],
+  "SCQ": [
+   "",
+   ""
+  ],
+  "SKP": [
+   "",
+   ""
+  ],
+  "SNN": [
+   "Shannon",
+   "Irlanda"
+  ],
+  "SOF": [
+   "Sofía",
+   "Bulgaria"
+  ],
+  "STN": [
+   "Londres",
+   "Reino Unido"
+  ],
+  "SUF": [
+   "Lamezia",
+   "Italia"
+  ],
+  "TIA": [
+   "Tirana",
+   "Albania"
+  ],
+  "TNG": [
+   "Tánger",
+   "Marruecos"
+  ],
+  "TRN": [
+   "Turín",
+   "Italia"
+  ],
+  "TSR": [
+   "",
+   ""
+  ],
+  "TTU": [
+   "Tétouan",
+   "Marruecos"
+  ],
+  "VCE": [
+   "Venecia",
+   "Italia"
+  ],
+  "VIE": [
+   "Viena",
+   "Austria"
+  ],
+  "VIL": [
+   "Dakhla",
+   "Marruecos"
+  ],
+  "VRN": [
+   "Verona",
+   "Italia"
+  ],
+  "WAW": [
+   "",
+   ""
+  ],
+  "WMI": [
+   "Varsovia",
+   "Polonia"
+  ],
+  "WRO": [
+   "Wroclaw",
+   "Polonia"
+  ]
+ }
+}

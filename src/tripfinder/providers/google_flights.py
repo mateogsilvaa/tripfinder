@@ -111,6 +111,9 @@ class GoogleFlightsProvider(FlightProvider):
         # providers, para no disparar consultas a ciegas contra todo el mapa.
         self.shortlist: list[tuple[str, date, date]] = []
         self.names: dict[str, tuple[str, str]] = {}  # IATA -> (ciudad, pais)
+        # Tope de consultas. El scan automatico usa el del YAML; la busqueda a
+        # mano lo sube, porque es una sola tirada y ahi si compensa barrer.
+        self.limite: int | None = None
         self.bloqueado = False
 
     def search(self, route: Route) -> list[FlightOffer]:
@@ -119,7 +122,7 @@ class GoogleFlightsProvider(FlightProvider):
             log.info("Google Flights: sin destinos que comprobar para %s", route.origin)
             return []
 
-        max_queries = int(self.gcfg.get("max_queries", 20))
+        max_queries = self.limite or int(self.gcfg.get("max_queries", 20))
         offers: list[FlightOffer] = []
         for dest, out_date, in_date in pairs[:max_queries]:
             try:

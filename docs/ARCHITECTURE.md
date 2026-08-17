@@ -4,6 +4,7 @@
 
 | Pieza | Dónde vive | Qué hace |
 |---|---|---|
+| `tripfinder.routes` | `src/tripfinder/` | El mapa: a donde se puede volar desde un origen. Se monta antes de pedir un solo precio y es quien decide los candidatos. Cache en `data/routes/<IATA>.json`. |
 | `tripfinder.providers.*` | `src/tripfinder/providers/` | Buscan vuelos. Un adapter por fuente, todos devuelven `FlightOffer`. |
 | `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. |
 | `tripfinder.scoring` | `src/tripfinder/` | Convierte precio + histórico en un `score` 0-100 y decide si es chollo. |
@@ -14,7 +15,13 @@
 
 ## Flujo de datos
 
-1. **Cron (cada 6 h)** → `scan-flights`. Cada provider habilitado busca según `config/watchlist.yml`.
+1. **Cron (cada 6 h)** → `scan-flights`. Se monta el mapa de destinos del origen
+   (`routes.destinos`) y cada provider habilitado busca según `config/watchlist.yml`.
+   Ryanair y Wizz barren sus propias rutas por API; Google Flights cubre el resto del
+   mapa, una consulta por destino y fecha, con el presupuesto de `google.max_queries`.
+   Como ese presupuesto no da para los 105 destinos en una tanda, el orden se baraja
+   usando la fecha como semilla: cada scan mira un trozo distinto y en unos días se ha
+   recorrido el mapa entero.
 2. Se normaliza todo a `FlightOffer` y se calcula `score` contra `data/history.json`.
 3. Las ofertas que superan `min_score` **y** no están en `state.json` generan email.
 4. Se commitean `data/offers.json` y `data/history.json` → Pages se redespliega solo.

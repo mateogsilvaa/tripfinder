@@ -56,16 +56,25 @@ search:
     # Cuantos fines de semana barrer (uno por consulta)
     max_weeks: 26
 
-  # Wizz: cuantos destinos y cuantos meses mirar (una peticion por mes y destino)
-  wizz_max_destinations: 18
+  # Wizz: cuantos destinos y cuantos meses mirar (una peticion por mes y destino).
+  # Antes se quedaba en 18 porque daba igual: la sesion se envenenaba con la
+  # cookie de la primera respuesta y de las 72 consultas solo contestaba una.
+  # Arreglado eso, cabe el mapa entero desde Madrid (28 destinos).
+  wizz_max_destinations: 30
   wizz_months: 4
 
   google:
     # Cada consulta descarga ~2,5 MB de la pagina de Google: pocas y espaciadas.
     # Con 80 seguidas nos capa y devuelve paginas vacias sin decir nada (visto:
-    # 2 tarifas en 11 consultas). 40 con 6 s entre medias se mantiene sano.
+    # 2 tarifas en 11 consultas). 40 con 4 s entre medias se mantiene sano
+    # (medido: 30 consultas seguidas, 30 respuestas con precio).
     max_queries: 40
-    min_interval_seconds: 6
+    # La busqueda a mano si puede gastar mas: es una sola tirada, la lanza el
+    # usuario a proposito y es la unica via para ver a Iberia, ITA o Tarom.
+    # Con ~100 destinos posibles desde Madrid, esto es lo que separa "6
+    # resultados" de "todo lo que vuela ese dia".
+    max_queries_search: 110
+    min_interval_seconds: 4
 
   # Pasajeros del vuelo (el precio mostrado es el total de ida y vuelta para todos)
   adults: 1

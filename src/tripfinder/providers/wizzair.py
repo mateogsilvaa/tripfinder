@@ -15,6 +15,12 @@ Como funciona, que es lo interesante:
 
 La peticion va con curl_cffi imitando el TLS de Chrome (via Scrapling): con
 `requests` pelado responde 403.
+
+Y el detalle que lo cambia todo: **hay que tirar las cookies despues de cada
+peticion**. Wizz devuelve una cookie de sesion que invalida la siguiente
+llamada con `{"handlerError":"InvalidProtocol"}`, asi que reutilizando la
+sesion solo contestaba la primera consulta de todo el scan y Wizz aportaba
+practicamente nada. Limpiandolas, responden todas.
 """
 
 from __future__ import annotations
@@ -34,7 +40,17 @@ HOME = "https://www.wizzair.com/en-gb"
 VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)/Api")
 RESERVA = "https://www.wizzair.com/en-gb/booking/select-flight"
 
-_cache: dict[str, object] = {}
+# Codigos que no son un aeropuerto sino la ciudad entera.
+CODIGOS_CIUDAD = {"LON", "MIL", "ROM", "PAR", "MOW", "NYC", "STO", "VEN", "WSW", "GHV"}
+
+_cache: dict[object, object] = {}
+
+
+def _nombre(iata: str) -> tuple[str, str]:
+    """Ciudad y pais. Wizz solo devuelve el codigo, y "OTP" no le dice nada a nadie."""
+    from ..routes import _mundial
+
+    return _mundial(iata)
 
 
 def _sesion():
@@ -44,6 +60,26 @@ def _sesion():
     if "s" not in _cache:
         _cache["s"] = cr.Session(impersonate="chrome")
     return _cache["s"]
+
+
+def _post(ruta: str, cuerpo: dict, timeout: int = 35):
+    """POST a la API tirando la cookie que Wizz deja puesta.
+
+    Sin el `cookies.clear()` la segunda llamada de la sesion ya responde 400.
+    """
+    s = _sesion()
+    try:
+        return s.post(f"{_base_url()}{ruta}", json=cuerpo, headers=_cabeceras(), timeout=timeout)
+    finally:
+        s.cookies.clear()
+
+
+def _get(ruta: str, timeout: int = 30):
+    s = _sesion()
+    try:
+        return s.get(f"{_base_url()}{ruta}", headers=_cabeceras(), timeout=timeout)
+    finally:
+        s.cookies.clear()
 
 
 def _base_url() -> str:
@@ -73,13 +109,20 @@ def destinos_desde(origen: str) -> list[str]:
     clave = f"map-{origen}"
     if clave in _cache:
         return list(_cache[clave])  # type: ignore[arg-type]
-    r = _sesion().get(f"{_base_url()}/asset/map?languageCode=en-gb", headers=_cabeceras(), timeout=30)
+    r = _get("/asset/map?languageCode=en-gb")
     r.raise_for_status()
     datos = r.json()
     ciudades = datos.get("cities", datos if isinstance(datos, list) else [])
     for c in ciudades:
         if c.get("iata") == origen:
-            destinos = [x["iata"] for x in c.get("connections", []) if x.get("iata")]
+            # El mapa mezcla codigos de ciudad (LON, MIL, ROM, VEN) con los de
+            # aeropuerto. Los de ciudad no sirven para pedir precios y ademas
+            # salian duplicados en la web ("Milan" y "MIL" como dos destinos).
+            destinos = [
+                x["iata"]
+                for x in c.get("connections", [])
+                if x.get("iata") and x["iata"] not in CODIGOS_CIUDAD
+            ]
             _cache[clave] = destinos
             log.info("Wizz: %d destinos desde %s", len(destinos), origen)
             return destinos
@@ -133,7 +176,12 @@ class WizzairProvider(FlightProvider):
         return self._casar(route, destino, idas, vueltas, noches)
 
     def _ventana(self, route: Route, destino: str, desde: str, hasta: str) -> tuple[dict, dict]:
-        throttle("wizz", float(self.cfg.get("min_interval_seconds", 2)))
+        """Precio mas barato de cada dia, en las dos direcciones."""
+        clave = (route.origin, destino, desde, hasta, int(self.cfg.get("adults", 1)))
+        guardado = _cache.get(clave)
+        if guardado is not None:
+            return guardado  # type: ignore[return-value]
+
         cuerpo = {
             "flightList": [
                 {"departureStation": route.origin, "arrivalStation": destino,
@@ -146,16 +194,115 @@ class WizzairProvider(FlightProvider):
             "childCount": 0,
             "infantCount": 0,
         }
-        r = _sesion().post(
-            f"{_base_url()}/search/timetable", json=cuerpo, headers=_cabeceras(), timeout=35
-        )
-        if r.status_code != 200:
-            log.debug("Wizz %s-%s %s..%s -> %s", route.origin, destino, desde, hasta, r.status_code)
+
+        datos = None
+        for intento in range(2):
+            throttle("wizz", float(self.cfg.get("min_interval_seconds", 2)))
+            try:
+                r = _post("/search/timetable", cuerpo)
+            except Exception as exc:  # noqa: BLE001 - se reintenta una vez
+                log.debug("Wizz %s-%s: %s", route.origin, destino, exc)
+                continue
+            if r.status_code == 200:
+                datos = r.json()
+                break
+            # 400 = InvalidProtocol, que casi siempre es la cookie envenenada de
+            # la peticion anterior. Se descarta la sesion y se vuelve a probar.
+            log.debug("Wizz %s-%s %s..%s -> %s (intento %d)",
+                      route.origin, destino, desde, hasta, r.status_code, intento + 1)
+            _cache.pop("s", None)
+
+        if datos is None:
+            _cache[clave] = ({}, {})
             return {}, {}
-        datos = r.json()
-        return (
+
+        salida = (
             {f["departureDate"][:10]: f for f in datos.get("outboundFlights", []) if f.get("price")},
             {f["departureDate"][:10]: f for f in datos.get("returnFlights", []) if f.get("price")},
+        )
+        _cache[clave] = salida
+        return salida
+
+    # -- busqueda por fechas concretas -----------------------------------
+    def buscar_fechas(
+        self, route: Route, destinos: list[str], pares: list[tuple[date, date]]
+    ) -> list[FlightOffer]:
+        """Precios de Wizz para pares (ida, vuelta) exactos.
+
+        Lo usa la busqueda personalizada: alli las fechas las pone el usuario,
+        no se barre el calendario entero. Una consulta cubre todo un mes, asi
+        que varios findes del mismo mes salen de la misma peticion.
+        """
+        if not pares:
+            return []
+        try:
+            posibles = set(destinos_desde(route.origin))
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Wizz: sin mapa de rutas (%s)", exc)
+            return []
+        objetivo = [d for d in destinos if d in posibles] if destinos else sorted(posibles)
+        if not objetivo:
+            return []
+
+        # Una ventana por mes tocado: Wizz rechaza rangos largos.
+        meses = sorted({(d.year, d.month) for par in pares for d in par})
+        ofertas: list[FlightOffer] = []
+        for destino in objetivo:
+            dias_ida: dict[str, dict] = {}
+            dias_vuelta: dict[str, dict] = {}
+            for anio, mes in meses:
+                primero = date(anio, mes, 1)
+                ultimo = (primero + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+                try:
+                    i, v = self._ventana(route, destino, primero.isoformat(), ultimo.isoformat())
+                except Exception as exc:  # noqa: BLE001
+                    log.debug("Wizz %s %s-%s: %s", destino, anio, mes, exc)
+                    continue
+                dias_ida.update(i)
+                dias_vuelta.update(v)
+            for salida, regreso in pares:
+                ida = dias_ida.get(salida.isoformat())
+                vuelta = dias_vuelta.get(regreso.isoformat())
+                if not (ida and vuelta):
+                    continue
+                oferta = self._oferta(route, destino, salida.isoformat(), regreso.isoformat(),
+                                      ida, vuelta, (regreso - salida).days)
+                if oferta is not None:
+                    ofertas.append(oferta)
+        log.info("Wizz %s: %d tarifas en %d destinos", route.origin, len(ofertas), len(objetivo))
+        return ofertas
+
+    def _oferta(self, route: Route, destino: str, iso: str, regreso: str,
+                ida: dict, vuelta: dict, noches: int) -> FlightOffer | None:
+        # OJO: `search/timetable` devuelve el precio POR PERSONA y se rie del
+        # `adultCount` que le mandes (comprobado: 1, 2 y 3 pasajeros dan la
+        # misma cifra). El resto de providers dan el total del grupo, asi que
+        # sin multiplicar aqui Wizz salia a mitad de precio que nadie y se
+        # comia las primeras posiciones de la lista.
+        adultos = max(1, int(self.cfg.get("adults", 1)))
+        precio = ((ida["price"]["amount"] or 0) + (vuelta["price"]["amount"] or 0)) * adultos
+        if not precio:
+            return None
+        ciudad, pais = _nombre(destino)
+        return FlightOffer(
+            provider="wizzair",
+            origin=route.origin,
+            origin_name=route.origin_name,
+            destination=destino,
+            destination_name=ciudad,
+            destination_country=pais,
+            depart_date=iso,
+            return_date=regreso,
+            nights=noches,
+            price=round(float(precio), 2),
+            currency=ida["price"].get("currencyCode", "EUR"),
+            airline="Wizz Air",
+            stops=0,
+            deep_link=(
+                f"{RESERVA}?departureStation={route.origin}"
+                f"&arrivalStation={destino}&departureDate={iso}"
+                f"&returnDate={regreso}&adultCount={int(self.cfg.get('adults', 1))}"
+            ),
         )
 
     def _casar(self, route: Route, destino: str, idas: dict, vueltas: dict, noches: int) -> list[FlightOffer]:
@@ -172,7 +319,10 @@ class WizzairProvider(FlightProvider):
                 vuelta = vueltas.get(regreso)
                 if not vuelta:
                     continue
-                precio = (ida["price"]["amount"] or 0) + (vuelta["price"]["amount"] or 0)
+                # Por persona, igual que en _oferta: hay que multiplicar.
+                precio = (
+                    (ida["price"]["amount"] or 0) + (vuelta["price"]["amount"] or 0)
+                ) * max(1, int(self.cfg.get("adults", 1)))
                 if not precio:
                     continue
                 ofertas.append(
@@ -181,6 +331,8 @@ class WizzairProvider(FlightProvider):
                         origin=route.origin,
                         origin_name=route.origin_name,
                         destination=destino,
+                        destination_name=_nombre(destino)[0],
+                        destination_country=_nombre(destino)[1],
                         depart_date=iso,
                         return_date=regreso,
                         nights=n,

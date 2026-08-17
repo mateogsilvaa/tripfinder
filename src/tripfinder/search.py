@@ -13,6 +13,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import date, timedelta
 from typing import Any
 
+from . import routes as rutas
 from .config import Config, Route
 from .models import FlightOffer
 from .providers import build_providers
@@ -234,7 +235,78 @@ def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, 
     return dias
 
 
+def _google_candidatas(
+    universo: dict[str, tuple[str, str]],
+    fechas: list[tuple[date, date]],
+    encontradas: dict[str, FlightOffer],
+    presupuesto: int,
+) -> list[tuple[str, date, date]]:
+    """Reparte las consultas de Google entre descubrir y contrastar.
+
+    Dos trabajos distintos con la misma herramienta:
+
+    * **Descubrir**: destinos de los que no tenemos ni un precio. Ryanair y Wizz
+      solo saben de sus propias rutas, asi que Milan con ITA, Turin con Vueling
+      o Bucarest con Tarom solo aparecen si se pregunta aqui. Se lleva la mayor
+      parte del presupuesto, porque es donde estaba el agujero.
+    * **Contrastar**: destinos que ya tienen precio de bajo coste, por si otra
+      compania lo mejora (o por si el directo de Ryanair sale a las 6:00 y hay
+      un Iberia decente por poco mas).
+
+    Las fechas cercanas van primero: si el presupuesto se acaba, que se acabe
+    en marzo del año que viene y no en el finde que viene.
+    """
+    con_precio = {(o.destination, o.depart_date) for o in encontradas.values()}
+    descubrir: list[tuple[str, date, date]] = []
+    contrastar: list[tuple[str, date, date]] = []
+    for salida, regreso in fechas:
+        for iata in universo:
+            par = (iata, salida, regreso)
+            if (iata, salida.isoformat()) in con_precio:
+                contrastar.append(par)
+            else:
+                descubrir.append(par)
+
+    # Lo barato primero al contrastar: mejorar una oferta de 90 EUR interesa mas
+    # que mejorar una de 600 que no va a comprar nadie.
+    precios = {(o.destination, o.depart_date): o.price for o in encontradas.values()}
+    contrastar.sort(key=lambda c: precios.get((c[0], c[1].isoformat()), 1e9))
+
+    # Cuanto se guarda para contrastar. Con fecha fija casi todo va a descubrir:
+    # son ~100 destinos de un solo dia y caben. Con un barrido de findes a doce
+    # meses no cabe ni de lejos, asi que descubrir se queda en el primer finde y
+    # el peso se va a contrastar, que si mira todas las fechas porque ordena las
+    # ofertas por precio, vengan del dia que vengan.
+    reserva = max(presupuesto // (4 if len(fechas) <= 2 else 2), 6)
+    reserva = min(reserva, len(contrastar))  # sin nada que contrastar no se guarda nada
+    elegidas = descubrir[: max(presupuesto - reserva, 0)]
+    elegidas += contrastar[: presupuesto - len(elegidas)]
+    # Si una de las dos listas se ha quedado corta, la otra rellena el hueco en
+    # vez de devolver el presupuesto a medio gastar.
+    if len(elegidas) < presupuesto:
+        ya = set(elegidas)
+        elegidas += [c for c in descubrir + contrastar if c not in ya][
+            : presupuesto - len(elegidas)
+        ]
+    return elegidas[:presupuesto]
+
+
 def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int = 45) -> SearchResult:
+    """Busca el viaje pedido en todas las fuentes disponibles.
+
+    El orden no es casual:
+
+    1. **Ryanair y Wizz** (APIs propias, rapidas y baratas) barren todas las
+       fechas candidatas de una tacada. Dan precio, hora y enlace de reserva.
+    2. **Google Flights** cubre el resto del mapa: una consulta por destino y
+       fecha, empezando por los destinos de los que aun no se sabe nada.
+
+    Antes solo existia el paso 1 con Ryanair, y Google se limitaba a repasar los
+    destinos que Ryanair ya habia devuelto. Por eso una busqueda "donde sea"
+    para el 6 de noviembre daba seis resultados mientras Skyscanner enseñaba
+    Pisa, Bucarest o Milan mas baratos: no es que se descartaran, es que no se
+    llegaban a mirar.
+    """
     # Sin destino se busca a todas partes: "un finde donde sea, por menos de X".
     if req.destination.strip():
         encontrados_dest = resolve_many(req.destination, cfg)
@@ -242,10 +314,14 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
         iata = destinos[0] if len(destinos) == 1 else ""
         ciudad, pais = (encontrados_dest[0][1], encontrados_dest[0][2]) if iata else ("", "")
         nombres_dest = {d[0]: (d[1], d[2]) for d in encontrados_dest}
+        universo = dict(nombres_dest)
     else:
         iata, ciudad, pais = "", "", ""
         destinos = "any"
         nombres_dest = {}
+        # A donde se puede volar de verdad desde el origen, vuele quien vuele.
+        # Esta es la lista que antes decidia Ryanair el solo.
+        universo = rutas.destinos(req.origin, cfg)
 
     route = Route(
         origin=req.origin,
@@ -264,83 +340,91 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
     search_cfg = {**cfg.search, "adults": max(1, req.adults)}
     weekend_cfg = cfg.weekend
     activos = build_providers(cfg.providers, search_cfg)
-    proveedores = [p for p in activos if p.name == "ryanair"]
+    ryanair = next((p for p in activos if p.name == "ryanair"), None)
+    wizz = next((p for p in activos if p.name == "wizzair"), None)
     google = next((p for p in activos if p.name == "google_flights"), None)
 
     resultado = SearchResult(request=req, generated_at=date.today().isoformat())
-    if not proveedores:
-        resultado.errors.append("ryanair no disponible")
+    if ryanair is None and google is None:
+        resultado.errors.append("no hay ningun proveedor de vuelos disponible")
         return resultado
-    ryanair = proveedores[0]
 
     fechas = _candidate_trips(req, weekend_cfg)[:max_queries]
     log.info(
-        "Busqueda %s: %d ventanas hasta %s",
+        "Busqueda %s: %d ventanas y %d destinos posibles, hasta %s",
         iata or "cualquier destino",
         len(fechas),
+        len(universo),
         fechas[-1][0] if fechas else "?",
     )
 
     encontradas: dict[str, FlightOffer] = {}
-    for salida, regreso in fechas:
-        params = {
-            **ryanair._base_params(route),  # noqa: SLF001 - mismo paquete
-            "outboundDepartureDateFrom": salida.isoformat(),
-            "outboundDepartureDateTo": salida.isoformat(),
-            "inboundDepartureDateFrom": regreso.isoformat(),
-            "inboundDepartureDateTo": regreso.isoformat(),
-            "durationFrom": req.nights_min,
-            "durationTo": max(req.nights_min, req.nights_max),
-        }
-        if req.weekend_only:
-            params.update(
-                outboundDepartureTimeFrom=weekend_cfg.get("outbound_after", "15:00"),
-                outboundDepartureTimeTo=weekend_cfg.get("outbound_before", "22:00"),
-                inboundDepartureTimeFrom=weekend_cfg.get("inbound_after", "15:00"),
-                inboundDepartureTimeTo=weekend_cfg.get("inbound_before", "23:59"),
-            )
-        try:
-            for oferta in ryanair._paginate(params, route, 60):  # noqa: SLF001
-                if nombres_dest and oferta.destination not in nombres_dest:
-                    continue
-                n, pa = nombres_dest.get(oferta.destination, (ciudad, pais))
-                oferta.destination_name = oferta.destination_name or n or oferta.destination
-                oferta.destination_country = oferta.destination_country or pa
-                anterior = encontradas.get(oferta.id)
-                if anterior is None or oferta.price < anterior.price:
-                    encontradas[oferta.id] = oferta
-        except Exception as exc:  # noqa: BLE001 - una ventana fallida no tumba la busqueda
-            log.warning("Busqueda %s %s: %s", iata, salida, exc)
-            resultado.errors.append(f"{salida}: {exc}")
 
-    # Ryanair no vuela a todo ni es siempre el mas barato: Wizz, Iberia o Vueling
-    # solo aparecen si se pregunta a Google, y antes la busqueda no lo hacia.
-    if google is not None:
-        if nombres_dest:
-            # Google mira las mismas fechas que Ryanair (hasta 12 ventanas por
-            # destino): si solo se le dieran 6, la lista final volveria a ser
-            # casi toda de Ryanair por cobertura, no por precio.
-            candidatas = [
-                (d, s, r) for d in list(nombres_dest)[:4] for s, r in fechas[:12]
-            ]
-            nombres = dict(nombres_dest)
-        else:
-            mejores = sorted(encontradas.values(), key=lambda o: o.price)[:14]
-            candidatas = [
-                (o.destination, date.fromisoformat(o.depart_date), date.fromisoformat(o.return_date))
-                for o in mejores
-                if o.return_date
-            ]
-            nombres = {o.destination: (o.destination_name, o.destination_country) for o in mejores}
-        google.shortlist, google.names = candidatas, nombres
+    def anotar(oferta: FlightOffer) -> None:
+        n, pa = universo.get(oferta.destination, (ciudad, pais))
+        oferta.destination_name = oferta.destination_name or n or oferta.destination
+        oferta.destination_country = oferta.destination_country or pa
+        anterior = encontradas.get(oferta.id)
+        if anterior is None or oferta.price < anterior.price:
+            encontradas[oferta.id] = oferta
+
+    # -- 1. Ryanair -------------------------------------------------------
+    if ryanair is not None:
+        for salida, regreso in fechas:
+            params = {
+                **ryanair._base_params(route),  # noqa: SLF001 - mismo paquete
+                "outboundDepartureDateFrom": salida.isoformat(),
+                "outboundDepartureDateTo": salida.isoformat(),
+                "inboundDepartureDateFrom": regreso.isoformat(),
+                "inboundDepartureDateTo": regreso.isoformat(),
+                "durationFrom": req.nights_min,
+                "durationTo": max(req.nights_min, req.nights_max),
+            }
+            if req.weekend_only:
+                params.update(
+                    outboundDepartureTimeFrom=weekend_cfg.get("outbound_after", "15:00"),
+                    outboundDepartureTimeTo=weekend_cfg.get("outbound_before", "22:00"),
+                    inboundDepartureTimeFrom=weekend_cfg.get("inbound_after", "15:00"),
+                    inboundDepartureTimeTo=weekend_cfg.get("inbound_before", "23:59"),
+                )
+            try:
+                for oferta in ryanair._paginate(params, route, 60):  # noqa: SLF001
+                    if nombres_dest and oferta.destination not in nombres_dest:
+                        continue
+                    anotar(oferta)
+            except Exception as exc:  # noqa: BLE001 - una ventana fallida no tumba la busqueda
+                log.warning("Busqueda %s %s: %s", iata, salida, exc)
+                resultado.errors.append(f"{salida}: {exc}")
+    else:
+        resultado.errors.append("ryanair no disponible")
+
+    # -- 2. Wizz Air ------------------------------------------------------
+    # Es la que vuela a Bucarest, Sofia, Tirana o Cluj desde Madrid: justo los
+    # destinos que no aparecian por ningun lado.
+    if wizz is not None:
+        try:
+            for oferta in wizz.buscar_fechas(route, list(nombres_dest), fechas):
+                anotar(oferta)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Busqueda: Wizz fallo (%s)", exc)
+            resultado.errors.append(f"wizzair: {exc}")
+
+    # -- 3. Google Flights -------------------------------------------------
+    # Aqui salen Iberia, Vueling, ITA, Lufthansa, Tarom, Aer Lingus... todo lo
+    # que no tiene una API publica que preguntar.
+    if google is not None and universo:
+        presupuesto = int(cfg.search.get("google", {}).get("max_queries_search", 90))
+        candidatas = _google_candidatas(universo, fechas, encontradas, presupuesto)
+        google.shortlist, google.names = candidatas, dict(universo)
+        google.limite = presupuesto
         try:
             for oferta in google.search(route):
-                anterior = encontradas.get(oferta.id)
-                if anterior is None or oferta.price < anterior.price:
-                    encontradas[oferta.id] = oferta
+                anotar(oferta)
         except Exception as exc:  # noqa: BLE001
             log.warning("Busqueda: Google fallo (%s)", exc)
             resultado.errors.append(f"google: {exc}")
+        if getattr(google, "bloqueado", False):
+            resultado.errors.append("Google devolvio paginas vacias: puede faltar alguna aerolinea")
 
     ofertas = list(encontradas.values())
     for o in ofertas:
@@ -349,17 +433,18 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
     if req.max_price:
         ofertas = [o for o in ofertas if o.price <= req.max_price]
 
-    # Ryanair y Google devuelven el mismo viaje: se fusionan por ruta y fecha
-    # como en el scan, quedandose con la mas barata y guardando el resto como
-    # alternativa. Sin esto cada destino salia dos veces en la lista.
+    # Ryanair, Wizz y Google devuelven el mismo viaje: se fusionan por ruta y
+    # fecha como en el scan, quedandose con la mas barata y guardando el resto
+    # como alternativa. Sin esto cada destino salia varias veces en la lista.
     from .cli import _dedupe
 
     ofertas = _dedupe(ofertas)
     ofertas.sort(key=lambda o: o.price)
-    resultado.offers = ofertas[:40]
+    resultado.offers = ofertas[:60]
     log.info(
-        "Busqueda %s: %d viajes dentro de presupuesto",
+        "Busqueda %s: %d viajes dentro de presupuesto (%d tarifas vistas)",
         iata or "cualquier destino",
         len(resultado.offers),
+        len(encontradas),
     )
     return resultado

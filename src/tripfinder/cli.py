@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import random
 import sys
 from datetime import date, timedelta
 
@@ -28,9 +29,20 @@ def _setup_logging(verbose: bool) -> None:
 def _shortlist(found: list[FlightOffer], cfg: Config, limit: int) -> tuple[list, dict]:
     """Destinos y fechas que merece la pena contrastar con otras aerolineas.
 
-    Mezcla dos fuentes a proposito: lo que ya han encontrado los demas providers
-    (para ver si otra compania lo mejora) y los destinos declarados en el YAML,
-    porque a esos vuelan Iberia o Vueling aunque Ryanair no los ofrezca.
+    Tres fuentes, en este orden:
+
+    1. Lo que ya han encontrado los demas providers, por si otra compania lo
+       mejora.
+    2. Los destinos declarados en el YAML: a esos vuelan Iberia o Vueling
+       aunque Ryanair no los ofrezca.
+    3. El resto del mapa de rutas del origen. Este es el que faltaba. Sin el,
+       un destino solo se miraba si Ryanair lo volaba o si estaba escrito a
+       mano en la config, y todo lo demas era invisible por definicion.
+
+    Como el presupuesto de consultas no da para el mapa entero en una tanda, el
+    bloque 3 se baraja con la fecha como semilla: cada scan mira un trozo
+    distinto y en unos dias se ha recorrido todo, sin repetir siempre los
+    mismos veinte.
     """
     pairs: list[tuple[str, date, date]] = []
     names: dict[str, tuple[str, str]] = {}
@@ -52,14 +64,30 @@ def _shortlist(found: list[FlightOffer], cfg: Config, limit: int) -> tuple[list,
         int(weekend.get("inbound_weekday", 6)),
         weeks=4,
     )
+
     declarados = [d for r in cfg.routes for d in r.dest_list]
+    universo: dict[str, tuple[str, str]] = {}
+    origen = cfg.routes[0].origin if cfg.routes else "MAD"
+    try:
+        from . import routes as rutas
+
+        universo = rutas.destinos(origen, cfg)
+    except Exception as exc:  # noqa: BLE001 - sin mapa se sigue con lo declarado
+        log.warning("No se pudo montar el mapa de rutas de %s: %s", origen, exc)
+
+    resto = [d for d in universo if d not in declarados]
+    random.Random(date.today().toordinal()).shuffle(resto)
+    candidatos = declarados + resto
+
+    ya = {(p[0], p[1], p[2]) for p in pairs}
     for out_date, in_date in findes:
-        for dest in declarados:
+        for dest in candidatos:
             if len(pairs) >= limit:
                 break
-            if (dest, out_date, in_date) not in {(p[0], p[1], p[2]) for p in pairs}:
+            if (dest, out_date, in_date) not in ya:
                 pairs.append((dest, out_date, in_date))
-                names.setdefault(dest, cfg.city_names.get(dest, (dest, "")))
+                ya.add((dest, out_date, in_date))
+                names.setdefault(dest, universo.get(dest) or cfg.city_names.get(dest, (dest, "")))
     return pairs[:limit], names
 
 

@@ -110,17 +110,42 @@ las dos cosas porque cada uno vive de vender una.
 
 | Provider | Clave | Que aporta |
 |---|---|---|
-| `ryanair` | ninguna | Barrido de findes, tarifas base. Es quien mas gana en rutas low cost. |
-| `google_flights` | ninguna | **Todas las aerolineas**: Iberia, Vueling, Air Europa, ITA, easyJet, Wizz, TAP… Contrasta los destinos y fechas que ya han salido y se queda con lo que mejora. |
+| `ryanair` | ninguna | Barrido de findes y tarifas base. Es quien mas gana en rutas low cost. |
+| `wizzair` | ninguna | Su tabla de horarios: el precio mas barato de cada dia. Es **la unica** via a Bucarest, Sofia, Tirana, Cluj o Timisoara desde Madrid. |
+| `google_flights` | ninguna | **Todas las aerolineas**: Iberia, Vueling, Air Europa, ITA, easyJet, TAP, Tarom, Aer Lingus… Es quien cubre el mapa donde no llega ninguna API. |
 | `scrapling` | ninguna | No es un provider: es el fetcher que usan los scrapers de alojamiento. Habla por curl_cffi imitando el TLS y las cabeceras de un Chrome real, que es lo que miran los antibot. Si no esta instalado, se cae a `requests` y todo sigue. |
 | `amadeus` | gratuita | Refuerzo por GDS para rutas con escala. Se desactiva solo si no hay claves. |
+
+### Primero el mapa, despues los precios
+
+El fallo gordo que tenia el buscador era el orden. **Quien decidia los destinos era
+Ryanair**: se le preguntaban las tarifas de una fecha, contestaba con doce destinos
+y solo esos doce se contrastaban despues con Google. Todo lo que Ryanair no volaba
+ese dia no es que saliera caro — es que no llegaba a existir como candidato. De ahi
+que una busqueda "donde sea" para el 6 de noviembre devolviera seis resultados
+mientras Skyscanner enseñaba Pisa, Bucarest, Milan o Turin mas baratos.
+
+Ahora `routes.py` monta primero el **mapa de destinos** desde el origen, que las
+aerolineas publican gratis y de una sola peticion:
+
+| Fuente | Peticiones | Destinos desde MAD |
+|---|---|---|
+| `searchWidget/routes` de Ryanair | 1 | 65, con ciudad y pais ya en español |
+| `asset/map` de Wizz Air | 1 | 28 (sin contar sus codigos de ciudad) |
+| `city_names` del YAML | 0 | los de bandera: Stuttgart, Ginebra, Estambul… |
+
+Union: **105 destinos**, cacheados 14 dias en `data/routes/MAD.json`. Y solo despues
+se piden precios de todos ellos. Ryanair y Wizz responden por API para sus rutas; a
+Google se le pregunta destino a destino, gastando las consultas primero en aquellos
+de los que no se tiene ni un precio (que es donde estaba el agujero) y guardando un
+cuarto del presupuesto para contrastar lo que ya ha salido barato.
 
 Cuando dos companias ofrecen el mismo viaje, gana la mas barata y **las demas se guardan
 como alternativa** en la tarjeta (`también Wizz Air 66 €`), en vez de desaparecer.
 
 Lo que **no** se puede usar, comprobado: easyJet responde 403 a cualquier peticion
-automatizada, Vueling y Wizz no exponen buscador publico, y Kiwi cerro su API abierta
-(ahora exige clave de partner).
+automatizada, Vueling no expone buscador publico y Kiwi cerro su API abierta (ahora
+exige clave de partner).
 
 ## Escapada de fin de semana
 
@@ -163,6 +188,21 @@ search:
   escalas — parsear eso aguanta mucho mejor que perseguir clases CSS ofuscadas.
 - Ryanair sí acepta filtro de hora (`outboundDepartureTimeFrom` / `...TimeTo`), lo que permite
   pedir solo salidas de viernes por la tarde sin traerse el día entero.
+- **Wizz Air envenena su propia sesion.** `search/timetable` deja puesta una cookie
+  que invalida la siguiente llamada: la segunda peticion en adelante responde
+  `400 {"handlerError":"InvalidProtocol"}`. Reutilizando la sesion, de las 72
+  consultas de un scan solo contestaba la primera y Wizz aportaba practicamente
+  nada. Con un `cookies.clear()` detras de cada peticion responden todas
+  (comprobado: 5/5 y 28/28).
+- **El precio de la tabla de horarios de Wizz es por persona** y se rie del
+  `adultCount` que le mandes: 1, 2 y 3 pasajeros devuelven la misma cifra. El resto
+  de providers dan el total del grupo, asi que hay que multiplicarlo o Wizz sale a
+  mitad de precio que nadie y se come las primeras posiciones de la lista.
+- **Google Flights aguanta mas de lo que ponia aqui**: 30 consultas seguidas con 4 s
+  entre medias, 30 respuestas con precio (medido el 2026-08-17 desde una IP
+  domestica). La busqueda a mano gasta hasta `max_queries_search` (110) porque es
+  una sola tirada; el scan automatico se queda en `max_queries` (40), que corre cada
+  6 h desde una IP de Actions y conviene no forzar.
 - La etiqueta `stay-request` es opcional: el workflow se dispara por el prefijo `[stay] ` del
   titulo, asi que funciona aunque no hayas creado la etiqueta en el repo.
 
