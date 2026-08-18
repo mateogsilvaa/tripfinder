@@ -1,0 +1,22 @@
+{
+  "slug": "mad-agadir-34-60",
+  "label": "Agadir · hasta 60 €",
+  "request": {
+    "destination": "Agadir",
+    "label": "Agadir · hasta 60 €",
+    "max_price": 60.0,
+    "nights_min": 3,
+    "nights_max": 4,
+    "months": 12,
+    "weekend_only": false,
+    "adults": 3,
+    "origin": "MAD",
+    "depart": "",
+    "return_date": "",
+    "slug": "mad-agadir-34-60"
+  },
+  "generated_at": "2026-08-18",
+  "errors": [],
+  "count": 0,
+  "offers": []
+}
