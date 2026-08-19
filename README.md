@@ -124,7 +124,27 @@ TripFinder calcula las horas despierto en destino (de aterrizar a despegar, meno
 8 h de sueno por noche), las puntua en el score y te deja ordenar por **euros por
 hora de viaje**. Es la diferencia entre un finde y un aeropuerto.
 
-**2. Coste real de la escapada.** El vuelo es por persona, el alojamiento es para
+**2. Cada precio dice a cuanta gente cubre.** Cada `FlightOffer` guarda su campo
+`adults`, porque "240 €" tanto puede ser lo que pagas tu como lo que pagais los
+cuatro, y esa duda es justo la que hace perder un chollo. Cuando va mas de uno, la
+web ensena el **total** grande y el **por persona** debajo. El scan diario busca
+para una persona a proposito (asi el historico de una ruta es comparable de un dia
+para otro); el selector de personas de la portada multiplica esa cifra y lo marca
+con `≈`, que es una estimacion honesta y no un precio consultado.
+
+**3. Favoritos que vigilan el precio.** La ☆ de cualquier vuelo lo guarda en tu
+navegador junto con lo que valia al marcarlo. Cada vez que la web vuelve a ver ese
+vuelo —en los chollos, dentro de una busqueda guardada o en lo que devolvio un
+seguimiento— compara con el ultimo precio visto y, si ha cambiado, lo canta arriba
+del todo. No hace falta servidor: el precio ya viaja en los JSON que publica
+Actions, lo unico que faltaba era acordarse.
+
+**4. Contra su propio historico.** `data/history.json` lleva meses acumulando el
+precio de cada ruta y la web no lo miraba. Ahora, al abrir un vuelo, se dibuja la
+curva de esa ruta y se dice donde cae el precio de hoy: *"barato: normalmente esta
+entre 119 y 211 €"*. Es la diferencia entre creerse un `−50%` y saber si lo es.
+
+**5. Coste real de la escapada.** El vuelo es por persona, el alojamiento es para
 todo el grupo: sumarlos bien da el unico numero que importa. Cuando pides
 alojamiento para una oferta, la web te responde con *"escapada completa para 2:
 264 €, 132 € por cabeza"*, desglosado en vuelos y cama. Ningun comparador cruza
@@ -136,7 +156,7 @@ las dos cosas porque cada uno vive de vender una.
 |---|---|---|
 | `ryanair` | ninguna | Barrido de findes y tarifas base. Es quien mas gana en rutas low cost. |
 | `wizzair` | ninguna | Su tabla de horarios: el precio mas barato de cada dia. Es **la unica** via a Bucarest, Sofia, Tirana, Cluj o Timisoara desde Madrid. |
-| `google_flights` | ninguna | **Todas las aerolineas**: Iberia, Vueling, Air Europa, ITA, easyJet, TAP, Tarom, Aer Lingus… Es quien cubre el mapa donde no llega ninguna API. |
+| `google_flights` | ninguna | **Todas las aerolineas**: Iberia, Vueling, Air Europa, ITA, easyJet, TAP, Tarom, Aer Lingus… Es quien cubre el mapa donde no llega ninguna API. Cuando la compania tiene web propia que se puede enlazar, la oferta sale ademas con su boton de reserva. |
 | `scrapling` | ninguna | No es un provider: es el fetcher que usan los scrapers de alojamiento. Habla por curl_cffi imitando el TLS y las cabeceras de un Chrome real, que es lo que miran los antibot. Si no esta instalado, se cae a `requests` y todo sigue. |
 | `amadeus` | gratuita | Refuerzo por GDS para rutas con escala. Se desactiva solo si no hay claves. |
 
@@ -167,9 +187,37 @@ cuarto del presupuesto para contrastar lo que ya ha salido barato.
 Cuando dos companias ofrecen el mismo viaje, gana la mas barata y **las demas se guardan
 como alternativa** en la tarjeta (`también Wizz Air 66 €`), en vez de desaparecer.
 
-Lo que **no** se puede usar, comprobado: easyJet responde 403 a cualquier peticion
-automatizada, Vueling no expone buscador publico y Kiwi cerro su API abierta (ahora
-exige clave de partner).
+Lo que **no** se puede usar, comprobado: Vueling no expone buscador publico y Kiwi
+cerro su API abierta (ahora exige clave de partner).
+
+### easyJet: precio por Google, reserva en su web
+
+easyJet esta detras de un WAF que responde **403 a cualquier peticion que no venga
+de un navegador**, y no solo a su API: tambien a su portada y a sus paginas de ruta.
+Probado con `curl_cffi` imitando el TLS de Chrome, con cookies de sesion previas y
+con la cabecera de origen correcta — 403 en los tres casos, y desde una IP de
+Actions seria peor. `GetLowestDailyFares` esta ademas bloqueado por path en el
+borde, que es la forma que tiene Akamai de decir que ese endpoint lo conoce mucha
+gente.
+
+Asi que el reparto queda:
+
+* **El precio** lo pone Google Flights, que si publica las tarifas de easyJet
+  (comprobado en MAD–BSL y MAD–GVA). Para que esas rutas se lleguen a preguntar,
+  sus destinos desde Madrid estan declarados en `city_names`.
+* **La reserva** va a `easyjet.com/es/vuelos-baratos/<ORI>/<DES>`, su pagina de
+  ruta por IATA, que abierta en un navegador funciona perfectamente. Sale como un
+  boton aparte ("Reservar en easyJet") junto al enlace de siempre: si algun dia
+  cambian el formato, el enlace normal sigue ahi.
+
+Lo mismo aplica a Vueling, Transavia y Volotea, en `providers/links.py`.
+
+### eDreams Prime y otras tarifas con login
+
+No se pueden scrapear y no se va a intentar: harian falta las credenciales del
+usuario guardadas como secreto del repo. Lo que si hace la web es ofrecer un boton
+"Comparar en eDreams" con ruta y fechas ya puestas; se abre en **tu** navegador,
+con tu sesion, y ahi si sale tu precio de socio.
 
 ## Escapada de fin de semana
 
@@ -218,6 +266,13 @@ search:
   consultas de un scan solo contestaba la primera y Wizz aportaba practicamente
   nada. Con un `cookies.clear()` detras de cada peticion responden todas
   (comprobado: 5/5 y 28/28).
+- **Wizz tiene dos formatos de enlace y solo uno funciona.** El de parametros
+  (`select-flight?departureStation=MAD&arrivalStation=OTP&...`) abre la pagina de
+  reserva con las fechas puestas pero **sin la ruta**: sale un formulario vacio y
+  parece que el boton no lleva a ningun sitio. El que hay que usar es el de por
+  path: `select-flight/MAD/OTP/2026-11-06/2026-11-09/2/0/0/null`, que llega con
+  Madrid → Bucarest ya seleccionado. Comprobado en navegador con las dos URLs.
+
 - **El precio de la tabla de horarios de Wizz es por persona** y se rie del
   `adultCount` que le mandes: 1, 2 y 3 pasajeros devuelven la misma cifra. El resto
   de providers dan el total del grupo, asi que hay que multiplicarlo o Wizz sale a

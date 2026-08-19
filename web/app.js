@@ -47,6 +47,509 @@ let OFFERS = [];
 let CONTINENTES = {}; // IATA -> continente, para filtrar
 const SEARCH_OFFERS = {}; // ofertas de busquedas guardadas, por id
 
+/* ------------------------------------------------------------------ precios
+   Cada oferta lleva a cuanta gente cubre su precio (`adults`). El scan diario
+   busca para una persona; una busqueda o un seguimiento, para los que hayas
+   dicho. Sin distinguirlo, "240 €" tanto puede ser lo que pagas tu como lo que
+   pagais los cuatro, que es justo la duda que hace perder un chollo.
+
+   Regla: si va mas de uno, manda el TOTAL (es lo que sale de la cuenta) y el
+   por persona va debajo. Si va uno solo, no hay nada que repartir. */
+const pax = (o) => Math.max(1, Number(o?.adults) || 1);
+const porPersona = (o) =>
+  Number.isFinite(Number(o?.price_per_person)) && Number(o.price_per_person) > 0
+    ? Number(o.price_per_person)
+    : o.price / pax(o);
+
+/* Estimacion para la portada: el scan guarda el precio de una persona y multi-
+   plicarlo es una aproximacion honesta mientras no se busque para el grupo.
+   Va marcada con "≈" a proposito: las tarifas van por cupos y las ultimas
+   plazas de un vuelo no valen lo mismo que las primeras. */
+const GRUPO_KEY = "tf_grupo";
+let GRUPO = Math.min(8, Math.max(1, Number(localStorage.getItem(GRUPO_KEY)) || 1));
+
+/* Cuanta gente cubre de verdad el precio que se va a ensenar, y si el total es
+   una cuenta nuestra o el numero que devolvio la aerolinea. */
+function reparto(o) {
+  const propios = pax(o);
+  if (propios > 1) return { gente: propios, unidad: porPersona(o), estimado: false };
+  return { gente: GRUPO, unidad: porPersona(o), estimado: GRUPO > 1 };
+}
+
+/* El bloque de precio, igual en el billete grande, en el panel de salidas y en
+   las filas de una busqueda guardada. */
+function precioHTML(o, { grande = false } = {}) {
+  const { gente, unidad, estimado } = reparto(o);
+  const total = unidad * gente;
+  const clase = grande ? "amount" : "cifra";
+  if (gente <= 1) {
+    return `<span class="${clase}">${Math.round(unidad)}<span>€</span></span>
+      <span class="pax-nota">por persona</span>`;
+  }
+  return `<span class="${clase}">${estimado ? "≈" : ""}${Math.round(total)}<span>€</span></span>
+    <span class="pax-nota">${Math.round(unidad)} € × ${gente} pers.${
+      estimado ? " · estimado" : ""
+    }</span>`;
+}
+
+/* Las búsquedas y los seguimientos guardan a cuánta gente se buscó en su
+   cabecera, pero los ficheros escritos antes de que las ofertas llevaran su
+   propio `adults` no lo tienen dentro de cada vuelo. Sin esto, una búsqueda
+   para cuatro seguía enseñando el precio como si fuera de uno. */
+function conGrupo(ofertas, cuantos) {
+  const n = Math.max(1, Number(cuantos) || 1);
+  (ofertas || []).forEach((o) => {
+    if (!Number(o.adults)) o.adults = n;
+  });
+  return ofertas || [];
+}
+
+/* Version de una linea, para las filas del panel de salidas. */
+function precioCorto(o) {
+  const { gente, unidad, estimado } = reparto(o);
+  if (gente <= 1) return `${fmtEUR(unidad)}<small>por persona</small>`;
+  return `${estimado ? "≈" : ""}${fmtEUR(unidad * gente)}<small>${Math.round(
+    unidad
+  )} €/persona</small>`;
+}
+
+/* Comparadores que valen la pena abrir con la ruta ya puesta. eDreams va
+   aparte porque con una cuenta Prime los precios que ves tu no son los que ve
+   nadie mas: no hay forma de scrapearlos desde aqui (harian falta tus claves),
+   pero el enlace se abre en TU navegador, ya con tu sesion, y ahi si sale tu
+   tarifa de socio. Es la unica manera honesta de aprovecharlo. */
+function edreamsURL(o) {
+  const ida = (o.depart_date || "").slice(0, 10);
+  if (!ida) return "";
+  const vuelta = (o.return_date || "").slice(0, 10);
+  const gente = Math.max(1, pax(o) > 1 ? pax(o) : GRUPO);
+  const partes = [
+    `type=${vuelta ? "R" : "O"}`,
+    `from=${o.origin || "MAD"}`,
+    `to=${o.destination}`,
+    `dep=${ida}`,
+    vuelta ? `ret=${vuelta}` : "",
+    `adults=${gente}`,
+  ].filter(Boolean);
+  return `https://www.edreams.es/travel/#/results/${partes.join(";")}`;
+}
+
+/* ---------------------------------------------------------------- favoritos
+   Marcar un vuelo con la estrella lo guarda en ESTE navegador junto con el
+   precio que tenia al marcarlo. Cada vez que la web vuelve a ver ese mismo
+   vuelo (en los chollos del dia, dentro de una busqueda guardada o en lo que
+   devuelve un seguimiento) compara el precio de ahora con el ultimo visto y,
+   si ha cambiado, lo apunta y lo canta arriba del todo.
+
+   No hace falta servidor: el precio ya viaja en los JSON que publica Actions,
+   asi que lo unico que faltaba era acordarse de lo que valia la ultima vez. */
+const FAV_KEY = "tf_favoritos";
+
+function favLeer() {
+  try {
+    const crudo = JSON.parse(localStorage.getItem(FAV_KEY) || "{}");
+    return crudo && typeof crudo === "object" && !Array.isArray(crudo) ? crudo : {};
+  } catch {
+    return {};
+  }
+}
+
+function favGuardar(mapa) {
+  try {
+    localStorage.setItem(FAV_KEY, JSON.stringify(mapa));
+  } catch {
+    /* navegacion privada o cuota llena: los favoritos duran la sesion */
+  }
+}
+
+let FAVS = favLeer();
+const esFav = (id) => Object.prototype.hasOwnProperty.call(FAVS, id);
+
+/* Lo minimo para poder pintar el favorito aunque la oferta ya no este en
+   ningun JSON (una busqueda borrada, un chollo que se agoto). */
+function favResumen(o) {
+  return {
+    id: o.id,
+    origin: o.origin || "MAD",
+    destination: o.destination,
+    destination_name: o.destination_name || o.destination,
+    destination_country: o.destination_country || "",
+    depart_date: o.depart_date,
+    return_date: o.return_date || "",
+    nights: o.nights || null,
+    airline: o.airline || o.provider || "",
+    adults: pax(o),
+    deep_link: o.deep_link || "",
+    airline_link: o.airline_link || "",
+    airline_link_label: o.airline_link_label || "",
+  };
+}
+
+function favBtn(o) {
+  const activo = esFav(o.id);
+  return `<button class="fav${activo ? " on" : ""}" data-fav="${esc(o.id)}"
+    aria-pressed="${activo}" title="${
+    activo ? "Quitar de favoritos" : "Guardar y vigilar el precio"
+  }"><span aria-hidden="true">${activo ? "★" : "☆"}</span></button>`;
+}
+
+function alternar(o) {
+  if (esFav(o.id)) {
+    delete FAVS[o.id];
+  } else {
+    const unidad = redondea(porPersona(o));
+    FAVS[o.id] = {
+      ...favResumen(o),
+      desde: Date.now(),
+      precio_inicial: unidad,
+      precio_visto: unidad,
+      visto_en: hoyISO(),
+      historia: [{ d: hoyISO(), p: unidad }],
+      // Nace sin aviso a proposito: interesa lo que cambie a partir de ahora.
+      cambio: null,
+    };
+  }
+  favGuardar(FAVS);
+  pintarFavs();
+  refrescarAvisoFavs();
+  pintarListaFavs();
+}
+
+const hoyISO = () => new Date().toISOString().slice(0, 10);
+const redondea = (n) => Math.round(Number(n) * 100) / 100;
+
+/* Repinta solo las estrellas, sin volver a montar la lista entera. */
+function pintarFavs(raiz = document) {
+  raiz.querySelectorAll("[data-fav]").forEach((b) => {
+    const activo = esFav(b.dataset.fav);
+    b.classList.toggle("on", activo);
+    b.setAttribute("aria-pressed", String(activo));
+    const icono = b.querySelector("span");
+    if (icono) icono.textContent = activo ? "★" : "☆";
+  });
+}
+
+function wireFavs(raiz = document) {
+  raiz.querySelectorAll("[data-fav]").forEach((b) =>
+    b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      ev.preventDefault();
+      const id = b.dataset.fav;
+      const o = OFFERS.find((x) => x.id === id) || SEARCH_OFFERS[id] || FAVS[id];
+      if (o) alternar(o);
+    })
+  );
+}
+
+/* El corazon del asunto: comparar lo que vale hoy con lo ultimo que se vio.
+   Se llama desde todos los sitios donde aparecen ofertas, asi que un favorito
+   se actualiza tanto si lo ves en los chollos como si abres la busqueda que lo
+   encontro o el seguimiento que lo trajo. */
+function sincronizarFavs(ofertas) {
+  const hoy = hoyISO();
+  let tocado = false;
+
+  (ofertas || []).forEach((o) => {
+    const f = FAVS[o.id];
+    if (!f) return;
+    const ahora = redondea(porPersona(o));
+    const antes = Number(f.precio_visto);
+
+    // La serie guarda un punto por dia: abrir la pagina diez veces no inventa
+    // diez puntos, pero un cambio dentro del mismo dia si actualiza el ultimo.
+    f.historia = Array.isArray(f.historia) ? f.historia : [];
+    const ultimo = f.historia[f.historia.length - 1];
+    if (ultimo && ultimo.d === hoy) ultimo.p = ahora;
+    else f.historia.push({ d: hoy, p: ahora });
+    f.historia = f.historia.slice(-60);
+
+    Object.assign(f, favResumen(o)); // la oferta puede haber cambiado de compania
+    f.precio_visto = ahora;
+    f.visto_en = hoy;
+    tocado = true;
+
+    // Menos de medio euro es ruido de redondeo, no una bajada.
+    if (Number.isFinite(antes) && Math.abs(ahora - antes) >= 0.5) {
+      f.cambio = { antes, ahora, cuando: hoy, visto: false };
+    }
+  });
+
+  if (tocado) favGuardar(FAVS);
+  refrescarAvisoFavs();
+}
+
+const cambiosPendientes = () => Object.values(FAVS).filter((f) => f.cambio && !f.cambio.visto);
+
+/* La diferencia contra el precio al que lo marcaste, en la propia fila. */
+function deltaHTML(o) {
+  const f = FAVS[o.id];
+  if (!f || !Number.isFinite(Number(f.precio_inicial))) return "";
+  const dif = porPersona(o) - Number(f.precio_inicial);
+  if (Math.abs(dif) < 1) return "";
+  const baja = dif < 0;
+  return `<small class="delta ${baja ? "baja" : "sube"}" title="Desde que lo guardaste">${
+    baja ? "▼" : "▲"
+  } ${Math.abs(Math.round(dif))} €</small>`;
+}
+
+/* El aviso de arriba. Es lo que hace que "la web te avise": vive en las tres
+   paginas, porque el barrido de precios ocurre en todas. */
+function refrescarAvisoFavs() {
+  const caja = document.getElementById("favAviso");
+  if (!caja) return;
+  const cambios = cambiosPendientes();
+  if (!cambios.length) {
+    caja.hidden = true;
+    caja.innerHTML = "";
+    return;
+  }
+  const bajan = cambios.filter((f) => f.cambio.ahora < f.cambio.antes);
+  const suben = cambios.filter((f) => f.cambio.ahora > f.cambio.antes);
+  const linea = (f) => {
+    const baja = f.cambio.ahora < f.cambio.antes;
+    return `<li class="${baja ? "baja" : "sube"}">
+      <b>${esc(f.destination_name || f.destination)}</b>
+      <span>${fmtDate(f.depart_date)}${f.return_date ? ` → ${fmtDate(f.return_date)}` : ""}</span>
+      <em>${baja ? "▼" : "▲"} de ${Math.round(f.cambio.antes)} € a ${Math.round(
+      f.cambio.ahora
+    )} € por persona</em>
+    </li>`;
+  };
+  const titulo =
+    bajan.length && suben.length
+      ? `${bajan.length} favorito${bajan.length > 1 ? "s" : ""} más barato${
+          bajan.length > 1 ? "s" : ""
+        }, ${suben.length} más caro${suben.length > 1 ? "s" : ""}`
+      : bajan.length
+      ? `Ha bajado de precio${bajan.length > 1 ? ` (${bajan.length})` : ""}`
+      : `Ha subido de precio${suben.length > 1 ? ` (${suben.length})` : ""}`;
+
+  caja.hidden = false;
+  caja.innerHTML = `
+    <h3>${esc(titulo)}</h3>
+    <ul>${bajan.concat(suben).map(linea).join("")}</ul>
+    <div class="aviso-pie">
+      <a href="seguimientos.html#favoritos">Ver mis favoritos</a>
+      <button class="btn ghost small" id="favVisto">Enterado</button>
+    </div>`;
+  const boton = document.getElementById("favVisto");
+  if (boton) {
+    boton.addEventListener("click", () => {
+      Object.values(FAVS).forEach((f) => {
+        if (f.cambio) f.cambio.visto = true;
+      });
+      favGuardar(FAVS);
+      refrescarAvisoFavs();
+      pintarListaFavs();
+    });
+  }
+}
+
+/* --------------------------------------------------- la lista de favoritos
+   Vive en "Lo que sigues", al lado de los seguimientos: un seguimiento es un
+   encargo al cron ("avisame si Roma baja de 120"), un favorito es un vuelo
+   concreto que ya has visto y quieres no perder de vista. */
+function sparkline(historia, ancho = 108, alto = 30) {
+  const puntos = (historia || []).filter((h) => Number.isFinite(Number(h.p)));
+  if (puntos.length < 2) return "";
+  const precios = puntos.map((h) => Number(h.p));
+  const min = Math.min(...precios);
+  const max = Math.max(...precios);
+  const rango = max - min || 1;
+  const paso = ancho / (puntos.length - 1);
+  const y = (p) => alto - 3 - ((p - min) / rango) * (alto - 6);
+  const d = precios.map((p, i) => `${i ? "L" : "M"}${(i * paso).toFixed(1)},${y(p).toFixed(1)}`).join(" ");
+  const ultimo = precios[precios.length - 1];
+  const baja = ultimo <= precios[0];
+  return `<svg class="spark ${baja ? "baja" : "sube"}" viewBox="0 0 ${ancho} ${alto}"
+      width="${ancho}" height="${alto}" role="img"
+      aria-label="Evolución del precio: de ${Math.round(precios[0])} a ${Math.round(ultimo)} euros">
+      <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6"
+            stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${(ancho).toFixed(1)}" cy="${y(ultimo).toFixed(1)}" r="2.4" fill="currentColor"/>
+    </svg>`;
+}
+
+function favFila(f) {
+  const inicial = Number(f.precio_inicial);
+  const ahora = Number(f.precio_visto);
+  const dif = Number.isFinite(inicial) && Number.isFinite(ahora) ? ahora - inicial : 0;
+  const baja = dif < 0;
+  const enlace = f.airline_link || f.deep_link;
+  return `
+    <div class="favrow${f.cambio && !f.cambio.visto ? " nuevo" : ""}">
+      <span class="iata">${esc(f.destination)}</span>
+      <span class="dest-cell">
+        <span class="city">${esc(f.destination_name || f.destination)}</span>
+        <span class="country">${esc(f.destination_country || "")}${
+          f.airline ? ` · ${esc(f.airline)}` : ""
+        }</span>
+      </span>
+      <span class="when"><b>${fmtDate(f.depart_date, true)}</b>${
+        f.return_date ? ` → ${fmtDate(f.return_date, true)}` : ""
+      }${f.nights ? `<small>${f.nights} noches</small>` : ""}</span>
+      <span class="spark-cell">${sparkline(f.historia)}</span>
+      <span class="price">
+        ${Math.round(ahora)} €<small>por persona</small>
+        ${
+          Math.abs(dif) >= 1
+            ? `<small class="delta ${baja ? "baja" : "sube"}">${baja ? "▼" : "▲"} ${Math.abs(
+                Math.round(dif)
+              )} € desde ${Math.round(inicial)} €</small>`
+            : `<small class="delta igual">sin cambios</small>`
+        }
+      </span>
+      <span class="favacc">
+        ${
+          enlace
+            ? `<a class="btn ghost small" href="${esc(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
+            : ""
+        }
+        <button class="quitar" data-desfav="${esc(f.id)}" title="Quitar de favoritos">✕</button>
+      </span>
+    </div>`;
+}
+
+function pintarListaFavs() {
+  const caja = document.getElementById("favoritos");
+  if (!caja) return;
+  const lista = Object.values(FAVS).sort((a, b) => (b.desde || 0) - (a.desde || 0));
+  if (!lista.length) {
+    caja.innerHTML = `
+      <h3 class="watch-head">Favoritos</h3>
+      <p class="meta">Todavía no has guardado ningún vuelo. Dale a la ☆ de cualquier
+      viaje y aquí verás si sube o baja de precio cada vez que se actualicen los datos.</p>`;
+    return;
+  }
+  caja.innerHTML =
+    `<h3 class="watch-head">Favoritos · ${lista.length} vuelo${lista.length > 1 ? "s" : ""} vigilado${
+      lista.length > 1 ? "s" : ""
+    }</h3>` + lista.map(favFila).join("");
+  caja.querySelectorAll("[data-desfav]").forEach((b) =>
+    b.addEventListener("click", () => {
+      delete FAVS[b.dataset.desfav];
+      favGuardar(FAVS);
+      pintarListaFavs();
+      pintarFavs();
+      refrescarAvisoFavs();
+    })
+  );
+}
+
+/* Un favorito puede venir de una busqueda guardada o de un seguimiento, y esos
+   ficheros solo se leen al desplegarlos. Sin esto, un favorito de una busqueda
+   no se enteraria de que ha bajado hasta que abrieras esa busqueda a mano. */
+async function refrescarFavsDeTodo() {
+  if (!Object.keys(FAVS).length) return;
+  const fuentes = [];
+
+  fuentes.push(
+    fetchJSON("data/offers.json")
+      .then((d) => d.offers || [])
+      .catch(() => [])
+  );
+
+  fuentes.push(
+    fetchJSON("data/watch.json")
+      .then((d) => (d.watches || []).flatMap((w) => conGrupo(w.last_offers || [], w.adults)))
+      .catch(() => [])
+  );
+
+  fuentes.push(
+    fetchJSON("data/searches/index.json")
+      .then((d) =>
+        Promise.all(
+          (d.searches || [])
+            .slice(0, 12)
+            .map((x) =>
+              fetchJSON(`data/searches/${x.slug}.json`)
+                .then((s) => conGrupo(s.offers || [], (s.request || {}).adults))
+                .catch(() => [])
+            )
+        ).then((listas) => listas.flat())
+      )
+      .catch(() => [])
+  );
+
+  const listas = await Promise.all(fuentes);
+  sincronizarFavs(listas.flat());
+  pintarListaFavs();
+  pintarFavs();
+}
+
+
+
+/* ------------------------------------------------------- histórico de precios
+   `data/history.json` lleva meses acumulando el precio de cada ruta y la web
+   no lo miraba: el "−51%" del sello sale del scoring, pero al abrir un vuelo no
+   había forma de ver si eso es barato de verdad o es que la referencia estaba
+   inflada. Aquí se dibuja la serie de esa ruta y se dice, sin adornos, dónde
+   cae el precio de hoy dentro de lo que ha valido históricamente. */
+let HISTORIA = null;
+
+async function cargarHistoria() {
+  if (HISTORIA) return HISTORIA;
+  try {
+    HISTORIA = await fetchJSON("data/history.json");
+  } catch {
+    HISTORIA = {};
+  }
+  return HISTORIA;
+}
+
+/* La serie se guarda separada por finde y no finde: un viernes por la tarde no
+   compite contra un martes, y mezclarlos falsea las dos medias. */
+function serieDe(o) {
+  if (!HISTORIA) return [];
+  const ruta = `${o.origin}-${o.destination}`;
+  const propia = HISTORIA[ruta + (o.weekend ? "|finde" : "")] || [];
+  return (propia.length >= 4 ? propia : HISTORIA[ruta] || propia) || [];
+}
+
+const percentil = (ordenados, q) =>
+  ordenados[Math.min(ordenados.length - 1, Math.floor(ordenados.length * q))];
+
+/* Un veredicto de una línea, que es lo que de verdad se quiere saber. */
+function veredicto(precio, serie) {
+  const precios = serie.map((e) => Number(e.p)).filter(Number.isFinite).sort((a, b) => a - b);
+  if (precios.length < 5) return null;
+  const barato = percentil(precios, 0.25);
+  const caro = percentil(precios, 0.75);
+  const minimo = precios[0];
+  if (precio <= minimo * 1.02)
+    return { clase: "chollo", texto: "es lo más barato que se ha visto en esta ruta" };
+  if (precio <= barato)
+    return { clase: "bien", texto: `barato: normalmente está entre ${Math.round(barato)} y ${Math.round(caro)} €` };
+  if (precio >= caro)
+    return { clase: "mal", texto: `caro para esta ruta: suele bajar de ${Math.round(barato)} €` };
+  return { clase: "normal", texto: `precio normal (lo habitual: ${Math.round(barato)}–${Math.round(caro)} €)` };
+}
+
+function historiaHTML(o) {
+  const serie = serieDe(o);
+  if (serie.length < 5) return "";
+  // La serie trae varias tarifas del mismo día (una por vuelo): se resume cada
+  // día con la más barata, que es la que se podía comprar ese día.
+  const porDia = new Map();
+  serie.forEach((e) => {
+    const p = Number(e.p);
+    if (!Number.isFinite(p)) return;
+    const previo = porDia.get(e.d);
+    if (previo === undefined || p < previo) porDia.set(e.d, p);
+  });
+  const dias = [...porDia.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const v = veredicto(porPersona(o), serie);
+  if (!dias.length && !v) return "";
+  return `
+    <div class="historia ${v ? v.clase : ""}">
+      ${sparkline(dias.map(([d, p]) => ({ d, p })), 150, 34)}
+      <div>
+        <b>${Math.round(porPersona(o))} € por persona</b>
+        ${v ? `<span>${esc(v.texto)}</span>` : `<span>${dias.length} días de histórico</span>`}
+      </div>
+    </div>`;
+}
+
 /* --------------------------------------------------------------- disparador
    Para lanzar un scraper hace falta que corra algo fuera del navegador. En vez
    de abrir una issue (que era un rodeo horrible), la web llama directamente a
@@ -174,6 +677,7 @@ async function init() {
 
   OFFERS = payload.offers || [];
   renderStats(payload);
+  sincronizarFavs(OFFERS);
 
   if (payload.errors?.length) {
     const box = $("#errors");
@@ -205,6 +709,23 @@ async function init() {
 
   $(".controls").hidden = false;
   ["#q", "#sort", "#price", "#unique", "#onlyWeekend", "#cont"].forEach((s) => $(s).addEventListener("input", render));
+
+  // El scan diario guarda el precio de UNA persona (asi el historico es
+  // comparable de un dia para otro). Este selector no vuelve a buscar: solo
+  // multiplica lo que ya hay, y por eso las cifras salen con "≈" delante.
+  const grupo = $("#grupo");
+  if (grupo) {
+    grupo.value = String(GRUPO);
+    grupo.addEventListener("change", () => {
+      GRUPO = Math.min(8, Math.max(1, Number(grupo.value) || 1));
+      try {
+        localStorage.setItem(GRUPO_KEY, String(GRUPO));
+      } catch {
+        /* navegacion privada */
+      }
+      render();
+    });
+  }
   render();
 
   const target = new URLSearchParams(location.search).get("offer");
@@ -312,12 +833,16 @@ function leg(label, iso, sale, llega, highlight) {
 function altsHTML(o) {
   if (!(o.alternatives || []).length) return "";
   const links = o.alternatives
-    .map(
-      (a) =>
-        `<a href="${esc(a.deep_link)}" target="_blank" rel="noopener">${esc(a.airline)} ${fmtEUR(
-          a.price
-        )}${a.depart_time ? ` (sale ${esc(a.depart_time)})` : ""}</a>`
-    )
+    .map((a) => {
+      // La alternativa se busco para la misma gente que la ganadora, asi que
+      // su precio se reparte igual y las dos cifras son comparables.
+      const gente = Math.max(1, Number(a.adults) || pax(o));
+      const uno = Number(a.price_per_person) || a.price / gente;
+      const cifra = gente > 1 ? `${fmtEUR(a.price)} (${Math.round(uno)} €/p)` : fmtEUR(a.price);
+      return `<a href="${esc(a.deep_link)}" target="_blank" rel="noopener">${esc(
+        a.airline
+      )} ${cifra}${a.depart_time ? ` (sale ${esc(a.depart_time)})` : ""}</a>`;
+    })
     .join(" · ");
   return `<div class="alts">también ${links}</div>`;
 }
@@ -331,9 +856,10 @@ function heroTicket(o) {
     <article class="ticket" id="offer-${esc(o.id)}">
       <div class="stub">
         <span class="kicker-tag">${o.return_date ? "ida y vuelta" : "solo ida"}</span>
-        <span class="amount">${Math.round(o.price)}<span>€</span></span>
+        ${precioHTML(o, { grande: true })}
         ${o.baseline > o.price ? `<span class="was">${fmtEUR(o.baseline)}</span>` : ""}
-        <span class="per-person">vuelo completo, 1 adulto</span>
+        <span class="per-person">vuelo completo${o.return_date ? ", ida y vuelta" : ""}</span>
+        ${favBtn(o)}
       </div>
       <div class="hero-body">
         ${o.hidden_city ? AVISO_HIDDEN : ""}
@@ -360,6 +886,12 @@ function heroTicket(o) {
         <div class="actions">
           <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
           <a class="btn ghost" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+          ${
+            o.airline_link
+              ? `<a class="btn ghost" href="${esc(o.airline_link)}" target="_blank" rel="noopener">
+                   Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
+              : ""
+          }
         </div>
       </div>
     </article>`;
@@ -396,9 +928,10 @@ function boardRow(o, i) {
       <span class="airline">${esc(o.airline || o.provider)}<small>${escalas(o)}${
         o.useful_hours ? ` · ${Math.round(o.useful_hours)} h de viaje` : ""
       }${o.long_haul ? " · larga distancia" : ""}</small></span>
-      <span class="price">${fmtEUR(o.price)}${
-        o.discount_pct >= 5 ? `<small>−${Math.round(o.discount_pct)}%</small>` : ""
-      }</span>
+      <span class="price">${precioCorto(o)}${
+        o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : ""
+      }${deltaHTML(o)}</span>
+      ${favBtn(o)}
       <div class="brow-detail" hidden></div>
     </div>`;
 }
@@ -407,6 +940,7 @@ function boardRow(o, i) {
 function detalleHTML(o) {
   return `
     ${o.hidden_city ? AVISO_HIDDEN : ""}
+    ${historiaHTML(o)}
     <dl class="legs">
       ${leg("Ida", o.depart_date, o.depart_time, o.arrive_time, o.weekend)}
       ${leg("Vuelta", o.return_date, o.return_time, o.return_arrive_time, o.weekend)}
@@ -422,8 +956,33 @@ function detalleHTML(o) {
     ${altsHTML(o)}
     <div class="actions">
       <a class="btn primary" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+      ${
+        o.airline_link
+          ? `<a class="btn ghost" href="${esc(o.airline_link)}" target="_blank" rel="noopener">
+               Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
+          : ""
+      }
       <button class="btn ghost" data-stay="${esc(o.id)}">Buscar alojamiento</button>
+      ${
+        edreamsURL(o)
+          ? `<a class="btn ghost" href="${esc(edreamsURL(o))}" target="_blank" rel="noopener"
+               title="Se abre con tu sesión: si tienes Prime, verás tu precio de socio"
+               >Comparar en eDreams</a>`
+          : ""
+      }
     </div>`;
+}
+
+/* El detalle se pinta dos veces: una al abrirlo y otra cuando llega el
+   historico de precios, asi que sus botones se cablean aparte. */
+function wireDetalle(caja, o) {
+  caja.querySelectorAll("[data-stay]").forEach((b) =>
+    b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      if (!OFFERS.some((x) => x.id === o.id)) OFFERS.push(o);
+      openStays(o.id);
+    })
+  );
 }
 
 function toggleRow(fila) {
@@ -439,16 +998,20 @@ function toggleRow(fila) {
   caja.innerHTML = detalleHTML(o);
   caja.hidden = false;
   fila.classList.add("open");
-  caja.querySelectorAll("[data-stay]").forEach((b) =>
-    b.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      if (!OFFERS.some((x) => x.id === o.id)) OFFERS.push(o);
-      openStays(o.id);
-    })
-  );
+  wireDetalle(caja, o);
+  // history.json son 60 kB: se baja una sola vez, la primera fila que se abre
+  // lo pide y el detalle se repinta solo cuando llega.
+  if (!HISTORIA) {
+    cargarHistoria().then(() => {
+      if (caja.hidden) return;
+      caja.innerHTML = detalleHTML(o);
+      wireDetalle(caja, o);
+    });
+  }
 }
 
 function wireRows(raiz = document) {
+  wireFavs(raiz);
   raiz.querySelectorAll(".brow[data-open]").forEach((fila) => {
     fila.addEventListener("click", (ev) => {
       if (ev.target.closest("a, button")) return; // los enlaces hacen lo suyo
@@ -477,6 +1040,7 @@ function render() {
   document.querySelectorAll(".hero [data-stay]").forEach((el) =>
     el.addEventListener("click", () => openStays(el.dataset.stay))
   );
+  wireFavs($("#hero"));
   wireRows();
 }
 
@@ -535,7 +1099,7 @@ function issueURL(o, adultos) {
 }
 
 async function openStays(id) {
-  const offer = OFFERS.find((o) => o.id === id);
+  const offer = OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id];
   if (!offer) return;
 
   $("#panel").hidden = false;
@@ -547,10 +1111,35 @@ async function openStays(id) {
     `${offer.nights ? ` · ${offer.nights} noches` : ""}`;
   $("#panelBody").innerHTML = '<p class="status">Comprobando si ya hay resultados…</p>';
 
+  let datos = null;
   try {
-    renderStays(await fetchJSON(`data/stays/${id}.json`));
+    datos = await fetchJSON(`data/stays/${id}.json`);
   } catch {
-    askForSearch(offer);
+    askForSearch(offer); // todavia no se ha buscado para estas fechas
+    return;
+  }
+  pintarStays(datos, offer);
+}
+
+/* Pintar y fallar al pintar son cosas distintas: si el fichero esta y el
+   render peta, hay que decirlo, no ofrecer otra busqueda como si no hubiera
+   nada. Ese enredo es lo que hacia que "Buscar alojamiento" no diera nunca
+   resultados aunque el scraper hubiera funcionado. */
+function pintarStays(datos, offer) {
+  try {
+    renderStays(datos);
+  } catch (err) {
+    if (typeof tfApuntar === "function") {
+      tfApuntar("stays", "no se pudo pintar el alojamiento", (err && err.stack) || String(err));
+    }
+    const n = (datos && datos.stays ? datos.stays.length : 0);
+    $("#panelBody").innerHTML = `
+      <div class="status wait">
+        <p>Hay ${n} alojamiento${n === 1 ? "" : "s"} guardados para estas fechas, pero algo
+        ha fallado al mostrarlos.</p>
+        <a class="btn ghost small" href="data/stays/${esc(offer ? offer.id : "")}.json"
+           target="_blank" rel="noopener">Ver los datos en crudo</a>
+      </div>`;
   }
 }
 
@@ -565,7 +1154,10 @@ function askForSearch(offer, aviso = "") {
       }
       <label class="party">
         <span>¿Cuántos viajáis?</span>
-        <input type="number" id="party" min="1" max="8" value="2" inputmode="numeric">
+        <input type="number" id="party" min="1" max="8" value="${Math.min(
+          8,
+          Math.max(1, pax(offer) > 1 ? pax(offer) : GRUPO)
+        )}" inputmode="numeric">
       </label>
       <button class="btn primary" id="launch">Buscar alojamiento</button>
     </div>`;
@@ -615,13 +1207,14 @@ function startPolling(id) {
         '<div class="status wait">Está tardando más de lo normal. Revisa la issue en GitHub.</div>';
       return;
     }
+    let data = null;
     try {
-      const data = await fetchJSON(`data/stays/${id}.json`);
-      clearInterval(pollTimer);
-      renderStays(data);
+      data = await fetchJSON(`data/stays/${id}.json`);
     } catch {
-      /* todavia no esta publicado: se reintenta */
+      return; // todavia no esta publicado: se reintenta en la siguiente vuelta
     }
+    clearInterval(pollTimer);
+    pintarStays(data, OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id]);
   }, POLL_EVERY_MS);
 }
 
@@ -649,11 +1242,43 @@ function desde(iso) {
   return dias <= 0 ? "hoy" : dias === 1 ? "ayer" : `hace ${dias} días`;
 }
 
+/* El numero que nadie te da: lo que sale la escapada entera, por cabeza.
+   Lo calcula scan-stays (vuelos x personas + una cama para todos) y viaja en
+   `summary`. Esta funcion se llamaba desde renderStays y no existia, asi que
+   en cuanto llegaban resultados de alojamiento el panel reventaba entero con
+   "tripTotal is not defined" y no se veia ni un hotel. */
+function tripTotal(resumen) {
+  if (!resumen || !resumen.total) return "";
+  const filas = [
+    resumen.flights ? `vuelos ${fmtEUR(resumen.flights)}` : "",
+    resumen.stay ? `alojamiento ${fmtEUR(resumen.stay)}` : "",
+  ].filter(Boolean);
+  return `
+    <div class="total">
+      <p class="total-head">El viaje completo${
+        resumen.party ? ` para ${resumen.party} persona${resumen.party > 1 ? "s" : ""}` : ""
+      }</p>
+      <p class="total-figure">${fmtEUR(resumen.per_person)}<span>por persona</span></p>
+      <p class="total-break">${fmtEUR(resumen.total)} en total${
+        filas.length ? ` · ${filas.join(" + ")}` : ""
+      }${
+        resumen.per_person_night ? ` · ${fmtEUR(resumen.per_person_night)} por persona y noche` : ""
+      }${
+        resumen.cost_per_useful_hour
+          ? ` · ${fmtEUR(resumen.cost_per_useful_hour)} por hora útil en destino`
+          : ""
+      }</p>
+    </div>`;
+}
+
 function renderStays(data) {
   const stays = data.stays || [];
   const priced = stays.filter((s) => s.price_total);
   const links = stays.filter((s) => !s.price_total);
-  const offer = OFFERS.find((o) => o.id === data.offer_id);
+  const offer =
+    OFFERS.find((o) => o.id === data.offer_id) ||
+    SEARCH_OFFERS[data.offer_id] ||
+    (data.offer && data.offer.id ? data.offer : null);
 
   $("#panelBody").innerHTML = `
     ${tripTotal(data.summary)}
@@ -739,11 +1364,24 @@ on("#finderForm", "submit", async (e) => {
     return;
   }
 
+  const personas = Number($("#fAdults").value) || 1;
+  const cuandoTxt =
+    cuando === "exact"
+      ? `${fmtDate($("#fDepart").value)}${
+          $("#fReturn").value ? ` → ${fmtDate($("#fReturn").value)}` : ""
+        }`
+      : cuando === "weekend"
+      ? `findes · ${$("#fMonths").value || 12} meses`
+      : `${$("#fMonths").value || 12} meses`;
+
   const payload = {
     dest,
-    label:
-      (dest || "Donde sea") +
-      (cuando === "exact" ? ` · ${$("#fDepart").value}` : ` · hasta ${$("#fMax").value} €`),
+    label: [
+      dest || "Donde sea",
+      cuandoTxt,
+      `hasta ${$("#fMax").value} €`,
+      personas > 1 ? `${personas} pers.` : "1 pers.",
+    ].join(" · "),
     max_price: $("#fMax").value,
     nights: $("#fNights").value.trim() || "2-3",
     months: $("#fMonths").value || "12",
@@ -904,8 +1542,9 @@ async function toggleSearch(el) {
   caja.innerHTML = '<p class="meta">Cargando…</p>';
   try {
     const data = await fetchJSON(`data/searches/${el.dataset.slug}.json`);
-    const ofertas = data.offers || [];
+    const ofertas = conGrupo(data.offers || [], (data.request || {}).adults);
     ofertas.forEach((o) => (SEARCH_OFFERS[o.id] = o));
+    sincronizarFavs(ofertas);
     caja.innerHTML = ofertas.length
       ? ofertas.map((o, i) => boardRow(o, i)).join("")
       : '<p class="meta">Nada dentro de ese presupuesto. Sube el tope o amplía los meses.</p>';
@@ -919,6 +1558,11 @@ async function toggleSearch(el) {
 init();
 loadSearches();
 cargarWatches();
+pintarListaFavs();
+refrescarAvisoFavs();
+// Un favorito puede venir de una búsqueda que no está abierta: se repasan
+// todas las fuentes al cargar, que es lo que permite avisar sin abrir nada.
+refrescarFavsDeTodo();
 
 /* --------------------------------------------------- selector de destino
    El mapa de puntos quedaba precioso y era inutil: sin costas ni fronteras no
@@ -1091,7 +1735,13 @@ on("#watchForm", "submit", async (e) => {
   const vuelta = cuando === "exact" ? $("#wReturn").value : "";
   if (donde === "one" && !dest) return;
   if (cuando === "exact" && !fecha) return;
-  const etiqueta = (dest || "Donde sea") + (fecha ? ` · ${fecha}` : ` · hasta ${$("#wMax").value} €`);
+  const personasW = Number($("#wAdults").value) || 1;
+  const etiqueta = [
+    dest || "Donde sea",
+    fecha ? `${fmtDate(fecha)}${vuelta ? ` → ${fmtDate(vuelta)}` : ""}` : `${$("#wMonths").value || 6} meses`,
+    `avisa bajo ${$("#wMax").value} €`,
+    personasW > 1 ? `${personasW} pers.` : "1 pers.",
+  ].join(" · ");
   const r = await dispatch("watch", {
     tipo: "watch",
     dest,
@@ -1133,6 +1783,8 @@ async function cargarWatches() {
     return;
   }
   const vivos = (datos.watches || []).filter((w) => w.active !== false);
+  vivos.forEach((w) => conGrupo(w.last_offers || [], w.adults));
+  sincronizarFavs(vivos.flatMap((w) => w.last_offers || []));
   if (!vivos.length) return;
   $("#watches").innerHTML =
     '<h3 class="watch-head">Siguiendo a diario</h3>' +

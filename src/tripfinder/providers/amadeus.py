@@ -16,6 +16,7 @@ import requests
 from ..config import Route
 from ..models import FlightOffer
 from ..util import USER_AGENT, get_json
+from . import links
 from .base import FlightProvider, register
 
 log = logging.getLogger("tripfinder")
@@ -77,6 +78,7 @@ class AmadeusProvider(FlightProvider):
         max_queries = int(cfg.get("amadeus_max_queries", 12))
         dates = _weekend_dates(int(cfg.get("days_ahead", 120)), max(1, max_queries // len(dests)))
 
+        adultos = max(1, int(cfg.get("adults", 1)))
         offers: list[FlightOffer] = []
         queries = 0
         for dest in dests:
@@ -92,7 +94,7 @@ class AmadeusProvider(FlightProvider):
                             "destinationLocationCode": dest,
                             "departureDate": d.isoformat(),
                             "returnDate": (d + timedelta(days=nights)).isoformat(),
-                            "adults": 1,
+                            "adults": adultos,
                             "currencyCode": cfg.get("currency", "EUR"),
                             "max": 3,
                         },
@@ -103,11 +105,12 @@ class AmadeusProvider(FlightProvider):
                 except Exception as exc:  # noqa: BLE001 - un fallo puntual no tumba el scan
                     log.warning("Amadeus %s-%s %s: %s", route.origin, dest, d, exc)
                     continue
-                offers.extend(self._parse(data, route, dest, d, nights))
+                offers.extend(self._parse(data, route, dest, d, nights, adultos))
         return offers
 
     @staticmethod
-    def _parse(data: dict, route: Route, dest: str, d: date, nights: int) -> list[FlightOffer]:
+    def _parse(data: dict, route: Route, dest: str, d: date, nights: int,
+               adultos: int = 1) -> list[FlightOffer]:
         carriers = (data.get("dictionaries") or {}).get("carriers", {})
         out: list[FlightOffer] = []
         for item in data.get("data", []):
@@ -116,7 +119,6 @@ class AmadeusProvider(FlightProvider):
             if not price:
                 continue
             code = (item.get("validatingAirlineCodes") or [""])[0]
-            query = f"Flights from {route.origin} to {dest} on {d.isoformat()}"
             out.append(
                 FlightOffer(
                     provider="amadeus",
@@ -130,7 +132,11 @@ class AmadeusProvider(FlightProvider):
                     price=round(price, 2),
                     currency=price_block.get("currency", "EUR"),
                     airline=carriers.get(code, code or "Varias"),
-                    deep_link="https://www.google.com/travel/flights?q=" + query.replace(" ", "%20"),
+                    adults=adultos,
+                    deep_link=links.google(
+                        route.origin, dest, d.isoformat(),
+                        (d + timedelta(days=nights)).isoformat(), adultos,
+                    ),
                 )
             )
         return out

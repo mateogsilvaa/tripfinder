@@ -46,13 +46,28 @@ window.addEventListener("unhandledrejection", (e) => {
 });
 
 /* Toda peticion que falle queda registrada con su URL y su codigo: es donde
-   aparecen los 403 del token o un JSON que no existe todavia. */
+   aparecen los 403 del token o una respuesta que no esperabamos.
+
+   Con una excepcion: un 404 sobre un JSON de data/ NO es un fallo, es el estado
+   normal de "esto todavia no se ha generado". La web pregunta por
+   data/stays/<id>.json cada 20 segundos mientras el scraper trabaja, asi que
+   una sola busqueda de alojamiento llenaba el registro de 404 identicos y
+   enterraba los errores de verdad. Se ignoran solo esos: cualquier otro codigo
+   sobre el mismo fichero (403, 500, un Pages caido) sigue quedando apuntado. */
+const TF_ESPERADO_404 = /(^|\/)data\/[^?]*\.json(\?|$)/;
+
+function tfEsRuido(url, status) {
+  return status === 404 && TF_ESPERADO_404.test(url);
+}
+
 const tfFetchOriginal = window.fetch;
 window.fetch = async function (...args) {
   const url = typeof args[0] === "string" ? args[0] : (args[0] && args[0].url) || "";
   try {
     const r = await tfFetchOriginal.apply(this, args);
-    if (!r.ok) tfApuntar("red", `${r.status} en ${url}`, r.statusText || "");
+    if (!r.ok && !tfEsRuido(url, r.status)) {
+      tfApuntar("red", `${r.status} en ${url}`, r.statusText || "");
+    }
     return r;
   } catch (err) {
     tfApuntar("red", `fallo de red en ${url}`, err.message || "");

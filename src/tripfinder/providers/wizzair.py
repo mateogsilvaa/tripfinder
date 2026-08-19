@@ -32,13 +32,13 @@ from datetime import date, timedelta
 from ..config import Route
 from ..models import FlightOffer
 from ..util import get_text, throttle
+from . import links
 from .base import FlightProvider, register
 
 log = logging.getLogger("tripfinder")
 
 HOME = "https://www.wizzair.com/en-gb"
 VERSION_RE = re.compile(r"(\d+\.\d+\.\d+)/Api")
-RESERVA = "https://www.wizzair.com/en-gb/booking/select-flight"
 
 # Codigos que no son un aeropuerto sino la ciudad entera.
 CODIGOS_CIUDAD = {"LON", "MIL", "ROM", "PAR", "MOW", "NYC", "STO", "VEN", "WSW", "GHV"}
@@ -298,16 +298,14 @@ class WizzairProvider(FlightProvider):
             currency=ida["price"].get("currencyCode", "EUR"),
             airline="Wizz Air",
             stops=0,
-            deep_link=(
-                f"{RESERVA}?departureStation={route.origin}"
-                f"&arrivalStation={destino}&departureDate={iso}"
-                f"&returnDate={regreso}&adultCount={int(self.cfg.get('adults', 1))}"
-            ),
+            adults=adultos,
+            deep_link=links.wizzair(route.origin, destino, iso, regreso, adultos),
         )
 
     def _casar(self, route: Route, destino: str, idas: dict, vueltas: dict, noches: int) -> list[FlightOffer]:
         weekend = self.cfg.get("weekend", {}) or {}
         dia_ida = int(weekend.get("outbound_weekday", 4))
+        adultos = max(1, int(self.cfg.get("adults", 1)))
 
         ofertas: list[FlightOffer] = []
         for iso, ida in idas.items():
@@ -322,7 +320,7 @@ class WizzairProvider(FlightProvider):
                 # Por persona, igual que en _oferta: hay que multiplicar.
                 precio = (
                     (ida["price"]["amount"] or 0) + (vuelta["price"]["amount"] or 0)
-                ) * max(1, int(self.cfg.get("adults", 1)))
+                ) * adultos
                 if not precio:
                     continue
                 ofertas.append(
@@ -340,12 +338,9 @@ class WizzairProvider(FlightProvider):
                         currency=ida["price"].get("currencyCode", "EUR"),
                         airline="Wizz Air",
                         stops=0,
-                        deep_link=(
-                            f"{RESERVA}?departureStation={route.origin}"
-                            f"&arrivalStation={destino}&departureDate={iso}"
-                            f"&returnDate={regreso}&adultCount=1"
-                        ),
-                    )
+                        adults=adultos,
+                        deep_link=links.wizzair(route.origin, destino, iso, regreso, adultos),
+                                )
                 )
                 break  # con la primera duracion que cuadre basta
         # Solo lo mas barato de cada dia de salida, y priorizando los findes.

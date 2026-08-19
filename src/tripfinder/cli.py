@@ -134,7 +134,9 @@ def _dedupe(offers: list[FlightOffer]) -> list[FlightOffer]:
             {
                 "airline": c.airline,
                 "price": c.price,
-                "deep_link": c.deep_link,
+                "price_per_person": c.price_per_person,
+                "adults": c.adults,
+                "deep_link": c.airline_link or c.deep_link,
                 "depart_time": c.depart_time,
                 "weekend": c.weekend,
             }
@@ -366,9 +368,44 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
 # scan-stays
 # --------------------------------------------------------------------------- #
 def _find_offer(store: Store, offer_id: str) -> FlightOffer | None:
+    """Busca la oferta en los tres sitios donde puede estar.
+
+    Antes solo se miraba `offers.json`, que es el resultado del scan diario. Si
+    pedias alojamiento para un vuelo salido de una busqueda a mano o de un
+    seguimiento —que es lo normal, porque son los que tienen tus fechas— la
+    oferta no aparecia: sin ella no hay resumen del viaje completo y, si ademas
+    faltaba alguna fecha en la peticion, el comando abortaba y la web se
+    quedaba esperando un fichero que no iba a llegar nunca.
+    """
+    import json as _json
+
     for o in store.load_offers():
         if o.id == offer_id:
             return o
+
+    for f in sorted(store.searches_dir.glob("*.json"), reverse=True):
+        if f.name == "index.json":
+            continue
+        try:
+            datos = _json.loads(f.read_text(encoding="utf-8"))
+        except (OSError, _json.JSONDecodeError):
+            continue
+        for crudo in datos.get("offers", []):
+            if crudo.get("id") == offer_id:
+                return FlightOffer.from_dict(crudo)
+
+    watch = store.root / "watch.json"
+    if watch.exists():
+        try:
+            datos = _json.loads(watch.read_text(encoding="utf-8"))
+        except (OSError, _json.JSONDecodeError):
+            datos = {}
+        for w in datos.get("watches", []):
+            for crudo in w.get("last_offers", []):
+                if crudo.get("id") == offer_id:
+                    return FlightOffer.from_dict(crudo)
+
+    log.warning("La oferta %s no esta en offers.json, ni en searches, ni en watch.json", offer_id)
     return None
 
 
@@ -377,10 +414,10 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
     store = Store()
     offer = _find_offer(store, args.offer_id)
 
-    if offer is None and not (args.city and args.checkin and args.checkout):
+    if offer is None and not (args.city and args.checkin):
         log.error(
-            "No existe la oferta %s en data/offers.json y no se han dado "
-            "--city/--checkin/--checkout como alternativa.",
+            "No existe la oferta %s por ningun lado y la peticion no trae "
+            "--city/--checkin como alternativa.",
             args.offer_id,
         )
         return 1
@@ -395,7 +432,10 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         country = args.country or offer.destination_country
     else:
         city, iata = args.city, (args.iata or "")
-        checkin, checkout = args.checkin, args.checkout
+        checkin = args.checkin
+        checkout = args.checkout or (
+            date.fromisoformat(args.checkin) + timedelta(days=3)
+        ).isoformat()
         country = args.country or ""
 
     req = StayRequest(

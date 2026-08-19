@@ -75,6 +75,10 @@ search:
     # resultados" de "todo lo que vuela ese dia".
     max_queries_search: 110
     min_interval_seconds: 4
+    # Cuantas companias distintas se guardan de cada consulta. Con 4 se caian
+    # las low cost en rutas donde mandan tres tradicionales: easyJet a Basilea
+    # o a Ginebra existia en la pagina y no llegaba al listado.
+    airlines_per_query: 6
 
   # Pasajeros del vuelo (el precio mostrado es el total de ida y vuelta para todos)
   adults: 1
@@ -172,6 +176,16 @@ city_names:
   TLL: [Tallin, Estonia]
   RIX: [Riga, Letonia]
   IST: [Estambul, Turquia]
+  # Rutas de easyJet desde Madrid. Su API rechaza cualquier peticion que no
+  # venga de un navegador (403 hasta imitando el TLS de Chrome), asi que sus
+  # precios entran por Google Flights; declararlas aqui es lo que hace que se
+  # pregunte por ellas. El boton de reservar si va a easyjet.com.
+  BSL: [Basilea, Suiza]
+  LGW: [Londres, Reino Unido]
+  LTN: [Londres, Reino Unido]
+  MAN: [Manchester, Reino Unido]
+  BRS: [Bristol, Reino Unido]
+  ORY: [Paris, Francia]
 
 routes:
   - origin: MAD
@@ -199,7 +213,8 @@ routes:
   - origin: MAD
     origin_name: Madrid
     destinations: [AMS, MUC, FRA, ZRH, VIE, CPH, PRG, BUD, WAW, ATH, VCE, FLR, PMO, CTA,
-                   OTP, SOF, PSA, TIA, KRK, SKG, LCA, RAK, FNC]
+                   OTP, SOF, PSA, TIA, KRK, SKG, LCA, RAK, FNC,
+                   BSL, LGW, LTN, MAN, BRS, ORY]
     max_price: 130
     max_price_weekend: 220
     baseline_price: 230

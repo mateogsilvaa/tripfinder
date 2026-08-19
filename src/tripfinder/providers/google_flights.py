@@ -28,6 +28,7 @@ from datetime import date
 from ..config import Route
 from ..models import FlightOffer
 from ..util import get_text, throttle
+from . import links
 from .base import FlightProvider, register
 
 log = logging.getLogger("tripfinder")
@@ -43,7 +44,17 @@ CARD_PRICE_RE = re.compile(r"(\d[\d.]*)\s*€")
 CARD_TIME_RE = re.compile(r"(\d{1,2}:\d{2})")
 CARD_AIRLINE_RE = re.compile(r"\d{1,2}:\d{2} el \w+, \d+ \w+ ([A-Za-zÀ-ÿ][\wÀ-ÿ',.\- ]{2,40}?) \d+\s*h")
 PRICE_RE = re.compile(r"A partir de\s+([\d.]+)\s+euros")
-AIRLINE_RE = re.compile(r"(?:Vuelo directo de|Vuelos? (?:de|operados? por))\s+([^.]+?)\.")
+# Google alterna varias formas de nombrar la compania y antes solo se cogian
+# dos: las etiquetas de "Vuelo de X y Y" o "con X" se quedaban en "Varias", y
+# entonces easyJet o Vueling perdian su enlace de reserva propio.
+AIRLINE_RE = re.compile(
+    r"(?:Vuelos? directos? de|Vuelos? (?:de|con|operados? por|operado por))\s+([^.]+?)\."
+)
+# "Air France. Operado por HOP!." -> nos quedamos con quien vende el billete.
+OPERADO_RE = re.compile(r"\s*Operad[oa]s? por\s+[^.]+\.?$", re.I)
+# "Vuelo con 1 escala de British Airways" cuela el numero de escalas dentro del
+# nombre de la compania, y entonces no casa con ningun enlace de reserva.
+ESCALAS_PREFIJO_RE = re.compile(r"^\s*(?:\d+\s+)?escalas?\s+(?:de|con)\s+", re.I)
 TIME_RE = re.compile(r"Sale de .*? a las (\d{1,2}:\d{2})")
 ARRIVE_RE = re.compile(r"Llega a .*? a las (\d{1,2}:\d{2})")
 STOPS_RE = re.compile(r"(\d+)\s+escala")
@@ -90,6 +101,24 @@ def build_tfs(origin: str, destination: str, out_date: str, in_date: str, adults
     return base64.b64encode(body).decode().rstrip("=")
 
 
+def _limpia_aerolinea(nombre: str) -> str:
+    """"Vuelo con 1 escala de Iberia. Operado por Air Nostrum" -> "Iberia"."""
+    limpio = OPERADO_RE.sub("", (nombre or "").strip())
+    limpio = ESCALAS_PREFIJO_RE.sub("", limpio)
+    return limpio.strip(" .,")[:40] or "Varias"
+
+
+def _bloqueada(html: str) -> bool:
+    """Google contestando con el muro de consentimiento o con un captcha.
+
+    Antes esto se traducia en "no hay vuelos" y parecia que la ruta estaba
+    vacia; conviene distinguirlo de un resultado de verdad.
+    """
+    if len(html) < 20000:
+        return True
+    return "unusual traffic" in html or "id=\"captcha-form\"" in html
+
+
 def _tarjetas(html: str) -> list[str]:
     """Trocea la pagina por resultados.
 
@@ -115,6 +144,16 @@ class GoogleFlightsProvider(FlightProvider):
         # mano lo sube, porque es una sola tirada y ahi si compensa barrer.
         self.limite: int | None = None
         self.bloqueado = False
+        self.paginas_vacias = 0
+
+    def _tope(self) -> int:
+        """Cuantas companias distintas se guardan de cada consulta.
+
+        Eran 4 y se quedaban fuera las low cost cuando la ruta la copan tres
+        tradicionales: con 6 caben easyJet o Transavia sin disparar el tamano
+        del JSON, porque el resto se fusiona luego como alternativa.
+        """
+        return int(self.gcfg.get("airlines_per_query", 6))
 
     def search(self, route: Route) -> list[FlightOffer]:
         pairs = self.shortlist
@@ -133,7 +172,7 @@ class GoogleFlightsProvider(FlightProvider):
         log.info("Google Flights %s: %d tarifas en %d consultas", route.origin, len(offers), consultas)
         # Paginas vacias en cadena = nos han capado. Es importante que se vea:
         # antes parecia "no hay vuelos" cuando en realidad no nos contestaban.
-        if consultas >= 5 and len(offers) < consultas * 0.2:
+        if consultas >= 5 and (self.paginas_vacias > consultas * 0.3 or len(offers) < consultas * 0.2):
             log.warning(
                 "Google devuelve casi todo vacio (%d/%d): probablemente limite de peticiones",
                 len(offers), consultas,
@@ -152,7 +191,11 @@ class GoogleFlightsProvider(FlightProvider):
                 continue
             aero = CARD_AIRLINE_RE.search(texto)
             escalas_m = re.search(r"(\d+)\s+escalas?", texto)
-            aerolinea = (aero.group(1).strip() if aero else "Varias")[:40]
+            aerolinea = _limpia_aerolinea(aero.group(1)) if aero else "Varias"
+            adultos = max(1, int(self.cfg.get("adults", 1)))
+            enlace_aero, etiqueta_aero = links.por_aerolinea(
+                aerolinea, route.origin, dest, out_date.isoformat(), in_date.isoformat(), adultos
+            )
             oferta = FlightOffer(
                 provider="google",
                 origin=route.origin,
@@ -168,18 +211,21 @@ class GoogleFlightsProvider(FlightProvider):
                 price=round(float(precio.group(1).replace(".", "")), 2),
                 airline=aerolinea,
                 stops=int(escalas_m.group(1)) if escalas_m else 0,
+                adults=adultos,
                 deep_link=url,
+                airline_link=enlace_aero,
+                airline_link_label=etiqueta_aero,
             )
             previa = mejores.get(aerolinea)
             if previa is None or oferta.price < previa.price:
                 mejores[aerolinea] = oferta
         log.info("Google (texto de tarjeta) %s: %d companias", dest, len(mejores))
-        return sorted(mejores.values(), key=lambda o: o.price)[:4]
+        return sorted(mejores.values(), key=lambda o: o.price)[: self._tope()]
 
     def _one_search(self, route: Route, dest: str, out_date: date, in_date: date) -> list[FlightOffer]:
         throttle("google", float(self.gcfg.get("min_interval_seconds", 4)))
-        tfs = build_tfs(route.origin, dest, out_date.isoformat(), in_date.isoformat(),
-                        int(self.cfg.get("adults", 1)))
+        adultos = max(1, int(self.cfg.get("adults", 1)))
+        tfs = build_tfs(route.origin, dest, out_date.isoformat(), in_date.isoformat(), adultos)
         url = f"{URL}?tfs={tfs}&curr=EUR&hl=es&gl=ES"
         html = get_text(
             URL,
@@ -194,6 +240,13 @@ class GoogleFlightsProvider(FlightProvider):
         # Que salga en el listado lo decide despues el scoring; aunque no sea
         # la ganadora, la tarifa queda como alternativa de esa ruta y fecha.
         nights = (in_date - out_date).days
+
+        if _bloqueada(html):
+            # Una pagina de 4 kB no es una ruta sin vuelos, es una puerta
+            # cerrada. Se cuenta aparte para poder avisar en la web.
+            self.paginas_vacias += 1
+            log.warning("Google %s %s: pagina vacia o muro de consentimiento", dest, out_date)
+            return []
 
         best_por_aerolinea: dict[str, FlightOffer] = {}
         etiquetas = [l for l in LABEL_RE.findall(html) if "euros" in l and "Sale de" in l]
@@ -211,9 +264,14 @@ class GoogleFlightsProvider(FlightProvider):
             hora = time_m.group(1).zfill(5)  # "9:00" -> "09:00"
 
             airline_m = AIRLINE_RE.search(label)
-            airline = (airline_m.group(1).strip() if airline_m else "Varias")[:40]
+            airline = _limpia_aerolinea(airline_m.group(1)) if airline_m else "Varias"
             stops_m = STOPS_RE.search(label)
             escalas = 0 if "directo" in label else int(stops_m.group(1)) if stops_m else 0
+            # easyJet, Vueling o Transavia salen aqui pero se reservan en su
+            # web: el enlace de Google sirve para mirar, no para comprar.
+            enlace_aero, etiqueta_aero = links.por_aerolinea(
+                airline, route.origin, dest, out_date.isoformat(), in_date.isoformat(), adultos
+            )
 
             offer = FlightOffer(
                 provider="google",
@@ -231,11 +289,14 @@ class GoogleFlightsProvider(FlightProvider):
                 price=round(float(price_m.group(1).replace(".", "")), 2),
                 airline=airline,
                 stops=escalas,
+                adults=adultos,
                 deep_link=url,
+                airline_link=enlace_aero,
+                airline_link_label=etiqueta_aero,
             )
 
             previa = best_por_aerolinea.get(airline)
             if previa is None or offer.price < previa.price:
                 best_por_aerolinea[airline] = offer
 
-        return sorted(best_por_aerolinea.values(), key=lambda o: o.price)[:4]
+        return sorted(best_por_aerolinea.values(), key=lambda o: o.price)[: self._tope()]

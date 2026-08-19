@@ -13,13 +13,13 @@ from datetime import date, timedelta
 from ..config import Route
 from ..models import FlightOffer, Leg
 from ..util import get_json
+from . import links
 from .base import FlightProvider, register
 
 log = logging.getLogger("tripfinder")
 
 API = "https://services-api.ryanair.com/farfnd/v4/roundTripFares"
 API_ONEWAY = "https://services-api.ryanair.com/farfnd/v4/oneWayFares"
-BOOKING = "https://www.ryanair.com/es/es/trip/flights/select"
 
 # La API rechaza cualquier limit > 20 con {"code": "InvalidLimit"}; hay que paginar.
 PAGE_SIZE = 20
@@ -197,9 +197,9 @@ class RyanairProvider(FlightProvider):
                     destination_name=(city.get("city") or {}).get("name") or city.get("iataCode", ""),
                     destination_country=city.get("countryName", ""),
                     origin_name=route.origin_name,
-                    deep_link=(
-                        f"{BOOKING}?adults=1&dateOut={when[:10]}&isReturn=false"
-                        f"&originIata={dep.get('iataCode', '')}&destinationIata={arr.get('iataCode', '')}"
+                    deep_link=links.ryanair(
+                        dep.get("iataCode", ""), arr.get("iataCode", ""), when[:10],
+                        adultos=max(1, int(self.cfg.get("adults", 1))),
                     ),
                 )
             )
@@ -217,8 +217,9 @@ class RyanairProvider(FlightProvider):
                 min_interval=interval,
             )
             fares = data.get("fares", []) if isinstance(data, dict) else []
+            adultos = max(1, int(self.cfg.get("adults", 1)))
             for fare in fares:
-                offer = self._parse(fare, route, currency)
+                offer = self._parse(fare, route, currency, adultos)
                 if offer is not None:
                     offers.append(offer)
             if len(fares) < PAGE_SIZE:  # ultima pagina
@@ -226,7 +227,7 @@ class RyanairProvider(FlightProvider):
         return offers
 
     @staticmethod
-    def _parse(fare: dict, route: Route, currency: str) -> FlightOffer | None:
+    def _parse(fare: dict, route: Route, currency: str, adultos: int = 1) -> FlightOffer | None:
         out = fare.get("outbound") or {}
         back = fare.get("inbound") or {}
         arr = out.get("arrivalAirport") or {}
@@ -252,12 +253,8 @@ class RyanairProvider(FlightProvider):
         if nights is None and ret:
             nights = (date.fromisoformat(ret) - date.fromisoformat(depart)).days
 
-        is_return = "true" if ret else "false"
-        link = (
-            f"{BOOKING}?adults=1&teens=0&children=0&infants=0"
-            f"&dateOut={depart}&dateIn={ret or ''}"
-            f"&originIata={dep.get('iataCode', route.origin)}&destinationIata={arr['iataCode']}"
-            f"&isReturn={is_return}&discount=0"
+        link = links.ryanair(
+            dep.get("iataCode", route.origin), arr["iataCode"], depart, ret or "", adultos
         )
 
         return FlightOffer(
@@ -278,5 +275,6 @@ class RyanairProvider(FlightProvider):
             price=round(float(price), 2),
             currency=summary_price.get("currencyCode", currency),
             airline="Ryanair",
+            adults=adultos,
             deep_link=link,
         )

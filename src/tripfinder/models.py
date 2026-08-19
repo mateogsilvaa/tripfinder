@@ -47,6 +47,13 @@ class FlightOffer:
     airline_back: str = ""  # distinta de airline si el billete combina companias
     deep_link: str = ""
     deep_link_back: str = ""  # los combinados se reservan en dos webs
+    # Enlace a la web de la propia compania, cuando sabemos construirlo. El
+    # deep_link puede ser un buscador (Google Flights); esto lleva a reservar.
+    airline_link: str = ""
+    airline_link_label: str = ""
+    # A cuanta gente cubre `price`. Sin esto la web no puede decir si 240 EUR es
+    # lo que pagas tu o lo que pagais los cuatro, que no es un detalle menor.
+    adults: int = 1
     found_at: str = field(default_factory=_now)
     nights: int | None = None
     depart_time: str = ""  # HH:MM de salida de la ida
@@ -74,6 +81,10 @@ class FlightOffer:
         return bool(self.airline_back and self.airline_back != self.airline)
 
     @property
+    def price_per_person(self) -> float:
+        return round(self.price / max(1, self.adults), 2)
+
+    @property
     def id(self) -> str:
         """Identificador estable: NO incluye el precio, para poder seguir la ruta en el tiempo."""
         return f"{self.provider}-{self.origin}-{self.destination}-{self.depart_date.replace('-', '')}"
@@ -90,6 +101,7 @@ class FlightOffer:
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
         d["id"] = self.id
+        d["price_per_person"] = self.price_per_person
         return d
 
     @classmethod

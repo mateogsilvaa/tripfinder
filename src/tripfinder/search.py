@@ -41,9 +41,27 @@ class SearchRequest:
 
     @property
     def slug(self) -> str:
-        base = f"{self.origin}-{self.destination or 'todos'}-{self.nights_min}{self.nights_max}"
-        extra = f"-{int(self.max_price)}" if self.max_price else ""
-        return re.sub(r"[^A-Za-z0-9-]", "", base + extra).lower()
+        """Nombre del fichero. Tiene que distinguir DOS busquedas distintas.
+
+        Antes solo entraban origen, destino, noches y tope de precio: buscar
+        "donde sea por 300 EUR" el 6 de noviembre y otra vez para diciembre
+        daba el mismo `mad-todos-23-300`, la segunda pisaba a la primera y en
+        la web parecia que las busquedas se borraban solas. Ahora entran
+        tambien las fechas (o el horizonte y el tipo de barrido) y la gente,
+        que es lo que de verdad hace que dos busquedas sean distintas.
+        """
+        partes = [self.origin, self.destination or "todos", f"{self.nights_min}{self.nights_max}"]
+        if self.max_price:
+            partes.append(str(int(self.max_price)))
+        if self.depart:
+            partes.append(self.depart.replace("-", ""))
+            if self.return_date:
+                partes.append(self.return_date.replace("-", ""))
+        else:
+            partes.append(f"{int(self.months)}m")
+            partes.append("finde" if self.weekend_only else "libre")
+        partes.append(f"{max(1, int(self.adults))}p")
+        return re.sub(r"[^A-Za-z0-9-]", "", "-".join(partes)).lower()
 
     def to_dict(self) -> dict[str, Any]:
         d = asdict(self)
