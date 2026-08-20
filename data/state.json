@@ -167,6 +167,30 @@
     "ryanair-MAD-KRK-20270122": {
       "price": 91.98,
       "date": "2026-08-19"
+    },
+    "ryanair-MAD-MAN-20261120": {
+      "price": 63.98,
+      "date": "2026-08-20"
+    },
+    "ryanair-MAD-MAN-20261113": {
+      "price": 69.58,
+      "date": "2026-08-20"
+    },
+    "ryanair-MAD-MAN-20261016": {
+      "price": 72.38,
+      "date": "2026-08-20"
+    },
+    "ryanair-MAD-MAN-20270108": {
+      "price": 75.98,
+      "date": "2026-08-20"
+    },
+    "ryanair-MAD-MAN-20261106": {
+      "price": 82.18,
+      "date": "2026-08-20"
+    },
+    "ryanair-MAD-MAN-20261127": {
+      "price": 83.18,
+      "date": "2026-08-20"
     }
   }
 }
