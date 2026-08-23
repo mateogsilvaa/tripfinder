@@ -43,11 +43,17 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <p class="finder-lede" id="puertaLede"></p>
         <div class="field grow">
           <label for="pass">Contraseña del panel</label>
-          <input type="password" id="pass" autocomplete="current-password" required>
+          <div class="campo-clave">
+            <input type="password" id="pass" name="pass" autocomplete="current-password"
+              autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" required>
+            <button type="button" class="ver-clave" data-ver="pass"
+              aria-label="Ver la contraseña" aria-pressed="false">ver</button>
+          </div>
         </div>
         <div class="field grow" id="pass2Wrap" hidden>
           <label for="pass2">Repítela</label>
-          <input type="password" id="pass2" autocomplete="new-password">
+          <input type="password" id="pass2" name="pass2" autocomplete="new-password"
+            autocapitalize="none" autocorrect="off" spellcheck="false">
         </div>
         <button class="btn primary" type="submit" id="puertaBtn">Entrar</button>
       </form>
@@ -79,6 +85,21 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
           <button class="btn primary" type="submit">Guardar cifrado</button>
         </form>
         <p class="token-status" id="tokenMsg"></p>
+      </div>
+    </section>
+
+    <section id="cajaHuerfanos" class="finder abierta" hidden>
+      <div class="finder-body">
+        <h3 class="watch-head">Sin dueño</h3>
+        <p class="finder-lede" id="huerfanosLede"></p>
+        <form id="formHuerfanos" class="finder-form">
+          <div class="field grow">
+            <label for="huerfanosPara">Asignárselo a</label>
+            <select id="huerfanosPara"></select>
+          </div>
+          <button class="btn primary" type="submit">Asignar</button>
+        </form>
+        <p class="token-status" id="huerfanosMsg"></p>
       </div>
     </section>
 
@@ -164,19 +185,33 @@ async function montarPuerta() {
        tenga el suyo puesto en este navegador.`
     : `Escribe la contraseña del panel.`;
 
+  tfWireVerClave(document);
+
   $("#formPuerta").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const clave = $("#pass").value;
+    const boton = $("#puertaBtn");
+    if (boton.disabled) return;
+    let clave = $("#pass").value;
     if (!clave) return;
-    if (primeraVez) return ponerAdmin(clave, $("#pass2").value);
+    if (primeraVez) return ponerAdmin(clave.trim(), $("#pass2").value.trim());
+
     $("#puertaMsg").textContent = "Comprobando…";
+    tfOcupado(boton, true);
     let vale = false;
     try {
       vale = await tfComprobar(clave, datos.admin);
+      // Pegar desde el gestor de contraseñas se trae espacios; se reintenta sin
+      // ellos antes de decir que no.
+      if (!vale && clave !== clave.trim()) {
+        clave = clave.trim();
+        vale = await tfComprobar(clave, datos.admin);
+      }
     } catch (err) {
+      tfOcupado(boton, false);
       $("#puertaMsg").textContent = err.message;
       return;
     }
+    tfOcupado(boton, false);
     if (!vale) {
       $("#puertaMsg").textContent = "No es esa.";
       tfApuntar("admin", "contraseña del panel incorrecta");
@@ -368,12 +403,36 @@ function detalleHTML(u) {
     </div>`;
 }
 
+/* --------------------------------------------------------- lo sin dueño
+   Los seguimientos y las búsquedas de antes de que hubiera cuentas no son de
+   nadie, y la web solo enseña lo tuyo: si no se les pone dueño no los ve ni
+   quien los creó. Aquí se ve cuántos hay y se le dan a una cuenta. */
+function pintarHuerfanos(cuentas) {
+  const sinDueno = [...COSAS.watches, ...COSAS.searches].filter((x) => !x.owner);
+  const caja = $("#cajaHuerfanos");
+  caja.hidden = !sinDueno.length;
+  if (!sinDueno.length) return;
+
+  const seg = COSAS.watches.filter((x) => !x.owner).length;
+  const bus = COSAS.searches.filter((x) => !x.owner).length;
+  $("#huerfanosLede").innerHTML =
+    `Hay <b>${seg} seguimiento${seg === 1 ? "" : "s"}</b> y <b>${bus} búsqueda${
+      bus === 1 ? "" : "s"
+    }</b> de antes de que hubiera cuentas. Ahora mismo no los ve nadie, porque
+     la web solo enseña lo de cada uno. Dáselos a una cuenta y volverán a
+     aparecer, pero solo para ella.`;
+  $("#huerfanosPara").innerHTML = cuentas
+    .map((u) => `<option value="${esc(u.id)}">${esc(u.name || u.user)}</option>`)
+    .join("");
+}
+
 /* --------------------------------------------------------------- cuentas */
 async function pintarCuentas(forzar = true) {
   const datos = await tfLeerUsuarios(forzar);
   const cuentas = datos.users || [];
   pintarToken(datos);
   await cargarCosas();
+  pintarHuerfanos(cuentas);
   $("#stats").innerHTML =
     `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
     `<div><dd>${cuentas.filter((u) => u.active !== false).length}</dd><dt>activas</dt></div>` +
@@ -389,9 +448,9 @@ async function pintarCuentas(forzar = true) {
         <span class="iata">${esc((u.name || u.user).slice(0, 3).toUpperCase())}</span>
         <span class="dest-cell">
           <span class="city">${esc(u.name || u.user)}</span>
-          <span class="country">${esc(u.user)} · ${esc(u.id)}${
+          <span class="country">${esc(u.user)}<span class="solo-ancho"> · ${esc(u.id)}</span>${
             u.email ? ` · ${esc(u.email)}` : " · sin email"
-          } · ${u.active === false ? "desactivada" : "activa"} · ${
+          }<br>${u.active === false ? "desactivada" : "activa"} · ${
             cosas ? `${cosas} cosa${cosas > 1 ? "s" : ""} suya${cosas > 1 ? "s" : ""}` : "nada suyo todavía"
           }</span>
         </span>
@@ -464,22 +523,40 @@ function pedir(titulo, campos, alAceptar) {
     </header>
     <form id="formModal" class="modal-form">
       ${campos
-        .map(
-          (c) => `<label for="${c.id}">${esc(c.label)}</label>
-            <input id="${c.id}" type="${c.type || "text"}"
-              ${c.type === "password" ? 'autocomplete="new-password"' : 'autocomplete="off"'}
-              ${c.required === false ? "" : "required"}
-              ${c.hint ? `placeholder="${esc(c.hint)}"` : ""}>`
+        .map((c) =>
+          c.type === "password"
+            ? // Con el ojo: la contraseña que se pone aquí hay que leerla para
+              // pasársela a alguien, y escribirla a ciegas dos veces es peor.
+              `<label for="${c.id}">${esc(c.label)}</label>
+               <div class="campo-clave">
+                 <input id="${c.id}" type="password" autocomplete="new-password"
+                   autocapitalize="none" autocorrect="off" spellcheck="false" required>
+                 <button type="button" class="ver-clave" data-ver="${c.id}"
+                   aria-label="Ver la contraseña" aria-pressed="false">ver</button>
+               </div>`
+            : `<label for="${c.id}">${esc(c.label)}</label>
+               <input id="${c.id}" type="${c.type || "text"}" autocomplete="off"
+                 autocapitalize="${c.id === "cUser" ? "none" : "sentences"}"
+                 ${c.required === false ? "" : "required"}
+                 ${c.hint ? `placeholder="${esc(c.hint)}"` : ""}>`
         )
         .join("")}
       <p class="token-status" id="modalMsg"></p>
       <button class="btn primary" type="submit">Guardar</button>
     </form>`);
+  tfWireVerClave(caja);
+  const enviar = caja.querySelector("#formModal button[type=submit]");
   caja.querySelector("#formModal").addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (enviar.disabled) return;
     const valores = {};
     campos.forEach((c) => (valores[c.id] = caja.querySelector(`#${c.id}`).value.trim()));
-    await alAceptar(valores, caja.querySelector("#modalMsg"));
+    tfOcupado(enviar, true, "Guardando…");
+    try {
+      await alAceptar(valores, caja.querySelector("#modalMsg"));
+    } finally {
+      tfOcupado(enviar, false);
+    }
   });
   caja.querySelector(`#${campos[0].id}`).focus();
 }
@@ -605,6 +682,20 @@ $("#formToken").addEventListener("submit", async (e) => {
     ? "Guardado cifrado. Las cuentas que crees a partir de ahora podrán lanzar búsquedas."
     : `No se pudo guardar: ${esc(r.reason)}`;
   if (r.ok) $("#tokenNuevo").value = "";
+});
+
+$("#formHuerfanos").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const select = $("#huerfanosPara");
+  const uid = select.value;
+  const nombre = select.options[select.selectedIndex]?.text || "";
+  if (!uid) return;
+  $("#huerfanosMsg").textContent = "Asignando…";
+  const r = await tfDispatch("claim", { owner: uid, owner_name: nombre });
+  $("#huerfanosMsg").textContent = r.ok
+    ? `Asignado a ${nombre}. En un par de minutos aparecerá en su cuenta.`
+    : explicarFallo(r);
+  if (!r.ok) wireToken();
 });
 
 $("#nuevaCuenta").addEventListener("click", nuevaCuenta);

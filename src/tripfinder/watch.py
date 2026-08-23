@@ -115,6 +115,26 @@ def borrar(watch_id: str, owner: str = "") -> bool:
     return len(quedan) < len(lista)
 
 
+def reclamar(owner: str, owner_name: str = "") -> int:
+    """Le pone dueño a los seguimientos que no lo tienen.
+
+    Los que se apuntaron antes de que hubiera cuentas no son de nadie, y desde
+    que la web solo enseña lo tuyo eso significa que no los ve ni quien los
+    creo. Esto se lo asigna a una cuenta y vuelven a aparecer, pero solo para
+    ella.
+    """
+    lista = _cargar()
+    tocados = 0
+    for w in lista:
+        if not w.owner:
+            w.owner = owner
+            w.owner_name = owner_name
+            tocados += 1
+    if tocados:
+        _guardar(lista)
+    return tocados
+
+
 def limpiar_caducados() -> int:
     lista = _cargar()
     vivos = [w for w in lista if not w.caducado]

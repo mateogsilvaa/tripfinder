@@ -46,9 +46,12 @@ Lo que sí es de cada uno:
 | Parte diario de seguimientos | email | Cada cuenta al suyo si tiene `email`; el resto, al buzón de `notify.to` |
 | Qué correos y cada cuánto | `prefs` en `data/users.json` | Lo aplica `_reparto_de_chollos` y `_partes_por_dueno` en `cli.py`; el "cada cuánto" se lleva en `state.json` (`digest`, `watch_digest`) |
 
-Lo que no tiene `owner` es de antes de que hubiera cuentas: se sigue viendo desde
-todas, que es lo que ya hacía. Lo que sí necesita cuenta es **escribir**: buscar,
-seguir un viaje, pedir alojamiento o guardar un favorito.
+Lo que no tiene `owner` es de antes de que hubiera cuentas y **no lo ve nadie**: la
+primera versión lo enseñaba a todos "porque ya se hacía así", y el resultado fue que
+la primera persona en entrar se encontró los seguimientos de otro. El panel los
+detecta y los asigna a una cuenta (`tripfinder claim --owner`). Lo que además
+necesita cuenta es **escribir**: buscar, seguir un viaje, pedir alojamiento o guardar
+un favorito.
 
 ### El token, cifrado con sobres
 

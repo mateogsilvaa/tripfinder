@@ -22,6 +22,7 @@ on:
       - user_disable
       - admin_password
       - site_token
+      - claim
 
 permissions:
   contents: write
@@ -57,6 +58,8 @@ jobs:
           SOBRE: ${{ toJSON(github.event.client_payload.sobre) }}
           PREFS: ${{ toJSON(github.event.client_payload.prefs) }}
           TOKEN: ${{ toJSON(github.event.client_payload.token) }}
+          OWNER: ${{ github.event.client_payload.owner }}
+          OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
           git config user.name  "tripfinder-bot"
           git config user.email "actions@github.com"
@@ -84,6 +87,9 @@ jobs:
               site_token)
                 python -m tripfinder users site-token --token "$TOKEN" --sobre "$SOBRE"
                 ;;
+              claim)
+                python -m tripfinder claim --owner "$OWNER" --owner-name "$OWNER_NAME"
+                ;;
               admin_password)
                 python -m tripfinder users set-admin \
                   --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}" \
@@ -100,7 +106,7 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             aplicar
-            git add data/users.json
+            git add data
             if git diff --staged --quiet; then
               echo "Sin cambios que guardar"
               exit 0

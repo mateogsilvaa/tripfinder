@@ -446,6 +446,48 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && caja && !caja.hidden) tfCerrarModal();
 });
 
+/* Un campo de contraseña con el ojo para verla. En el móvil, escribir a ciegas
+   una contraseña que te han pasado por WhatsApp es la mitad de los "no me deja
+   entrar": si se puede mirar lo que se ha escrito, se acaba el misterio. */
+function tfCampoClave(id, autocompletar = "current-password") {
+  return `
+    <div class="campo-clave">
+      <input id="${id}" type="password" name="${id}" required
+        autocomplete="${autocompletar}" autocapitalize="none" autocorrect="off"
+        spellcheck="false" enterkeyhint="go">
+      <button type="button" class="ver-clave" data-ver="${id}"
+        aria-label="Ver la contraseña" aria-pressed="false">ver</button>
+    </div>`;
+}
+
+function tfWireVerClave(raiz) {
+  raiz.querySelectorAll("[data-ver]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const campo = raiz.querySelector(`#${b.dataset.ver}`);
+      const visible = campo.type === "text";
+      campo.type = visible ? "password" : "text";
+      b.textContent = visible ? "ver" : "ocultar";
+      b.setAttribute("aria-pressed", String(!visible));
+      campo.focus();
+    })
+  );
+}
+
+/* Mientras se comprueba, el botón se apaga y lo dice. El PBKDF2 son 210.000
+   vueltas: en un móvil viejo tarda un segundo largo, y sin esto la reacción
+   natural es volver a pulsar y acabar con dos intentos cruzados. */
+function tfOcupado(boton, si, textoOcupado = "Comprobando…") {
+  if (!boton) return;
+  if (si) {
+    boton.dataset.texto = boton.dataset.texto || boton.textContent;
+    boton.textContent = textoOcupado;
+    boton.disabled = true;
+  } else {
+    boton.textContent = boton.dataset.texto || boton.textContent;
+    boton.disabled = false;
+  }
+}
+
 async function tfAbrirLogin() {
   const datos = await tfLeerUsuarios(true);
   const hay = datos.users.some((u) => u.active !== false);
@@ -460,24 +502,39 @@ async function tfAbrirLogin() {
         y tus búsquedas son tuyos: para verlos, entra.
       </p>
       <label for="tfLoginUser">Usuario</label>
-      <input id="tfLoginUser" autocomplete="username" autocapitalize="none" required>
+      <input id="tfLoginUser" name="username" autocomplete="username" autocapitalize="none"
+        autocorrect="off" spellcheck="false" enterkeyhint="next" required>
       <label for="tfLoginPass">Contraseña</label>
-      <input id="tfLoginPass" type="password" autocomplete="current-password" required>
+      ${tfCampoClave("tfLoginPass")}
       <p class="token-status" id="tfLoginMsg">${
-        hay ? "" : "Todavía no hay ninguna cuenta creada. Se crean desde el panel de administración."
+        hay ? "" : "Todavía no hay ninguna cuenta creada. Pídesela a quien lleve la web."
       }</p>
       <button class="btn primary" type="submit">Entrar</button>
     </form>`);
 
   const form = caja.querySelector("#tfLoginForm");
   const msg = caja.querySelector("#tfLoginMsg");
+  const boton = form.querySelector("button[type=submit]");
+  tfWireVerClave(caja);
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (boton.disabled) return;
+    const usuario = caja.querySelector("#tfLoginUser").value;
+    const clave = caja.querySelector("#tfLoginPass").value;
+    if (!usuario.trim() || !clave) {
+      msg.textContent = "Faltan el usuario o la contraseña.";
+      return;
+    }
     msg.textContent = "Comprobando…";
-    const r = await tfEntrar(
-      caja.querySelector("#tfLoginUser").value,
-      caja.querySelector("#tfLoginPass").value
-    );
+    tfOcupado(boton, true);
+    let r = await tfEntrar(usuario, clave);
+    // Copiar y pegar del móvil se trae espacios de regalo, y una contraseña con
+    // un espacio detrás no falla por culpa de quien la escribió. Se reintenta
+    // sin ellos antes de decir que no; nunca al revés, para no romper a quien
+    // los tenga a propósito.
+    if (!r.ok && clave !== clave.trim()) r = await tfEntrar(usuario, clave.trim());
+    tfOcupado(boton, false);
     if (!r.ok) {
       msg.textContent = r.error;
       return;
@@ -485,7 +542,9 @@ async function tfAbrirLogin() {
     tfCerrarModal();
     location.reload(); // lo mas simple y lo mas fiable: todo se repinta ya suyo
   });
-  caja.querySelector("#tfLoginUser").focus();
+  // En el móvil, abrir el teclado nada más aparecer el modal tapa medio
+  // formulario; el foco se pone solo cuando hay sitio para verlo.
+  if (window.innerWidth > 620) caja.querySelector("#tfLoginUser").focus();
 }
 
 /* Las opciones de correo. Solo lo que el sistema puede cumplir de verdad: el
@@ -566,11 +625,14 @@ async function tfAbrirCuenta() {
     location.reload();
   });
 
+  const guardar = caja.querySelector("#tfPrefsForm button[type=submit]");
   caja.querySelector("#tfPrefsForm").addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (guardar.disabled) return;
     const msg = caja.querySelector("#tfPrefsMsg");
     const tope = Number(caja.querySelector("#tfTope").value);
     msg.textContent = "Guardando…";
+    tfOcupado(guardar, true, "Guardando…");
     const r = await tfDispatch("user_prefs", {
       user: s.user,
       email: caja.querySelector("#tfEmail").value.trim(),
@@ -581,6 +643,7 @@ async function tfAbrirCuenta() {
         seguimientos_solo_novedades: caja.querySelector("#tfSoloNov").checked,
       },
     });
+    tfOcupado(guardar, false);
     msg.textContent = r.ok
       ? "Guardado. Tarda un par de minutos en publicarse."
       : tfExplicarFallo(r);

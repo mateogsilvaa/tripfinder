@@ -131,6 +131,33 @@ class Store:
             )
         return True
 
+    def claim_searches(self, owner: str, owner_name: str = "") -> int:
+        """Lo mismo que watch.reclamar, para las busquedas guardadas."""
+        tocadas = 0
+        ultima = None
+        for f in self.searches_dir.glob("*.json"):
+            if f.name == "index.json":
+                continue
+            try:
+                datos = json.loads(f.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            if datos.get("owner") or (datos.get("request") or {}).get("owner"):
+                continue
+            datos["owner"] = owner
+            datos["owner_name"] = owner_name
+            if isinstance(datos.get("request"), dict):
+                datos["request"]["owner"] = owner
+                datos["request"]["owner_name"] = owner_name
+            f.write_text(json.dumps(datos, ensure_ascii=False, indent=2), encoding="utf-8")
+            ultima = datos
+            tocadas += 1
+        # save_search rehace el indice entero, que es lo que lee la web para
+        # saber de quien es cada busqueda sin abrirlas todas.
+        if ultima:
+            self.save_search(ultima)
+        return tocadas
+
     def purge_expired_stays(self) -> int:
         """Los alojamientos scrapeados se quedan hasta que pasa la fecha del viaje.
 

@@ -195,3 +195,39 @@ def test_el_parte_diario_va_a_cada_uno_al_suyo(monkeypatch):
     assert set(partes) == {"ana@example.com", "el-de-siempre@example.com"}
     assert [w.id for w, _ in partes["ana@example.com"]] == ["a"]
     assert [w.id for w, _ in partes["el-de-siempre@example.com"]] == ["b", "c"]
+
+
+# ------------------------------------------------ ponerle dueño a lo de antes
+def test_reclamar_solo_toca_lo_que_no_es_de_nadie(tmp_path, monkeypatch):
+    monkeypatch.setattr(W, "FICHERO", tmp_path / "watch.json")
+    W.anadir(W.Watch(id="viejo", label="De antes de las cuentas"))
+    W.anadir(W.Watch(id="de-ana", label="Roma", owner="u-ana", owner_name="Ana"))
+
+    assert W.reclamar("u-mateo", "Mateo") == 1
+    por_id = {w.id: w for w in W.listar()}
+    assert por_id["viejo"].owner == "u-mateo"
+    assert por_id["viejo"].owner_name == "Mateo"
+    assert por_id["de-ana"].owner == "u-ana"  # lo de Ana sigue siendo de Ana
+    assert W.reclamar("u-mateo", "Mateo") == 0  # y ya no queda nada que asignar
+
+
+def test_reclamar_busquedas_y_rehacer_el_indice(tmp_path):
+    store = Store(tmp_path)
+    store.save_search({"slug": "vieja", "label": "De antes", "offers": []})
+    store.save_search({"slug": "de-ana", "label": "Roma", "owner": "u-ana", "offers": []})
+
+    assert store.claim_searches("u-mateo", "Mateo") == 1
+    indice = json.loads((tmp_path / "searches" / "index.json").read_text(encoding="utf-8"))
+    dueños = {s["slug"]: s["owner"] for s in indice["searches"]}
+    assert dueños == {"vieja": "u-mateo", "de-ana": "u-ana"}
+
+
+def test_una_busqueda_reclamada_lleva_el_dueño_tambien_dentro(tmp_path):
+    # La web lee el indice, pero el fichero es el que manda al reindexar: si el
+    # dueño solo estuviera en el indice, el primer reindex lo borraria.
+    store = Store(tmp_path)
+    store.save_search({"slug": "vieja", "label": "De antes", "request": {}, "offers": []})
+    store.claim_searches("u-mateo", "Mateo")
+    datos = json.loads((tmp_path / "searches" / "vieja.json").read_text(encoding="utf-8"))
+    assert datos["owner"] == "u-mateo"
+    assert datos["request"]["owner"] == "u-mateo"

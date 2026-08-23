@@ -629,21 +629,28 @@ const dispatch = (evento, payload) => tfDispatch(evento, payload);
    es un encargo compartido, como los de antes de que hubiera cuentas. */
 const comoDueno = () => ({ owner: tfUid(), owner_name: tfNombre() });
 
-/* Que ves de lo que hay guardado en el repo. Lo que no tiene dueño es de la
-   epoca en que la web era de una sola persona: se queda a la vista de todos,
-   que es lo que ya hacia. Lo que si tiene dueño lo ve solo su dueño. */
-const esMio = (x) => !x || !x.owner || x.owner === tfUid();
+/* Que ves de lo que hay guardado en el repo: lo tuyo y nada mas.
+   Lo que no tiene dueño es de cuando la web era de una sola persona. Antes se
+   enseñaba a todo el mundo "porque ya se hacia asi", y el resultado fue que la
+   primera persona en entrar se encontro los seguimientos y las busquedas de
+   otro. Ahora no sale para nadie: desde el panel se le pone dueño y vuelve,
+   pero de quien sea. */
+const esMio = (x) => !!x && !!x.owner && x.owner === tfUid();
 
 /* Los tres motivos por los que un encargo no sale, y todos se arreglan igual:
    entrando con una cuenta que tenga acceso. */
 const esFaltaDeAcceso = (r) =>
   r.reason === "sin-cuenta" || r.reason === "sin-token" || r.reason === "token-invalido";
 
-/* El cartelito para cuando algo esta oculto por no haber entrado. */
-function avisoDeCuenta(cuantos, que) {
-  if (!cuantos || tfUid()) return "";
-  return `<p class="meta cuenta-nota">Hay ${cuantos} ${que} de otras cuentas.
-    <button class="btn ghost small" type="button" data-entrar>Entrar</button></p>`;
+/* Lo que se enseña cuando no hay nada que enseñar: o no has entrado, o has
+   entrado y todavia no tienes nada tuyo. Sin esto la caja se queda en blanco y
+   no se distingue "no tienes nada" de "esto esta roto". */
+function avisoDeCuenta(que, vacio) {
+  if (!tfUid()) {
+    return `<p class="meta cuenta-nota">Entra con tu cuenta para ver tus ${que}.
+      <button class="btn primary small" type="button" data-entrar>Entrar</button></p>`;
+  }
+  return `<p class="meta cuenta-nota">${vacio}</p>`;
 }
 
 /* Sin cuenta, los formularios que escriben en el repo se quedan a la vista pero
@@ -1481,9 +1488,7 @@ async function loadSearches() {
   } catch {
     return;
   }
-  const todas = indice.searches || [];
-  const guardadas = todas.filter(esMio);
-  const ajenas = todas.length - guardadas.length;
+  const guardadas = (indice.searches || []).filter(esMio);
 
   // Lo que ya esta en el indice deja de estar pendiente.
   const etiquetas = new Set(guardadas.map((s) => s.label));
@@ -1495,12 +1500,15 @@ async function loadSearches() {
     .join("");
 
   if (!guardadas.length && !cabecera) {
-    $("#searches").innerHTML = avisoDeCuenta(ajenas, "búsquedas guardadas");
+    $("#searches").innerHTML = avisoDeCuenta(
+      "búsquedas guardadas",
+      "Aún no has guardado ninguna búsqueda. Rellena el formulario de arriba y en unos minutos aparece aquí."
+    );
     wireEntrar($("#searches"));
     return;
   }
 
-  $("#searches").innerHTML = avisoDeCuenta(ajenas, "búsquedas guardadas") + cabecera + guardadas
+  $("#searches").innerHTML = cabecera + guardadas
     .map(
       (s) => `
       <div class="saved" data-slug="${esc(s.slug)}">
@@ -1833,19 +1841,20 @@ async function cargarWatches() {
   } catch {
     return;
   }
-  const activos = (datos.watches || []).filter((w) => w.active !== false);
-  const vivos = activos.filter(esMio);
-  const ajenos = activos.length - vivos.length;
+  const vivos = (datos.watches || []).filter((w) => w.active !== false).filter(esMio);
   vivos.forEach((w) => conGrupo(w.last_offers || [], w.adults));
   sincronizarFavs(vivos.flatMap((w) => w.last_offers || []));
   if (!vivos.length) {
-    $("#watches").innerHTML = avisoDeCuenta(ajenos, "seguimientos");
+    $("#watches").innerHTML = avisoDeCuenta(
+      "seguimientos",
+      "Aún no sigues ningún viaje. Apunta uno aquí arriba y se revisa cada día por ti."
+    );
     wireEntrar($("#watches"));
     return;
   }
   $("#watches").innerHTML =
     '<h3 class="watch-head">Siguiendo a diario</h3>' +
-    avisoDeCuenta(ajenos, "seguimientos") +
+
     vivos
       .map(
         (w) => `

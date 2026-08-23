@@ -98,14 +98,18 @@ preferencias de correo. Sus favoritos no, y no es una decisión de diseño: vive
 en el navegador de cada uno y no se publican en ningún sitio, así que el panel no
 puede verlos.
 
-**Entrar** se hace con el botón de la barra de arriba, en cualquier página.
+**Entrar** se hace con el botón de la barra de arriba, en cualquier página. El campo
+de la contraseña lleva un botón para verla —escribir a ciegas en un móvil una
+contraseña que te han pasado por WhatsApp es la mitad de los "no me deja entrar"— y
+si al pegarla se cuela un espacio delante o detrás, se reintenta sin él antes de dar
+error.
 
 | Qué | Sin cuenta | Con cuenta |
 |---|---|---|
 | Chollos del día | se ven | los mismos: es un tablón, no cambia |
 | Favoritos y su histórico de precio | — | uno por cuenta, en el mismo navegador |
 | Seguimientos | — | cada uno los suyos |
-| Búsquedas guardadas | se ven las que no tienen dueño | un fichero por persona |
+| Búsquedas guardadas | — | un fichero por persona |
 | Lanzar búsquedas y alojamiento | — | sí |
 | Correos | — | los que elija cada uno |
 

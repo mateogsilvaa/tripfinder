@@ -1068,6 +1068,22 @@ def cmd_users(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_claim(args: argparse.Namespace) -> int:
+    """Le pone dueño a lo que no lo tiene. Lo lanza el panel."""
+    from . import watch as W
+
+    if not args.owner:
+        print("Hace falta --owner.")
+        return 1
+    seguimientos = W.reclamar(args.owner, args.owner_name or "")
+    busquedas = Store().claim_searches(args.owner, args.owner_name or "")
+    print(
+        f"Asignados a {args.owner_name or args.owner}: "
+        f"{seguimientos} seguimientos y {busquedas} busquedas."
+    )
+    return 0
+
+
 def _json_arg(crudo: str | None, que: str) -> dict | None:
     """Un argumento que viaja como JSON. Si viene roto, se dice y se sigue."""
     if not crudo:
@@ -1168,6 +1184,11 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--prefs", help="JSON: que correos quiere y cada cuanto")
     c.add_argument("--token", help="JSON: el token del sitio, ya cifrado por el navegador")
     c.set_defaults(func=cmd_users)
+
+    cl = sub.add_parser("claim", help="Asigna a una cuenta lo que no tiene dueño")
+    cl.add_argument("--owner", required=True, help="Id de la cuenta")
+    cl.add_argument("--owner-name", dest="owner_name", default="")
+    cl.set_defaults(func=cmd_claim)
 
     sub.add_parser("reindex", help="Rehace el indice de busquedas").set_defaults(func=cmd_reindex)
 

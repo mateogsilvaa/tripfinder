@@ -161,7 +161,15 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#51 · El panel enseña qué tiene cada cuenta** `web`
   - Sus seguimientos, sus búsquedas y sus preferencias, desplegando su fila. Los favoritos
     no: viven en el navegador de cada uno y el panel no puede verlos.
-- [ ] **#52 · Recuperar contraseña sin pasar por el panel** `nice-to-have`
+- [x] **#52 · Cada uno ve lo suyo, y solo lo suyo** `web`
+  - Lo que no tiene dueño deja de verse (antes salía para todos, y la primera persona
+    en entrar se encontraba los seguimientos de otro). El panel avisa de cuántas cosas
+    hay sin dueño y las asigna a una cuenta.
+- [x] **#53 · Móvil y entrar sin errores** `ux`
+  - Botón para ver la contraseña, reintento sin espacios sobrantes al pegarla, botón
+    que se apaga mientras comprueba (el PBKDF2 tarda un segundo largo en un móvil
+    viejo), barra y modales rehechos para 320-390 px, y el enlace al panel fuera del pie.
+- [ ] **#54 · Recuperar contraseña sin pasar por el panel** `nice-to-have`
   - Hoy, si alguien la olvida, se la cambias tú desde el panel (y eso le rehace el sobre).
     No hay email de reseteo porque no hay servidor que lo mande de forma fiable.
 
