@@ -199,6 +199,14 @@
     "ryanair-MAD-MAN-20261023": {
       "price": 77.98,
       "date": "2026-08-21"
+    },
+    "ryanair-MAD-MAN-20261002": {
+      "price": 71.75,
+      "date": "2026-08-23"
+    },
+    "ryanair-MAD-MAN-20261009": {
+      "price": 76.92,
+      "date": "2026-08-23"
     }
   }
 }
