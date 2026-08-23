@@ -1,5 +1,12 @@
 {
-  "updated": "",
-  "admin": {},
-  "users": []
+  "updated": "2026-08-23T22:41:22+00:00",
+  "admin": {
+    "salt": "X2/eqeqFIOJYVVxQlO88cg==",
+    "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
+    "iterations": 210000,
+    "updated": "2026-08-23T22:41:22+00:00",
+    "sobre": {}
+  },
+  "users": [],
+  "site": {}
 }
