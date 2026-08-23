@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripFinder · chollos desde Madrid</title>
 <meta name="description" content="Escapadas de fin de semana desde Madrid por debajo de su precio habitual, con busqueda de alojamiento bajo demanda.">
-<meta name="theme-color" content="#ece6da">
+<meta name="theme-color" content="#0d0b0a">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=27">
-<script>try{var t=localStorage.getItem("tf_tema");if(t)document.documentElement.dataset.tema=t}catch(e){}</script>
+<script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
+try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
 </head>
 <body>
 <div class="grain" aria-hidden="true"></div>

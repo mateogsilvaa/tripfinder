@@ -201,11 +201,15 @@ python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
 
 ## Dos temas
 
-La web va en claro por defecto —papel de billete impreso: fondo manila con la trama
-de seguridad, tinta azul, sello de goma y los datos en monoespaciada— y se cambia al
-panel de salidas nocturno de siempre con el boton de la esquina. La eleccion se guarda
-en el navegador y se aplica en un `<script>` del `<head>`, antes de pintar, para que no
-pegue el fogonazo blanco al entrar.
+La web va **en oscuro por defecto**: el panel de salidas de siempre, negro cálido y
+ámbar. Con el botón de la esquina se pasa al papel de billete impreso —fondo manila
+con la trama de seguridad, tinta azul, sello de goma y los datos en monoespaciada—.
+La elección se guarda en el navegador y se aplica en un `<script>` del `<head>`,
+antes de pintar, para que no pegue el fogonazo al entrar de noche.
+
+Por eso el claro es un estado con nombre (`data-tema="claro"`) y no la ausencia de
+atributo: si "sin atributo" siguiera significando claro, la primera pintada sería
+blanca en todas las visitas.
 
 Todo el CSS usa tokens semanticos (`--paper`, `--card`, `--ink`, `--azul`, `--sello`),
 asi que el tema oscuro son los mismos tokens con valores de noche mas cuatro cosas

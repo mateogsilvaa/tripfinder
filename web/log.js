@@ -78,8 +78,11 @@ window.fetch = async function (...args) {
 
 /* --- interruptor de tema -------------------------------------------------
    El tema ya se aplica en un <script> del <head> (si no, se ve el fogonazo del
-   tema claro antes de que cargue esto). Aqui solo va el boton, que vive en las
-   cuatro paginas porque log.js es el unico script que cargan todas. */
+   otro tema antes de que cargue esto). Aqui solo va el boton, que vive en las
+   cuatro paginas porque log.js es el unico script que cargan todas.
+
+   El claro es un estado con nombre, no la ausencia de atributo: de casa se
+   entra en oscuro, asi que "sin data-tema" ya no puede significar "claro". */
 (function () {
   const boton = document.getElementById("tema");
   if (!boton) return;
@@ -104,8 +107,7 @@ window.fetch = async function (...args) {
     requestAnimationFrame(() => requestAnimationFrame(() => corte.remove()));
 
     const oscuro = raiz.dataset.tema === "oscuro";
-    if (oscuro) delete raiz.dataset.tema;
-    else raiz.dataset.tema = "oscuro";
+    raiz.dataset.tema = oscuro ? "claro" : "oscuro";
     try {
       localStorage.setItem("tf_tema", oscuro ? "claro" : "oscuro");
     } catch (e) {
