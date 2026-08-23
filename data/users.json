@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-23T22:41:22+00:00",
+  "updated": "2026-08-23T22:43:39+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -7,6 +7,25 @@
     "updated": "2026-08-23T22:41:22+00:00",
     "sobre": {}
   },
-  "users": [],
+  "users": [
+    {
+      "id": "u-f6b7e442",
+      "user": "tytustetona",
+      "name": "Tytus",
+      "email": "",
+      "salt": "r2I2XHfBZT9skWjP1dQvUw==",
+      "hash": "KF5v9mEWWEI4wOyA5s63FuqjWvlMvQMFDZLkEsDD5Ac=",
+      "iterations": 210000,
+      "created": "2026-08-23T22:43:39+00:00",
+      "active": true,
+      "prefs": {
+        "chollos": "cada_vez",
+        "chollos_max_precio": null,
+        "seguimientos": "diario",
+        "seguimientos_solo_novedades": false
+      },
+      "sobre": {}
+    }
+  ],
   "site": {}
 }
