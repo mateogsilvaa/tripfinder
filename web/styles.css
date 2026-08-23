@@ -950,3 +950,61 @@ input[type="range"]::-moz-range-thumb {
 }
 :root[data-tema="oscuro"] .historia.chollo { background: rgba(127, 214, 162, 0.08); }
 :root[data-tema="oscuro"] .fav-aviso { border-left-color: var(--azul); }
+
+/* --- cuentas -------------------------------------------------------------
+   El tablon de chollos es de todos; los favoritos y los seguimientos son de
+   quien entra. Todo esto es la parte visible de esa diferencia: el boton de la
+   barra, el formulario de entrar y las filas del panel. */
+.cuenta {
+  flex: none; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); border-radius: 99px;
+  color: var(--muted); padding: 7px 13px 6px;
+  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
+  letter-spacing: 0.14em; transition: color 0.2s, border-color 0.2s;
+}
+.cuenta:hover { color: var(--ink); border-color: var(--azul); }
+.cuenta b {
+  display: grid; place-items: center; width: 17px; height: 17px; border-radius: 99px;
+  font-size: 10px; font-weight: 500; color: var(--azul); line-height: 1;
+}
+/* Dentro de una cuenta el boton lleva su inicial en un sello: de un vistazo se
+   ve quien esta usando la web, que es justo lo que importa si la comparten. */
+.cuenta.dentro { color: var(--ink); border-color: var(--azul); }
+.cuenta.dentro b { background: var(--azul); color: var(--paper); }
+
+.modal-caja.estrecha { width: min(440px, 100%); padding-bottom: 22px; }
+.modal-form { display: flex; flex-direction: column; gap: 8px; padding: 16px 0 4px; }
+.modal-form label {
+  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
+  letter-spacing: 0.14em; color: var(--muted); margin-top: 6px;
+}
+.modal-form input {
+  background: var(--card); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 9px; padding: 12px 13px;
+  font: 400 16px "Familjen Grotesk", sans-serif;
+}
+.modal-form .meta { margin: 0 0 4px; }
+.modal-form .btn { margin-top: 14px; }
+.estrecha-form { max-width: 420px; }
+
+/* El recordatorio de que hay cosas que no ves porque no has entrado. */
+.cuenta-nota {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  border-top: 1px dashed var(--line-2); padding-top: 12px; margin-top: 12px;
+}
+
+/* Filas del panel: mismo troquelado que las de vuelos, con hueco para los
+   botones de contrasena, activar y borrar. */
+.cuenta-row {
+  grid-template-columns: 92px 1fr auto; grid-template-areas: none; align-items: center;
+}
+.cuenta-row.apagada { opacity: 0.5; }
+.cuenta-row .favacc { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+/* En movil los botones de cada cuenta se bajan a su propia linea: en una fila
+   de 360 px no caben tres botones y el nombre sin partirse por la mitad. */
+@media (max-width: 860px) {
+  .cuenta-row { grid-template-columns: 58px 1fr; }
+  .cuenta-row .dest-cell { grid-area: auto; }
+  .cuenta-row .favacc { grid-column: 1 / -1; }
+}

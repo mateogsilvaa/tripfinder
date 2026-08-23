@@ -38,6 +38,9 @@ class SearchRequest:
     origin: str = "MAD"
     depart: str = ""  # fecha exacta de ida (ISO); si esta, manda sobre todo lo demas
     return_date: str = ""
+    # Quien la pidio. Vacio = busqueda de antes de las cuentas: la ve todo el mundo.
+    owner: str = ""
+    owner_name: str = ""
 
     @property
     def slug(self) -> str:
@@ -61,6 +64,10 @@ class SearchRequest:
             partes.append(f"{int(self.months)}m")
             partes.append("finde" if self.weekend_only else "libre")
         partes.append(f"{max(1, int(self.adults))}p")
+        # Y de quien es: la misma busqueda pedida por dos personas son dos
+        # ficheros, o el segundo pisaria al primero y cada uno veria la del otro.
+        if self.owner:
+            partes.append(self.owner.replace("u-", ""))
         return re.sub(r"[^A-Za-z0-9-]", "", "-".join(partes)).lower()
 
     def to_dict(self) -> dict[str, Any]:
@@ -84,6 +91,8 @@ class SearchResult:
             "generated_at": self.generated_at or date.today().isoformat(),
             "errors": self.errors,
             "count": len(self.offers),
+            "owner": self.request.owner,
+            "owner_name": self.request.owner_name,
             "offers": [o.to_dict() for o in self.offers],
         }
 

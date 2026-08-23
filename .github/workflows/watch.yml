@@ -41,15 +41,17 @@ jobs:
           MONTHS: ${{ github.event.client_payload.months }}
           ADULTS: ${{ github.event.client_payload.adults }}
           WEEKEND: ${{ github.event.client_payload.weekend }}
+          OWNER: ${{ github.event.client_payload.owner }}
+          OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
           git config user.name  "tripfinder-bot"
           git config user.email "actions@github.com"
 
           aplicar() {
             if [ "$TIPO" = "unwatch" ]; then
-              python -m tripfinder watch remove --id "$ID"
+              python -m tripfinder watch remove --id "$ID" --owner "$OWNER"
             elif [ "$TIPO" = "delete_search" ]; then
-              python -m tripfinder watch remove-search --id "$ID"
+              python -m tripfinder watch remove-search --id "$ID" --owner "$OWNER"
             else
               args=()
               if [ -n "$DEST" ];        then args+=(--dest "$DEST"); fi
@@ -60,6 +62,9 @@ jobs:
               if [ -n "$MONTHS" ];      then args+=(--months "$MONTHS"); fi
               if [ -n "$ADULTS" ];      then args+=(--adults "$ADULTS"); fi
               if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
+              # De quien es el seguimiento: sin esto todos serian de todos.
+              if [ -n "$OWNER" ];      then args+=(--owner "$OWNER"); fi
+              if [ -n "$OWNER_NAME" ]; then args+=(--owner-name "$OWNER_NAME"); fi
               python -m tripfinder watch add "${args[@]}"
             fi
           }

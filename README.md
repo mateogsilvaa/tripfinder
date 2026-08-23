@@ -47,6 +47,9 @@ python -m tripfinder scan-flights --dry-run
    y opcionalmente `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`.
 6. `Settings → Pages → Source: GitHub Actions`.
 7. `Settings → Actions → General → Workflow permissions: Read and write`.
+8. Abre `/admin.html` en la web publicada y pon la contraseña del panel (la primera
+   vez la eliges tú). Desde ahí creas las cuentas de quien vaya a usarla:
+   ver [Cuentas y panel](#cuentas-y-panel).
 
 ## Como te llegan los avisos
 
@@ -67,12 +70,58 @@ python -m tripfinder scan-flights --dry-run  # no escribe ni envía email
 python -m tripfinder scan-stays --offer-id RYR-MAD-FCO-20260910
 python -m tripfinder test-email                    # usa notify.method
 python -m tripfinder test-email --method github_issue
+
+python -m tripfinder users list                    # cuentas de la web
+python -m tripfinder users add --user ana --name Ana --password ... --email ana@…
+python -m tripfinder users set-admin --password ...   # la contraseña del panel
 ```
 
 ## Estado
 
 Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Cuentas y panel
+
+Los chollos del día son un tablón público: los ve igual todo el que entre. Lo que
+**no** es de todos son los favoritos, los seguimientos y las búsquedas guardadas.
+Para eso hay cuentas.
+
+**El panel** (`/admin.html`, enlazado abajo del todo en cada página) pide una
+contraseña. La primera vez que entras no hay ninguna: la pones ahí mismo y se
+guarda —hasheada— en `data/users.json`. Desde dentro se crean las cuentas: nombre,
+usuario, contraseña y, si quieres, un email al que mandarle **su** parte diario de
+seguimientos. También se cambian contraseñas, se desactivan cuentas y sigue estando
+el registro de errores.
+
+**Entrar** se hace con el botón de la barra de arriba, en cualquier página. A partir
+de ahí:
+
+| Qué | Antes | Con cuenta |
+|---|---|---|
+| Chollos del día | los mismos para todos | igual: es un tablón, no cambia |
+| Favoritos y su histórico de precio | un cajón por navegador | uno por cuenta, en el mismo navegador |
+| Seguimientos | todos veían todos | cada uno los suyos |
+| Búsquedas guardadas | una pisaba a la otra si coincidían | un fichero por persona |
+| Parte diario por email | siempre al mismo buzón | al email de cada cuenta, si lo tiene |
+
+Lo que ya estaba guardado antes de crear cuentas **no se pierde**: los seguimientos y
+las búsquedas sin dueño se siguen viendo desde todas las cuentas, y los favoritos que
+tuvieras en un navegador se los queda la primera cuenta que entre en él.
+
+### Hasta dónde llega esto
+
+Conviene decirlo claro, porque la palabra "contraseña" promete más de lo que hay: el
+repositorio es público y `data/users.json` se publica con la web, así que **los hashes
+los puede leer cualquiera**. Son PBKDF2-SHA256 con 210.000 vueltas y sal por cuenta —
+sacar de ahí una contraseña decente cuesta mucho tiempo y dinero—, pero esto sirve
+para **separar lo de cada uno entre gente que se conoce y comparte la web**, no para
+guardar secretos frente a un desconocido con ganas. Elige contraseñas que no uses en
+ningún otro sitio.
+
+Lo que sí cierra de verdad es la escritura: crear una cuenta, apuntar un seguimiento o
+lanzar una búsqueda son commits en el repo, y para eso hace falta el token de GitHub,
+que solo está en tu navegador. Sin token, el panel no deja crear nada.
 
 ## Buscador personalizado
 

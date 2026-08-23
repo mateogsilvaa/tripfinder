@@ -53,6 +53,8 @@ jobs:
           P_ADULTS: ${{ github.event.client_payload.adults }}
           P_DEPART: ${{ github.event.client_payload.depart }}
           P_RETURN: ${{ github.event.client_payload.return_date }}
+          P_OWNER: ${{ github.event.client_payload.owner }}
+          P_OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
           # Igual que en el alojamiento: la web manda los datos ya estructurados.
           if [ "$EVENT" = "repository_dispatch" ]; then
@@ -60,6 +62,7 @@ jobs:
               echo "dest=$P_DEST"; echo "label=$P_LABEL"; echo "max_price=$P_MAX"
               echo "nights=$P_NIGHTS"; echo "months=$P_MONTHS"; echo "weekend=$P_WEEKEND"
               echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
+              echo "owner=$P_OWNER"; echo "owner_name=$P_OWNER_NAME"
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -82,6 +85,8 @@ jobs:
           ADULTS: ${{ steps.parse.outputs.adults }}
           DEPART: ${{ steps.parse.outputs.depart }}
           RETURN_DATE: ${{ steps.parse.outputs.return_date }}
+          OWNER: ${{ steps.parse.outputs.owner }}
+          OWNER_NAME: ${{ steps.parse.outputs.owner_name }}
         run: |
           args=()
           if [ -n "$MAX_PRICE" ]; then args+=(--max-price "$MAX_PRICE"); fi
@@ -92,6 +97,10 @@ jobs:
           if [ -n "$RETURN_DATE" ]; then args+=(--return "$RETURN_DATE"); fi
           # weekend: "no" busca cualquier dia de la semana
           if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
+          # Quien la pide entra en el nombre del fichero, asi que la misma
+          # busqueda hecha por dos personas no se sobrescribe.
+          if [ -n "$OWNER" ];      then args+=(--owner "$OWNER"); fi
+          if [ -n "$OWNER_NAME" ]; then args+=(--owner-name "$OWNER_NAME"); fi
           python -m tripfinder search \
             --dest "$DEST" --label "$LABEL" "${args[@]}" \
             --summary-out summary.md

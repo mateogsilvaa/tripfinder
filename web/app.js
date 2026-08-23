@@ -65,7 +65,9 @@ const porPersona = (o) =>
    plicarlo es una aproximacion honesta mientras no se busque para el grupo.
    Va marcada con "≈" a proposito: las tarifas van por cupos y las ultimas
    plazas de un vuelo no valen lo mismo que las primeras. */
-const GRUPO_KEY = "tf_grupo";
+/* Cada cuenta tiene su cajon en este navegador: "tf_grupo:u-1a2b". Sin sesion
+   se usa la clave de siempre, que es donde ya estaba lo tuyo. */
+const GRUPO_KEY = tfClave("tf_grupo");
 let GRUPO = Math.min(8, Math.max(1, Number(localStorage.getItem(GRUPO_KEY)) || 1));
 
 /* Cuanta gente cubre de verdad el precio que se va a ensenar, y si el total es
@@ -143,7 +145,9 @@ function edreamsURL(o) {
 
    No hace falta servidor: el precio ya viaja en los JSON que publica Actions,
    asi que lo unico que faltaba era acordarse de lo que valia la ultima vez. */
-const FAV_KEY = "tf_favoritos";
+const FAV_KEY = tfClave("tf_favoritos");
+/* Busquedas que se han mandado borrar y todavia no han desaparecido del indice. */
+const BORRANDO_KEY = tfClave("tf_borrando");
 
 function favLeer() {
   try {
@@ -459,7 +463,10 @@ async function refrescarFavsDeTodo() {
     fetchJSON("data/searches/index.json")
       .then((d) =>
         Promise.all(
+          // Las tuyas primero: si has guardado veinte, las doce que se miran
+          // para refrescar precios mejor que sean de las que te importan.
           (d.searches || [])
+            .filter(esMio)
             .slice(0, 12)
             .map((x) =>
               fetchJSON(`data/searches/${x.slug}.json`)
@@ -554,47 +561,39 @@ function historiaHTML(o) {
    Para lanzar un scraper hace falta que corra algo fuera del navegador. En vez
    de abrir una issue (que era un rodeo horrible), la web llama directamente a
    la API de GitHub con un token que se guarda SOLO en este navegador
-   (localStorage) y no viaja a ningun sitio que no sea api.github.com. */
+   (localStorage) y no viaja a ningun sitio que no sea api.github.com.
+
+   La llamada vive en auth.js porque el panel de administracion tambien la usa
+   para dar de alta cuentas, y dos copias de esto acaban diciendo cosas
+   distintas el dia que GitHub cambia un codigo de error. */
 const TOKEN_KEY = "tf_token";
 const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
+const dispatch = (evento, payload) => tfDispatch(evento, payload);
 
-async function dispatch(evento, payload) {
-  const token = getToken();
-  if (!token) return { ok: false, reason: "sin-token" };
-  const r = await fetch(`https://api.github.com/repos/${REPO}/dispatches`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ event_type: evento, client_payload: payload }),
-  });
-  if (r.status === 204) return { ok: true };
+/* Lo que va en cada encargo para saber de quien es. Sin sesion va vacio: eso
+   es un encargo compartido, como los de antes de que hubiera cuentas. */
+const comoDueno = () => ({ owner: tfUid(), owner_name: tfNombre() });
 
-  let detalle = "";
-  try {
-    detalle = (await r.json()).message || "";
-  } catch {
-    /* GitHub no siempre contesta con JSON */
-  }
-  if (r.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
-    return { ok: false, reason: "token-invalido" };
-  }
-  if (r.status === 403 || r.status === 404) {
-    // 404 aqui casi siempre es un token sin permiso sobre el repo, no un repo
-    // inexistente: GitHub lo disfraza para no filtrar repos privados.
-    return {
-      ok: false,
-      reason:
-        `${r.status}: al token le falta permiso "Contents: Read and write" sobre ` +
-        `${REPO}, o no le has dado acceso a este repositorio. ${detalle}`,
-      _apuntado: typeof tfApuntar === "function" && tfApuntar("token", `${evento}: ${r.status}`, detalle),
-    };
-  }
-  if (typeof tfApuntar === "function") tfApuntar("dispatch", `${evento}: ${r.status}`, detalle);
-  return { ok: false, reason: `error ${r.status}. ${detalle}` };
+/* Que ves de lo que hay guardado en el repo. Lo que no tiene dueño es de la
+   epoca en que la web era de una sola persona: se queda a la vista de todos,
+   que es lo que ya hacia. Lo que si tiene dueño lo ve solo su dueño. */
+const esMio = (x) => !x || !x.owner || x.owner === tfUid();
+
+/* El cartelito para cuando algo esta oculto por no haber entrado. */
+function avisoDeCuenta(cuantos, que) {
+  if (!cuantos || tfUid()) return "";
+  return `<p class="meta cuenta-nota">Hay ${cuantos} ${que} de otras cuentas.
+    <button class="btn ghost small" type="button" data-entrar>Entrar</button></p>`;
+}
+
+/* Un solo sitio donde enganchar el boton de entrar que sale en esos avisos. */
+function wireEntrar(raiz = document) {
+  raiz.querySelectorAll("[data-entrar]").forEach((b) =>
+    b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      tfAbrirLogin();
+    })
+  );
 }
 
 /* Prueba el token contra un endpoint inofensivo y dice exactamente que pasa.
@@ -1382,6 +1381,7 @@ on("#finderForm", "submit", async (e) => {
       `hasta ${$("#fMax").value} €`,
       personas > 1 ? `${personas} pers.` : "1 pers.",
     ].join(" · "),
+    ...comoDueno(),
     max_price: $("#fMax").value,
     nights: $("#fNights").value.trim() || "2-3",
     months: $("#fMonths").value || "12",
@@ -1418,7 +1418,7 @@ function esperarCambios() {
   window.__esperando = setInterval(async () => {
     vueltas += 1;
     const quedan =
-      pendientes().length || JSON.parse(localStorage.getItem("tf_borrando") || "[]").length;
+      pendientes().length || JSON.parse(localStorage.getItem(BORRANDO_KEY) || "[]").length;
     if (!quedan || vueltas > MAX_VUELTAS) {
       clearInterval(window.__esperando);
       window.__esperando = null;
@@ -1444,7 +1444,9 @@ async function loadSearches() {
   } catch {
     return;
   }
-  const guardadas = indice.searches || [];
+  const todas = indice.searches || [];
+  const guardadas = todas.filter(esMio);
+  const ajenas = todas.length - guardadas.length;
 
   // Lo que ya esta en el indice deja de estar pendiente.
   const etiquetas = new Set(guardadas.map((s) => s.label));
@@ -1455,9 +1457,13 @@ async function loadSearches() {
     .map((p) => pendienteHTML(p, ahora - p.desde > MAX_ESPERA_MS))
     .join("");
 
-  if (!guardadas.length && !cabecera) return;
+  if (!guardadas.length && !cabecera) {
+    $("#searches").innerHTML = avisoDeCuenta(ajenas, "búsquedas guardadas");
+    wireEntrar($("#searches"));
+    return;
+  }
 
-  $("#searches").innerHTML = cabecera + guardadas
+  $("#searches").innerHTML = avisoDeCuenta(ajenas, "búsquedas guardadas") + cabecera + guardadas
     .map(
       (s) => `
       <div class="saved" data-slug="${esc(s.slug)}">
@@ -1471,7 +1477,7 @@ async function loadSearches() {
     .join("");
 
   // Lo que se ha mandado borrar sigue marcado hasta que desaparece de verdad.
-  const borrando = JSON.parse(localStorage.getItem("tf_borrando") || "[]");
+  const borrando = JSON.parse(localStorage.getItem(BORRANDO_KEY) || "[]");
   borrando.forEach((slug) => {
     const fila = $("#searches").querySelector(`[data-slug="${slug}"]`);
     if (fila) {
@@ -1482,7 +1488,7 @@ async function loadSearches() {
   });
   const vivas = new Set(guardadas.map((s) => s.slug));
   const siguen = borrando.filter((s) => vivas.has(s));
-  localStorage.setItem("tf_borrando", JSON.stringify(siguen));
+  localStorage.setItem(BORRANDO_KEY, JSON.stringify(siguen));
   if (siguen.length) esperarCambios();
 
   $("#searches")
@@ -1500,11 +1506,15 @@ async function loadSearches() {
     b.addEventListener("click", async (ev) => {
       ev.stopPropagation();
       b.disabled = true;
-      const r = await dispatch("delete_search", { tipo: "delete_search", id: b.dataset.borrar });
+      const r = await dispatch("delete_search", {
+        tipo: "delete_search",
+        id: b.dataset.borrar,
+        ...comoDueno(),
+      });
       if (r.ok) {
-        const cola = JSON.parse(localStorage.getItem("tf_borrando") || "[]");
+        const cola = JSON.parse(localStorage.getItem(BORRANDO_KEY) || "[]");
         cola.push(b.dataset.borrar);
-        localStorage.setItem("tf_borrando", JSON.stringify(cola));
+        localStorage.setItem(BORRANDO_KEY, JSON.stringify(cola));
         loadSearches();
       } else {
         b.disabled = false;
@@ -1512,6 +1522,8 @@ async function loadSearches() {
       }
     })
   );
+
+  wireEntrar($("#searches"));
 
   document.querySelectorAll(".saved[data-slug]").forEach((el) =>
     el.addEventListener("click", (ev) => {
@@ -1573,7 +1585,7 @@ let DESTINOS = null;
 /* Las busquedas lanzadas se guardan en el navegador hasta que aparecen en el
    indice. Antes el "buscando..." lo borraba el siguiente refresco de la lista
    y parecia que la busqueda se hubiera esfumado. */
-const PEND_KEY = "tf_pendientes";
+const PEND_KEY = tfClave("tf_pendientes");
 const MAX_ESPERA_MS = 18 * 60 * 1000;  // cuando una busqueda pendiente se marca como colgada
 
 const pendientes = () => {
@@ -1744,6 +1756,7 @@ on("#watchForm", "submit", async (e) => {
   ].join(" · ");
   const r = await dispatch("watch", {
     tipo: "watch",
+    ...comoDueno(),
     dest,
     label: etiqueta,
     depart: fecha,
@@ -1782,12 +1795,19 @@ async function cargarWatches() {
   } catch {
     return;
   }
-  const vivos = (datos.watches || []).filter((w) => w.active !== false);
+  const activos = (datos.watches || []).filter((w) => w.active !== false);
+  const vivos = activos.filter(esMio);
+  const ajenos = activos.length - vivos.length;
   vivos.forEach((w) => conGrupo(w.last_offers || [], w.adults));
   sincronizarFavs(vivos.flatMap((w) => w.last_offers || []));
-  if (!vivos.length) return;
+  if (!vivos.length) {
+    $("#watches").innerHTML = avisoDeCuenta(ajenos, "seguimientos");
+    wireEntrar($("#watches"));
+    return;
+  }
   $("#watches").innerHTML =
     '<h3 class="watch-head">Siguiendo a diario</h3>' +
+    avisoDeCuenta(ajenos, "seguimientos") +
     vivos
       .map(
         (w) => `
@@ -1835,7 +1855,11 @@ async function cargarWatches() {
     .forEach((b) =>
       b.addEventListener("click", async () => {
         b.disabled = true;
-        const r = await dispatch("unwatch", { tipo: "unwatch", id: b.dataset.unwatch });
+        const r = await dispatch("unwatch", {
+          tipo: "unwatch",
+          id: b.dataset.unwatch,
+          ...comoDueno(),
+        });
         if (r.ok) {
           const fila = b.closest(".watch");
           fila.style.opacity = 0.45;

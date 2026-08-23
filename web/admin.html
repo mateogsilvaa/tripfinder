@@ -3,71 +3,406 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TripFinder · registro de errores</title>
+<title>TripFinder · panel</title>
+<meta name="robots" content="noindex">
 <meta name="theme-color" content="#ece6da">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=26">
+<link rel="stylesheet" href="styles.css?v=27">
 <script>try{var t=localStorage.getItem("tf_tema");if(t)document.documentElement.dataset.tema=t}catch(e){}</script>
 </head>
-<body>
+<body data-sin-cuenta>
 <div class="grain" aria-hidden="true"></div>
 
 <header class="masthead">
   <div class="topbar">
     <div class="board" aria-hidden="true">
-      <span class="flap">L</span><span class="flap">O</span><span class="flap">G</span>
-      <span class="board-label">registro de errores</span>
+      <span class="flap">A</span><span class="flap">D</span><span class="flap">M</span>
+      <span class="board-label">panel · cuentas y registro de errores</span>
     </div>
     <button id="tema" class="tema" type="button" aria-label="Cambiar entre tema claro y oscuro">
       <b aria-hidden="true">◐</b><span class="tema-txt">tema</span>
     </button>
   </div>
-  <h1>Qué ha <em>fallado</em></h1>
-  <p class="lede">
-    Todo lo que peta en esta web queda apuntado aquí, en tu navegador. Exporta el CSV
-    y pásamelo: con eso se arregla en un rato lo que a ciegas cuesta media tarde.
+  <h1>El <em>panel</em></h1>
+  <p class="lede" id="lede">
+    Desde aquí se dan de alta las cuentas que pueden entrar en la web y se ve
+    todo lo que ha petado. Hace falta la contraseña del panel.
   </p>
   <dl class="stats" id="stats"></dl>
 </header>
 
 <main>
-  <section class="controls" style="margin-top:26px">
-    <button class="btn primary" id="csv">Exportar CSV</button>
-    <button class="btn ghost" id="copiar">Copiar al portapapeles</button>
-    <button class="btn ghost" id="runs">Traer fallos de GitHub Actions</button>
-    <button class="btn ghost" id="vaciar">Vaciar</button>
-    <a class="btn ghost" href="./">← Volver</a>
+  <!-- ------------------------------------------------------- la puerta -->
+  <section id="puerta" class="finder" hidden>
+    <div class="finder-body">
+      <form id="formPuerta" class="finder-form estrecha-form">
+        <p class="finder-lede" id="puertaLede"></p>
+        <div class="field grow">
+          <label for="pass">Contraseña del panel</label>
+          <input type="password" id="pass" autocomplete="current-password" required>
+        </div>
+        <div class="field grow" id="pass2Wrap" hidden>
+          <label for="pass2">Repítela</label>
+          <input type="password" id="pass2" autocomplete="new-password">
+        </div>
+        <button class="btn primary" type="submit" id="puertaBtn">Entrar</button>
+      </form>
+      <p class="token-status" id="puertaMsg"></p>
+    </div>
   </section>
 
-  <div id="aviso" class="hint"></div>
-  <section id="tabla" class="rows"></section>
+  <!-- ------------------------------------------------------- el panel -->
+  <div id="panelAdmin" hidden>
+    <section class="controls" style="margin-top:26px">
+      <button class="btn primary" id="nuevaCuenta">Crear cuenta</button>
+      <button class="btn ghost" id="cambiarAdmin">Cambiar la contraseña del panel</button>
+      <button class="btn ghost" id="recargar">Recargar cuentas</button>
+      <button class="btn ghost" id="cerrar">Cerrar el panel</button>
+      <a class="btn ghost" href="./">← Volver a la web</a>
+    </section>
+
+    <div id="avisoCuentas" class="hint"></div>
+    <section id="cuentas" class="rows"></section>
+
+    <details class="finder" id="cajaLog">
+      <summary>Registro de errores</summary>
+      <div class="finder-body">
+        <p class="finder-lede">
+          Todo lo que peta en esta web queda apuntado aquí, en tu navegador. Exporta el
+          CSV y pásamelo: con eso se arregla en un rato lo que a ciegas cuesta media tarde.
+        </p>
+        <section class="controls" style="margin:0 0 18px">
+          <button class="btn ghost" id="csv">Exportar CSV</button>
+          <button class="btn ghost" id="copiar">Copiar al portapapeles</button>
+          <button class="btn ghost" id="runs">Traer fallos de GitHub Actions</button>
+          <button class="btn ghost" id="vaciar">Vaciar</button>
+        </section>
+        <div id="aviso" class="hint"></div>
+        <section id="tabla" class="rows"></section>
+      </div>
+    </details>
+  </div>
 </main>
 
 <footer class="foot">
-  <span>El registro vive solo en este navegador. No se envía a ningún sitio.</span>
+  <span>Las contraseñas no se guardan: solo su PBKDF2 con sal, igual que en el backend.</span>
+  <span class="build">build 27</span>
 </footer>
 
-<script src="log.js?v=26"></script>
+<script src="log.js?v=27"></script>
+<script src="auth.js?v=27"></script>
 <script>
+/* El panel: la contraseña abre la puerta, el token de GitHub es lo que de
+   verdad deja escribir. Sin token no se puede crear ni borrar nada, porque
+   todo lo que se toca aquí acaba siendo un commit en data/users.json. */
 const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
-  ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const esc = tfEsc;
 
-function pintar() {
-  const errores = tfLeerLog();
-  const porTipo = errores.reduce((a, e) => ((a[e.tipo] = (a[e.tipo] || 0) + 1), a), {});
+// Mientras la pestaña siga abierta no vuelve a pedir la contraseña; al cerrarla,
+// sí. Media hora es lo que dura un rato de administrar sin que sea un incordio.
+const ABIERTO_KEY = "tf_admin_abierto";
+const ABIERTO_MS = 30 * 60 * 1000;
+
+const abierto = () => {
+  try {
+    return Number(sessionStorage.getItem(ABIERTO_KEY) || 0) + ABIERTO_MS > Date.now();
+  } catch {
+    return false;
+  }
+};
+const marcarAbierto = (si) => {
+  try {
+    if (si) sessionStorage.setItem(ABIERTO_KEY, String(Date.now()));
+    else sessionStorage.removeItem(ABIERTO_KEY);
+  } catch {
+    /* navegacion privada: el panel se cierra al recargar, y ya */
+  }
+};
+
+/* ------------------------------------------------------------- la puerta */
+async function montarPuerta() {
+  const datos = await tfLeerUsuarios(true);
+  const primeraVez = !datos.admin || !datos.admin.hash;
+
+  if (abierto()) return abrirPanel();
+
+  $("#puerta").hidden = false;
+  $("#panelAdmin").hidden = true;
+  $("#pass2Wrap").hidden = !primeraVez;
+  $("#puertaBtn").textContent = primeraVez ? "Poner contraseña" : "Entrar";
+  $("#puertaLede").innerHTML = primeraVez
+    ? `Este panel todavía no tiene contraseña. Ponla ahora: se guarda en
+       <code>data/users.json</code> como PBKDF2 con sal, nunca en claro. Para
+       guardarla hace falta el token de GitHub, así que solo puede hacerlo quien
+       tenga el suyo puesto en este navegador.`
+    : `Escribe la contraseña del panel.`;
+
+  $("#formPuerta").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const clave = $("#pass").value;
+    if (!clave) return;
+    if (primeraVez) return ponerAdmin(clave, $("#pass2").value);
+    $("#puertaMsg").textContent = "Comprobando…";
+    let vale = false;
+    try {
+      vale = await tfComprobar(clave, datos.admin);
+    } catch (err) {
+      $("#puertaMsg").textContent = err.message;
+      return;
+    }
+    if (!vale) {
+      $("#puertaMsg").textContent = "No es esa.";
+      tfApuntar("admin", "contraseña del panel incorrecta");
+      return;
+    }
+    marcarAbierto(true);
+    abrirPanel();
+  });
+}
+
+async function ponerAdmin(clave, repetida) {
+  if (clave.length < 8) {
+    $("#puertaMsg").textContent = "Ponla de 8 caracteres o más.";
+    return;
+  }
+  if (clave !== repetida) {
+    $("#puertaMsg").textContent = "Las dos no coinciden.";
+    return;
+  }
+  $("#puertaMsg").textContent = "Guardando…";
+  const cred = await tfHash(clave);
+  const r = await tfDispatch("admin_password", cred);
+  if (!r.ok) {
+    $("#puertaMsg").innerHTML = explicarFallo(r);
+    wireToken();
+    return;
+  }
+  marcarAbierto(true);
+  $("#puertaMsg").textContent =
+    "Guardada. GitHub tarda un par de minutos en publicarla; el panel ya está abierto.";
+  setTimeout(abrirPanel, 1200);
+}
+
+function explicarFallo(r) {
+  if (r.reason === "sin-token" || r.reason === "token-invalido") {
+    return `Para escribir en el repositorio hace falta un token de GitHub
+      (fine-grained, solo este repo, permiso <em>Contents: Read and write</em>).
+      <span class="token-box">
+        <input type="password" id="tokenInput" placeholder="github_pat_…" autocomplete="off">
+        <button class="btn ghost small" id="tokenSave" type="button">Guardar en este navegador</button>
+      </span>`;
+  }
+  return `No se pudo guardar: ${esc(r.reason)}`;
+}
+
+function wireToken() {
+  const b = document.getElementById("tokenSave");
+  if (!b) return;
+  b.addEventListener("click", () => {
+    const v = document.getElementById("tokenInput").value.trim();
+    if (!v) return;
+    localStorage.setItem("tf_token", v);
+    $("#puertaMsg").textContent = "Token guardado. Vuelve a darle al botón.";
+    $("#avisoCuentas").textContent = "Token guardado. Vuelve a intentarlo.";
+  });
+}
+
+function abrirPanel() {
+  $("#puerta").hidden = true;
+  $("#panelAdmin").hidden = false;
+  $("#lede").textContent =
+    "Cada cuenta tiene sus favoritos, sus seguimientos y sus búsquedas. El tablón de chollos es el mismo para todas.";
+  pintarCuentas();
+  pintarLog();
+}
+
+/* --------------------------------------------------------------- cuentas */
+async function pintarCuentas(forzar = true) {
+  const datos = await tfLeerUsuarios(forzar);
+  const cuentas = datos.users || [];
   $("#stats").innerHTML =
-    `<div><dd>${errores.length}</dd><dt>errores guardados</dt></div>` +
-    Object.entries(porTipo)
-      .map(([t, n]) => `<div><dd>${n}</dd><dt>${esc(t)}</dt></div>`)
-      .join("") +
-    (errores.length
-      ? `<div><dd class="hot">${esc(errores[0].cuando.slice(0, 16).replace("T", " "))}</dd><dt>el último</dt></div>`
-      : "");
+    `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
+    `<div><dd>${cuentas.filter((u) => u.active !== false).length}</dd><dt>activas</dt></div>` +
+    `<div><dd class="hot">${tfLeerLog().length}</dd><dt>errores apuntados</dt></div>`;
 
+  $("#cuentas").innerHTML = cuentas.length
+    ? cuentas
+        .map(
+          (u) => `
+      <div class="brow cuenta-row${u.active === false ? " apagada" : ""}">
+        <span class="iata">${esc((u.name || u.user).slice(0, 3).toUpperCase())}</span>
+        <span class="dest-cell">
+          <span class="city">${esc(u.name || u.user)}</span>
+          <span class="country">${esc(u.user)} · ${esc(u.id)}${
+            u.email ? ` · ${esc(u.email)}` : ""
+          } · ${u.active === false ? "desactivada" : "activa"}</span>
+        </span>
+        <span class="favacc">
+          <button class="btn ghost small" data-clave="${esc(u.user)}">Contraseña</button>
+          <button class="btn ghost small" data-activar="${esc(u.user)}" data-a="${
+            u.active === false ? "1" : "0"
+          }">${u.active === false ? "Activar" : "Desactivar"}</button>
+          <button class="quitar" data-borrar="${esc(u.user)}" title="Borrar la cuenta">✕</button>
+        </span>
+      </div>`
+        )
+        .join("")
+    : '<p class="empty">Todavía no hay ninguna cuenta. Crea la primera y dásela a quien vaya a usar la web.</p>';
+
+  $("#cuentas").querySelectorAll("[data-borrar]").forEach((b) =>
+    b.addEventListener("click", () => borrarCuenta(b.dataset.borrar))
+  );
+  $("#cuentas").querySelectorAll("[data-activar]").forEach((b) =>
+    b.addEventListener("click", () =>
+      mandar(b.dataset.a === "1" ? "user_enable" : "user_disable", { user: b.dataset.activar },
+        `${b.dataset.a === "1" ? "Activando" : "Desactivando"} ${b.dataset.activar}…`)
+    )
+  );
+  $("#cuentas").querySelectorAll("[data-clave]").forEach((b) =>
+    b.addEventListener("click", () => cambiarClave(b.dataset.clave))
+  );
+}
+
+/* Todo lo que toca cuentas pasa por aquí: un dispatch, un aviso y a esperar a
+   que Actions publique. El fichero tarda un par de minutos en verse, así que se
+   dice, en vez de dejar la lista igual y que parezca que no ha hecho nada. */
+async function mandar(evento, payload, trabajando) {
+  $("#avisoCuentas").textContent = trabajando;
+  const r = await tfDispatch(evento, payload);
+  if (!r.ok) {
+    $("#avisoCuentas").innerHTML = explicarFallo(r);
+    wireToken();
+    return false;
+  }
+  $("#avisoCuentas").textContent =
+    "Hecho. GitHub lo está guardando: en un par de minutos aparece aquí (dale a «Recargar cuentas»).";
+  return true;
+}
+
+function pedir(titulo, campos, alAceptar) {
+  const caja = tfModal(`
+    <header class="modal-head">
+      <h2>${esc(titulo)}</h2>
+      <button data-cerrar aria-label="Cerrar">✕</button>
+    </header>
+    <form id="formModal" class="modal-form">
+      ${campos
+        .map(
+          (c) => `<label for="${c.id}">${esc(c.label)}</label>
+            <input id="${c.id}" type="${c.type || "text"}"
+              ${c.type === "password" ? 'autocomplete="new-password"' : 'autocomplete="off"'}
+              ${c.required === false ? "" : "required"}
+              ${c.hint ? `placeholder="${esc(c.hint)}"` : ""}>`
+        )
+        .join("")}
+      <p class="token-status" id="modalMsg"></p>
+      <button class="btn primary" type="submit">Guardar</button>
+    </form>`);
+  caja.querySelector("#formModal").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const valores = {};
+    campos.forEach((c) => (valores[c.id] = caja.querySelector(`#${c.id}`).value.trim()));
+    await alAceptar(valores, caja.querySelector("#modalMsg"));
+  });
+  caja.querySelector(`#${campos[0].id}`).focus();
+}
+
+function nuevaCuenta() {
+  pedir(
+    "Crear cuenta",
+    [
+      { id: "cNombre", label: "Nombre", hint: "Ana" },
+      { id: "cUser", label: "Usuario", hint: "ana" },
+      { id: "cEmail", label: "Email para sus avisos (opcional)", type: "email", required: false },
+      { id: "cPass", label: "Contraseña", type: "password" },
+    ],
+    async (v, msg) => {
+      if (!/^[a-z0-9._-]{3,24}$/.test(v.cUser.toLowerCase())) {
+        msg.textContent = "El usuario: de 3 a 24 caracteres, sin espacios ni acentos.";
+        return;
+      }
+      if (v.cPass.length < 8) {
+        msg.textContent = "La contraseña, de 8 caracteres o más.";
+        return;
+      }
+      msg.textContent = "Creando…";
+      const cred = await tfHash(v.cPass);
+      const ok = await mandar(
+        "user_add",
+        { user: v.cUser.toLowerCase(), name: v.cNombre, email: v.cEmail, ...cred },
+        `Creando la cuenta de ${v.cNombre || v.cUser}…`
+      );
+      if (ok) {
+        tfCerrarModal();
+        // La contraseña no se puede recuperar despues: o se la das ahora, o a
+        // cambiarla. Mejor decirlo que dar por hecho que se ha enterado.
+        $("#avisoCuentas").textContent =
+          `Cuenta de ${v.cNombre || v.cUser} creada (usuario "${v.cUser.toLowerCase()}"). ` +
+          "Dale la contraseña ahora: aquí ya no se puede volver a ver. " +
+          "En un par de minutos podrá entrar.";
+      }
+    }
+  );
+}
+
+function cambiarClave(user) {
+  pedir("Nueva contraseña de " + user, [{ id: "nPass", label: "Contraseña", type: "password" }],
+    async (v, msg) => {
+      if (v.nPass.length < 8) {
+        msg.textContent = "De 8 caracteres o más.";
+        return;
+      }
+      msg.textContent = "Guardando…";
+      const cred = await tfHash(v.nPass);
+      if (await mandar("user_passwd", { user, ...cred }, `Cambiando la contraseña de ${user}…`)) {
+        tfCerrarModal();
+      }
+    });
+}
+
+function cambiarAdmin() {
+  pedir("Contraseña del panel", [{ id: "aPass", label: "Nueva contraseña", type: "password" }],
+    async (v, msg) => {
+      if (v.aPass.length < 8) {
+        msg.textContent = "De 8 caracteres o más.";
+        return;
+      }
+      msg.textContent = "Guardando…";
+      const cred = await tfHash(v.aPass);
+      if (await mandar("admin_password", cred, "Cambiando la contraseña del panel…")) {
+        tfCerrarModal();
+      }
+    });
+}
+
+function borrarCuenta(user) {
+  pedir(
+    `Borrar la cuenta "${user}"`,
+    [{ id: "bConf", label: `Escribe ${user} para confirmarlo`, hint: user }],
+    async (v, msg) => {
+      if (v.bConf !== user) {
+        msg.textContent = "No coincide.";
+        return;
+      }
+      if (await mandar("user_remove", { user }, `Borrando ${user}…`)) tfCerrarModal();
+    }
+  );
+}
+
+$("#nuevaCuenta").addEventListener("click", nuevaCuenta);
+$("#cambiarAdmin").addEventListener("click", cambiarAdmin);
+$("#recargar").addEventListener("click", () => pintarCuentas(true));
+$("#cerrar").addEventListener("click", () => {
+  marcarAbierto(false);
+  location.reload();
+});
+
+/* -------------------------------------------------- registro de errores */
+function pintarLog() {
+  const errores = tfLeerLog();
   $("#tabla").innerHTML = errores.length
     ? errores
         .map(
@@ -111,15 +446,15 @@ $("#copiar").addEventListener("click", async () => {
 
 $("#vaciar").addEventListener("click", () => {
   tfVaciarLog();
-  pintar();
+  pintarLog();
 });
 
 /* Los fallos de los workflows no los ve el navegador: se piden a GitHub con
    el mismo token que ya usa la web para lanzar búsquedas. */
 $("#runs").addEventListener("click", async () => {
-  const token = localStorage.getItem("tf_token") || "";
+  const token = tfToken();
   if (!token) {
-    $("#aviso").textContent = "No hay token guardado: entra en la web principal y añádelo.";
+    $("#aviso").textContent = "No hay token guardado en este navegador.";
     return;
   }
   $("#aviso").textContent = "Consultando GitHub…";
@@ -130,20 +465,16 @@ $("#runs").addEventListener("click", async () => {
     );
     const d = await r.json();
     (d.workflow_runs || []).forEach((run) =>
-      tfApuntar(
-        "actions",
-        `${run.name}: ${run.conclusion}`,
-        `${run.created_at} · ${run.html_url}`
-      )
+      tfApuntar("actions", `${run.name}: ${run.conclusion}`, `${run.created_at} · ${run.html_url}`)
     );
     $("#aviso").textContent = `Añadidos ${(d.workflow_runs || []).length} fallos de Actions.`;
-    pintar();
+    pintarLog();
   } catch (err) {
     $("#aviso").textContent = "No se pudo consultar GitHub: " + err.message;
   }
 });
 
-pintar();
+montarPuerta();
 </script>
 </body>
 </html>

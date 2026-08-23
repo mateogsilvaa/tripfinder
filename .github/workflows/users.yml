@@ -1,0 +1,98 @@
+name: Cuentas de la web
+
+# El panel (web/admin.html) manda un repository_dispatch con el alta, la baja o
+# el cambio de contrasena y esto lo apunta en data/users.json.
+#
+# La contrasena en claro NO llega hasta aqui: el navegador ya ha hecho el
+# PBKDF2-SHA256 y lo que viaja es la sal y el hash. Asi no queda escrita en el
+# log de un workflow, que se guarda noventa dias y lo lee cualquiera.
+
+on:
+  repository_dispatch:
+    types: [user_add, user_remove, user_passwd, user_enable, user_disable, admin_password]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  # Un grupo por cuenta tocada: dos altas seguidas no se cancelan entre ellas.
+  group: users-${{ github.event.action }}-${{ github.event.client_payload.user || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  cuentas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Aplicar el cambio sobre lo ultimo publicado
+        env:
+          PYTHONPATH: src
+          ACCION: ${{ github.event.action }}
+          USER: ${{ github.event.client_payload.user }}
+          NAME: ${{ github.event.client_payload.name }}
+          EMAIL: ${{ github.event.client_payload.email }}
+          UID: ${{ github.event.client_payload.id }}
+          SALT: ${{ github.event.client_payload.salt }}
+          HASH: ${{ github.event.client_payload.hash }}
+          ITER: ${{ github.event.client_payload.iterations }}
+        run: |
+          git config user.name  "tripfinder-bot"
+          git config user.email "actions@github.com"
+
+          aplicar() {
+            case "$ACCION" in
+              user_add)
+                python -m tripfinder users add \
+                  --user "$USER" --name "$NAME" --email "$EMAIL" \
+                  ${UID:+--id "$UID"} \
+                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}"
+                ;;
+              user_remove)  python -m tripfinder users remove  --user "$USER" ;;
+              user_enable)  python -m tripfinder users enable  --user "$USER" ;;
+              user_disable) python -m tripfinder users disable --user "$USER" ;;
+              user_passwd)
+                python -m tripfinder users passwd --user "$USER" \
+                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}"
+                ;;
+              admin_password)
+                python -m tripfinder users set-admin \
+                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}"
+                ;;
+              *) echo "Accion desconocida: $ACCION"; exit 1 ;;
+            esac
+          }
+
+          # Mismo baile que en watch.yml: dos cambios lanzados casi a la vez
+          # parten del mismo fichero y al hacer push se pisan, asi que cada
+          # intento se resincroniza con lo publicado y reaplica el cambio.
+          for intento in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            aplicar
+            git add data/users.json
+            if git diff --staged --quiet; then
+              echo "Sin cambios que guardar"
+              exit 0
+            fi
+            git commit -m "cuentas: $ACCION"
+            if git push; then
+              echo "Guardado al intento $intento"
+              exit 0
+            fi
+            echo "Otro cambio llego antes; se reintenta"
+            sleep $((RANDOM % 6 + 2))
+          done
+          echo "No se pudo guardar tras varios intentos"
+          exit 1
+
+      - name: Redesplegar la web
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

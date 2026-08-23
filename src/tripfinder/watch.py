@@ -40,6 +40,9 @@ class Watch:
     weekend_only: bool = True
     adults: int = 2
     max_price: float | None = None
+    # De quien es. Vacio = de antes de que hubiera cuentas, lo ve todo el mundo.
+    owner: str = ""
+    owner_name: str = ""
     created: str = ""
     best_price: float | None = None  # el mejor precio visto hasta hoy
     last_checked: str = ""
@@ -95,9 +98,19 @@ def anadir(w: Watch) -> list[Watch]:
     return lista
 
 
-def borrar(watch_id: str) -> bool:
+def borrar(watch_id: str, owner: str = "") -> bool:
+    """Quita un seguimiento.
+
+    Con `owner` solo se borra si es suyo (o si es de los de antes de las
+    cuentas, que no son de nadie): sin esa comprobacion, dos personas que
+    comparten la web se borrarian los seguimientos entre ellas sin querer.
+    """
     lista = _cargar()
-    quedan = [w for w in lista if w.id != watch_id]
+    quedan = [
+        w
+        for w in lista
+        if w.id != watch_id or (owner and w.owner and w.owner != owner)
+    ]
     _guardar(quedan)
     return len(quedan) < len(lista)
 

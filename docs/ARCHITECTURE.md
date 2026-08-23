@@ -9,8 +9,10 @@
 | `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. |
 | `tripfinder.scoring` | `src/tripfinder/` | Convierte precio + histórico en un `score` 0-100 y decide si es chollo. |
 | `tripfinder.store` | `src/tripfinder/` | Persistencia en JSON dentro de `data/` (el propio repo es la base de datos). |
+| `tripfinder.users` | `src/tripfinder/` | Las cuentas: `data/users.json` con un PBKDF2-SHA256 por contraseña. El mismo algoritmo que calcula el navegador en `web/auth.js`. |
 | `tripfinder.notify` | `src/tripfinder/notify/` | Resend / SMTP / issue de GitHub + plantillas. Si el metodo elegido falla, prueba los demas. |
 | `web/` | GitHub Pages | Lee `data/offers.json` y `data/stays/*.json`. Cero build. |
+| `web/auth.js` | GitHub Pages | Quién está delante: sesión, login contra `data/users.json` y el espacio de nombres de `localStorage` por cuenta. |
 | `.github/workflows/` | GitHub Actions | Cron de vuelos, cola de alojamiento vía issues, deploy de Pages. |
 
 ## Flujo de datos
@@ -30,6 +32,22 @@
    comenta el resumen en la issue y la cierra.
 7. La web hace polling de ese JSON (cada 20 s, 15 min máx) y pinta los alojamientos.
 
+## Cuentas
+
+El tablón de chollos es el mismo para todo el mundo (`offers.json` no tiene dueño).
+Lo que sí es de cada uno:
+
+| Qué | Dónde vive | Cómo se separa |
+|---|---|---|
+| Favoritos y precio al que los marcaste | `localStorage` del navegador | La clave lleva la cuenta: `tf_favoritos:u-1a2b3c4d` |
+| Personas del selector de grupo | `localStorage` | `tf_grupo:<id>` |
+| Seguimientos | `data/watch.json` | Campo `owner` en cada uno |
+| Búsquedas guardadas | `data/searches/*.json` | Campo `owner`, y el id de la cuenta entra en el nombre del fichero |
+| Parte diario de seguimientos | email | Cada cuenta al suyo si tiene `email`; el resto, al buzón de `notify.to` |
+
+Lo que no tiene `owner` es de antes de que hubiera cuentas: se sigue viendo desde
+todas, que es lo que ya hacía.
+
 ## Decisiones
 
 - **El repo como base de datos.** No hay servidor ni Postgres: el histórico son commits, lo que
@@ -42,6 +60,14 @@
   devuelve la tarifa mas barata por destino y esa casi nunca es de viernes. Se pregunta por cada
   fin de semana, y esas ofertas se puntuan contra su propio historico (`RUTA|finde`).
 - **Fallo tolerado por provider.** Un adapter que revienta se registra y se ignora; el scan sigue.
+- **Las cuentas separan, no blindan.** El repo es público y `data/users.json` se sirve con la
+  web, así que los hashes los puede leer cualquiera: PBKDF2-SHA256 con 210.000 vueltas y sal por
+  cuenta hace cara la fuerza bruta, pero esto separa espacios de trabajo entre gente que se
+  conoce, no guarda secretos frente a un desconocido. Lo único que de verdad impide **escribir**
+  es el token de GitHub, que solo está en tu navegador: sin él no hay alta de cuentas, ni
+  seguimiento, ni búsqueda.
+- **La contraseña se hashea en el navegador.** El panel manda al workflow la sal y el hash, nunca
+  la clave: los logs de Actions se guardan noventa días y los ve cualquiera que pase por el repo.
 - **Nada de scraping agresivo.** Booking se resuelve con deep links; Airbnb es best-effort con
   degradado a deep link. Un `User-Agent` honesto y un intervalo mínimo entre peticiones.
 

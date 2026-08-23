@@ -89,6 +89,11 @@ class Store:
                     "count": d.get("count", 0),
                     "generated_at": d.get("generated_at"),
                     "best_price": min((o["price"] for o in d.get("offers", [])), default=None),
+                    # Sin esto la web tendria que abrir las 30 busquedas para
+                    # saber cuales son tuyas antes de pintar la lista.
+                    "owner": d.get("owner") or (d.get("request") or {}).get("owner", ""),
+                    "owner_name": d.get("owner_name")
+                    or (d.get("request") or {}).get("owner_name", ""),
                 }
             )
         (self.searches_dir / "index.json").write_text(
@@ -96,11 +101,24 @@ class Store:
         )
         return p
 
-    def delete_search(self, slug: str) -> bool:
-        """Borra una busqueda guardada y rehace el indice."""
+    def delete_search(self, slug: str, owner: str = "") -> bool:
+        """Borra una busqueda guardada y rehace el indice.
+
+        Con `owner` solo borra las suyas (y las que no son de nadie, de antes de
+        que hubiera cuentas): la lista de la web enseña los slugs de todos, y
+        sin esto bastaria con uno para borrar la busqueda de otra persona.
+        """
         f = self.searches_dir / f"{slug}.json"
         if not f.exists():
             return False
+        if owner:
+            try:
+                datos = json.loads(f.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                datos = {}
+            dueno = datos.get("owner") or (datos.get("request") or {}).get("owner", "")
+            if dueno and dueno != owner:
+                return False
         f.unlink()
         # save_search reconstruye el indice entero, asi que basta con reescribir
         # cualquiera de las que quedan; si no queda ninguna, indice vacio.

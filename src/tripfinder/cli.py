@@ -568,6 +568,8 @@ def cmd_search(args: argparse.Namespace) -> int:
         adults=args.adults or cfg.party_size,
         depart=args.depart or "",
         return_date=getattr(args, "return") or "",
+        owner=args.owner or "",
+        owner_name=args.owner_name or "",
     )
 
     try:
@@ -584,6 +586,8 @@ def cmd_search(args: argparse.Namespace) -> int:
                 "generated_at": date.today().isoformat(),
                 "errors": [str(exc)],
                 "count": 0,
+                "owner": req.owner,
+                "owner_name": req.owner_name,
                 "offers": [],
             }
         )
@@ -677,7 +681,12 @@ def cmd_watch(args: argparse.Namespace) -> int:
         return 0
 
     if args.accion == "add":
-        ident = args.id or f"{(args.dest or 'todos').lower()}-{args.depart or args.months}"
+        # El id lleva la cuenta dentro: sin eso, dos personas siguiendo "Roma
+        # en marzo" comparten id y la segunda pisa el seguimiento de la primera.
+        sufijo = f"-{args.owner.replace('u-', '')}" if args.owner else ""
+        ident = (
+            args.id or f"{(args.dest or 'todos').lower()}-{args.depart or args.months}{sufijo}"
+        )
         W.anadir(
             W.Watch(
                 id=ident,
@@ -690,18 +699,21 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 weekend_only=not args.any_day,
                 adults=args.adults or cfg.party_size,
                 max_price=args.max_price,
+                owner=args.owner or "",
+                owner_name=args.owner_name or "",
             )
         )
         print(f"Seguimiento '{ident}' guardado.")
         return 0
 
     if args.accion == "remove":
-        print("Borrado." if W.borrar(args.id or "") else "No existe ese seguimiento.")
+        borrado = W.borrar(args.id or "", args.owner or "")
+        print("Borrado." if borrado else "No existe ese seguimiento (o no es tuyo).")
         return 0
 
     if args.accion == "remove-search":
-        borrada = Store().delete_search(args.id or "")
-        print("Busqueda borrada." if borrada else "No existe esa busqueda.")
+        borrada = Store().delete_search(args.id or "", args.owner or "")
+        print("Busqueda borrada." if borrada else "No existe esa busqueda (o no es tuya).")
         return 0
 
     # run: lo que ejecuta el cron cada dia
@@ -724,39 +736,59 @@ def cmd_watch(args: argparse.Namespace) -> int:
 
     # El parte va siempre que haya algo que seguir: saber que se ha mirado y
     # no hay nada es informacion, y ademas confirma que el sistema sigue vivo.
+    #
+    # Un parte por destinatario: si Ana sigue Roma y tu sigues Praga, a Ana no
+    # le interesa Praga ni tiene por que enterarse de lo que sigues tu. Los
+    # seguimientos sin cuenta (o de una cuenta sin email) van al buzon de
+    # siempre, que es como funcionaba esto antes de que hubiera cuentas.
     if estado and not args.no_email:
-        from .notify import _send_with, render  # noqa: PLC0415
-
-        metodo = cfg.notify.get("method", "resend")
-        asunto = render.subject_watch_digest(estado)
-        cuerpo = render.render_watch_digest(estado)
-        enviado = False
-        for candidato in [metodo, "resend", "smtp", "github_issue"]:
-            try:
-                from .notify import _configured
-
-                if not _configured(candidato):
-                    continue
-                if candidato == "github_issue":
-                    from .notify import github_issue
-
-                    github_issue.send(asunto, "Parte diario de seguimientos.")
-                elif candidato == "resend":
-                    from .notify import resend
-
-                    resend.send(asunto, cuerpo, cfg.notify.get("to", ""))
-                else:
-                    from .notify import smtp
-
-                    smtp.send_email(asunto, cuerpo, cfg.notify.get("to", ""))
-                print(f"Parte diario enviado por {candidato}.")
-                enviado = True
-                break
-            except Exception as exc:  # noqa: BLE001
-                log.warning("Parte diario por %s fallo: %s", candidato, exc)
-        if not enviado:
-            log.error("No se pudo mandar el parte diario de seguimientos")
+        for destino, parte in _partes_por_dueno(estado, cfg).items():
+            _mandar_parte(cfg, parte, destino)
     return 0
+
+
+def _partes_por_dueno(estado: list, cfg: Config) -> dict[str, list]:
+    """Reparte los seguimientos revisados entre los buzones a los que van."""
+    from . import users as U
+
+    por_cuenta = {u.id: u for u in U.listar()}
+    defecto = cfg.notify.get("to", "")
+    partes: dict[str, list] = {}
+    for w, ofertas in estado:
+        cuenta = por_cuenta.get(getattr(w, "owner", "") or "")
+        destino = (cuenta.email if cuenta and cuenta.email else defecto) or defecto
+        partes.setdefault(destino, []).append((w, ofertas))
+    return partes
+
+
+def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
+    """Manda un parte diario, probando los transportes hasta que uno pase."""
+    from .notify import _configured, render  # noqa: PLC0415
+
+    asunto = render.subject_watch_digest(estado)
+    cuerpo = render.render_watch_digest(estado)
+    for candidato in [cfg.notify.get("method", "resend"), "resend", "smtp", "github_issue"]:
+        try:
+            if not _configured(candidato):
+                continue
+            if candidato == "github_issue":
+                from .notify import github_issue
+
+                github_issue.send(asunto, "Parte diario de seguimientos.")
+            elif candidato == "resend":
+                from .notify import resend
+
+                resend.send(asunto, cuerpo, destinatario)
+            else:
+                from .notify import smtp
+
+                smtp.send_email(asunto, cuerpo, destinatario)
+            print(f"Parte diario enviado por {candidato} a {destinatario or 'el buzon de siempre'}.")
+            return True
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Parte diario por %s fallo: %s", candidato, exc)
+    log.error("No se pudo mandar el parte diario de seguimientos a %s", destinatario)
+    return False
 
 
 # --------------------------------------------------------------------------- #
@@ -845,6 +877,73 @@ def cmd_test_email(args: argparse.Namespace) -> int:
     return 0
 
 
+# --------------------------------------------------------------------------- #
+# cuentas
+# --------------------------------------------------------------------------- #
+def cmd_users(args: argparse.Namespace) -> int:
+    """Altas y bajas de cuentas. Lo usa el panel a traves de users.yml."""
+    from . import users as U
+
+    # El panel manda la sal y el hash ya calculados por el navegador: la
+    # contrasena en claro no viaja nunca. Desde la terminal se pasa --password.
+    credencial = (
+        {"salt": args.salt, "hash": args.hash, "iterations": args.iterations}
+        if args.salt and args.hash
+        else None
+    )
+
+    if args.accion == "list":
+        cuentas = U.listar()
+        print(f"\n{len(cuentas)} cuentas" + ("" if U.hay_admin() else " · el panel aun no tiene contrasena"))
+        for u in cuentas:
+            print(
+                f"  [{'activa  ' if u.active else 'inactiva'}] {u.id}  {u.user:<16} "
+                f"{u.name}{'  <' + u.email + '>' if u.email else ''}"
+            )
+        return 0
+
+    if args.accion == "add":
+        try:
+            u = U.anadir(
+                user=args.user or "",
+                name=args.name or "",
+                password=args.password or "",
+                email=args.email or "",
+                credencial=credencial,
+                uid=args.id or "",
+            )
+        except ValueError as exc:
+            print(f"No se pudo crear la cuenta: {exc}")
+            return 1
+        print(f"Cuenta '{u.user}' creada con id {u.id}.")
+        return 0
+
+    if args.accion == "remove":
+        print("Cuenta borrada." if U.borrar(args.user or args.id or "") else "No existe esa cuenta.")
+        return 0
+
+    if args.accion in ("enable", "disable"):
+        ok = U.activar(args.user or args.id or "", args.accion == "enable")
+        print("Hecho." if ok else "No existe esa cuenta.")
+        return 0
+
+    if args.accion == "passwd":
+        if not credencial and not args.password:
+            print("Hace falta --password (o --salt/--hash desde el panel).")
+            return 1
+        ok = U.cambiar_password(args.user or args.id or "", args.password or "", credencial)
+        print("Contrasena cambiada." if ok else "No existe esa cuenta.")
+        return 0
+
+    # set-admin: la contrasena que abre el panel
+    if not credencial and not args.password:
+        print("Hace falta --password (o --salt/--hash desde el panel).")
+        return 1
+    U.set_admin(args.password or "", credencial)
+    print("Contrasena del panel guardada.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="tripfinder", description="Buscador de chollos de vuelo.")
     p.add_argument("-v", "--verbose", action="store_true")
@@ -881,6 +980,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--return", dest="return", help="Fecha exacta de vuelta (YYYY-MM-DD)")
     b.add_argument("--adults", type=int)
     b.add_argument("--summary-out")
+    b.add_argument("--owner", default="", help="Id de la cuenta que la pide")
+    b.add_argument("--owner-name", dest="owner_name", default="")
     b.add_argument("--dry-run", action="store_true")
     b.set_defaults(func=cmd_search)
 
@@ -906,8 +1007,24 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--adults", type=int)
     v.add_argument("--max-price", type=float, dest="max_price")
     v.add_argument("--any-day", action="store_true")
+    v.add_argument("--owner", default="", help="Id de la cuenta a la que pertenece")
+    v.add_argument("--owner-name", dest="owner_name", default="")
     v.add_argument("--no-email", action="store_true")
     v.set_defaults(func=cmd_watch)
+
+    c = sub.add_parser("users", help="Cuentas de la web: quien entra y de quien es cada cosa")
+    c.add_argument(
+        "accion", choices=["add", "list", "remove", "passwd", "enable", "disable", "set-admin"]
+    )
+    c.add_argument("--user", help="Nombre con el que entra (o el id)")
+    c.add_argument("--id", help="Id de la cuenta, si se quiere fijar")
+    c.add_argument("--name", help="Como se le llama en la web")
+    c.add_argument("--email", default="")
+    c.add_argument("--password", help="Solo para uso local: se hashea aqui mismo")
+    c.add_argument("--salt", help="Sal en base64 (la calcula el panel)")
+    c.add_argument("--hash", help="PBKDF2-SHA256 en base64 (lo calcula el panel)")
+    c.add_argument("--iterations", type=int, default=0)
+    c.set_defaults(func=cmd_users)
 
     sub.add_parser("reindex", help="Rehace el indice de busquedas").set_defaults(func=cmd_reindex)
 

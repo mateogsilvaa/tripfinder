@@ -128,6 +128,27 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [ ] **#43 · Coste total también en el listado** `ux`
   - Hoy el total sale al pedir alojamiento; podría precalcularse para el top de ofertas.
 
+## M9 · Cuentas  ✅ hecho
+
+- [x] **#44 · Panel con contraseña** `web` `infra`
+  - `/admin.html` pide la contraseña del panel (PBKDF2-SHA256 con sal en `data/users.json`,
+    calculado con WebCrypto). La primera vez se elige desde el propio panel.
+  - AC: ✅ con la clave mal, el panel no se pinta; al cerrar la pestaña vuelve a pedirla.
+- [x] **#45 · Alta de cuentas desde el panel** `web` `infra`
+  - Crear, desactivar, borrar y cambiar contraseñas. Va por `repository_dispatch` →
+    `users.yml` → `tripfinder users …`, con la sal y el hash ya calculados: la contraseña
+    en claro no llega nunca al log de Actions.
+  - AC: ✅ sin token de GitHub el panel lo dice y ofrece pegarlo; con token, commitea.
+- [x] **#46 · Lo de cada uno, de cada uno** `web` `core`
+  - Favoritos y grupo con la cuenta en la clave de `localStorage`; `owner` en seguimientos
+    y búsquedas, y el id de la cuenta dentro del nombre del fichero de búsqueda.
+  - AC: ✅ dos cuentas en el mismo navegador no se ven los favoritos ni los seguimientos.
+- [x] **#47 · Parte diario a quien le importa** `email`
+  - Cada cuenta con `email` recibe solo sus seguimientos; el resto va al buzón de siempre.
+- [ ] **#48 · Recuperar contraseña sin pasar por el panel** `nice-to-have`
+  - Hoy, si alguien la olvida, se la cambias tú desde el panel. No hay email de reseteo
+    porque no hay servidor que lo mande de forma fiable.
+
 ## M5 · Robustez y calidad
 
 - [x] **#25 · Tests de scoring y de parseo de providers** `infra`
