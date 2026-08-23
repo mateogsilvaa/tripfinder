@@ -145,9 +145,25 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
   - AC: ✅ dos cuentas en el mismo navegador no se ven los favoritos ni los seguimientos.
 - [x] **#47 · Parte diario a quien le importa** `email`
   - Cada cuenta con `email` recibe solo sus seguimientos; el resto va al buzón de siempre.
-- [ ] **#48 · Recuperar contraseña sin pasar por el panel** `nice-to-have`
-  - Hoy, si alguien la olvida, se la cambias tú desde el panel. No hay email de reseteo
-    porque no hay servidor que lo mande de forma fiable.
+- [x] **#48 · Un solo token, cifrado con la contraseña de cada cuenta** `infra` `web`
+  - El token se pega una vez en el panel y se publica cifrado (AES-GCM). Cada cuenta lleva
+    un sobre con la clave maestra cerrada con su contraseña; al entrar lo abre y saca el
+    token a `sessionStorage`. Ni el workflow ni el fichero publicado lo ven en claro.
+  - AC: ✅ verificado en navegador — con la contraseña mal no sale token, y el payload que
+    va a GitHub no contiene el token ni la contraseña.
+- [x] **#49 · Sin cuenta no se escribe** `web` `ux`
+  - Buscar, seguir, pedir alojamiento y guardar favoritos exigen sesión. Los formularios
+    salen apagados con el motivo puesto en vez de fallar al pulsar.
+- [x] **#50 · Qué correos y cada cuánto** `email` `ux`
+  - Por cuenta: frecuencia de chollos (en cuanto aparezca / diario / semanal / nunca), tope
+    de precio opcional, frecuencia del parte de seguimientos y "solo si hay novedades".
+    El "cada cuánto" se lleva en `state.json`.
+- [x] **#51 · El panel enseña qué tiene cada cuenta** `web`
+  - Sus seguimientos, sus búsquedas y sus preferencias, desplegando su fila. Los favoritos
+    no: viven en el navegador de cada uno y el panel no puede verlos.
+- [ ] **#52 · Recuperar contraseña sin pasar por el panel** `nice-to-have`
+  - Hoy, si alguien la olvida, se la cambias tú desde el panel (y eso le rehace el sobre).
+    No hay email de reseteo porque no hay servidor que lo mande de forma fiable.
 
 ## M5 · Robustez y calidad
 

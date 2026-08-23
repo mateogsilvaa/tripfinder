@@ -44,9 +44,32 @@ Lo que sí es de cada uno:
 | Seguimientos | `data/watch.json` | Campo `owner` en cada uno |
 | Búsquedas guardadas | `data/searches/*.json` | Campo `owner`, y el id de la cuenta entra en el nombre del fichero |
 | Parte diario de seguimientos | email | Cada cuenta al suyo si tiene `email`; el resto, al buzón de `notify.to` |
+| Qué correos y cada cuánto | `prefs` en `data/users.json` | Lo aplica `_reparto_de_chollos` y `_partes_por_dueno` en `cli.py`; el "cada cuánto" se lleva en `state.json` (`digest`, `watch_digest`) |
 
 Lo que no tiene `owner` es de antes de que hubiera cuentas: se sigue viendo desde
-todas, que es lo que ya hacía.
+todas, que es lo que ya hacía. Lo que sí necesita cuenta es **escribir**: buscar,
+seguir un viaje, pedir alojamiento o guardar un favorito.
+
+### El token, cifrado con sobres
+
+La web escribe en el repo con un token de GitHub, y ese token no puede ir en
+claro en un sitio público. Se guarda cifrado y solo lo abren las cuentas:
+
+```
+   clave maestra K  ── AES-GCM ──►  token         (data/users.json → "site")
+   contraseña de Ana ── PBKDF2 ──► clave ── AES-GCM ──► K   (su ficha → "sobre")
+```
+
+- Todo el cifrado ocurre en `web/auth.js` con WebCrypto. Python nunca ve el token
+  ni la clave maestra: `users.py` guarda cajas opacas y punto.
+- El token se pega una vez en el panel. Al crear una cuenta o cambiarle la
+  contraseña, el panel —que tiene K abierta en memoria— le fabrica su sobre.
+- Rotar el token no invalida los sobres: se vuelve a cifrar con la misma K.
+- La sal del sobre es **distinta** de la del login. Con la misma, la clave del
+  sobre serían los mismos bits que el hash publicado al lado y abrirlo saldría
+  gratis.
+- Cambiar una contraseña sin rehacer el sobre lo marca `stale`, para que el panel
+  lo cante en vez de enseñar una cuenta que dice que puede y luego no puede.
 
 ## Decisiones
 
@@ -60,12 +83,15 @@ todas, que es lo que ya hacía.
   devuelve la tarifa mas barata por destino y esa casi nunca es de viernes. Se pregunta por cada
   fin de semana, y esas ofertas se puntuan contra su propio historico (`RUTA|finde`).
 - **Fallo tolerado por provider.** Un adapter que revienta se registra y se ignora; el scan sigue.
-- **Las cuentas separan, no blindan.** El repo es público y `data/users.json` se sirve con la
-  web, así que los hashes los puede leer cualquiera: PBKDF2-SHA256 con 210.000 vueltas y sal por
-  cuenta hace cara la fuerza bruta, pero esto separa espacios de trabajo entre gente que se
-  conoce, no guarda secretos frente a un desconocido. Lo único que de verdad impide **escribir**
-  es el token de GitHub, que solo está en tu navegador: sin él no hay alta de cuentas, ni
-  seguimiento, ni búsqueda.
+- **Todo cuelga de la contraseña.** El repo es público y `data/users.json` se publica con la
+  web: los hashes y los sobres los lee cualquiera. PBKDF2-SHA256 con 210.000 vueltas y sal por
+  cuenta hace cara la fuerza bruta, pero el diseño entero se apoya en que las contraseñas sean
+  largas y no reutilizadas. Con eso, ni se saca el token ni se suplanta a nadie; sin eso, las dos
+  cosas.
+- **El token se pega una vez, no se reparte.** Antes cada persona tenía que crear el suyo y
+  pegarlo en su navegador. Ahora lo pone el administrador en el panel, va cifrado en el repo y
+  cada cuenta lo abre con su contraseña al entrar. Es lo que permite que la web sea usable por
+  alguien que no tiene (ni quiere) cuenta de GitHub.
 - **La contraseña se hashea en el navegador.** El panel manda al workflow la sal y el hash, nunca
   la clave: los logs de Actions se guardan noventa días y los ve cualquiera que pase por el repo.
 - **Nada de scraping agresivo.** Booking se resuelve con deep links; Airbnb es best-effort con

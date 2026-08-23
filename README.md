@@ -47,8 +47,9 @@ python -m tripfinder scan-flights --dry-run
    y opcionalmente `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`.
 6. `Settings → Pages → Source: GitHub Actions`.
 7. `Settings → Actions → General → Workflow permissions: Read and write`.
-8. Abre `/admin.html` en la web publicada y pon la contraseña del panel (la primera
-   vez la eliges tú). Desde ahí creas las cuentas de quien vaya a usarla:
+8. Abre `/admin.html` en la web publicada, pon la contraseña del panel (la primera
+   vez la eliges tú) y pega ahí tu token de GitHub: se guarda cifrado y las cuentas
+   lo abren solas. Desde ahí creas las cuentas de quien vaya a usarla:
    ver [Cuentas y panel](#cuentas-y-panel).
 
 ## Como te llegan los avisos
@@ -74,6 +75,7 @@ python -m tripfinder test-email --method github_issue
 python -m tripfinder users list                    # cuentas de la web
 python -m tripfinder users add --user ana --name Ana --password ... --email ana@…
 python -m tripfinder users set-admin --password ...   # la contraseña del panel
+python -m tripfinder users prefs --user ana --prefs '{"chollos":"semanal"}' 
 ```
 
 ## Estado
@@ -83,45 +85,94 @@ Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 
 ## Cuentas y panel
 
-Los chollos del día son un tablón público: los ve igual todo el que entre. Lo que
-**no** es de todos son los favoritos, los seguimientos y las búsquedas guardadas.
-Para eso hay cuentas.
+Los chollos del día son un tablón público: los ve igual todo el que entre. Todo
+lo demás —buscar, seguir un viaje, pedir alojamiento, guardar un favorito— se
+apunta a nombre de alguien, así que **sin cuenta no se puede**. Los formularios
+se ven, pero salen apagados y con el botón de entrar al lado.
 
 **El panel** (`/admin.html`, enlazado abajo del todo en cada página) pide una
-contraseña. La primera vez que entras no hay ninguna: la pones ahí mismo y se
-guarda —hasheada— en `data/users.json`. Desde dentro se crean las cuentas: nombre,
-usuario, contraseña y, si quieres, un email al que mandarle **su** parte diario de
-seguimientos. También se cambian contraseñas, se desactivan cuentas y sigue estando
-el registro de errores.
+contraseña. La primera vez que entras no hay ninguna: la pones ahí mismo. Desde
+dentro se crean las cuentas, se cambian contraseñas, se desactivan, y se ve de un
+vistazo qué tiene cada una: sus seguimientos, sus búsquedas guardadas y sus
+preferencias de correo. Sus favoritos no, y no es una decisión de diseño: viven
+en el navegador de cada uno y no se publican en ningún sitio, así que el panel no
+puede verlos.
 
-**Entrar** se hace con el botón de la barra de arriba, en cualquier página. A partir
-de ahí:
+**Entrar** se hace con el botón de la barra de arriba, en cualquier página.
 
-| Qué | Antes | Con cuenta |
+| Qué | Sin cuenta | Con cuenta |
 |---|---|---|
-| Chollos del día | los mismos para todos | igual: es un tablón, no cambia |
-| Favoritos y su histórico de precio | un cajón por navegador | uno por cuenta, en el mismo navegador |
-| Seguimientos | todos veían todos | cada uno los suyos |
-| Búsquedas guardadas | una pisaba a la otra si coincidían | un fichero por persona |
-| Parte diario por email | siempre al mismo buzón | al email de cada cuenta, si lo tiene |
+| Chollos del día | se ven | los mismos: es un tablón, no cambia |
+| Favoritos y su histórico de precio | — | uno por cuenta, en el mismo navegador |
+| Seguimientos | — | cada uno los suyos |
+| Búsquedas guardadas | se ven las que no tienen dueño | un fichero por persona |
+| Lanzar búsquedas y alojamiento | — | sí |
+| Correos | — | los que elija cada uno |
 
-Lo que ya estaba guardado antes de crear cuentas **no se pierde**: los seguimientos y
-las búsquedas sin dueño se siguen viendo desde todas las cuentas, y los favoritos que
-tuvieras en un navegador se los queda la primera cuenta que entre en él.
+### Qué correos y cada cuánto
+
+Cada cuenta lo decide en su propio botón (arriba a la derecha → tu nombre):
+
+| | Opciones |
+|---|---|
+| **Chollos del día** | en cuanto aparezca · como mucho uno al día · un resumen a la semana · ninguno |
+| …y solo si bajan de | un tope en € opcional, para no recibir lo que no te vas a plantear |
+| **Parte de tus seguimientos** | el de cada día · un resumen a la semana · ninguno |
+| Solo si hay novedades | calla el parte los días en que se ha mirado y no había nada |
+
+Con "en cuanto aparezca" llega lo que ha salido nuevo hoy. Con un resumen diario
+o semanal llega **lo mejor que hay vivo** en ese momento, no solo lo del día que
+toca: si no, un resumen de los martes se perdería los chollos de los otros seis
+días. El buzón de `notify.to` en el YAML sigue recibiendo lo de siempre, salvo
+que ya exista una cuenta con ese mismo email.
+
+### El token: uno solo, y cifrado
+
+La web escribe en el repositorio (una búsqueda es un commit), y para eso hace
+falta un token de GitHub. **No hay que repartirlo ni pegarlo en cada navegador**:
+se pega **una vez** en el panel y se publica cifrado.
+
+```
+   clave maestra K  ── AES-GCM ──►  token de GitHub        ← data/users.json
+   tu contraseña ── PBKDF2 ──► clave ── AES-GCM ──► K      ← tu "sobre"
+```
+
+Al entrar, tu contraseña abre tu sobre, el sobre da la clave maestra y esa abre
+el token. Cifrar y descifrar pasa entero en el navegador: ni el workflow ni el
+log de Actions ven nunca el token en claro, y en `data/users.json` solo hay dos
+cajas cerradas. **Quien mire el código de la web no saca el token si no tiene la
+contraseña de alguna cuenta**, y forzar un sobre cuesta lo mismo que forzar el
+login: PBKDF2-SHA256 con 210.000 vueltas y sal propia.
+
+El token descifrado vive en `sessionStorage`: al cerrar la pestaña desaparece y
+hay que volver a entrar. En disco solo queda lo cifrado.
+
+Detalles que conviene saber:
+
+- **Cambiar el token** (porque lo revocaste) es pegar el nuevo en el panel. Los
+  sobres siguen valiendo, así que nadie tiene que cambiar de contraseña.
+- **Una cuenta creada antes de guardar el token** no tiene sobre: entra y ve la
+  web, pero no puede lanzar nada. Se arregla poniéndole una contraseña nueva
+  desde el panel, que es lo que le entrega su sobre.
+- **Cambiar una contraseña desde la terminal** (`tripfinder users passwd`) deja
+  el sobre viejo, que ya no abre: el panel marca esa cuenta en rojo. Los cambios
+  de contraseña, mejor desde el panel.
+- **Si pierdes la contraseña del panel**, se pierde la clave maestra: hay que
+  poner el token otra vez y volver a dar contraseña a cada cuenta.
 
 ### Hasta dónde llega esto
 
-Conviene decirlo claro, porque la palabra "contraseña" promete más de lo que hay: el
-repositorio es público y `data/users.json` se publica con la web, así que **los hashes
-los puede leer cualquiera**. Son PBKDF2-SHA256 con 210.000 vueltas y sal por cuenta —
-sacar de ahí una contraseña decente cuesta mucho tiempo y dinero—, pero esto sirve
-para **separar lo de cada uno entre gente que se conoce y comparte la web**, no para
-guardar secretos frente a un desconocido con ganas. Elige contraseñas que no uses en
-ningún otro sitio.
+Conviene decirlo claro: el repositorio es público y `data/users.json` se publica
+con la web, así que **los hashes y los sobres los puede leer cualquiera**. Todo
+lo de arriba se apoya en una sola cosa: que las contraseñas sean buenas. Con una
+contraseña larga y que no uses en ningún otro sitio, sacar de ahí el token o
+suplantar a alguien es carísimo; con "1234", no. Elige bien las que reparte el
+panel.
 
-Lo que sí cierra de verdad es la escritura: crear una cuenta, apuntar un seguimiento o
-lanzar una búsqueda son commits en el repo, y para eso hace falta el token de GitHub,
-que solo está en tu navegador. Sin token, el panel no deja crear nada.
+Y lo que sí es un límite duro: el token es de escritura sobre el repo. Cualquiera
+que **tenga cuenta** puede, si se lo propone, usarlo para escribir en él. Está
+pensado para gente que se conoce; si un día alguien sobra, desactiva su cuenta,
+revoca el token en GitHub y pega uno nuevo en el panel.
 
 ## Buscador personalizado
 

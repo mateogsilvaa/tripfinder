@@ -62,6 +62,110 @@ async function tfComprobar(password, guardado) {
   return tfIguales(calculado.hash, String(guardado.hash));
 }
 
+/* ------------------------------------------------------------------ sobres
+   El token con el que la web escribe en el repo no puede ir en claro: el sitio
+   es publico y cualquiera vería el codigo. Va cifrado, y la llave de abrirlo la
+   tienen solo las cuentas:
+
+     clave maestra K  --AES-GCM-->  token          (en data/users.json, "site")
+     tu contrasena --PBKDF2--> clave --AES-GCM--> K   (en tu ficha, "sobre")
+
+   Al entrar, tu contrasena abre tu sobre, el sobre da K y K abre el token. Quien
+   mire el fichero sin la contrasena de ninguna cuenta ve dos cajas cerradas, y
+   forzarlas cuesta lo mismo que forzar el login: PBKDF2 con 210.000 vueltas.
+
+   La sal del sobre es DISTINTA de la del login a proposito. Con la misma, la
+   clave del sobre serían los mismos bits que el hash que se publica al lado, y
+   entonces abrir el sobre no costaría nada: bastaria con copiar el hash. */
+async function tfClaveDe(password, saltB64, iteraciones = TF_ITERACIONES) {
+  if (!tfCryptoOK()) throw new Error("Este navegador no puede cifrar aquí (hace falta https).");
+  const base = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveKey"]
+  );
+  return crypto.subtle.deriveKey(
+    { name: "PBKDF2", hash: "SHA-256", salt: tfDeB64(saltB64), iterations: iteraciones },
+    base,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt", "decrypt"]
+  );
+}
+
+async function tfCifrar(clave, texto) {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const datos = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    clave,
+    new TextEncoder().encode(texto)
+  );
+  return { iv: tfB64(iv), data: tfB64(datos) };
+}
+
+async function tfDescifrar(clave, caja) {
+  const claro = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: tfDeB64(caja.iv) },
+    clave,
+    tfDeB64(caja.data)
+  );
+  return new TextDecoder().decode(claro);
+}
+
+/* La clave maestra se genera una sola vez, cuando pones el token en el panel. */
+const tfNuevaMaestra = () => tfB64(crypto.getRandomValues(new Uint8Array(32)));
+
+/* Cerrar la clave maestra con una contrasena: esto es "darle acceso a alguien". */
+async function tfHacerSobre(password, maestraB64) {
+  const salt = tfB64(crypto.getRandomValues(new Uint8Array(16)));
+  const clave = await tfClaveDe(password, salt);
+  const caja = await tfCifrar(clave, maestraB64);
+  return { salt, iterations: TF_ITERACIONES, ...caja };
+}
+
+/* Y abrirla. Devuelve "" si la contrasena no es la de ese sobre: AES-GCM avisa
+   solo, porque el tag de autenticacion no cuadra. */
+async function tfAbrirSobre(password, sobre) {
+  if (!sobre || !sobre.data || !sobre.salt) return "";
+  try {
+    const clave = await tfClaveDe(password, sobre.salt, Number(sobre.iterations) || TF_ITERACIONES);
+    return await tfDescifrar(clave, sobre);
+  } catch {
+    return "";
+  }
+}
+
+/* El token del sitio, abierto con la clave maestra. */
+async function tfAbrirToken(maestraB64, site) {
+  const caja = (site || {}).token;
+  if (!maestraB64 || !caja || !caja.data) return "";
+  try {
+    const clave = await crypto.subtle.importKey(
+      "raw",
+      tfDeB64(maestraB64),
+      { name: "AES-GCM" },
+      false,
+      ["encrypt", "decrypt"]
+    );
+    return await tfDescifrar(clave, caja);
+  } catch {
+    return "";
+  }
+}
+
+async function tfCerrarToken(maestraB64, token) {
+  const clave = await crypto.subtle.importKey(
+    "raw",
+    tfDeB64(maestraB64),
+    { name: "AES-GCM" },
+    false,
+    ["encrypt", "decrypt"]
+  );
+  return tfCifrar(clave, token);
+}
+
 /* ------------------------------------------------------------- las cuentas */
 let TF_USERS_CACHE = null;
 
@@ -73,12 +177,13 @@ async function tfLeerUsuarios(forzar = false) {
     const d = await r.json();
     TF_USERS_CACHE = {
       admin: d.admin || {},
+      site: d.site || {},
       users: Array.isArray(d.users) ? d.users : [],
       updated: d.updated || "",
     };
   } catch {
     // Sin fichero (aun no hay cuentas) la web funciona igual, en modo compartido.
-    TF_USERS_CACHE = { admin: {}, users: [], updated: "" };
+    TF_USERS_CACHE = { admin: {}, site: {}, users: [], updated: "" };
   }
   return TF_USERS_CACHE;
 }
@@ -92,16 +197,35 @@ async function tfLeerUsuarios(forzar = false) {
    Dicho de otra forma: la contrasena del panel es la puerta de la casa, pero
    la cerradura de verdad es el token. Sin el no se escribe nada. */
 const TF_REPO = "mateogsilvaa/tripfinder";
-const TF_TOKEN_KEY = "tf_token";
+const TF_TOKEN_KEY = "tf_token"; // el que se pega a mano (solo tú, para el panel)
+const TF_TOKEN_SESION = "tf_token_abierto"; // el que sale del sobre al entrar
+
+/* Vive en sessionStorage y no en localStorage a proposito: al cerrar la pestana
+   desaparece y hay que volver a entrar para sacarlo del sobre. En disco solo
+   queda lo cifrado. */
 const tfToken = () => {
   try {
-    return localStorage.getItem(TF_TOKEN_KEY) || "";
+    return sessionStorage.getItem(TF_TOKEN_SESION) || localStorage.getItem(TF_TOKEN_KEY) || "";
   } catch {
     return "";
   }
 };
 
+const tfGuardarTokenSesion = (token) => {
+  try {
+    if (token) sessionStorage.setItem(TF_TOKEN_SESION, token);
+    else sessionStorage.removeItem(TF_TOKEN_SESION);
+  } catch {
+    /* navegacion privada: el token dura lo que dura la pagina */
+  }
+};
+
 async function tfDispatch(evento, payload) {
+  // Lanzar un scraper escribe en el repo y lo que escribe lleva tu nombre: sin
+  // cuenta no hay a quien apuntarselo, asi que no se manda.
+  if (!tfSesion() && !localStorage.getItem(TF_TOKEN_KEY)) {
+    return { ok: false, reason: "sin-cuenta" };
+  }
   const token = tfToken();
   if (!token) return { ok: false, reason: "sin-token" };
   const r = await fetch(`https://api.github.com/repos/${TF_REPO}/dispatches`, {
@@ -144,6 +268,33 @@ async function tfDispatch(evento, payload) {
   return { ok: false, reason: `error ${r.status}. ${detalle}` };
 }
 
+/* Prueba el token contra un endpoint inofensivo y dice exactamente que pasa.
+   Sin esto, un permiso mal puesto se manifiesta como "el boton no hace nada". */
+async function tfProbarToken() {
+  const token = tfToken();
+  if (!token) return "No hay ningún token disponible.";
+  try {
+    const r = await fetch(`https://api.github.com/repos/${TF_REPO}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
+    });
+    if (r.status === 200) {
+      const d = await tfDispatch("ping", { origen: "prueba" });
+      return d.ok
+        ? "Token correcto y con permiso para lanzar búsquedas. ✓"
+        : `El token lee el repo, pero no puede lanzar búsquedas → ${d.reason}`;
+    }
+    if (r.status === 401) return "Token inválido o caducado (401). Crea uno nuevo.";
+    if (r.status === 404)
+      return (
+        "404: el token no tiene acceso a este repositorio. Al crearlo hay que elegir " +
+        `"Only select repositories" → ${TF_REPO}, no "Public repositories".`
+      );
+    return `GitHub responde ${r.status}.`;
+  } catch (err) {
+    return `No se pudo contactar con GitHub: ${err.message}`;
+  }
+}
+
 /* ------------------------------------------------------------------ sesion */
 function tfSesion() {
   try {
@@ -178,14 +329,32 @@ async function tfEntrar(usuario, password) {
   }
   if (!vale) return { ok: false, error: "Contraseña incorrecta." };
 
-  const sesion = { uid: u.id, user: u.user, name: u.name || u.user, desde: Date.now() };
+  // La contrasena abre el sobre, el sobre da la clave maestra y esa abre el
+  // token con el que la web escribe. Es lo unico que se hace con la contrasena
+  // aparte de comprobarla, y pasa entero aqui dentro.
+  let token = "";
+  if (u.sobre && u.sobre.data && !u.sobre.stale) {
+    const maestra = await tfAbrirSobre(password, u.sobre);
+    token = maestra ? await tfAbrirToken(maestra, datos.site) : "";
+  }
+
+  const sesion = {
+    uid: u.id,
+    user: u.user,
+    name: u.name || u.user,
+    prefs: u.prefs || {},
+    desde: Date.now(),
+  };
   try {
     localStorage.setItem(TF_SESION_KEY, JSON.stringify(sesion));
   } catch {
     return { ok: false, error: "Este navegador no deja guardar la sesión." };
   }
+  tfGuardarTokenSesion(token);
   tfAdoptarAnonimos(u.id);
-  return { ok: true, sesion };
+  // Entrar funciona igual sin token (ver la web, los favoritos); lo que no se
+  // puede sin el es lanzar nada, y la web lo dice donde toca.
+  return { ok: true, sesion, puedeEscribir: !!token };
 }
 
 function tfSalir() {
@@ -194,7 +363,11 @@ function tfSalir() {
   } catch {
     /* nada que hacer */
   }
+  tfGuardarTokenSesion("");
 }
+
+/* Si la web puede escribir ahora mismo: hay cuenta dentro y token abierto. */
+const tfPuedeEscribir = () => !!tfToken() && (!!tfSesion() || !!localStorage.getItem(TF_TOKEN_KEY));
 
 /* La primera vez que alguien entra en un navegador que ya tenia favoritos sin
    cuenta, se los queda. Si no, al crear la cuenta parecia que se habian
@@ -315,26 +488,112 @@ async function tfAbrirLogin() {
   caja.querySelector("#tfLoginUser").focus();
 }
 
-function tfAbrirCuenta() {
+/* Las opciones de correo. Solo lo que el sistema puede cumplir de verdad: el
+   scan de vuelos y el repaso diario de seguimientos son los dos unicos sitios
+   desde los que sale un email, asi que son las dos unicas cosas que hay que
+   decidir. Una lista de opciones que no se cumplen es peor que no tenerlas. */
+const TF_FREQ_CHOLLOS = [
+  ["cada_vez", "En cuanto aparezca"],
+  ["diario", "Como mucho uno al día"],
+  ["semanal", "Un resumen a la semana"],
+  ["nunca", "Ninguno"],
+];
+const TF_FREQ_SEGUIMIENTOS = [
+  ["diario", "El parte de cada día"],
+  ["semanal", "Un resumen a la semana"],
+  ["nunca", "Ninguno"],
+];
+
+const tfOpciones = (lista, elegido) =>
+  lista
+    .map(([v, t]) => `<option value="${v}"${v === elegido ? " selected" : ""}>${t}</option>`)
+    .join("");
+
+async function tfAbrirCuenta() {
   const s = tfSesion();
   if (!s) return tfAbrirLogin();
+  // Del fichero, no de la sesion: si lo cambiaste desde otro sitio, manda lo
+  // publicado, no lo que se guardo en este navegador el dia que entraste.
+  const datos = await tfLeerUsuarios(true);
+  const yo = datos.users.find((u) => u.id === s.uid) || {};
+  const prefs = yo.prefs || {};
+  const puede = tfPuedeEscribir();
+
   const caja = tfModal(`
     <header class="modal-head">
       <h2>${tfEsc(s.name || s.user)}</h2>
       <button data-cerrar aria-label="Cerrar">✕</button>
     </header>
-    <div class="modal-form">
+    <form id="tfPrefsForm" class="modal-form">
       <p class="meta">
         Estás dentro como <strong>${tfEsc(s.user)}</strong>. Tus favoritos, tus
-        seguimientos y tus búsquedas solo los ves tú en esta web.
+        seguimientos y tus búsquedas solo los ves tú.
+        ${
+          puede
+            ? ""
+            : `<br><span class="ojo">Esta cuenta no puede lanzar búsquedas todavía:
+               pídele al administrador que te ponga una contraseña nueva desde el panel.</span>`
+        }
       </p>
-      <button class="btn ghost" id="tfSalir">Salir de la cuenta</button>
-    </div>`);
+
+      <label for="tfEmail">Tus avisos van a</label>
+      <input id="tfEmail" type="email" autocomplete="email" placeholder="sin email: no recibes nada"
+        value="${tfEsc(yo.email || "")}">
+
+      <label for="tfChollos">Chollos del día</label>
+      <select id="tfChollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
+
+      <label for="tfTope">…y solo si bajan de (€, opcional)</label>
+      <input id="tfTope" type="number" min="0" step="10" placeholder="sin tope"
+        value="${prefs.chollos_max_precio ? Math.round(prefs.chollos_max_precio) : ""}">
+
+      <label for="tfSeg">Parte de tus seguimientos</label>
+      <select id="tfSeg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
+
+      <label class="switch suelto">
+        <input type="checkbox" id="tfSoloNov"${prefs.seguimientos_solo_novedades ? " checked" : ""}>
+        <span>Solo cuando haya algo nuevo que contar</span>
+      </label>
+
+      <p class="token-status" id="tfPrefsMsg"></p>
+      <button class="btn primary" type="submit">Guardar</button>
+      <button class="btn ghost" type="button" id="tfSalir">Salir de la cuenta</button>
+    </form>`);
+
   caja.querySelector("#tfSalir").addEventListener("click", () => {
     tfSalir();
     tfCerrarModal();
     location.reload();
   });
+
+  caja.querySelector("#tfPrefsForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = caja.querySelector("#tfPrefsMsg");
+    const tope = Number(caja.querySelector("#tfTope").value);
+    msg.textContent = "Guardando…";
+    const r = await tfDispatch("user_prefs", {
+      user: s.user,
+      email: caja.querySelector("#tfEmail").value.trim(),
+      prefs: {
+        chollos: caja.querySelector("#tfChollos").value,
+        chollos_max_precio: tope > 0 ? tope : null,
+        seguimientos: caja.querySelector("#tfSeg").value,
+        seguimientos_solo_novedades: caja.querySelector("#tfSoloNov").checked,
+      },
+    });
+    msg.textContent = r.ok
+      ? "Guardado. Tarda un par de minutos en publicarse."
+      : tfExplicarFallo(r);
+  });
+}
+
+/* El mismo mensaje en todos los sitios donde algo no se puede lanzar. */
+function tfExplicarFallo(r) {
+  if (r.reason === "sin-cuenta") return "Para esto hay que entrar con una cuenta.";
+  if (r.reason === "sin-token" || r.reason === "token-invalido") {
+    return "Esta cuenta no tiene acceso para escribir: pídele al administrador una contraseña nueva.";
+  }
+  return "No se pudo: " + r.reason;
 }
 
 if (document.readyState === "loading") {

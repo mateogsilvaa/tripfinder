@@ -238,6 +238,9 @@ function wireFavs(raiz = document) {
     b.addEventListener("click", (ev) => {
       ev.stopPropagation();
       ev.preventDefault();
+      // Un favorito es de alguien: guardarlo sin cuenta lo dejaria en un cajon
+      // que no es de nadie y que la siguiente persona que entre se encontraria.
+      if (!tfUid()) return tfAbrirLogin();
       const id = b.dataset.fav;
       const o = OFFERS.find((x) => x.id === id) || SEARCH_OFFERS[id] || FAVS[id];
       if (o) alternar(o);
@@ -297,7 +300,56 @@ function deltaHTML(o) {
 }
 
 /* El aviso de arriba. Es lo que hace que "la web te avise": vive en las tres
-   paginas, porque el barrido de precios ocurre en todas. */
+   paginas, porque el barrido de precios ocurre en todas.
+
+   Antes era una lista de renglones monoespaciados donde todo pesaba igual y el
+   dato que importa —cuanto ha bajado— iba escondido al final de la frase. Ahora
+   cada cambio es una ficha: el precio nuevo grande, el viejo tachado al lado, la
+   diferencia en un sello de color y la curva de los ultimos dias detras. Se lee
+   de un vistazo y desde lejos, que es justo para lo que sirve un aviso. */
+function avisoFicha(f) {
+  const { antes, ahora } = f.cambio;
+  const baja = ahora < antes;
+  const dif = Math.abs(ahora - antes);
+  const pct = antes > 0 ? Math.round((dif / antes) * 100) : 0;
+  const serie = Array.isArray(f.historia) ? f.historia : [];
+  const minimo = serie.length ? Math.min(...serie.map((h) => Number(h.p))) : ahora;
+  // "Lo mas barato que has visto" es la unica insignia que se gana sola: dice
+  // que ahora mismo esta mejor que cualquier dia desde que lo guardaste.
+  const record = baja && ahora <= minimo + 0.01 && serie.length > 2;
+  const enlace = f.deep_link || f.airline_link || "";
+
+  return `
+    <article class="cambio ${baja ? "baja" : "sube"}">
+      <header>
+        <h4>${esc(f.destination_name || f.destination)}</h4>
+        <p>${esc(f.origin || "MAD")}–${esc(f.destination)} · ${fmtDate(f.depart_date, true)}${
+    f.return_date ? ` → ${fmtDate(f.return_date, true)}` : ""
+  }${f.airline ? ` · ${esc(f.airline)}` : ""}</p>
+      </header>
+
+      <div class="cambio-precio">
+        <s>${Math.round(antes)} €</s>
+        <b>${Math.round(ahora)}<span>€</span></b>
+        <em class="sello-dif">${baja ? "▼" : "▲"} ${Math.round(dif)} €${
+    pct ? ` · ${pct}%` : ""
+  }</em>
+        <span class="cambio-nota">por persona</span>
+      </div>
+
+      <div class="cambio-curva">${sparkline(serie, 132, 34)}</div>
+
+      <footer>
+        ${record ? '<span class="insignia">lo más barato que has visto</span>' : ""}
+        ${
+          enlace
+            ? `<a class="btn ghost small" href="${esc(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
+            : ""
+        }
+      </footer>
+    </article>`;
+}
+
 function refrescarAvisoFavs() {
   const caja = document.getElementById("favAviso");
   if (!caja) return;
@@ -309,33 +361,38 @@ function refrescarAvisoFavs() {
   }
   const bajan = cambios.filter((f) => f.cambio.ahora < f.cambio.antes);
   const suben = cambios.filter((f) => f.cambio.ahora > f.cambio.antes);
-  const linea = (f) => {
-    const baja = f.cambio.ahora < f.cambio.antes;
-    return `<li class="${baja ? "baja" : "sube"}">
-      <b>${esc(f.destination_name || f.destination)}</b>
-      <span>${fmtDate(f.depart_date)}${f.return_date ? ` → ${fmtDate(f.return_date)}` : ""}</span>
-      <em>${baja ? "▼" : "▲"} de ${Math.round(f.cambio.antes)} € a ${Math.round(
-      f.cambio.ahora
-    )} € por persona</em>
-    </li>`;
-  };
-  const titulo =
-    bajan.length && suben.length
-      ? `${bajan.length} favorito${bajan.length > 1 ? "s" : ""} más barato${
-          bajan.length > 1 ? "s" : ""
-        }, ${suben.length} más caro${suben.length > 1 ? "s" : ""}`
-      : bajan.length
-      ? `Ha bajado de precio${bajan.length > 1 ? ` (${bajan.length})` : ""}`
-      : `Ha subido de precio${suben.length > 1 ? ` (${suben.length})` : ""}`;
+  const suma = (lista) =>
+    Math.round(lista.reduce((t, f) => t + Math.abs(f.cambio.ahora - f.cambio.antes), 0));
+
+  // El titular dice lo unico que se quiere saber antes de leer nada: cuanto
+  // dinero se mueve y en que direccion. Manda lo que baja, que es lo que hace
+  // que te levantes a mirar; lo que sube va detras y en pequeño.
+  const cuantos = (n) => `${n} favorito${n > 1 ? "s" : ""}`;
+  const titulo = bajan.length ? `Baja ${suma(bajan)} €` : `Sube ${suma(suben)} €`;
+  const detalle = bajan.length
+    ? `en ${cuantos(bajan.length)}` +
+      (suben.length ? ` · ${suben.length > 1 ? "otros" : "otro"} sube${
+        suben.length > 1 ? "n" : ""
+      } ${suma(suben)} €` : "")
+    : `en ${cuantos(suben.length)}`;
+
+  // La banda de arriba se reparte como se reparten los cambios: si todo baja es
+  // verde entera, y si hay de todo se ve la proporcion sin contar nada.
+  const proporcion = Math.round((bajan.length / cambios.length) * 100);
+  caja.style.setProperty("--pbaja", `${proporcion}%`);
 
   caja.hidden = false;
   caja.innerHTML = `
-    <h3>${esc(titulo)}</h3>
-    <ul>${bajan.concat(suben).map(linea).join("")}</ul>
-    <div class="aviso-pie">
-      <a href="seguimientos.html#favoritos">Ver mis favoritos</a>
+    <div class="aviso-head">
+      <span class="kicker">cambio de precio</span>
+      <h3>${esc(titulo)}<small>${esc(detalle)}</small></h3>
       <button class="btn ghost small" id="favVisto">Enterado</button>
+    </div>
+    <div class="cambios">${bajan.concat(suben).map(avisoFicha).join("")}</div>
+    <div class="aviso-pie">
+      <a href="seguimientos.html#favoritos">Ver todos mis favoritos</a>
     </div>`;
+
   const boton = document.getElementById("favVisto");
   if (boton) {
     boton.addEventListener("click", () => {
@@ -566,8 +623,6 @@ function historiaHTML(o) {
    La llamada vive en auth.js porque el panel de administracion tambien la usa
    para dar de alta cuentas, y dos copias de esto acaban diciendo cosas
    distintas el dia que GitHub cambia un codigo de error. */
-const TOKEN_KEY = "tf_token";
-const getToken = () => localStorage.getItem(TOKEN_KEY) || "";
 const dispatch = (evento, payload) => tfDispatch(evento, payload);
 
 /* Lo que va en cada encargo para saber de quien es. Sin sesion va vacio: eso
@@ -579,11 +634,38 @@ const comoDueno = () => ({ owner: tfUid(), owner_name: tfNombre() });
    que es lo que ya hacia. Lo que si tiene dueño lo ve solo su dueño. */
 const esMio = (x) => !x || !x.owner || x.owner === tfUid();
 
+/* Los tres motivos por los que un encargo no sale, y todos se arreglan igual:
+   entrando con una cuenta que tenga acceso. */
+const esFaltaDeAcceso = (r) =>
+  r.reason === "sin-cuenta" || r.reason === "sin-token" || r.reason === "token-invalido";
+
 /* El cartelito para cuando algo esta oculto por no haber entrado. */
 function avisoDeCuenta(cuantos, que) {
   if (!cuantos || tfUid()) return "";
   return `<p class="meta cuenta-nota">Hay ${cuantos} ${que} de otras cuentas.
     <button class="btn ghost small" type="button" data-entrar>Entrar</button></p>`;
+}
+
+/* Sin cuenta, los formularios que escriben en el repo se quedan a la vista pero
+   apagados, con el motivo puesto. Es mas honesto que dejarlos vivos y fallar al
+   darle al boton, y ademas se ve de un vistazo que la web tiene cuentas. */
+function candarFormularios() {
+  if (tfUid()) return;
+  [
+    ["#finderForm", "buscar"],
+    ["#watchForm", "seguir un viaje"],
+  ].forEach(([sel, que]) => {
+    const form = document.querySelector(sel);
+    if (!form) return;
+    form.querySelectorAll("input, select, button, textarea").forEach((c) => (c.disabled = true));
+    form.classList.add("candado");
+    form.insertAdjacentHTML(
+      "beforeend",
+      `<p class="candado-nota">Para ${que} hace falta una cuenta.
+        <button class="btn primary small" type="button" data-entrar>Entrar</button></p>`
+    );
+  });
+  wireEntrar(document);
 }
 
 /* Un solo sitio donde enganchar el boton de entrar que sale en esos avisos. */
@@ -596,70 +678,25 @@ function wireEntrar(raiz = document) {
   );
 }
 
-/* Prueba el token contra un endpoint inofensivo y dice exactamente que pasa.
-   Sin esto, un permiso mal puesto se manifiesta como "el boton no hace nada". */
-async function probarToken() {
-  const token = getToken();
-  if (!token) return "No hay ningún token guardado en este navegador.";
-  try {
-    const r = await fetch(`https://api.github.com/repos/${REPO}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json" },
-    });
-    if (r.status === 200) {
-      const permisos = r.headers.get("x-accepted-github-permissions") || "";
-      const d = await dispatch("ping", { origen: "prueba" });
-      return d.ok
-        ? "Token correcto y con permiso para lanzar búsquedas. ✓"
-        : `El token lee el repo, pero no puede lanzar búsquedas → ${d.reason}` +
-          (permisos ? ` (GitHub espera: ${permisos})` : "");
-    }
-    if (r.status === 401) return "Token inválido o caducado (401). Crea uno nuevo.";
-    if (r.status === 404)
-      return (
-        "404: el token no tiene acceso a este repositorio. Al crearlo hay que elegir " +
-        `"Only select repositories" → ${REPO}, no "Public repositories".`
-      );
-    return `GitHub responde ${r.status}.`;
-  } catch (err) {
-    return `No se pudo contactar con GitHub: ${err.message}`;
-  }
-}
-
-function tokenBox(alTerminar) {
-  const nuevo = `https://github.com/settings/personal-access-tokens/new`;
+/* Lo que se enseña cuando algo no se puede lanzar. Ya no se pide el token a
+   nadie: lo pone el administrador una vez en el panel, cifrado, y cada cuenta lo
+   abre con su contraseña al entrar. Aquí solo queda decir qué falta. */
+function cajaAcceso(r) {
+  const sinCuenta = r.reason === "sin-cuenta";
   return {
     html: `
       <div class="token-box">
-        <strong>Una sola vez:</strong> pega aquí un token de GitHub para que la web
-        pueda lanzar los scrapers sola, sin abrir issues.
-        <a href="${nuevo}" target="_blank" rel="noopener">Crear token</a>
-        (fine-grained, solo este repo, permiso <em>Contents: Read and write</em>).
-        <input type="password" id="tokenInput" placeholder="github_pat_…" autocomplete="off">
-        <button class="btn ghost small" id="tokenSave">Guardar en este navegador</button>
-        <button class="btn ghost small" id="tokenTest">Probar conexión</button>
-        <p class="token-status" id="tokenStatus"></p>
+        <strong>${sinCuenta ? "Hace falta una cuenta." : "Tu cuenta no puede lanzar esto."}</strong>
+        ${
+          sinCuenta
+            ? `Los chollos del día los ve todo el mundo, pero buscar, seguir un viaje
+               o pedir alojamiento se guarda a tu nombre. Entra y lo lanzamos.`
+            : `No tiene acceso para escribir: pídele al administrador que te ponga
+               una contraseña nueva desde el panel y vuelve a entrar.`
+        }
+        ${sinCuenta ? '<button class="btn primary small" data-entrar type="button">Entrar</button>' : ""}
       </div>`,
-    wire: () => {
-      const guardar = document.getElementById("tokenSave");
-      const probar = document.getElementById("tokenTest");
-      const estado = document.getElementById("tokenStatus");
-      if (guardar) {
-        guardar.addEventListener("click", () => {
-          const v = document.getElementById("tokenInput").value.trim();
-          if (!v) return;
-          localStorage.setItem(TOKEN_KEY, v);
-          alTerminar();
-        });
-      }
-      if (probar) {
-        probar.addEventListener("click", async () => {
-          const v = document.getElementById("tokenInput").value.trim();
-          if (v) localStorage.setItem(TOKEN_KEY, v);
-          estado.textContent = "Probando…";
-          estado.textContent = await probarToken();
-        });
-      }
-    },
+    wire: () => wireEntrar(document),
   };
 }
 
@@ -1178,8 +1215,8 @@ function askForSearch(offer, aviso = "") {
       startPolling(offer.id);
       return;
     }
-    if (r.reason === "sin-token" || r.reason === "token-invalido") {
-      const caja = tokenBox(() => askForSearch(offer));
+    if (esFaltaDeAcceso(r)) {
+      const caja = cajaAcceso(r);
       $("#panelBody").insertAdjacentHTML("beforeend", caja.html);
       caja.wire();
       return;
@@ -1398,9 +1435,9 @@ on("#finderForm", "submit", async (e) => {
     loadSearches();
     return;
   }
-  if (r.reason === "sin-token" || r.reason === "token-invalido") {
-    const caja = tokenBox(() => $("#finderForm").requestSubmit());
-    $("#searches").innerHTML = caja.html;
+  if (esFaltaDeAcceso(r)) {
+    const caja = cajaAcceso(r);
+    $("#searches").innerHTML = caja.html + $("#searches").innerHTML;
     caja.wire();
     return;
   }
@@ -1570,6 +1607,7 @@ async function toggleSearch(el) {
 init();
 loadSearches();
 cargarWatches();
+candarFormularios();
 pintarListaFavs();
 refrescarAvisoFavs();
 // Un favorito puede venir de una búsqueda que no está abierta: se repasan
@@ -1776,9 +1814,9 @@ on("#watchForm", "submit", async (e) => {
     setTimeout(cargarWatches, 45000);
     return;
   }
-  if (r.reason === "sin-token" || r.reason === "token-invalido") {
-    const caja = tokenBox(() => $("#watchForm").requestSubmit());
-    $("#watches").innerHTML = caja.html;
+  if (esFaltaDeAcceso(r)) {
+    const caja = cajaAcceso(r);
+    $("#watches").innerHTML = caja.html + $("#watches").innerHTML;
     caja.wire();
     return;
   }

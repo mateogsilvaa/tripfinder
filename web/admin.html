@@ -65,6 +65,22 @@
     </section>
 
     <div id="avisoCuentas" class="hint"></div>
+
+    <section id="cajaToken" class="finder abierta" hidden>
+      <div class="finder-body">
+        <h3 class="watch-head">El token de la web</h3>
+        <p class="finder-lede" id="tokenLede"></p>
+        <form id="formToken" class="finder-form">
+          <div class="field grow">
+            <label for="tokenNuevo">Token de GitHub</label>
+            <input type="password" id="tokenNuevo" placeholder="github_pat_…" autocomplete="off">
+          </div>
+          <button class="btn primary" type="submit">Guardar cifrado</button>
+        </form>
+        <p class="token-status" id="tokenMsg"></p>
+      </div>
+    </section>
+
     <section id="cuentas" class="rows"></section>
 
     <details class="finder" id="cajaLog">
@@ -100,6 +116,13 @@
    todo lo que se toca aquí acaba siendo un commit en data/users.json. */
 const $ = (s) => document.querySelector(s);
 const esc = tfEsc;
+
+/* La clave maestra: con ella se cifra el token del sitio y se hacen los sobres
+   de cada cuenta. Solo existe en memoria y solo mientras el panel esta abierto;
+   se saca del sobre del panel con la contraseña que acabas de escribir, y no se
+   guarda en ningún sitio del navegador. Cerrar la pestaña la borra. */
+let MAESTRA = "";
+let CLAVE_PANEL = "";  // hace falta para volver a cerrar el sobre del panel
 
 // Mientras la pestaña siga abierta no vuelve a pedir la contraseña; al cerrarla,
 // sí. Media hora es lo que dura un rato de administrar sin que sea un incordio.
@@ -158,6 +181,8 @@ async function montarPuerta() {
       tfApuntar("admin", "contraseña del panel incorrecta");
       return;
     }
+    CLAVE_PANEL = clave;
+    MAESTRA = await tfAbrirSobre(clave, datos.admin.sobre);
     marcarAbierto(true);
     abrirPanel();
   });
@@ -174,7 +199,11 @@ async function ponerAdmin(clave, repetida) {
   }
   $("#puertaMsg").textContent = "Guardando…";
   const cred = await tfHash(clave);
-  const r = await tfDispatch("admin_password", cred);
+  CLAVE_PANEL = clave;
+  // Si ya había clave maestra (estás cambiando la contraseña, no estrenándola),
+  // se vuelve a cerrar con la nueva: si no, el token se quedaría sin llave.
+  const sobre = MAESTRA ? await tfHacerSobre(clave, MAESTRA) : null;
+  const r = await tfDispatch("admin_password", sobre ? { ...cred, sobre } : cred);
   if (!r.ok) {
     $("#puertaMsg").innerHTML = explicarFallo(r);
     wireToken();
@@ -219,10 +248,131 @@ function abrirPanel() {
   pintarLog();
 }
 
+/* --------------------------------------------------------- token del sitio
+   Se pega una vez, aquí. Lo que se publica es el token cifrado con la clave
+   maestra (AES-GCM), y la clave maestra viaja dentro del sobre de cada cuenta,
+   cerrado con su contraseña. Quien mire data/users.json ve dos cajas cerradas:
+   sin la contraseña de alguna cuenta no hay token, y forzarlo cuesta lo mismo
+   que forzar un login. */
+async function pintarToken(datos) {
+  const hay = !!(datos.site && datos.site.token && datos.site.token.data);
+  $("#cajaToken").hidden = false;
+  $("#tokenLede").innerHTML = hay
+    ? `Hay un token guardado y cifrado${
+        datos.site.updated ? ` desde el ${esc(datos.site.updated.slice(0, 10))}` : ""
+      }. Las cuentas lo abren solas al entrar; nadie tiene que pegarlo. Pega uno
+       nuevo aquí solo si lo has revocado y has creado otro.`
+    : `Todavía no hay token: las cuentas pueden entrar y ver la web, pero no
+       lanzar búsquedas ni seguimientos. Pega aquí un token
+       <em>fine-grained</em>, solo este repositorio, permiso
+       <em>Contents: Read and write</em>. Se guarda cifrado: en el fichero
+       publicado no aparece en claro, y solo lo abre quien tenga cuenta.`;
+}
+
+/* ------------------------------------------------- qué tiene cada cuenta
+   Los seguimientos y las búsquedas están en el repo, así que se pueden repasar
+   desde aquí y repartir por dueño. Los favoritos NO: viven en el navegador de
+   cada uno y no se publican en ningún sitio — no es que no se enseñen aquí, es
+   que este panel no puede verlos, y eso también hay que decirlo. */
+let COSAS = { watches: [], searches: [] };
+
+async function cargarCosas() {
+  const pide = (u) =>
+    fetch(`${u}?t=${Date.now()}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+  const [w, s] = await Promise.all([pide("data/watch.json"), pide("data/searches/index.json")]);
+  COSAS = {
+    watches: ((w || {}).watches || []).filter((x) => x.active !== false),
+    searches: ((s || {}).searches || []),
+  };
+}
+
+const suyo = (lista, uid) => lista.filter((x) => (x.owner || "") === uid);
+
+const FREQ_TXT = {
+  cada_vez: "en cuanto aparezca",
+  diario: "una vez al día",
+  semanal: "un resumen a la semana",
+  nunca: "nunca",
+};
+
+function detalleHTML(u) {
+  const watches = suyo(COSAS.watches, u.id);
+  const searches = suyo(COSAS.searches, u.id);
+  const p = u.prefs || {};
+  const linea = (t) => `<li>${t}</li>`;
+  return `
+    <div class="brow-detail cuenta-detalle">
+      <div class="detalle-cols">
+        <div>
+          <h4>Correos</h4>
+          <ul class="lista-seca">
+            ${linea(`Van a <b>${esc(u.email || "ningún email")}</b>`)}
+            ${linea(`Chollos: <b>${esc(FREQ_TXT[p.chollos] || "en cuanto aparezca")}</b>${
+              p.chollos_max_precio ? `, solo por debajo de ${Math.round(p.chollos_max_precio)} €` : ""
+            }`)}
+            ${linea(`Seguimientos: <b>${esc(FREQ_TXT[p.seguimientos] || "una vez al día")}</b>${
+              p.seguimientos_solo_novedades ? ", solo si hay novedades" : ""
+            }`)}
+            ${linea(
+              u.sobre && u.sobre.data && !u.sobre.stale
+                ? "Puede lanzar búsquedas y seguimientos"
+                : "<span class='ojo'>Sin acceso para lanzar nada: dale una contraseña nueva</span>"
+            )}
+          </ul>
+        </div>
+        <div>
+          <h4>Sigue a diario · ${watches.length}</h4>
+          <ul class="lista-seca">
+            ${
+              watches.length
+                ? watches
+                    .map((w) =>
+                      linea(
+                        `<b>${esc(w.label || w.destination || "Donde sea")}</b>` +
+                          (w.best_price ? ` · mejor visto ${Math.round(w.best_price)} €` : "") +
+                          ((w.last_offers || []).length
+                            ? ` · ${w.last_offers.length} resultados`
+                            : " · sin resultados aún")
+                      )
+                    )
+                    .join("")
+                : linea("<span class='apagado'>nada</span>")
+            }
+          </ul>
+        </div>
+        <div>
+          <h4>Búsquedas guardadas · ${searches.length}</h4>
+          <ul class="lista-seca">
+            ${
+              searches.length
+                ? searches
+                    .map((x) =>
+                      linea(
+                        `<b>${esc(x.label || x.slug)}</b> · ${x.count || 0} viajes` +
+                          (x.best_price ? ` · desde ${Math.round(x.best_price)} €` : "")
+                      )
+                    )
+                    .join("")
+                : linea("<span class='apagado'>nada</span>")
+            }
+          </ul>
+        </div>
+      </div>
+      <p class="meta">
+        Sus favoritos no salen aquí: viven en el navegador de cada uno y no se
+        publican, así que este panel no puede verlos.
+      </p>
+    </div>`;
+}
+
 /* --------------------------------------------------------------- cuentas */
 async function pintarCuentas(forzar = true) {
   const datos = await tfLeerUsuarios(forzar);
   const cuentas = datos.users || [];
+  pintarToken(datos);
+  await cargarCosas();
   $("#stats").innerHTML =
     `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
     `<div><dd>${cuentas.filter((u) => u.active !== false).length}</dd><dt>activas</dt></div>` +
@@ -230,15 +380,19 @@ async function pintarCuentas(forzar = true) {
 
   $("#cuentas").innerHTML = cuentas.length
     ? cuentas
-        .map(
-          (u) => `
-      <div class="brow cuenta-row${u.active === false ? " apagada" : ""}">
+        .map((u) => {
+          const cosas =
+            suyo(COSAS.watches, u.id).length + suyo(COSAS.searches, u.id).length;
+          return `
+      <div class="brow cuenta-row${u.active === false ? " apagada" : ""}" data-abrir="${esc(u.id)}">
         <span class="iata">${esc((u.name || u.user).slice(0, 3).toUpperCase())}</span>
         <span class="dest-cell">
           <span class="city">${esc(u.name || u.user)}</span>
           <span class="country">${esc(u.user)} · ${esc(u.id)}${
-            u.email ? ` · ${esc(u.email)}` : ""
-          } · ${u.active === false ? "desactivada" : "activa"}</span>
+            u.email ? ` · ${esc(u.email)}` : " · sin email"
+          } · ${u.active === false ? "desactivada" : "activa"} · ${
+            cosas ? `${cosas} cosa${cosas > 1 ? "s" : ""} suya${cosas > 1 ? "s" : ""}` : "nada suyo todavía"
+          }</span>
         </span>
         <span class="favacc">
           <button class="btn ghost small" data-clave="${esc(u.user)}">Contraseña</button>
@@ -247,10 +401,29 @@ async function pintarCuentas(forzar = true) {
           }">${u.active === false ? "Activar" : "Desactivar"}</button>
           <button class="quitar" data-borrar="${esc(u.user)}" title="Borrar la cuenta">✕</button>
         </span>
-      </div>`
-        )
+        <div class="detalle" hidden></div>
+      </div>`;
+        })
         .join("")
     : '<p class="empty">Todavía no hay ninguna cuenta. Crea la primera y dásela a quien vaya a usar la web.</p>';
+
+  // Pinchar una cuenta despliega lo que tiene. Se pinta al abrir y no antes:
+  // con diez cuentas, montar treinta listas que nadie mira es tirar el tiempo.
+  $("#cuentas").querySelectorAll(".cuenta-row[data-abrir]").forEach((fila) =>
+    fila.addEventListener("click", (ev) => {
+      if (ev.target.closest("button")) return;
+      const caja = fila.querySelector(".detalle");
+      if (!caja.hidden) {
+        caja.hidden = true;
+        fila.classList.remove("open");
+        return;
+      }
+      const u = cuentas.find((x) => x.id === fila.dataset.abrir);
+      caja.innerHTML = detalleHTML(u);
+      caja.hidden = false;
+      fila.classList.add("open");
+    })
+  );
 
   $("#cuentas").querySelectorAll("[data-borrar]").forEach((b) =>
     b.addEventListener("click", () => borrarCuenta(b.dataset.borrar))
@@ -330,9 +503,19 @@ function nuevaCuenta() {
       }
       msg.textContent = "Creando…";
       const cred = await tfHash(v.cPass);
+      // Su sobre: la clave maestra cerrada con SU contraseña. Es lo que le
+      // dejará abrir el token al entrar. Sin token del sitio todavía no hay
+      // maestra que meter, y la cuenta nace pudiendo entrar pero no lanzar.
+      const sobre = MAESTRA ? await tfHacerSobre(v.cPass, MAESTRA) : null;
       const ok = await mandar(
         "user_add",
-        { user: v.cUser.toLowerCase(), name: v.cNombre, email: v.cEmail, ...cred },
+        {
+          user: v.cUser.toLowerCase(),
+          name: v.cNombre,
+          email: v.cEmail,
+          ...cred,
+          ...(sobre ? { sobre } : {}),
+        },
         `Creando la cuenta de ${v.cNombre || v.cUser}…`
       );
       if (ok) {
@@ -342,7 +525,8 @@ function nuevaCuenta() {
         $("#avisoCuentas").textContent =
           `Cuenta de ${v.cNombre || v.cUser} creada (usuario "${v.cUser.toLowerCase()}"). ` +
           "Dale la contraseña ahora: aquí ya no se puede volver a ver. " +
-          "En un par de minutos podrá entrar.";
+          "En un par de minutos podrá entrar." +
+          (MAESTRA ? "" : " Ojo: sin token guardado, esta cuenta no podrá lanzar búsquedas.");
       }
     }
   );
@@ -357,7 +541,16 @@ function cambiarClave(user) {
       }
       msg.textContent = "Guardando…";
       const cred = await tfHash(v.nPass);
-      if (await mandar("user_passwd", { user, ...cred }, `Cambiando la contraseña de ${user}…`)) {
+      // El sobre va con la contraseña: si se cambia una sin la otra, la cuenta
+      // entraría en la web pero se quedaría sin poder abrir el token.
+      const sobre = MAESTRA ? await tfHacerSobre(v.nPass, MAESTRA) : null;
+      if (
+        await mandar(
+          "user_passwd",
+          { user, ...cred, ...(sobre ? { sobre } : {}) },
+          `Cambiando la contraseña de ${user}…`
+        )
+      ) {
         tfCerrarModal();
       }
     });
@@ -391,6 +584,27 @@ function borrarCuenta(user) {
     }
   );
 }
+
+$("#formToken").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = $("#tokenNuevo").value.trim();
+  if (!token) return;
+  $("#tokenMsg").textContent = "Cifrando y guardando…";
+  // La clave maestra se estrena con el primer token. Si ya había una se
+  // reutiliza: así los sobres que ya tienen las cuentas siguen valiendo y
+  // cambiar el token no obliga a repartir contraseñas nuevas.
+  if (!MAESTRA) MAESTRA = tfNuevaMaestra();
+  const cifrado = await tfCerrarToken(MAESTRA, token);
+  const sobre = await tfHacerSobre(CLAVE_PANEL, MAESTRA);
+  // El token también se queda en este navegador: es el que usa el propio panel
+  // para escribir mientras GitHub publica el cambio.
+  localStorage.setItem("tf_token", token);
+  const r = await tfDispatch("site_token", { token: cifrado, sobre });
+  $("#tokenMsg").textContent = r.ok
+    ? "Guardado cifrado. Las cuentas que crees a partir de ahora podrán lanzar búsquedas."
+    : `No se pudo guardar: ${esc(r.reason)}`;
+  if (r.ok) $("#tokenNuevo").value = "";
+});
 
 $("#nuevaCuenta").addEventListener("click", nuevaCuenta);
 $("#cambiarAdmin").addEventListener("click", cambiarAdmin);

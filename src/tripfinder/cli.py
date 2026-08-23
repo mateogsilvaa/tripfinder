@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import random
 import sys
@@ -338,30 +339,101 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     store.record_prices(found)
     store.save_offers(_publicables(found, args.limit), errors=errors)
 
-    if to_notify and not args.no_email:
-        from .notify import notify_offers  # import tardio: no hace falta para --dry-run
+    if args.no_email:
+        print(f"{len(to_notify)} ofertas notificables, pero --no-email esta activo.")
+        return 0
 
-        batch = to_notify[:max_email]
+    # A quien se le manda y que. Cada cuenta decide cada cuanto quiere saber de
+    # los chollos y a partir de que precio le interesan; el buzon de la config
+    # sigue recibiendo lo de siempre si no hay una cuenta que ya lo cubra.
+    reparto = _reparto_de_chollos(deals, to_notify, cfg, state, max_email)
+    if not reparto:
+        print("Nada nuevo que notificar.")
+        return 0
+
+    from .notify import notify_offers  # import tardio: no hace falta para --dry-run
+
+    today = date.today().isoformat()
+    enviado_algo = False
+    for destino, (batch, motivo_destino) in reparto.items():
         try:
             used = notify_offers(
-                batch,
-                to=cfg.notify.get("to", ""),
-                method=cfg.notify.get("method", "resend"),
+                batch, to=destino, method=cfg.notify.get("method", "resend")
             )
         except Exception as exc:  # noqa: BLE001
-            log.error("No se pudo enviar el email: %s", exc)
-            errors.append(f"email: {exc}")
-        else:
-            today = date.today().isoformat()
-            for o in batch:
-                state.setdefault("notified", {})[o.id] = {"price": o.price, "date": today}
-            store.save_state(state)
-            print(f"Aviso enviado por {used} con {len(batch)} ofertas.")
-    elif args.no_email:
-        print(f"{len(to_notify)} ofertas notificables, pero --no-email esta activo.")
-    else:
-        print("Nada nuevo que notificar.")
+            log.error("No se pudo enviar el email a %s: %s", destino, exc)
+            errors.append(f"email {destino}: {exc}")
+            continue
+        enviado_algo = True
+        state.setdefault("digest", {})[destino] = today
+        print(f"Aviso enviado por {used} a {destino} ({len(batch)} ofertas, {motivo_destino}).")
+
+    # El registro de "ya te la mande" es global a proposito: marca la oferta como
+    # vista, y quien la reciba depende de las preferencias de cada uno. Solo se
+    # apunta si de verdad salio algun correo, para no perder un chollo por un
+    # fallo de SMTP.
+    if enviado_algo:
+        for o in to_notify[:max_email]:
+            state.setdefault("notified", {})[o.id] = {"price": o.price, "date": today}
+    store.save_state(state)
     return 0
+
+
+def _cada_cuanto(frecuencia: str, ultimo: str) -> bool:
+    """Si toca escribir hoy segun lo que pidio esa cuenta."""
+    if frecuencia == "nunca":
+        return False
+    if frecuencia == "cada_vez" or not ultimo:
+        return True
+    try:
+        dias = (date.today() - date.fromisoformat(ultimo[:10])).days
+    except ValueError:
+        return True
+    return dias >= (7 if frecuencia == "semanal" else 1)
+
+
+def _reparto_de_chollos(
+    deals: list[FlightOffer],
+    nuevas: list[FlightOffer],
+    cfg: Config,
+    state: dict,
+    max_email: int,
+) -> dict[str, tuple[list[FlightOffer], str]]:
+    """Que ofertas le tocan hoy a cada buzon.
+
+    Dos cosas distintas conviven aqui: "avisame en cuanto aparezca" manda lo que
+    ha salido nuevo hoy, y "una vez al dia" o "a la semana" manda lo mejor que
+    hay vivo en ese momento. Si a alguien le llegara solo lo nuevo del dia que
+    le toca su resumen, se perderia justo los chollos de los otros seis dias.
+    """
+    from . import users as U
+
+    ultimos = state.get("digest", {})
+    salida: dict[str, tuple[list[FlightOffer], str]] = {}
+    buzon_config = (cfg.notify.get("to") or "").strip()
+    cubiertos = set()
+
+    for u in U.listar(incluir_inactivos=False):
+        correo = (u.email or "").strip()
+        if not correo:
+            continue
+        cubiertos.add(correo.lower())
+        frecuencia = str(u.prefs.get("chollos", "cada_vez"))
+        if not _cada_cuanto(frecuencia, ultimos.get(correo, "")):
+            continue
+        tope = u.prefs.get("chollos_max_precio")
+        fuente = nuevas if frecuencia == "cada_vez" else deals
+        suyas = [o for o in fuente if not tope or o.price <= float(tope)]
+        if suyas:
+            motivo = "lo nuevo" if frecuencia == "cada_vez" else f"resumen {frecuencia}"
+            salida[correo] = (suyas[:max_email], motivo)
+
+    # El buzon de siempre sigue como estaba, salvo que ya haya una cuenta con
+    # ese mismo email: entonces manda lo que haya elegido esa cuenta y no se
+    # duplica el correo.
+    if buzon_config and buzon_config.lower() not in cubiertos and nuevas:
+        salida[buzon_config] = (nuevas[:max_email], "lo nuevo")
+    return salida
 
 
 # --------------------------------------------------------------------------- #
@@ -742,22 +814,48 @@ def cmd_watch(args: argparse.Namespace) -> int:
     # seguimientos sin cuenta (o de una cuenta sin email) van al buzon de
     # siempre, que es como funcionaba esto antes de que hubiera cuentas.
     if estado and not args.no_email:
-        for destino, parte in _partes_por_dueno(estado, cfg).items():
-            _mandar_parte(cfg, parte, destino)
+        hoy = date.today().isoformat()
+        state = store.load_state()
+        for destino, parte in _partes_por_dueno(estado, cfg, state).items():
+            if _mandar_parte(cfg, parte, destino):
+                state.setdefault("watch_digest", {})[destino] = hoy
+        store.save_state(state)
     return 0
 
 
-def _partes_por_dueno(estado: list, cfg: Config) -> dict[str, list]:
-    """Reparte los seguimientos revisados entre los buzones a los que van."""
+def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> dict[str, list]:
+    """Reparte los seguimientos revisados entre los buzones a los que van.
+
+    Cada cuenta dice cada cuanto quiere el parte y si lo quiere tambien los dias
+    en que no hay nada. Lo que no tiene dueño (o cuya cuenta no tiene email) va
+    al buzon de la configuracion, como antes de que hubiera cuentas.
+    """
     from . import users as U
 
+    ultimos = (state or {}).get("watch_digest", {})
     por_cuenta = {u.id: u for u in U.listar()}
-    defecto = cfg.notify.get("to", "")
+    defecto = (cfg.notify.get("to") or "").strip()
     partes: dict[str, list] = {}
     for w, ofertas in estado:
         cuenta = por_cuenta.get(getattr(w, "owner", "") or "")
-        destino = (cuenta.email if cuenta and cuenta.email else defecto) or defecto
+        destino = (cuenta.email.strip() if cuenta and cuenta.email else defecto) or defecto
+        if not destino:
+            continue
+        prefs = cuenta.prefs if cuenta and cuenta.email else {}
+        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimos.get(destino, "")):
+            continue
         partes.setdefault(destino, []).append((w, ofertas))
+
+    # "Solo cuando haya algo": el parte de "he mirado y no hay nada" confirma que
+    # el sistema esta vivo, pero no todo el mundo quiere ese correo cada dia.
+    for cuenta in por_cuenta.values():
+        correo = (cuenta.email or "").strip()
+        if not correo or correo not in partes:
+            continue
+        if cuenta.prefs.get("seguimientos_solo_novedades") and not any(
+            ofertas for _, ofertas in partes[correo]
+        ):
+            del partes[correo]
     return partes
 
 
@@ -891,6 +989,10 @@ def cmd_users(args: argparse.Namespace) -> int:
         if args.salt and args.hash
         else None
     )
+    # El sobre y las preferencias vienen como JSON porque son varias cosas y las
+    # arma el navegador. El sobre es una caja opaca: aqui solo se guarda.
+    sobre = _json_arg(args.sobre, "sobre")
+    prefs = _json_arg(args.prefs, "prefs")
 
     if args.accion == "list":
         cuentas = U.listar()
@@ -910,6 +1012,8 @@ def cmd_users(args: argparse.Namespace) -> int:
                 password=args.password or "",
                 email=args.email or "",
                 credencial=credencial,
+                sobre=sobre,
+                prefs=prefs,
                 uid=args.id or "",
             )
         except ValueError as exc:
@@ -931,17 +1035,49 @@ def cmd_users(args: argparse.Namespace) -> int:
         if not credencial and not args.password:
             print("Hace falta --password (o --salt/--hash desde el panel).")
             return 1
-        ok = U.cambiar_password(args.user or args.id or "", args.password or "", credencial)
+        ok = U.cambiar_password(
+            args.user or args.id or "", args.password or "", credencial, sobre
+        )
         print("Contrasena cambiada." if ok else "No existe esa cuenta.")
+        return 0
+
+    if args.accion == "prefs":
+        ok = U.cambiar_prefs(
+            args.user or args.id or "", prefs or {}, args.email if args.email else None
+        )
+        print("Preferencias guardadas." if ok else "No existe esa cuenta.")
+        return 0
+
+    if args.accion == "site-token":
+        # Lo que llega es el token ya cifrado por el navegador con la clave
+        # maestra. Ni este proceso ni el log de Actions lo ven en claro.
+        cifrado = _json_arg(args.token, "token")
+        if not cifrado or not cifrado.get("data"):
+            print("Hace falta --token con el token ya cifrado.")
+            return 1
+        U.set_site_token(cifrado, sobre)
+        print("Token del sitio guardado (cifrado).")
         return 0
 
     # set-admin: la contrasena que abre el panel
     if not credencial and not args.password:
         print("Hace falta --password (o --salt/--hash desde el panel).")
         return 1
-    U.set_admin(args.password or "", credencial)
+    U.set_admin(args.password or "", credencial, sobre)
     print("Contrasena del panel guardada.")
     return 0
+
+
+def _json_arg(crudo: str | None, que: str) -> dict | None:
+    """Un argumento que viaja como JSON. Si viene roto, se dice y se sigue."""
+    if not crudo:
+        return None
+    try:
+        valor = json.loads(crudo)
+    except json.JSONDecodeError as exc:
+        log.warning("El %s no es JSON valido (%s); se ignora", que, exc)
+        return None
+    return valor if isinstance(valor, dict) else None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1014,7 +1150,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     c = sub.add_parser("users", help="Cuentas de la web: quien entra y de quien es cada cosa")
     c.add_argument(
-        "accion", choices=["add", "list", "remove", "passwd", "enable", "disable", "set-admin"]
+        "accion",
+        choices=[
+            "add", "list", "remove", "passwd", "prefs",
+            "enable", "disable", "set-admin", "site-token",
+        ],
     )
     c.add_argument("--user", help="Nombre con el que entra (o el id)")
     c.add_argument("--id", help="Id de la cuenta, si se quiere fijar")
@@ -1024,6 +1164,9 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--salt", help="Sal en base64 (la calcula el panel)")
     c.add_argument("--hash", help="PBKDF2-SHA256 en base64 (lo calcula el panel)")
     c.add_argument("--iterations", type=int, default=0)
+    c.add_argument("--sobre", help="JSON: la clave maestra cifrada con su contrasena")
+    c.add_argument("--prefs", help="JSON: que correos quiere y cada cuanto")
+    c.add_argument("--token", help="JSON: el token del sitio, ya cifrado por el navegador")
     c.set_defaults(func=cmd_users)
 
     sub.add_parser("reindex", help="Rehace el indice de busquedas").set_defaults(func=cmd_reindex)

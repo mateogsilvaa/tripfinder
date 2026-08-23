@@ -6,10 +6,22 @@ name: Cuentas de la web
 # La contrasena en claro NO llega hasta aqui: el navegador ya ha hecho el
 # PBKDF2-SHA256 y lo que viaja es la sal y el hash. Asi no queda escrita en el
 # log de un workflow, que se guarda noventa dias y lo lee cualquiera.
+#
+# Lo mismo con el token de GitHub que usa la web: llega ya cifrado con la clave
+# maestra (AES-GCM, hecho en el navegador). Este workflow lo guarda sin poder
+# abrirlo, igual que no puede abrir los sobres de cada cuenta.
 
 on:
   repository_dispatch:
-    types: [user_add, user_remove, user_passwd, user_enable, user_disable, admin_password]
+    types:
+      - user_add
+      - user_remove
+      - user_passwd
+      - user_prefs
+      - user_enable
+      - user_disable
+      - admin_password
+      - site_token
 
 permissions:
   contents: write
@@ -42,6 +54,9 @@ jobs:
           SALT: ${{ github.event.client_payload.salt }}
           HASH: ${{ github.event.client_payload.hash }}
           ITER: ${{ github.event.client_payload.iterations }}
+          SOBRE: ${{ toJSON(github.event.client_payload.sobre) }}
+          PREFS: ${{ toJSON(github.event.client_payload.prefs) }}
+          TOKEN: ${{ toJSON(github.event.client_payload.token) }}
         run: |
           git config user.name  "tripfinder-bot"
           git config user.email "actions@github.com"
@@ -52,18 +67,27 @@ jobs:
                 python -m tripfinder users add \
                   --user "$USER" --name "$NAME" --email "$EMAIL" \
                   ${UID:+--id "$UID"} \
-                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}"
+                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}" \
+                  --sobre "$SOBRE" --prefs "$PREFS"
                 ;;
               user_remove)  python -m tripfinder users remove  --user "$USER" ;;
               user_enable)  python -m tripfinder users enable  --user "$USER" ;;
               user_disable) python -m tripfinder users disable --user "$USER" ;;
               user_passwd)
                 python -m tripfinder users passwd --user "$USER" \
-                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}"
+                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}" \
+                  --sobre "$SOBRE"
+                ;;
+              user_prefs)
+                python -m tripfinder users prefs --user "$USER" --prefs "$PREFS" --email "$EMAIL"
+                ;;
+              site_token)
+                python -m tripfinder users site-token --token "$TOKEN" --sobre "$SOBRE"
                 ;;
               admin_password)
                 python -m tripfinder users set-admin \
-                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}"
+                  --salt "$SALT" --hash "$HASH" --iterations "${ITER:-0}" \
+                  --sobre "$SOBRE"
                 ;;
               *) echo "Accion desconocida: $ACCION"; exit 1 ;;
             esac
