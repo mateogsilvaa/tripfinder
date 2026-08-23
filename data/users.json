@@ -1,11 +1,16 @@
 {
-  "updated": "2026-08-23T22:43:39+00:00",
+  "updated": "2026-08-23T22:44:34+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
     "iterations": 210000,
     "updated": "2026-08-23T22:41:22+00:00",
-    "sobre": {}
+    "sobre": {
+      "data": "k7PIRNlrotZBqPyTHcGuJj9gk04UFJm4R4OFhvCgecDmAmYwHECOr8ztlL10YeCPM3YHAUP9JI3re4zE",
+      "iterations": 210000,
+      "iv": "SS99yjmrtReW1JAC",
+      "salt": "WQgJPzguyWkHEDAtlhC9Wg=="
+    }
   },
   "users": [
     {
@@ -27,5 +32,11 @@
       "sobre": {}
     }
   ],
-  "site": {}
+  "site": {
+    "token": {
+      "iv": "pDzDxCAsvP/oTXMr",
+      "data": "4y8ha+iGKMCDWKyu69BMk65mPgPyCRkJ7wJWLKpO015wNDa30Un1YqX4Ut1tuvy/sh3k426UMf96gxHYohD2DPHV22OC3TVphqp5KgjtRCW7aapGnTl7yQQYvg4PdFvZ/iFMBJhJhLumVUi07w=="
+    },
+    "updated": "2026-08-23T22:44:34+00:00"
+  }
 }
