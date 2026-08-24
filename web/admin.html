@@ -144,7 +144,22 @@ const esc = tfEsc;
    se saca del sobre del panel con la contraseña que acabas de escribir, y no se
    guarda en ningún sitio del navegador. Cerrar la pestaña la borra. */
 let MAESTRA = "";
-let CLAVE_PANEL = "";  // hace falta para volver a cerrar el sobre del panel
+let CLAVE_PANEL = "";
+
+const TF_MAESTRA_KEY = "tf_maestra";
+const TF_CLAVE_PANEL_KEY = "tf_clave_panel";
+const guardarSecretos = () => {
+  try {
+    if (MAESTRA) sessionStorage.setItem(TF_MAESTRA_KEY, MAESTRA);
+    if (CLAVE_PANEL) sessionStorage.setItem(TF_CLAVE_PANEL_KEY, CLAVE_PANEL);
+  } catch { /* navegacion privada */ }
+};
+const recuperarSecretos = () => {
+  try {
+    MAESTRA = sessionStorage.getItem(TF_MAESTRA_KEY) || "";
+    CLAVE_PANEL = sessionStorage.getItem(TF_CLAVE_PANEL_KEY) || "";
+  } catch { /* nada */ }
+};
 
 // Mientras la pestaña siga abierta no vuelve a pedir la contraseña; al cerrarla,
 // sí. Media hora es lo que dura un rato de administrar sin que sea un incordio.
@@ -172,7 +187,10 @@ async function montarPuerta() {
   const datos = await tfLeerUsuarios(true);
   const primeraVez = !datos.admin || !datos.admin.hash;
 
-  if (abierto()) return abrirPanel();
+  if (abierto()) {
+    recuperarSecretos();
+    return abrirPanel();
+  }
 
   $("#puerta").hidden = false;
   $("#panelAdmin").hidden = true;
@@ -219,6 +237,7 @@ async function montarPuerta() {
     }
     CLAVE_PANEL = clave;
     MAESTRA = await tfAbrirSobre(clave, datos.admin.sobre);
+    guardarSecretos();
     marcarAbierto(true);
     abrirPanel();
   });
@@ -643,7 +662,10 @@ function cambiarAdmin() {
       }
       msg.textContent = "Guardando…";
       const cred = await tfHash(v.aPass);
-      if (await mandar("admin_password", cred, "Cambiando la contraseña del panel…")) {
+      const sobre = MAESTRA ? await tfHacerSobre(v.aPass, MAESTRA) : null;
+      if (await mandar("admin_password", sobre ? { ...cred, sobre } : cred, "Cambiando la contraseña del panel…")) {
+        CLAVE_PANEL = v.aPass;
+        guardarSecretos();
         tfCerrarModal();
       }
     });
@@ -677,6 +699,7 @@ $("#formToken").addEventListener("submit", async (e) => {
   // El token también se queda en este navegador: es el que usa el propio panel
   // para escribir mientras GitHub publica el cambio.
   localStorage.setItem("tf_token", token);
+  guardarSecretos();
   const r = await tfDispatch("site_token", { token: cifrado, sobre });
   $("#tokenMsg").textContent = r.ok
     ? "Guardado cifrado. Las cuentas que crees a partir de ahora podrán lanzar búsquedas."
@@ -703,6 +726,12 @@ $("#cambiarAdmin").addEventListener("click", cambiarAdmin);
 $("#recargar").addEventListener("click", () => pintarCuentas(true));
 $("#cerrar").addEventListener("click", () => {
   marcarAbierto(false);
+  MAESTRA = "";
+  CLAVE_PANEL = "";
+  try {
+    sessionStorage.removeItem(TF_MAESTRA_KEY);
+    sessionStorage.removeItem(TF_CLAVE_PANEL_KEY);
+  } catch { /* nada */ }
   location.reload();
 });
 

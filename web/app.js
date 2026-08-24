@@ -1425,7 +1425,7 @@ on("#finderForm", "submit", async (e) => {
       `hasta ${$("#fMax").value} €`,
       personas > 1 ? `${personas} pers.` : "1 pers.",
     ].join(" · "),
-    ...comoDueno(),
+    owner: tfUid(),
     max_price: $("#fMax").value,
     nights: $("#fNights").value.trim() || "2-3",
     months: $("#fMonths").value || "12",
@@ -1552,7 +1552,6 @@ async function loadSearches() {
       ev.stopPropagation();
       b.disabled = true;
       const r = await dispatch("delete_search", {
-        tipo: "delete_search",
         id: b.dataset.borrar,
         ...comoDueno(),
       });
@@ -1801,7 +1800,6 @@ on("#watchForm", "submit", async (e) => {
     personasW > 1 ? `${personasW} pers.` : "1 pers.",
   ].join(" · ");
   const r = await dispatch("watch", {
-    tipo: "watch",
     ...comoDueno(),
     dest,
     label: etiqueta,
@@ -1811,7 +1809,6 @@ on("#watchForm", "submit", async (e) => {
     months: $("#wMonths").value || "6",
     adults: $("#wAdults").value || "2",
     weekend: cuando === "weekend" ? "si" : "no",
-    nights: "2-3",
   });
   if (r.ok) {
     $("#watches").insertAdjacentHTML(
@@ -1903,7 +1900,6 @@ async function cargarWatches() {
       b.addEventListener("click", async () => {
         b.disabled = true;
         const r = await dispatch("unwatch", {
-          tipo: "unwatch",
           id: b.dataset.unwatch,
           ...comoDueno(),
         });

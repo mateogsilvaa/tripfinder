@@ -31,7 +31,7 @@ jobs:
       - name: Aplicar el cambio sobre lo ultimo publicado
         env:
           PYTHONPATH: src
-          TIPO: ${{ github.event.client_payload.tipo }}
+          TIPO: ${{ github.event.action }}
           ID: ${{ github.event.client_payload.id }}
           DEST: ${{ github.event.client_payload.dest }}
           LABEL: ${{ github.event.client_payload.label }}
