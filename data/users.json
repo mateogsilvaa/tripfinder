@@ -1,5 +1,5 @@
 {
-  "updated": "2026-08-24T10:30:16+00:00",
+  "updated": "2026-08-24T10:31:44+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -30,6 +30,29 @@
         "seguimientos_solo_novedades": false
       },
       "sobre": {}
+    },
+    {
+      "id": "u-e77f874b",
+      "user": "tytustetona",
+      "name": "tytus",
+      "email": "tytus.zasowski@gmail.com",
+      "salt": "rNfKpyWrNeToQsdZXRJmlQ==",
+      "hash": "INaT4BmrvdMvaGZBzTlf05AtJOt/0HKuYCFr/Xlp7QM=",
+      "iterations": 210000,
+      "created": "2026-08-24T10:31:44+00:00",
+      "active": true,
+      "prefs": {
+        "chollos": "cada_vez",
+        "chollos_max_precio": null,
+        "seguimientos": "diario",
+        "seguimientos_solo_novedades": false
+      },
+      "sobre": {
+        "data": "AMpAGFuszr9oBXaLDFG+BsMS/cU4ENe6I8JvK3aMBgZEv2Uyh9Wq/UfaUEoLvBwNCxsNwrPev5q5YH9k",
+        "iterations": 210000,
+        "iv": "sK/RYGzPPnOvHra/",
+        "salt": "JzRXN8uDcZVdo3/G8e+dyw=="
+      }
     }
   ],
   "site": {
