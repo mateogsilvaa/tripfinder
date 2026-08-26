@@ -177,16 +177,82 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 
 - [x] **#25 · Tests de scoring y de parseo de providers** `infra`
   - 10 tests en `tests/`, `python -m pytest` en verde.
-- [ ] **#26 · CI: ruff + pytest en cada PR** `infra`
+- [ ] **#26 · CI: ruff + pytest en cada PR** `infra` — abierta como [GitHub #16](https://github.com/mateogsilvaa/tripfinder/issues/16)
 - [ ] **#27 · Manejo de errores por provider sin tumbar el scan** `core`
   - Parcialmente hecho: cada provider ya va en try/except; falta reportar fallos en la web.
 - [ ] **#28 · Alertas si el workflow lleva N días sin encontrar nada** `infra` `nice-to-have`
 
 ---
 
+## M10-M15 · Lo que salió de la auditoría de la web
+
+Los seis hitos de abajo están **abiertos en GitHub** (issues #6 a #32, hitos `M10`-`M15`),
+con criterios de aceptación en cada uno. El detalle —qué falla exactamente y por qué—
+está en [docs/INFORME-WEB.md](INFORME-WEB.md); aquí solo va el índice.
+
+**Ojo con los números:** de aquí abajo son los de **GitHub** (issues #6-#32), no los
+del roadmap de arriba, que llegó hasta el #54. Cada issue guarda su número de roadmap en
+el cuerpo.
+
+### [M10 · El test de destinos](https://github.com/mateogsilvaa/tripfinder/milestone/1)
+
+Un flap disimulado en el troquel `M A D` abre un test de seis preguntas, propone tres
+destinos calculados en el navegador con los JSON que ya se publican, y el que aceptes se
+convierte en un seguimiento con el `repository_dispatch` que ya existe: sin workflow nuevo.
+
+- [ ] **[#6](https://github.com/mateogsilvaa/tripfinder/issues/6) · Tabla de perfiles de destino (`web/perfiles.json`)** `core` `web`
+- [ ] **[#7](https://github.com/mateogsilvaa/tripfinder/issues/7) · El flap disimulado y el armazón del test** `web` `ux`
+- [ ] **[#8](https://github.com/mateogsilvaa/tripfinder/issues/8) · Motor de recomendación en cliente** `web` `core`
+- [ ] **[#9](https://github.com/mateogsilvaa/tripfinder/issues/9) · Las tres tarjetas de resultado, con el porqué** `web` `ux`
+- [ ] **[#10](https://github.com/mateogsilvaa/tripfinder/issues/10) · «Avísame de esto» crea el seguimiento solo** `web` `core`
+- [ ] **[#11](https://github.com/mateogsilvaa/tripfinder/issues/11) · Memoria del test y reentrada** `web`
+- [ ] **[#12](https://github.com/mateogsilvaa/tripfinder/issues/12) · Accesibilidad del test** `ux` `accessibility`
+- [ ] **[#13](https://github.com/mateogsilvaa/tripfinder/issues/13) · Marcar de dónde viene cada seguimiento** `core` `email` `nice-to-have`
+
+### [M11 · Riesgos y correcciones](https://github.com/mateogsilvaa/tripfinder/milestone/2)
+
+- [ ] **[#14](https://github.com/mateogsilvaa/tripfinder/issues/14) · Dejar de publicar los emails de las cuentas** `infra` `seguridad`
+- [ ] **[#15](https://github.com/mateogsilvaa/tripfinder/issues/15) · El panel avisa (y arregla) los sobres que faltan** `web` `infra`
+- [ ] **[#16](https://github.com/mateogsilvaa/tripfinder/issues/16) · CI: ruff + pytest en cada PR** `infra` — es la #26 de M5, que sigue abierta
+- [ ] **[#17](https://github.com/mateogsilvaa/tripfinder/issues/17) · Poner al día README, ARCHITECTURE y ROADMAP** `documentation`
+- [ ] **[#18](https://github.com/mateogsilvaa/tripfinder/issues/18) · `esc()` valida el esquema en las URL** `web` `seguridad`
+
+### [M12 · Rendimiento](https://github.com/mateogsilvaa/tripfinder/milestone/3)
+
+- [ ] **[#19](https://github.com/mateogsilvaa/tripfinder/issues/19) · No cargar 270 KB de aeropuertos en la portada** `web` `perf`
+- [ ] **[#20](https://github.com/mateogsilvaa/tripfinder/issues/20) · Fuentes que no bloquean** `web` `perf`
+- [ ] **[#21](https://github.com/mateogsilvaa/tripfinder/issues/21) · Versión de assets automática** `infra` `web`
+- [ ] **[#22](https://github.com/mateogsilvaa/tripfinder/issues/22) · PWA instalable y ofertas en frío** `web` `nice-to-have` — es la #35
+
+### [M13 · Accesibilidad](https://github.com/mateogsilvaa/tripfinder/milestone/4)
+
+- [ ] **[#23](https://github.com/mateogsilvaa/tripfinder/issues/23) · Diálogos accesibles en toda la web** `ux` `accessibility`
+- [ ] **[#24](https://github.com/mateogsilvaa/tripfinder/issues/24) · Anunciar lo que está pasando** `ux` `accessibility`
+- [ ] **[#25](https://github.com/mateogsilvaa/tripfinder/issues/25) · Contraste y tamaño táctil** `ux` `accessibility`
+
+### [M14 · Producto](https://github.com/mateogsilvaa/tripfinder/milestone/5)
+
+- [ ] **[#26](https://github.com/mateogsilvaa/tripfinder/issues/26) · La portada dice qué es esto** `ux` `web`
+- [ ] **[#27](https://github.com/mateogsilvaa/tripfinder/issues/27) · Cada página con su texto** `ux`
+- [ ] **[#28](https://github.com/mateogsilvaa/tripfinder/issues/28) · 404 y estados vacíos** `web` `ux`
+- [ ] **[#29](https://github.com/mateogsilvaa/tripfinder/issues/29) · Coste total de la escapada en el listado** `ux` `core` — es la #43
+
+### [M15 · Mantenibilidad](https://github.com/mateogsilvaa/tripfinder/milestone/6)
+
+- [ ] **[#30](https://github.com/mateogsilvaa/tripfinder/issues/30) · Partir `app.js` en módulos** `infra` `web`
+- [ ] **[#31](https://github.com/mateogsilvaa/tripfinder/issues/31) · Una sola cabecera** `infra` `web`
+- [ ] **[#32](https://github.com/mateogsilvaa/tripfinder/issues/32) · Humo de frontend en CI** `infra` `web`
+
+---
+
 ## Orden sugerido para retomar
 
-1. #10 (rate limiting) — evita que te bloqueen antes de escalar providers.
-2. #24 (coste total) — es lo que de verdad decide un viaje.
-3. #26 (CI) — barato y evita regresiones en los parsers.
-4. #9 / #13 / #17 — cuando lo demás esté estable.
+1. **#14 y #15** — son los dos que tienen consecuencias hoy: los emails publicados y la
+   cuenta sin sobre, que entra pero no puede escribir.
+2. **#16 y #17** — CI y documentación: baratas, y todo lo demás se apoya en ellas.
+3. **#6 → #10** — el test de destinos entero, que es la mejora de producto más grande
+   por esfuerzo invertido. #11, #12 y #13 lo rematan.
+4. **#19, #31, #30** — rendimiento y estructura, antes de que la web crezca más.
+5. **#23-#25 y #26-#28** — accesibilidad y la primera impresión.
+6. De lo viejo, lo que sigue vivo: #10 (rate limiting), #13 (digest semanal) y #33, #39
+   y #42, todas `nice-to-have`.

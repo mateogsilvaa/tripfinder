@@ -3,7 +3,7 @@
 Estado a **2026-08-26**, sobre el commit `92d6f4a`. Cubre todo lo que hay en `web/`
 (las cuatro páginas, los tres scripts y la hoja de estilos), cómo se conecta con el
 resto del repo, qué se puede mejorar, y dos secciones de propuesta al final: **el test
-de destinos** que falta y **las issues** que hay que abrir para dejar esto fino.
+de destinos** que falta y **las 27 issues** —ya abiertas en GitHub— para dejar esto fino.
 
 Lo que se ha comprobado de verdad para escribir esto: los 82 tests de `tests/` pasan
 (`python -m pytest` → 82 passed), `data/offers.json` tiene 120 ofertas vivas generadas
@@ -430,15 +430,26 @@ Ni un workflow nuevo, ni un secreto nuevo, ni una llamada de red nueva.
 
 ## 7. Issues que hay que abrir
 
-La numeración sigue donde lo dejó `docs/ROADMAP.md` (última: #54). Cada una lleva
-título listo para copiar, etiquetas, por qué existe, qué entra dentro, criterios de
-aceptación y esfuerzo aproximado (S = una tarde, M = un par de días, L = más).
+**Estas 27 issues están abiertas en GitHub desde el 26/08/2026: [#6 a #32](https://github.com/mateogsilvaa/tripfinder/issues), repartidas en los seis hitos
+`M10`–`M15`.** El número que abre cada entrada es el suyo en GitHub, y el cuerpo de
+la issue guarda además su número de roadmap, que sigue donde lo dejó `docs/ROADMAP.md`
+(última: #54). Cada una lleva etiquetas, por qué existe, qué entra dentro, criterios de aceptación
+y esfuerzo aproximado (S = una tarde, M = un par de días, L = más).
+
+| Hito | Issues | Qué agrupa |
+|---|---|---|
+| [M10 · El test de destinos](https://github.com/mateogsilvaa/tripfinder/milestone/1) | #6–#13 | El botón disimulado, las tres propuestas y el seguimiento automático |
+| [M11 · Riesgos y correcciones](https://github.com/mateogsilvaa/tripfinder/milestone/2) | #14–#18 | Lo que tiene consecuencias hoy |
+| [M12 · Rendimiento](https://github.com/mateogsilvaa/tripfinder/milestone/3) | #19–#22 | Lo que la web pide y no necesita |
+| [M13 · Accesibilidad](https://github.com/mateogsilvaa/tripfinder/milestone/4) | #23–#25 | Foco, anuncios y contraste |
+| [M14 · Producto](https://github.com/mateogsilvaa/tripfinder/milestone/5) | #26–#29 | La primera impresión |
+| [M15 · Mantenibilidad](https://github.com/mateogsilvaa/tripfinder/milestone/6) | #30–#32 | Estructura y red de seguridad |
 
 ### M10 · El test de destinos
 
 ---
 
-**#55 · Tabla de perfiles de destino (`web/perfiles.json`)** `core` `web` · **S**
+**[#6](https://github.com/mateogsilvaa/tripfinder/issues/6) · Tabla de perfiles de destino (`web/perfiles.json`)** `core` `web` · **S**
 
 *Por qué*: el test necesita saber que Nápoles es ciudad y gastronomía y que Lanzarote es
 playa. Ese dato no existe en ningún sitio del repo.
@@ -453,7 +464,7 @@ lanzar.
 
 ---
 
-**#56 · El flap disimulado y el armazón del test** `web` `ux` · **M**
+**[#7](https://github.com/mateogsilvaa/tripfinder/issues/7) · El flap disimulado y el armazón del test** `web` `ux` · **M**
 
 *Por qué*: es la puerta de entrada para quien no sabe a dónde quiere ir.
 
@@ -469,7 +480,7 @@ teclado; en 320 px de ancho no se corta nada; con `prefers-reduced-motion` no ha
 
 ---
 
-**#57 · Motor de recomendación en cliente** `web` `core` · **M**
+**[#8](https://github.com/mateogsilvaa/tripfinder/issues/8) · Motor de recomendación en cliente** `web` `core` · **M**
 
 *Por qué*: convertir seis respuestas en tres destinos concretos, sin pedir nada a nadie.
 
@@ -482,11 +493,11 @@ personas" devuelve tres destinos de tres países distintos, todos ≤ 100 € po
 con un tope imposible devuelve lo que haya con el aviso de tope relajado, nunca una
 lista vacía sin explicación. Tests unitarios de la función de puntuación.
 
-*Depende de*: #55.
+*Depende de*: #6 · *Tabla de perfiles de destino*.
 
 ---
 
-**#58 · Las tres tarjetas de resultado, con el porqué** `web` `ux` · **M**
+**[#9](https://github.com/mateogsilvaa/tripfinder/issues/9) · Las tres tarjetas de resultado, con el porqué** `web` `ux` · **M**
 
 *Por qué*: una recomendación sin motivo se lee como aleatoria y no se acepta.
 
@@ -498,11 +509,11 @@ las respuestas que más pesaron, y los botones "Ver el vuelo" y "Avísame de est
 el precio respeta el selector de personas; el veredicto sale cuando hay histórico de esa
 ruta y se omite limpiamente cuando no lo hay.
 
-*Depende de*: #57.
+*Depende de*: #8 · *Motor de recomendación en cliente*.
 
 ---
 
-**#59 · "Avísame de esto" crea el seguimiento solo** `web` `core` · **S**
+**[#10](https://github.com/mateogsilvaa/tripfinder/issues/10) · "Avísame de esto" crea el seguimiento solo** `web` `core` · **S**
 
 *Por qué*: es el remate del test — sin esto, son tres tarjetas bonitas que no hacen nada.
 
@@ -515,11 +526,11 @@ correcto; el cron lo revisa en la siguiente pasada; aceptar las tres crea tres
 seguimientos con ids distintos. Sin sesión, sale la caja de entrar y **las respuestas
 sobreviven al login**.
 
-*Depende de*: #58.
+*Depende de*: #9 · *Las tres tarjetas de resultado*.
 
 ---
 
-**#60 · Memoria del test y reentrada** `web` · **S**
+**[#11](https://github.com/mateogsilvaa/tripfinder/issues/11) · Memoria del test y reentrada** `web` · **S**
 
 *Qué*: `tf_quiz:<uid>` con respuestas, resultados y fecha; al reabrir, resultados
 recalculados contra el `offers.json` de hoy; "volver a hacerlo"; punto en el flap cuando
@@ -529,11 +540,11 @@ hay resultados guardados; adopción de un test hecho sin cuenta al entrar (igual
 *AC*: cerrar la pestaña y volver enseña los tres destinos sin repetir el test, y con los
 precios del día actual.
 
-*Depende de*: #57.
+*Depende de*: #8 · *Motor de recomendación en cliente*.
 
 ---
 
-**#61 · Accesibilidad del test** `ux` `a11y` · **S**
+**[#12](https://github.com/mateogsilvaa/tripfinder/issues/12) · Accesibilidad del test** `ux` `a11y` · **S**
 
 *Qué*: `role="dialog"` + `aria-modal="true"`, foco al abrir y devuelto al flap al cerrar,
 foco atrapado dentro, cada pregunta anunciada en una región viva, `Esc` para salir,
@@ -542,11 +553,11 @@ foco atrapado dentro, cada pregunta anunciada en una región viva, `Esc` para sa
 *AC*: recorrido completo con lector de pantalla y solo teclado, sin salirse del diálogo
 ni perder el foco.
 
-*Depende de*: #56.
+*Depende de*: #7 · *El flap disimulado y el armazón del test*.
 
 ---
 
-**#62 · Marcar de dónde viene cada seguimiento** `core` `email` `nice-to-have` · **S**
+**[#13](https://github.com/mateogsilvaa/tripfinder/issues/13) · Marcar de dónde viene cada seguimiento** `core` `email` `nice-to-have` · **S**
 
 *Qué*: campo `source` en `Watch`, propagado desde el payload; el panel y el parte diario
 lo enseñan. Sirve para saber si el test sirve de algo.
@@ -560,7 +571,7 @@ campo siguen cargando sin error.
 
 ---
 
-**#63 · Dejar de publicar los emails de las cuentas** `infra` `seguridad` · **S**
+**[#14](https://github.com/mateogsilvaa/tripfinder/issues/14) · Dejar de publicar los emails de las cuentas** `infra` `seguridad` · **S**
 
 *Por qué*: `pages.yml` copia `data/*` al sitio y `data/users.json` lleva el email de cada
 cuenta en claro. La web no lo necesita: lo usa el cron, desde el repo.
@@ -574,7 +585,7 @@ panel y sobres siguen funcionando igual.
 
 ---
 
-**#64 · El panel avisa (y arregla) los sobres que faltan** `web` `infra` · **S**
+**[#15](https://github.com/mateogsilvaa/tripfinder/issues/15) · El panel avisa (y arregla) los sobres que faltan** `web` `infra` · **S**
 
 *Por qué*: ahora mismo `u-bccb1f1e` tiene `"sobre": {}`. Esa cuenta entra pero no puede
 escribir, y lo descubre pulsando un botón que no responde.
@@ -589,7 +600,7 @@ cuenta lanza un seguimiento correctamente.
 
 ---
 
-**#26 · CI: ruff + pytest en cada PR** `infra` · **S** *(sigue abierta desde el roadmap)*
+**[#16](https://github.com/mateogsilvaa/tripfinder/issues/16) · CI: ruff + pytest en cada PR** `infra` · **S** *(roadmap #26, abierta desde M5)*
 
 *Qué*: workflow que corre `ruff check` y `python -m pytest` en push y PR. Hoy hay 82
 tests y nada los ejecuta.
@@ -598,7 +609,7 @@ tests y nada los ejecuta.
 
 ---
 
-**#65 · Poner al día README, ARCHITECTURE y ROADMAP** `docs` · **S**
+**[#17](https://github.com/mateogsilvaa/tripfinder/issues/17) · Poner al día README, ARCHITECTURE y ROADMAP** `docs` · **S**
 
 *Qué*: el cron es `0 6,18 * * *` (cada 12 h, no cada 6); los tests son 82, no 10; añadir
 `watch.yml`, `users.yml` y `custom-search.yml` a la tabla de piezas de
@@ -608,7 +619,7 @@ tests y nada los ejecuta.
 
 ---
 
-**#66 · `esc()` valida esquema en las URL** `web` `seguridad` · **S**
+**[#18](https://github.com/mateogsilvaa/tripfinder/issues/18) · `esc()` valida esquema en las URL** `web` `seguridad` · **S**
 
 *Qué*: un `escURL()` que solo deja pasar `http:`, `https:` y `mailto:`, usado en todos los
 `href` y `src` que vienen de datos.
@@ -622,7 +633,7 @@ queda apuntado en el registro de errores.
 
 ---
 
-**#67 · No cargar 270 KB de aeropuertos en la portada** `web` `perf` · **S**
+**[#19](https://github.com/mateogsilvaa/tripfinder/issues/19) · No cargar 270 KB de aeropuertos en la portada** `web` `perf` · **S**
 
 *Qué*: generar `data/continentes.json` (código → continente) en el scan y que `index`
 use ese. `airports_world.json` se sigue cargando, pero solo al abrir el selector de
@@ -633,7 +644,7 @@ sigue idéntico.
 
 ---
 
-**#68 · Fuentes que no bloquean** `web` `perf` · **S**
+**[#20](https://github.com/mateogsilvaa/tripfinder/issues/20) · Fuentes que no bloquean** `web` `perf` · **S**
 
 *Qué*: `display=swap` explícito, recortar pesos a los que se usan de verdad y valorar
 alojarlas en el repo (Pages las sirve igual de rápido y desaparece la dependencia de un
@@ -643,7 +654,7 @@ tercero).
 
 ---
 
-**#69 · Versión de assets automática** `infra` `web` · **S**
+**[#21](https://github.com/mateogsilvaa/tripfinder/issues/21) · Versión de assets automática** `infra` `web` · **S**
 
 *Qué*: que `pages.yml` calcule el `?v=` (hash o número de commit) y lo sustituya al
 montar el sitio, incluido el `build N` del pie.
@@ -653,7 +664,7 @@ build real.
 
 ---
 
-**#70 · PWA instalable y ofertas en frío** `web` `nice-to-have` · **M** *(era la #35)*
+**[#22](https://github.com/mateogsilvaa/tripfinder/issues/22) · PWA instalable y ofertas en frío** `web` `nice-to-have` · **M** *(roadmap #70, era la #35)*
 
 *Qué*: `manifest.json`, iconos, y un service worker que sirva la última tanda de ofertas
 sin red.
@@ -666,7 +677,7 @@ sin red.
 
 ---
 
-**#71 · Diálogos accesibles en toda la web** `ux` `a11y` · **M**
+**[#23](https://github.com/mateogsilvaa/tripfinder/issues/23) · Diálogos accesibles en toda la web** `ux` `a11y` · **M**
 
 *Qué*: aplicar a `#destModal`, al panel de alojamiento y a los modales del panel lo mismo
 que pide la #61: `aria-modal`, foco atrapado, foco devuelto, `Escape` en todos, fondo no
@@ -677,7 +688,7 @@ abrió.
 
 ---
 
-**#72 · Anunciar lo que está pasando** `ux` `a11y` · **S**
+**[#24](https://github.com/mateogsilvaa/tripfinder/issues/24) · Anunciar lo que está pasando** `ux` `a11y` · **S**
 
 *Qué*: `aria-live` en los estados de espera (búsqueda lanzada, polling de alojamiento,
 seguimiento apuntado) y `aria-busy` mientras se pinta.
@@ -687,7 +698,7 @@ ha terminado.
 
 ---
 
-**#73 · Contraste y tamaño táctil** `ux` `a11y` · **S**
+**[#25](https://github.com/mateogsilvaa/tripfinder/issues/25) · Contraste y tamaño táctil** `ux` `a11y` · **S**
 
 *Qué*: subir `--faint` hasta 4,5:1 en ambos temas y garantizar 44×44 px en los botones
 pequeños (☆, ✕, flap del test).
@@ -701,7 +712,7 @@ dedo a la primera.
 
 ---
 
-**#74 · La portada dice qué es esto** `ux` `web` · **S**
+**[#26](https://github.com/mateogsilvaa/tripfinder/issues/26) · La portada dice qué es esto** `ux` `web` · **S**
 
 *Qué*: una línea sobre el tablón que explique el trato ("te avisamos cuando un viaje baja
 de lo que suele costar") y, al lado, la mención discreta al test para quien no tenga
@@ -710,18 +721,18 @@ destino en la cabeza.
 *AC*: alguien que entra por primera vez sabe en cinco segundos qué hace la web y qué
 puede hacer él.
 
-*Depende de*: #56.
+*Depende de*: #7 · *El flap disimulado y el armazón del test*.
 
 ---
 
-**#75 · Cada página con su texto** `ux` · **S**
+**[#27](https://github.com/mateogsilvaa/tripfinder/issues/27) · Cada página con su texto** `ux` · **S**
 
 *Qué*: lede y `<meta description>` propios de "Búsqueda avanzada" y "Lo que sigues", en
 vez del de la portada repetido.
 
 ---
 
-**#76 · 404 y estados vacíos** `web` `ux` · **S**
+**[#28](https://github.com/mateogsilvaa/tripfinder/issues/28) · 404 y estados vacíos** `web` `ux` · **S**
 
 *Qué*: `web/404.html` con la identidad de la web y vuelta al tablón; esqueleto de carga
 mientras llega `offers.json`; `<noscript>` explicando que hace falta JavaScript.
@@ -731,7 +742,7 @@ enseña una página en blanco.
 
 ---
 
-**#77 · Coste total en el listado** `ux` `core` · **M** *(era la #43)*
+**[#29](https://github.com/mateogsilvaa/tripfinder/issues/29) · Coste total en el listado** `ux` `core` · **M** *(roadmap #77, era la #43)*
 
 *Qué*: precalcular una estimación de escapada completa para el top de ofertas, para que
 el número que decide el viaje no exija pedir alojamiento antes.
@@ -742,7 +753,7 @@ el número que decide el viaje no exija pedir alojamiento antes.
 
 ---
 
-**#78 · Partir `app.js` en módulos** `infra` `web` · **M**
+**[#30](https://github.com/mateogsilvaa/tripfinder/issues/30) · Partir `app.js` en módulos** `infra` `web` · **M**
 
 *Qué*: `precios.js`, `favoritos.js`, `ofertas.js`, `alojamiento.js`, `busqueda.js`,
 `seguimientos.js`, `calendario.js` con módulos ES nativos (Pages los sirve sin build).
@@ -753,36 +764,37 @@ comportamiento.
 
 ---
 
-**#79 · Una sola cabecera** `infra` `web` · **M**
+**[#31](https://github.com/mateogsilvaa/tripfinder/issues/31) · Una sola cabecera** `infra` `web` · **M**
 
 *Qué*: header, nav, panel, modal y pie en un parcial, ensamblado al montar el sitio en
 `pages.yml` (o inyectado por JS, aceptando el coste). Hoy están copiados cuatro veces.
 
 *AC*: cambiar una entrada del nav es una sola edición.
 
-*Depende de*: conviene hacerla antes que #74, o se toca el mismo HTML dos veces.
+*Depende de*: nada, pero conviene hacerla antes que #26 y que el flap del test, o se
+toca el mismo HTML dos veces.
 
 ---
 
-**#80 · Humo de frontend en CI** `infra` `web` · **M**
+**[#32](https://github.com/mateogsilvaa/tripfinder/issues/32) · Humo de frontend en CI** `infra` `web` · **M**
 
 *Qué*: dos o tres pruebas con Playwright: la portada pinta ofertas del JSON de ejemplo,
 el test devuelve tres destinos, y el candado de formularios se activa sin sesión.
 
 *AC*: un cambio que deja la portada en blanco no llega a `main`.
 
-*Depende de*: #26.
+*Depende de*: #16 · *CI: ruff + pytest en cada PR*.
 
 ---
 
 ### Orden sugerido
 
-1. **#63 y #64** — son los dos que tienen consecuencias hoy: un dato publicado que no
+1. **#14 y #15** — son los dos que tienen consecuencias hoy: un dato publicado que no
    debería y una cuenta que no puede escribir.
-2. **#26 y #65** — CI y documentación: baratas, y a partir de ahí todo lo demás se
+2. **#16 y #17** — CI y documentación: baratas, y a partir de ahí todo lo demás se
    apoya en ellas.
-3. **#55 → #59** — el test entero, que es la mejora de producto más grande por
-   esfuerzo invertido. #60, #61 y #62 lo rematan.
-4. **#67, #79, #78** — rendimiento y estructura, antes de que la web crezca más.
-5. **#71-#73 y #74-#76** — accesibilidad y la primera impresión.
+3. **#6 → #10** — el test entero, que es la mejora de producto más grande por
+   esfuerzo invertido. #11, #12 y #13 lo rematan.
+4. **#19, #31, #30** — rendimiento y estructura, antes de que la web crezca más.
+5. **#23-#25 y #26-#28** — accesibilidad y la primera impresión.
 6. El resto, por gusto.

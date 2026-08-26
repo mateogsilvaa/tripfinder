@@ -82,7 +82,9 @@ python -m tripfinder users prefs --user ana --prefs '{"chollos":"semanal"}'
 
 Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Auditoría de la web —qué tiene, qué falla
-y qué issues abrir— en [docs/INFORME-WEB.md](docs/INFORME-WEB.md).
+y el test de destinos que le falta— en [docs/INFORME-WEB.md](docs/INFORME-WEB.md); lo que
+sale de ahí está abierto en los hitos
+[M10-M15](https://github.com/mateogsilvaa/tripfinder/milestones).
 
 ## Cuentas y panel
 
