@@ -125,8 +125,8 @@
       "date": "2026-08-16"
     },
     "ryanair-MAD-RAK-20261218": {
-      "price": 115.48,
-      "date": "2026-08-16"
+      "price": 96.02,
+      "date": "2026-08-26"
     },
     "ryanair-MAD-PSA-20270122": {
       "price": 96.69,
@@ -189,8 +189,8 @@
       "date": "2026-08-20"
     },
     "ryanair-MAD-MAN-20261127": {
-      "price": 83.18,
-      "date": "2026-08-20"
+      "price": 69.98,
+      "date": "2026-08-26"
     },
     "ryanair-MAD-MAN-20270115": {
       "price": 79.18,
@@ -207,11 +207,19 @@
     "ryanair-MAD-MAN-20261009": {
       "price": 64.06,
       "date": "2026-08-24"
+    },
+    "ryanair-MAD-BGY-20261113": {
+      "price": 70.29,
+      "date": "2026-08-26"
+    },
+    "ryanair-MAD-BGY-20261127": {
+      "price": 74.82,
+      "date": "2026-08-26"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-08-24",
-    "tytus.zasowski@gmail.com": "2026-08-24"
+    "mateogonsilva@gmail.com": "2026-08-26",
+    "tytus.zasowski@gmail.com": "2026-08-26"
   },
   "watch_digest": {
     "mateogonsilva@gmail.com": "2026-08-26"
