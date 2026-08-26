@@ -81,7 +81,8 @@ python -m tripfinder users prefs --user ana --prefs '{"chollos":"semanal"}'
 ## Estado
 
 Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Auditoría de la web —qué tiene, qué falla
+y qué issues abrir— en [docs/INFORME-WEB.md](docs/INFORME-WEB.md).
 
 ## Cuentas y panel
 
