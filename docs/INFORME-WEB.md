@@ -2,8 +2,9 @@
 
 Estado a **2026-08-26**, sobre el commit `92d6f4a`. Cubre todo lo que hay en `web/`
 (las cuatro páginas, los tres scripts y la hoja de estilos), cómo se conecta con el
-resto del repo, qué se puede mejorar, y dos secciones de propuesta al final: **el test
-de destinos** que falta y **las 27 issues** —ya abiertas en GitHub— para dejar esto fino.
+resto del repo, qué se puede mejorar, y tres secciones de propuesta al final: **el test
+de destinos** que falta, **las 31 issues** —ya abiertas en GitHub— para dejar esto fino, y
+un anexo sobre **el barrido nocturno de los miércoles de madrugada**.
 
 Lo que se ha comprobado de verdad para escribir esto: los 82 tests de `tests/` pasan
 (`python -m pytest` → 82 passed), `data/offers.json` tiene 120 ofertas vivas generadas
@@ -430,7 +431,7 @@ Ni un workflow nuevo, ni un secreto nuevo, ni una llamada de red nueva.
 
 ## 7. Issues que hay que abrir
 
-**Estas 27 issues están abiertas en GitHub desde el 26/08/2026: [#6 a #32](https://github.com/mateogsilvaa/tripfinder/issues), repartidas en los seis hitos
+**Estas 31 issues están abiertas en GitHub desde el 26/08/2026: [#6 a #32](https://github.com/mateogsilvaa/tripfinder/issues), repartidas en los seis hitos
 `M10`–`M15`.** El número que abre cada entrada es el suyo en GitHub, y el cuerpo de
 la issue guarda además su número de roadmap, que sigue donde lo dejó `docs/ROADMAP.md`
 (última: #54). Cada una lleva etiquetas, por qué existe, qué entra dentro, criterios de aceptación
@@ -444,6 +445,7 @@ y esfuerzo aproximado (S = una tarde, M = un par de días, L = más).
 | [M13 · Accesibilidad](https://github.com/mateogsilvaa/tripfinder/milestone/4) | #23–#25 | Foco, anuncios y contraste |
 | [M14 · Producto](https://github.com/mateogsilvaa/tripfinder/milestone/5) | #26–#29 | La primera impresión |
 | [M15 · Mantenibilidad](https://github.com/mateogsilvaa/tripfinder/milestone/6) | #30–#32 | Estructura y red de seguridad |
+| [M16 · Barrido nocturno](https://github.com/mateogsilvaa/tripfinder/milestone/7) | #33–#36 | Una búsqueda sola, de madrugada, a mitad de semana |
 
 ### M10 · El test de destinos
 
@@ -787,6 +789,78 @@ el test devuelve tres destinos, y el candado de formularios se activa sin sesió
 
 ---
 
+### M16 · Barrido nocturno de mitad de semana
+
+Ver el anexo (sección 8) para el porqué de la hora y de la dificultad.
+
+---
+
+**[#33](https://github.com/mateogsilvaa/tripfinder/issues/33) · Barrido nocturno de la noche del martes al miércoles (02:00–03:00)** `infra` `scraper` · **S**
+
+*Por qué*: pedido expreso. Y es buena hora: nadie usa la web, el presupuesto de consultas
+se puede gastar entero y lo que salga está en el correo el miércoles por la mañana.
+
+*Qué*: un `scan-nocturno.yml` con **los dos crons** que hacen falta para clavar la ventana
+todo el año (`17 0 * * 3` en verano, `17 1 * * 3` en invierno), un guardián que solo deja
+trabajar al que cae dentro de las 02:00–03:00 peninsulares, y un cerrojo semanal para que
+un retraso de GitHub no dispare los dos. El minuto no es `0` a propósito: los cron en
+punto son los que más cola cogen.
+
+*AC*: un miércoles de verano y otro de invierno corre una sola vez y dentro de la ventana;
+al cambiar la hora en marzo y octubre no hay que tocar nada; `workflow_dispatch` lo lanza
+a cualquier hora para poder probarlo.
+
+---
+
+**[#34](https://github.com/mateogsilvaa/tripfinder/issues/34) · Horas peninsulares de verdad en todos los crons** `infra` `documentation` · **S**
+
+*Por qué*: `scan-flights.yml` dice `# 08:00 y 20:00 hora peninsular` y eso solo es cierto
+medio año: en invierno son las 07:00 y las 19:00.
+
+*Qué*: elegir regla —doble cron con guardián, o comentario honesto— y aplicarla a los tres
+workflows programados. Para el scan de cada 12 h basta la segunda; para el nocturno hace
+falta la primera.
+
+*AC*: ningún comentario de cron afirma una hora local que solo vale medio año, y la regla
+queda escrita en `ARCHITECTURE.md`.
+
+---
+
+**[#35](https://github.com/mateogsilvaa/tripfinder/issues/35) · El barrido nocturno recorre el mapa entero, no un trozo** `core` `scraper` · **M**
+
+*Por qué*: si hace lo mismo que el de las 08:00, no aporta nada. Lo que lo justifica es
+gastar el presupuesto que de día no se puede gastar: hoy son 40 consultas y el resto del
+mapa se baraja con la fecha como semilla.
+
+*Qué*: un `config/watchlist-nocturno.yml` —el CLI ya acepta `--config`, así que no hace
+falta tocar código— con `max_queries` cerca de 110 y `min_interval_seconds` **más alto**,
+no más bajo: nadie espera, y espaciar es lo que evita que Google devuelva páginas vacías.
+Y decidir si se desactiva el barajado o se siembra con la semana.
+
+*AC*: consulta bastantes más destinos que el diario y se ve en el log; si Google capa,
+queda en `errors` y se ve en la web; dos scans nunca corren a la vez.
+
+*Depende de*: #33.
+
+---
+
+**[#36](https://github.com/mateogsilvaa/tripfinder/issues/36) · El correo del barrido nocturno no llega a las tres de la mañana** `email` `ux` · **S**
+
+*Por qué*: con `chollos: cada_vez`, que es lo que tienen las dos cuentas, un barrido a las
+02:00 manda el correo a las 03:00. La gracia es que el chollo esté esperando por la mañana.
+
+*Qué*: o aviso diferido —el nocturno marca lo encontrado como pendiente y el scan de la
+mañana lo manda— o avisar en el momento solo lo excepcional, subiendo su `min_score`. No
+vale con `--no-email` a secas: el scan de la mañana solo avisa de lo que no está en
+`state.json`, y el nocturno ya lo habrá apuntado allí.
+
+*AC*: lo encontrado a las 02:00 llega por la mañana; no se pierde ni se duplica ningún
+aviso; las preferencias de cada cuenta se siguen respetando.
+
+*Depende de*: #33.
+
+---
+
 ### Orden sugerido
 
 1. **#14 y #15** — son los dos que tienen consecuencias hoy: un dato publicado que no
@@ -797,4 +871,64 @@ el test devuelve tres destinos, y el candado de formularios se activa sin sesió
    esfuerzo invertido. #11, #12 y #13 lo rematan.
 4. **#19, #31, #30** — rendimiento y estructura, antes de que la web crezca más.
 5. **#23-#25 y #26-#28** — accesibilidad y la primera impresión.
-6. El resto, por gusto.
+6. **#33 → #36** — el barrido nocturno. Va aquí y no antes porque #34 (las horas
+   peninsulares) conviene tenerla resuelta primero, y porque #35 depende de saber si
+   Google aguanta 110 consultas desde una IP de Actions.
+7. El resto, por gusto.
+
+---
+
+## 8. Anexo · El barrido nocturno de mitad de semana
+
+Un encargo aparte del resto del informe: **que se corra una búsqueda sola en la noche del
+martes al miércoles, entre las 2 y las 3 de la madrugada.** Es el hito
+[M16](https://github.com/mateogsilvaa/tripfinder/milestone/7), issues #33 a #36.
+
+### Por qué esa hora tiene sentido
+
+No es capricho. A esa hora **nadie está usando la web**, y eso cambia lo que se puede
+hacer: el scan diario está capado a 40 consultas a Google porque corre desde una IP de
+Actions cada 12 horas y conviene no forzar, mientras que la búsqueda a mano se permite
+110 porque es una sola tirada. El barrido nocturno se parece más a lo segundo que a lo
+primero: una tirada, sin nadie esperando, con todo el tiempo del mundo para espaciar las
+peticiones. Y lo que encuentre está en el correo cuando te levantas.
+
+### Por qué es más difícil de lo que parece
+
+**GitHub programa en UTC y España cambia la hora.** La ventana pedida cae en sitios
+distintos según la estación:
+
+| | Ventana local | En UTC | Día en UTC |
+|---|---|---|---|
+| Verano (CEST, UTC+2) | 02:00–03:00 | **00:00–01:00** | miércoles |
+| Invierno (CET, UTC+1) | 02:00–03:00 | **01:00–02:00** | miércoles |
+
+Lo bueno: en las dos estaciones sigue siendo miércoles en UTC, así que el día de la semana
+del cron no cambia (`* * 3`) y no hay que preocuparse de que la noche del martes se
+convierta en otro día al convertir. Lo malo: la hora sí cambia, y **un solo cron acierta
+medio año y falla el otro medio**. Por eso el diseño lleva dos crons y un guardián que
+mira la hora en `Europe/Madrid`: así, cuando cambie la hora en marzo y en octubre, no hay
+que tocar nada.
+
+Esto no es un problema nuevo del nocturno, solo lo hace visible: `scan-flights.yml` ya
+dice hoy `# 08:00 y 20:00 hora peninsular` y en invierno son las 07:00 y las 19:00. De ahí
+que #34 vaya en este mismo hito.
+
+**Y el planificador de GitHub no es puntual.** Los workflows programados se encolan y se
+retrasan, sobre todo los que caen en punto, que es cuando los programa todo el mundo. Por
+eso el cron va a `:17` y no a `:00`, y por eso el guardián acepta también las 03. "Entre
+las 2 y las 3" se puede dejar clavado casi siempre; garantizarlo al minuto, no —y quien
+diga lo contrario no ha visto la cola de Actions un lunes.
+
+### Lo que no se ha decidido aquí
+
+Dos cosas quedan explícitamente abiertas en las issues, porque son decisiones tuyas y no
+del informe:
+
+1. **Qué busca exactamente.** Se ha diseñado como un scan completo con el presupuesto
+   ampliado —la lectura natural de "una búsqueda"—, no como una búsqueda concreta a un
+   destino fijo. Si lo que quieres es lo segundo (por ejemplo, vigilar de madrugada una
+   ruta que te interesa), el hito cambia poco: `#35` se convierte en "qué destino" y el
+   resto sigue igual.
+2. **Si avisa de madrugada o por la mañana.** `#36` propone las dos opciones y recomienda
+   la primera, pero suena el móvil de quien decida.

@@ -184,13 +184,13 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 
 ---
 
-## M10-M15 · Lo que salió de la auditoría de la web
+## M10-M16 · Lo que salió de la auditoría de la web
 
-Los seis hitos de abajo están **abiertos en GitHub** (issues #6 a #32, hitos `M10`-`M15`),
+Los siete hitos de abajo están **abiertos en GitHub** (issues #6 a #36, hitos `M10`-`M16`),
 con criterios de aceptación en cada uno. El detalle —qué falla exactamente y por qué—
 está en [docs/INFORME-WEB.md](INFORME-WEB.md); aquí solo va el índice.
 
-**Ojo con los números:** de aquí abajo son los de **GitHub** (issues #6-#32), no los
+**Ojo con los números:** de aquí abajo son los de **GitHub** (issues #6-#36), no los
 del roadmap de arriba, que llegó hasta el #54. Cada issue guarda su número de roadmap en
 el cuerpo.
 
@@ -243,6 +243,18 @@ convierte en un seguimiento con el `repository_dispatch` que ya existe: sin work
 - [ ] **[#31](https://github.com/mateogsilvaa/tripfinder/issues/31) · Una sola cabecera** `infra` `web`
 - [ ] **[#32](https://github.com/mateogsilvaa/tripfinder/issues/32) · Humo de frontend en CI** `infra` `web`
 
+### [M16 · Barrido nocturno de mitad de semana](https://github.com/mateogsilvaa/tripfinder/milestone/7)
+
+Una busqueda que corre sola en la **noche del martes al miercoles, entre las 02:00 y las
+03:00 peninsulares**, aprovechando que nadie usa la web para gastar el presupuesto de
+consultas entero. La ventana cae en 00:00-01:00 UTC en verano y en 01:00-02:00 UTC en
+invierno —siempre miercoles—, asi que lleva dos crons y un guardian de hora local.
+
+- [ ] **[#33](https://github.com/mateogsilvaa/tripfinder/issues/33) · Barrido nocturno de la noche del martes al miércoles (02:00-03:00)** `infra` `scraper`
+- [ ] **[#34](https://github.com/mateogsilvaa/tripfinder/issues/34) · Horas peninsulares de verdad en todos los crons** `infra` `documentation`
+- [ ] **[#35](https://github.com/mateogsilvaa/tripfinder/issues/35) · El barrido nocturno recorre el mapa entero, no un trozo** `core` `scraper`
+- [ ] **[#36](https://github.com/mateogsilvaa/tripfinder/issues/36) · El correo del barrido nocturno no llega a las tres de la mañana** `email` `ux`
+
 ---
 
 ## Orden sugerido para retomar
@@ -254,5 +266,8 @@ convierte en un seguimiento con el `repository_dispatch` que ya existe: sin work
    por esfuerzo invertido. #11, #12 y #13 lo rematan.
 4. **#19, #31, #30** — rendimiento y estructura, antes de que la web crezca más.
 5. **#23-#25 y #26-#28** — accesibilidad y la primera impresión.
-6. De lo viejo, lo que sigue vivo: #10 (rate limiting), #13 (digest semanal) y #33, #39
-   y #42, todas `nice-to-have`.
+6. **#33 → #36** — el barrido nocturno de los miércoles de madrugada, con #34 antes que
+   los demás.
+7. De lo viejo, lo que sigue vivo —y aquí los números **son los del roadmap**, no los de
+   GitHub—: #10 (rate limiting), #13 (digest semanal), #33 (ventana de horas por destino),
+   #39 (puentes y festivos) y #42 (mínimo histórico de la ruta).
