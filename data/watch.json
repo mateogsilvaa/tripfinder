@@ -21,25 +21,6 @@
       "last_offers": []
     },
     {
-      "id": "albania-12",
-      "label": "Albania · hasta 40 €",
-      "destination": "Albania",
-      "depart": "",
-      "return_date": "",
-      "months": 12,
-      "nights": "2-3",
-      "weekend_only": true,
-      "adults": 1,
-      "max_price": 40.0,
-      "owner": "u-bccb1f1e",
-      "owner_name": "mateo",
-      "created": "2026-08-16",
-      "best_price": null,
-      "last_checked": "2026-08-29",
-      "active": true,
-      "last_offers": []
-    },
-    {
       "id": "estonia-12",
       "label": "Estonia · hasta 80 €",
       "destination": "Estonia",
