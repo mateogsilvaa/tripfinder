@@ -76,6 +76,25 @@
       "last_checked": "",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "todos-2026-10-09-bccb1f1e",
+      "label": "Donde sea · 9 oct → 12 oct · avisa bajo 270 € · 2 pers.",
+      "destination": "",
+      "depart": "2026-10-09",
+      "return_date": "2026-10-12",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 2,
+      "max_price": 270.0,
+      "owner": "u-bccb1f1e",
+      "owner_name": "mateo",
+      "created": "2026-08-29",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
