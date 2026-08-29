@@ -1,0 +1,28 @@
+{
+  "slug": "mad-china-23-1750-20270111-20270131-1p-bccb1f1e",
+  "label": "China · 11 ene → 31 ene · hasta 1750 € · 1 pers.",
+  "request": {
+    "destination": "China",
+    "label": "China · 11 ene → 31 ene · hasta 1750 € · 1 pers.",
+    "max_price": 1750.0,
+    "nights_min": 2,
+    "nights_max": 3,
+    "months": 12,
+    "weekend_only": false,
+    "adults": 1,
+    "origin": "MAD",
+    "depart": "2027-01-11",
+    "return_date": "2027-01-31",
+    "owner": "u-bccb1f1e",
+    "owner_name": "",
+    "slug": "mad-china-23-1750-20270111-20270131-1p-bccb1f1e"
+  },
+  "generated_at": "2026-08-29",
+  "errors": [
+    "Google devolvio paginas vacias: puede faltar alguna aerolinea"
+  ],
+  "count": 0,
+  "owner": "u-bccb1f1e",
+  "owner_name": "",
+  "offers": []
+}
