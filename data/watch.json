@@ -57,6 +57,25 @@
       "last_checked": "",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "todos-2027-01-29-bccb1f1e",
+      "label": "Donde sea · 29 ene → 31 ene · avisa bajo 150 € · 2 pers.",
+      "destination": "",
+      "depart": "2027-01-29",
+      "return_date": "2027-01-31",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 2,
+      "max_price": 150.0,
+      "owner": "u-bccb1f1e",
+      "owner_name": "mateo",
+      "created": "2026-08-29",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
