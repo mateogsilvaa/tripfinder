@@ -227,11 +227,15 @@
     "ryanair-MAD-BGY-20270129": {
       "price": 69.08,
       "date": "2026-08-28"
+    },
+    "ryanair-MAD-DUB-20261106": {
+      "price": 98.56,
+      "date": "2026-08-29"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-08-28",
-    "tytus.zasowski@gmail.com": "2026-08-28"
+    "mateogonsilva@gmail.com": "2026-08-29",
+    "tytus.zasowski@gmail.com": "2026-08-29"
   },
   "watch_digest": {
     "mateogonsilva@gmail.com": "2026-08-29"
