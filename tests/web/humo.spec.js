@@ -157,6 +157,106 @@ test.describe("enlaces que vienen de los datos", () => {
   });
 });
 
+test.describe("los diálogos", () => {
+  /* Los tres criterios de la #23, en los dos diálogos que tiene la web
+     pública. Un diálogo que deja escapar el foco no es un diálogo: con teclado
+     te sales sin enterarte y sigues tabulando por la página de detrás. */
+
+  const DIALOGOS = [
+    {
+      nombre: "la hoja de alojamiento",
+      pagina: "/index.html",
+      abrir: async (page) => {
+        await page.locator("[data-stay]").first().click();
+        return page.locator("[data-stay]").first();
+      },
+      caja: "#panel",
+    },
+    {
+      nombre: "el selector de destinos",
+      pagina: "/buscar.html",
+      abrir: async (page) => {
+        await page.evaluate(() =>
+          document.querySelectorAll("#finderForm [disabled]").forEach((e) => (e.disabled = false))
+        );
+        await page.selectOption("#fWhere", "one");
+        await page.click("#destBtn");
+        return page.locator("#destBtn");
+      },
+      caja: "#destModal",
+    },
+  ];
+
+  for (const d of DIALOGOS) {
+    test(`${d.nombre}: el foco no se escapa al fondo`, async ({ page }) => {
+      await page.goto(d.pagina);
+      await d.abrir(page);
+      await expect(page.locator(d.caja)).toBeVisible();
+
+      // Se tabula mas veces de las que hay cosas dentro: si el foco se
+      // escapara, en alguna vuelta acabaria fuera de la caja.
+      for (let i = 0; i < 25; i++) {
+        await page.keyboard.press("Tab");
+        const dentro = await page.evaluate(
+          (sel) => document.querySelector(sel).contains(document.activeElement),
+          d.caja
+        );
+        expect(dentro, `tras ${i + 1} tabuladores el foco se fue fuera`).toBe(true);
+      }
+    });
+
+    test(`${d.nombre}: Escape cierra y el foco vuelve a quien abrió`, async ({ page }) => {
+      await page.goto(d.pagina);
+      const abridor = await d.abrir(page);
+      await expect(page.locator(d.caja)).toBeVisible();
+
+      await page.keyboard.press("Escape");
+      await expect(page.locator(d.caja)).toBeHidden();
+      await expect(abridor).toBeFocused();
+    });
+
+    test(`${d.nombre}: el fondo queda inerte mientras está abierto`, async ({ page }) => {
+      await page.goto(d.pagina);
+      await d.abrir(page);
+      await expect(page.locator(d.caja)).toBeVisible();
+      // La cabecera es fondo: mientras hay diálogo, ni se tabula ni se lee.
+      await expect(page.locator("header.masthead")).toHaveAttribute("inert", "");
+      await page.keyboard.press("Escape");
+      await expect(page.locator("header.masthead")).not.toHaveAttribute("inert", "");
+    });
+  }
+
+  test("el de entrar (el mismo que usa el panel) también atrapa el foco", async ({ page }) => {
+    await page.goto("/buscar.html");
+    // El aviso del candado trae su propio boton de entrar.
+    const abridor = page.locator("[data-entrar]").first();
+    await abridor.click();
+    const caja = page.locator("#tfModal .modal-caja");
+    await expect(caja).toBeVisible();
+    await expect(caja).toHaveAttribute("aria-modal", "true");
+
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press("Tab");
+      const dentro = await page.evaluate(() =>
+        document.querySelector("#tfModal").contains(document.activeElement)
+      );
+      expect(dentro, `tras ${i + 1} tabuladores el foco se fue fuera`).toBe(true);
+    }
+
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#tfModal")).toBeHidden();
+    await expect(abridor).toBeFocused();
+  });
+
+  test("el diálogo se anuncia como tal", async ({ page }) => {
+    await page.goto("/index.html");
+    await page.locator("[data-stay]").first().click();
+    const panel = page.locator("#panel");
+    await expect(panel).toHaveAttribute("role", "dialog");
+    await expect(panel).toHaveAttribute("aria-modal", "true");
+  });
+});
+
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */

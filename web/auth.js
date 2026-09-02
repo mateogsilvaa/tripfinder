@@ -426,25 +426,27 @@ function tfModal(html) {
       if (e.target === caja) tfCerrarModal();
     });
   }
-  caja.innerHTML = `<div class="modal-caja estrecha" role="dialog" aria-modal="true">${html}</div>`;
+  caja.innerHTML = `<div class="modal-caja estrecha" role="dialog">${html}</div>`;
   caja.hidden = false;
   const cerrar = caja.querySelector("[data-cerrar]");
   if (cerrar) cerrar.addEventListener("click", tfCerrarModal);
+  // El aria-modal, la trampa de foco, el Escape y devolver el foco a quien
+  // abrio los pone tfAbrirDialogo (log.js), igual que en los otros tres
+  // dialogos de la web.
+  tfAbrirDialogo(caja, {
+    dialogo: caja.querySelector(".modal-caja"),
+    alCerrar: () => {
+      caja.hidden = true;
+      caja.innerHTML = "";
+    },
+  });
   return caja;
 }
 
 function tfCerrarModal() {
   const caja = document.getElementById("tfModal");
-  if (caja) {
-    caja.hidden = true;
-    caja.innerHTML = "";
-  }
+  if (caja) tfCerrarDialogo(caja);
 }
-
-document.addEventListener("keydown", (e) => {
-  const caja = document.getElementById("tfModal");
-  if (e.key === "Escape" && caja && !caja.hidden) tfCerrarModal();
-});
 
 /* Un campo de contraseña con el ojo para verla. En el móvil, escribir a ciegas
    una contraseña que te han pasado por WhatsApp es la mitad de los "no me deja

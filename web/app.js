@@ -1196,15 +1196,28 @@ function ensureVisible(id) {
 /* ------------------------------------------------------------- alojamiento */
 let pollTimer = null;
 
+/* Un solo camino de cierre: se llame desde el boton, desde el velo o desde
+   Escape, todo pasa por `tfCerrarDialogo`, que es quien apaga la trampa de
+   foco y devuelve el foco a quien abrio. Lo de esconder la hoja va en
+   `alCerrar`, que es lo unico propio de este dialogo. */
+function abrirPanel() {
+  $("#panel").hidden = false;
+  $("#backdrop").hidden = false;
+  tfAbrirDialogo($("#panel"), {
+    etiqueta: "Alojamiento",
+    foco: () => $("#panelClose"),
+    alCerrar: () => {
+      clearInterval(pollTimer);
+      $("#panel").hidden = true;
+      $("#backdrop").hidden = true;
+    },
+  });
+}
 function closePanel() {
-  clearInterval(pollTimer);
-  $("#panel").hidden = true;
-  $("#backdrop").hidden = true;
-  document.body.style.overflow = "";
+  tfCerrarDialogo($("#panel"));
 }
 on("#panelClose", "click", closePanel);
 on("#backdrop", "click", closePanel);
-document.addEventListener("keydown", (e) => e.key === "Escape" && closePanel());
 
 function issueURL(o, adultos) {
   const body = [
@@ -1231,9 +1244,7 @@ async function openStays(id) {
   const offer = OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id];
   if (!offer) return;
 
-  $("#panel").hidden = false;
-  $("#backdrop").hidden = false;
-  document.body.style.overflow = "hidden";
+  abrirPanel();
   $("#panelTitle").textContent = offer.destination_name || offer.destination;
   $("#panelDates").textContent =
     `${fmtDate(offer.depart_date, true)}${offer.return_date ? ` → ${fmtDate(offer.return_date, true)}` : ""}` +
@@ -1911,16 +1922,15 @@ function elegirDestino(valor) {
 
 function abrirDestinos() {
   $("#destModal").hidden = false;
-  document.body.style.overflow = "hidden";
-  cargarDestinos().then(() => {
-    pintarDestinos($("#destSearch").value);
-    $("#destSearch").focus();
+  tfAbrirDialogo($("#destModal"), {
+    foco: () => $("#destSearch"),
+    alCerrar: () => ($("#destModal").hidden = true),
   });
+  cargarDestinos().then(() => pintarDestinos($("#destSearch").value));
 }
 
 function cerrarDestinos() {
-  $("#destModal").hidden = true;
-  document.body.style.overflow = "";
+  tfCerrarDialogo($("#destModal"));
 }
 
 on("#destBtn", "click", () => {
@@ -1932,9 +1942,6 @@ on("#destModal", "click", (e) => {
   if (e.target.id === "destModal") cerrarDestinos();
 });
 on("#destSearch", "input", (e) => pintarDestinos(e.target.value));
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !$("#destModal").hidden) cerrarDestinos();
-});
 
 /* ------------------------------------------------------------ seguimientos
    Cosa aparte de la busqueda: no contesta ahora, se queda apuntado y lo revisa
