@@ -257,6 +257,97 @@ test.describe("los diálogos", () => {
   });
 });
 
+test.describe("lo que está pasando se dice", () => {
+  /* Las esperas aquí son largas: el alojamiento hace polling durante quince
+     minutos. Quien no ve la pantalla necesita enterarse de que hay algo en
+     marcha Y de cuándo ha terminado. */
+
+  const conSesion = async (page) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-prueba", user: "p", name: "P" }));
+        localStorage.setItem("tf_token", "ghp_de_mentira");
+      } catch (e) { /* nada */ }
+    });
+    await page.route("https://api.github.com/**", (r) => r.fulfill({ status: 204, body: "" }));
+  };
+
+  test("hay una región donde se anuncia, fuera de la vista pero no del lector", async ({ page }) => {
+    await page.goto("/index.html");
+    const region = page.locator("#tfAnuncios");
+    await expect(region).toHaveAttribute("aria-live", "polite");
+    await expect(region).toHaveAttribute("role", "status");
+    // Escondida a la vista, pero NO con display:none: eso la escondería
+    // también del lector, que es justo a quien va dirigida.
+    const como = await region.evaluate((el) => {
+      const c = getComputedStyle(el);
+      return { display: c.display, visibility: c.visibility, ancho: el.getBoundingClientRect().width };
+    });
+    expect(como.display).not.toBe("none");
+    expect(como.visibility).not.toBe("hidden");
+    expect(como.ancho).toBeLessThan(3);
+  });
+
+  test("el alojamiento anuncia que empieza y que termina, y no se repite", async ({ page }) => {
+    await conSesion(page);
+
+    // El fichero de resultados no existe hasta la tercera vuelta del polling:
+    // así se pasa por varias vueltas de verdad y se ve si repite.
+    let vueltas = 0;
+    await page.route("**/data/stays/*.json*", async (route) => {
+      vueltas += 1;
+      if (vueltas < 3) return route.fulfill({ status: 404, body: "" });
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          generated_at: "2026-09-02T11:00:00",
+          stays: [
+            { name: "Un sitio", provider: "airbnb", url: "https://example.com/a", price_total: 120 },
+            { name: "Otro sitio", provider: "booking", url: "https://example.com/b", price_total: 140 },
+          ],
+        }),
+      });
+    });
+
+    // Se apuntan TODOS los anuncios, no solo el último.
+    const dichos = [];
+    await page.exposeFunction("__dicho", (t) => dichos.push(t));
+    await page.addInitScript(() => {
+      window.addEventListener("DOMContentLoaded", () => {
+        const obs = new MutationObserver(() => {
+          const r = document.getElementById("tfAnuncios");
+          if (r && r.textContent.trim()) window.__dicho(r.textContent.trim());
+        });
+        obs.observe(document.body, { childList: true, subtree: true, characterData: true });
+      });
+    });
+
+    // El polling va cada 20 s de verdad: con el reloj falso no hay que
+    // esperarse el minuto que tardarian tres vueltas.
+    await page.clock.install();
+    await page.goto("/index.html");
+    await page.locator("[data-stay]").first().click();
+    await page.locator("#launch").click();
+    for (let i = 0; i < 3; i++) {
+      await page.clock.runFor(21_000);
+      await page.waitForTimeout(120);
+    }
+
+    await expect.poll(() => dichos.join(" | "), { timeout: 10_000 }).toMatch(/terminada/i);
+
+    // Empieza y termina, las dos cosas.
+    expect(dichos.some((d) => /buscando alojamiento/i.test(d))).toBe(true);
+    expect(dichos.some((d) => /terminada.*2 alojamientos/i.test(d))).toBe(true);
+
+    // Y el criterio que de verdad cuesta: nada dicho dos veces seguidas,
+    // aunque el polling haya dado varias vueltas.
+    expect(vueltas).toBeGreaterThanOrEqual(3);
+    const unicos = new Set(dichos);
+    expect(unicos.size).toBe(dichos.length);
+  });
+});
+
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */

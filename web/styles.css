@@ -805,6 +805,15 @@ input[type="range"]::-moz-range-thumb {
   text-transform: lowercase; letter-spacing: var(--ls-caps);
 }
 
+/* Lo que se dice pero no se ve: la region donde se anuncian las esperas. No
+   vale `display:none` ni `visibility:hidden` —eso lo esconde tambien del
+   lector, que es justo a quien va dirigido. */
+.solo-lector {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  border: 0;
+}
+
 /* ======================================================================== */
 /* MIENTRAS LLEGAN LOS DATOS, Y CUANDO NO HAY                                */
 /* ======================================================================== */

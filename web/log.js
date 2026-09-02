@@ -240,3 +240,53 @@ function tfCerrarDialogo(caja) {
 }
 
 const tfHayDialogo = () => !!tfDialogoAbierto;
+
+/* --- decir en voz alta lo que esta pasando -------------------------------
+   Las esperas de esta web son largas de verdad: una busqueda "donde sea" son
+   ocho minutos y el alojamiento hace polling durante quince. Quien no ve la
+   pantalla no tiene forma de saber que hay algo en marcha, ni cuando ha
+   terminado —que es la mitad que siempre se olvida.
+
+   Un solo sitio donde hablar, fuera de la vista pero no del lector. `polite`
+   y no `assertive` a proposito: esto es informacion de fondo, no una alarma,
+   y no debe cortar lo que el lector este diciendo.
+
+   Lo importante: NO repetir. El polling da una vuelta cada pocos segundos y
+   sin esto anunciaria "buscando…" para siempre. Solo se dice lo que cambia. */
+let tfUltimoAnuncio = "";
+
+function tfRegion() {
+  let region = document.getElementById("tfAnuncios");
+  if (!region) {
+    region = document.createElement("p");
+    region.id = "tfAnuncios";
+    region.className = "solo-lector";
+    region.setAttribute("role", "status");
+    region.setAttribute("aria-live", "polite");
+    region.setAttribute("aria-atomic", "true");
+    document.body.appendChild(region);
+  }
+  return region;
+}
+
+/* La region tiene que existir ANTES de escribir en ella: una `aria-live` que
+   aparece en el DOM a la vez que su contenido no la anuncian la mitad de los
+   lectores, porque no estaba ahi cuando el navegador empezo a observarla. */
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", tfRegion, { once: true });
+} else {
+  tfRegion();
+}
+
+function tfAnunciar(mensaje) {
+  const texto = String(mensaje || "").trim();
+  if (!texto || texto === tfUltimoAnuncio) return;
+  tfUltimoAnuncio = texto;
+  tfRegion().textContent = texto;
+}
+
+/* Para cuando lo siguiente que se diga pueda ser lo mismo que ya se dijo y aun
+   asi haya que decirlo (otra busqueda igual, otra vuelta al mismo estado). */
+function tfOlvidarAnuncio() {
+  tfUltimoAnuncio = "";
+}

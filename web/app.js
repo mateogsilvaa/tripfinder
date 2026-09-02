@@ -1340,11 +1340,16 @@ function startPolling(id) {
   const started = Date.now();
   $("#panelBody").innerHTML =
     '<div class="status wait"><span class="spin"></span>Buscando… puedes cerrar esta ventana y volver luego.</div>';
+  // Quince minutos de espera sin que nadie te diga que hay algo en marcha son
+  // quince minutos de no saber si le has dado al boton.
+  tfOlvidarAnuncio();
+  tfAnunciar("Buscando alojamiento. Tarda unos minutos; puedes cerrar esta ventana.");
   pollTimer = setInterval(async () => {
     if (Date.now() - started > POLL_MAX_MS) {
       clearInterval(pollTimer);
       $("#panelBody").innerHTML =
         '<div class="status wait">Está tardando más de lo normal. Revisa la issue en GitHub.</div>';
+      tfAnunciar("La búsqueda de alojamiento está tardando más de lo normal.");
       return;
     }
     let data = null;
@@ -1355,6 +1360,13 @@ function startPolling(id) {
     }
     clearInterval(pollTimer);
     pintarStays(data, OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id]);
+    const cuantos = (data && data.stays ? data.stays.length : 0);
+    // Y sobre todo: decir que ha TERMINADO. Es la mitad que siempre se olvida.
+    tfAnunciar(
+      cuantos
+        ? `Búsqueda de alojamiento terminada: ${cuantos} alojamiento${cuantos === 1 ? "" : "s"}.`
+        : "Búsqueda de alojamiento terminada: no se encontró nada para esas fechas."
+    );
   }, POLL_EVERY_MS);
 }
 
@@ -1592,6 +1604,11 @@ on("#finderForm", "submit", async (e) => {
     if (hecha) {
       $("#searches").innerHTML = yaHechaHTML(hecha) + $("#searches").innerHTML;
       wireRepetir();
+      tfOlvidarAnuncio();
+      tfAnunciar(
+        `Esa búsqueda ya estaba hecha, de ${desde(hecha.generated_at)}: ` +
+          `${hecha.count} viaje${hecha.count === 1 ? "" : "s"}. Puedes repetirla si quieres precios de hoy.`
+      );
       return;
     }
   }
@@ -1599,6 +1616,8 @@ on("#finderForm", "submit", async (e) => {
   const r = await dispatch("search", payload);
   if (r.ok) {
     anadirPendiente(payload.label);
+    tfOlvidarAnuncio();
+    tfAnunciar(`Búsqueda lanzada: ${payload.label}. Tarda unos minutos.`);
     loadSearches();
     return;
   }
@@ -1698,9 +1717,36 @@ async function loadSearches() {
 
   // Lo que ya esta en el indice deja de estar pendiente.
   const etiquetas = new Set(guardadas.map((s) => s.label));
-  let pend = pendientes().filter((p) => !etiquetas.has(p.label));
+  const antes = pendientes();
+  let pend = antes.filter((p) => !etiquetas.has(p.label));
   guardarPendientes(pend);
+
+  // Las que acaban de salir de la lista de pendientes son justo las que han
+  // TERMINADO en esta vuelta. Es el momento de decirlo: sin esto se anuncia
+  // que algo empieza y nunca que ha acabado.
+  antes
+    .filter((p) => etiquetas.has(p.label))
+    .forEach((p) => {
+      const hecha = guardadas.find((g) => g.label === p.label);
+      const n = hecha ? hecha.count : 0;
+      tfOlvidarAnuncio();
+      tfAnunciar(
+        n
+          ? `Búsqueda terminada: ${p.label}. ${n} viaje${n === 1 ? "" : "s"}.`
+          : `Búsqueda terminada: ${p.label}. Sin resultados.`
+      );
+    });
+
   const ahora = Date.now();
+  // Y las que se han quedado por el camino, una sola vez cada una.
+  pend
+    .filter((p) => ahora - p.desde > MAX_ESPERA_MS && !p.avisada)
+    .forEach((p) => {
+      p.avisada = true;
+      tfAnunciar(`La búsqueda "${p.label}" no llegó a terminar. Puedes volver a lanzarla.`);
+    });
+  guardarPendientes(pend);
+
   const cabecera = pend
     .map((p) => pendienteHTML(p, ahora - p.desde > MAX_ESPERA_MS))
     .join("");
@@ -1714,6 +1760,7 @@ async function loadSearches() {
     return;
   }
 
+  $("#searches").setAttribute("aria-busy", "true");
   $("#searches").innerHTML = cabecera + guardadas
     .map(
       (s) => `
@@ -1763,6 +1810,7 @@ async function loadSearches() {
   );
 
   wireEntrar($("#searches"));
+  $("#searches").setAttribute("aria-busy", "false");
 
   document.querySelectorAll(".saved[data-slug]").forEach((el) =>
     el.addEventListener("click", (ev) => {
