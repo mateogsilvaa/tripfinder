@@ -102,6 +102,61 @@ test.describe("el armazón que comparten las páginas", () => {
   });
 });
 
+test.describe("enlaces que vienen de los datos", () => {
+  test("un javascript: en un deep_link sale inerte y queda apuntado", async ({ page }) => {
+    // Se sirve el JSON envenenado en lugar del normal.
+    await page.route("**/offers.json*", (r) =>
+      r.fulfill({ path: require.resolve("./datos/offers-envenenado.json") })
+    );
+
+    const apuntes = [];
+    await page.exposeFunction("__apunte", (tipo, msg) => apuntes.push(`${tipo}: ${msg}`));
+    await page.addInitScript(() => {
+      // El registro de errores real guarda en localStorage; aqui basta con
+      // enterarse de que se ha llamado.
+      window.addEventListener("DOMContentLoaded", () => {
+        const original = window.tfApuntar;
+        window.tfApuntar = (tipo, msg, detalle) => {
+          window.__apunte(tipo, msg);
+          if (original) original(tipo, msg, detalle);
+        };
+      });
+    });
+
+    await page.goto("/index.html");
+    await expect(page.locator(".ticket")).toBeVisible();
+
+    // Ninguno de los enlaces de la plancha apunta a javascript: ni a data:.
+    const hrefs = await page.locator(".ticket a").evaluateAll((as) =>
+      as.map((a) => a.getAttribute("href"))
+    );
+    expect(hrefs.length).toBeGreaterThan(0);
+    for (const h of hrefs) {
+      expect(h).not.toMatch(/^\s*(javascript|data):/i);
+    }
+    // El envenenado se queda en "#": enlace que no lleva a ninguna parte.
+    expect(hrefs).toContain("#");
+
+    // Y ha quedado dicho en el registro.
+    await expect.poll(() => apuntes.filter((a) => a.startsWith("url:")).length).toBeGreaterThan(0);
+  });
+
+  test("los enlaces normales siguen funcionando, con path y con query", async ({ page }) => {
+    await page.route("**/offers.json*", (r) =>
+      r.fulfill({ path: require.resolve("./datos/offers-envenenado.json") })
+    );
+    await page.goto("/index.html");
+    // La segunda oferta lleva una URL de Wizz con path y query: tiene que
+    // llegar entera al href, sin recortes ni escapes de mas.
+    const fila = page.locator(".brow").first();
+    await fila.click();
+    const href = await fila.locator('a[href*="wizzair.com"]').first().getAttribute("href");
+    expect(href).toBe(
+      "https://wizzair.com/es-es/booking/select-flight/MAD/BGY/2027-01-08?adults=1"
+    );
+  });
+});
+
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */

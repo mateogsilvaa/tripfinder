@@ -36,6 +36,41 @@ function esc(s) {
   );
 }
 
+/* Una URL que viene de los datos, lista para meter en un href o un src.
+
+   `esc()` escapa caracteres, que esta bien y hace falta, pero escapar no
+   impide un `javascript:`: sobreviviria intacto dentro del atributo y se
+   ejecutaria al hacer clic. Hoy estos campos los generan nuestros propios
+   providers, asi que esto es endurecer, no tapar un agujero abierto — pero el
+   dia que un scraper se trague HTML de un tercero, esta es la linea que hay
+   que tener ya puesta.
+
+   Lo que pasa: http, https y mailto. Lo demas sale como "#" y se apunta en el
+   registro, que si un provider empieza a devolver basura interesa saberlo. */
+const ESQUEMAS_OK = new Set(["http:", "https:", "mailto:"]);
+
+function escURL(valor) {
+  const crudo = String(valor || "").trim();
+  if (!crudo) return "";
+  let esquema;
+  try {
+    // `location.href` como base para que las relativas ("buscar.html") sigan
+    // valiendo: sin base, el constructor las rechaza y perderiamos enlaces
+    // buenos por el camino.
+    esquema = new URL(crudo, location.href).protocol;
+  } catch {
+    if (typeof tfApuntar === "function") tfApuntar("url", "URL que no se puede leer", crudo.slice(0, 120));
+    return "#";
+  }
+  if (!ESQUEMAS_OK.has(esquema)) {
+    if (typeof tfApuntar === "function") {
+      tfApuntar("url", `esquema no permitido: ${esquema}`, crudo.slice(0, 120));
+    }
+    return "#";
+  }
+  return esc(crudo);
+}
+
 /* Cache-buster: Pages sirve los JSON con cache agresiva y aqui siempre queremos lo ultimo. */
 const fetchJSON = (path) =>
   fetch(`${path}${path.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" }).then((r) => {
@@ -348,7 +383,7 @@ function avisoFicha(f) {
         ${record ? '<span class="insignia">lo más barato que has visto</span>' : ""}
         ${
           enlace
-            ? `<a class="btn ghost small" href="${esc(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
+            ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
             : ""
         }
       </footer>
@@ -469,7 +504,7 @@ function favFila(f) {
       <span class="favacc">
         ${
           enlace
-            ? `<a class="btn ghost small" href="${esc(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
+            ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
             : ""
         }
         <button class="quitar" type="button" data-desfav="${esc(f.id)}"
@@ -909,7 +944,7 @@ function altsHTML(o) {
       const gente = Math.max(1, Number(a.adults) || pax(o));
       const uno = Number(a.price_per_person) || a.price / gente;
       const cifra = gente > 1 ? `${fmtEUR(a.price)} (${Math.round(uno)} €/p)` : fmtEUR(a.price);
-      return `<a href="${esc(a.deep_link)}" target="_blank" rel="noopener">${esc(
+      return `<a href="${escURL(a.deep_link)}" target="_blank" rel="noopener">${esc(
         a.airline
       )} ${cifra}${a.depart_time ? ` (sale ${esc(a.depart_time)})` : ""}</a>`;
     })
@@ -967,10 +1002,10 @@ function heroTicket(o) {
       ${extra ? `<div class="hero-extra">${extra}</div>` : ""}
       <div class="actions">
         <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
-        <a class="btn ghost" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+        <a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
         ${
           o.airline_link
-            ? `<a class="btn ghost" href="${esc(o.airline_link)}" target="_blank" rel="noopener">
+            ? `<a class="btn ghost" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
                  Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
             : ""
         }
@@ -1037,17 +1072,17 @@ function detalleHTML(o) {
     </dl>
     ${altsHTML(o)}
     <div class="actions">
-      <a class="btn primary" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+      <a class="btn primary" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
       ${
         o.airline_link
-          ? `<a class="btn ghost" href="${esc(o.airline_link)}" target="_blank" rel="noopener">
+          ? `<a class="btn ghost" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
                Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
           : ""
       }
       <button class="btn ghost" data-stay="${esc(o.id)}">Buscar alojamiento</button>
       ${
         edreamsURL(o)
-          ? `<a class="btn ghost" href="${esc(edreamsURL(o))}" target="_blank" rel="noopener"
+          ? `<a class="btn ghost" href="${escURL(edreamsURL(o))}" target="_blank" rel="noopener"
                title="Se abre con tu sesión: si tienes Prime, verás tu precio de socio"
                >Comparar en eDreams</a>`
           : ""
@@ -1322,8 +1357,13 @@ function stayRow(s) {
       }</small></div>`
     : `<div class="amount-s link-tag">abrir</div>`;
   return `
-    <a class="stay" href="${esc(s.url)}" target="_blank" rel="noopener">
-      ${s.image ? `<img src="${esc(s.image)}" alt="" loading="lazy">` : ""}
+    <a class="stay" href="${escURL(s.url)}" target="_blank" rel="noopener">
+      ${(() => {
+        // Una imagen con un esquema raro no se pinta: `src="#"` haria que el
+        // navegador se pidiera la propia pagina como si fuera un JPEG.
+        const img = escURL(s.image);
+        return img && img !== "#" ? `<img src="${img}" alt="" loading="lazy">` : "";
+      })()}
       <div>
         <div class="name">${esc(s.name)}</div>
         <div class="meta">${esc(meta)}</div>
