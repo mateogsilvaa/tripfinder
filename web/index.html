@@ -23,6 +23,14 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <div class="grain" aria-hidden="true"></div>
 <div class="glow" aria-hidden="true"></div>
 <div class="registro" aria-hidden="true"></div>
+
+<noscript>
+  <p class="sin-js">
+    Esta web necesita JavaScript: los precios se leen de un fichero de datos y
+    se pintan en tu navegador, así que sin él no hay nada que enseñar. Los
+    chollos también llegan por correo, que sí funciona sin nada.
+  </p>
+</noscript>
 <!-- /tf:parte -->
 
 <header class="masthead">
@@ -43,6 +51,14 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <p class="lede">
     Viernes por la tarde fuera, domingo por la tarde de vuelta. Solo precios que han
     caído por debajo de lo que cuesta ese mismo viaje habitualmente.
+  </p>
+  <!-- El trato, no el tipo de viaje: quien llega por primera vez ve un índice
+       de precios y nada le dice qué gana quedándose. -->
+  <p class="trato">
+    Esto mira los precios cada doce horas y te escribe cuando un viaje baja de
+    lo que suele costar. No hay que buscar nada: apuntas el que te interese y
+    se revisa solo.
+    <a href="buscar.html">¿No tienes destino en la cabeza?</a>
   </p>
 
   <dl class="stats" id="stats"></dl>
@@ -107,6 +123,19 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <div class="board-head" id="boardHead" hidden>
     <span>destino</span><span>fechas</span><span>compañía</span><span aria-hidden="true"></span><span>precio</span>
   </div>
+
+  <!-- Mientras llega offers.json el hueco no puede estar vacio: con la red
+       lenta la pagina parece rota. Se enseñan las reglas del indice sin datos,
+       que es exactamente lo que va a aparecer encima. -->
+  <section id="cargando" class="cargando" aria-live="polite" aria-busy="true">
+    <p class="cargando-nota">levantando el índice…</p>
+    <span class="cargando-fila" aria-hidden="true"></span>
+    <span class="cargando-fila" aria-hidden="true"></span>
+    <span class="cargando-fila" aria-hidden="true"></span>
+    <span class="cargando-fila" aria-hidden="true"></span>
+    <span class="cargando-fila" aria-hidden="true"></span>
+  </section>
+
   <section id="offers" class="rows"></section>
 
   <p id="empty" class="empty" hidden>Nada con estos filtros. Sube el tope de precio.</p>

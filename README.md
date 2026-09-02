@@ -26,9 +26,19 @@ Todo corre **gratis sobre GitHub**: Actions como scheduler/backend y Pages como 
                  └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Por qué issues como cola:** GitHub Pages es estático, no puede ejecutar el scraper. Abrir una
-issue desde el navegador es el único disparador gratuito, autenticado y sin exponer ningún token
-en el cliente. La web hace polling del JSON de resultados.
+**Por qué hace falta disparar algo:** GitHub Pages es estático, no puede ejecutar el scraper.
+La web manda un `repository_dispatch` desde el navegador con el token de tu cuenta —que sale
+cifrado del sobre al entrar, nunca está en el HTML— y hace polling del JSON de resultados.
+
+Las issues fueron el primer disparador, cuando no había cuentas: abrir una era la única forma
+gratuita y autenticada de arrancar un workflow desde una web estática. Hoy **las búsquedas ya no
+pasan por ahí**; solo queda como último recurso para el alojamiento, si el dispatch falla con el
+panel ya abierto.
+
+**Lo que no se lanza:** antes de levantar nada, la web mira si esa misma búsqueda ya está
+publicada. Si lo está, te la ofrece con la fecha en que se hizo en vez de repetirla —un barrido
+"donde sea" son unos ocho minutos de scraping— y te deja repetirla a mano si quieres precios de
+hoy. Y borrar varias búsquedas seguidas manda **una** llamada con la lista, no una por fichero.
 
 ## Puesta en marcha
 
@@ -202,6 +212,29 @@ abre una issue `[buscar] ...` que dispara `custom-search.yml`. En local:
 ```bash
 python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
 ```
+
+## Lo que cuesta hacer funcionar esto
+
+Actions es gratis e ilimitado en repositorios públicos, y este lo es, así que ninguno de estos
+runs se factura. Aun así conviene saber dónde está el gasto, por si algún día deja de serlo:
+
+| Workflow | Cuándo | Duración | A la semana |
+| --- | --- | ---: | ---: |
+| `scan-flights` | cron, 2 al día | ~37 min | **~520 min** |
+| `custom-search` | cada búsqueda que se lanza | ~1-8 min | según uso |
+| `stay-request` | cada búsqueda de alojamiento | ~2 min | según uso |
+| `watch` | apuntar, quitar o borrar | ~30 s | según uso |
+| `pages` | tras cada cambio de datos | ~30 s | — |
+
+El barrido diario es el **95 %** del total, y no se puede acelerar sin más: el scraper va en
+serie a propósito, con un `throttle` por proveedor, porque paralelizarlo es la forma rápida de
+acabar baneado. Si algún día hay que recortar, la palanca es la **frecuencia del cron**, que es
+una decisión de producto: cada pasada menos son ~37 minutos menos y una oportunidad menos de
+pillar un chollo antes de que suba.
+
+Todos los workflows llevan `timeout-minutes`: sin él, uno colgado se queda hasta el límite de
+6 horas de GitHub.
+
 
 ## El atlas: dos cartas de la misma hoja
 

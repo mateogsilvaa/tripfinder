@@ -345,6 +345,20 @@ h1 em { display: block; font-style: italic; font-weight: 300; color: var(--azul)
   font: 300 var(--fs-lede)/var(--lh-body) var(--font-sans);
 }
 
+/* Lo que la web hace POR TI, que no es lo mismo que el tipo de viaje que
+   busca. Va colgando de una hairline, no en un banner: el trato se cuenta, no
+   se anuncia. En movil no añade ningun elemento a la cabecera —es la misma
+   columna de texto, una linea mas abajo. */
+.trato {
+  max-width: var(--measure-prose); margin: 18px 0 0; padding-top: 16px;
+  border-top: 1px solid var(--line-2);
+  font: 300 var(--fs-body-s)/1.75 var(--font-sans); color: var(--muted);
+}
+.trato a {
+  color: var(--azul); border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.trato a:hover { border-color: currentColor; }
+
 /* --- las cifras de la hoja, en celdas regladas --------------------------- */
 .stats {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -792,6 +806,45 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ======================================================================== */
+/* MIENTRAS LLEGAN LOS DATOS, Y CUANDO NO HAY                                */
+/* ======================================================================== */
+
+/* El hueco no puede estar vacio entre que se pide offers.json y se pinta: con
+   la red lenta la pagina parece rota. Se enseñan las reglas del indice sin
+   datos, que es justo lo que va a aparecer encima. Un atlas no se mueve, asi
+   que la espera se dice con opacidad —nunca con un barrido de luz. */
+.cargando { display: block; padding-top: 2px; }
+.cargando-nota {
+  margin: 0 0 4px; font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  animation: tf-respira 2.4s var(--ease) infinite;
+}
+.cargando-fila {
+  display: block; height: 53px; border-bottom: 1px solid var(--line-2);
+}
+@keyframes tf-respira { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Sin JavaScript no hay absolutamente nada que enseñar, y callarse es peor que
+   decirlo: al menos que se sepa por que la pagina esta en blanco. */
+.sin-js {
+  position: relative; z-index: 1;
+  max-width: var(--w-page); margin: 26px auto 0; padding-inline: var(--pad-page);
+  border-left: 2px solid var(--azul);
+  font: 300 var(--fs-body-s)/1.7 var(--font-sans); color: var(--muted);
+}
+
+/* La direccion que no existe. Mismo bloque que cualquier otro: regla mayor
+   arriba con su cuadratin, y la referencia que no estaba en el indice. */
+.perdido { position: relative; padding-top: 14px; }
+.perdido .regla { position: absolute; top: 0; left: 0; right: 0; }
+.perdido-ref {
+  margin: 0 0 4px; font: 400 var(--fs-data-s)/1.6 var(--font-mono);
+  color: var(--faint); word-break: break-all;
+}
+.perdido .vacio { margin-top: 12px; }
+.perdido .actions { margin-top: 26px; }
+
+/* ======================================================================== */
 /* LA HOJA DE ALOJAMIENTO                                                    */
 /* ======================================================================== */
 
@@ -988,6 +1041,11 @@ input[type="range"]::-moz-range-thumb {
   letter-spacing: var(--ls-cifra); color: var(--azul);
 }
 .saved-rows, .watch-rows { width: 100%; padding-top: 6px; }
+
+/* Una busqueda que ya estaba hecha: se ofrece en vez de volver a barrer. El
+   filete azul de sondeo dice "esto es informacion", no "esto es un chollo". */
+.saved.ya-hecha { border-left: 2px solid var(--sello); padding-left: 14px; }
+.saved.ya-hecha .btn { margin-left: auto; }
 
 /* ======================================================================== */
 /* EL AVISO DE CAMBIO DE PRECIO                                              */

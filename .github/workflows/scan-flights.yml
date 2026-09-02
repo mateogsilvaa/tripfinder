@@ -21,6 +21,9 @@ concurrency:
 
 jobs:
   scan:
+    # El barrido completo son ~37 minutos. Si pasa de una hora es que un
+    # proveedor esta colgado, y sin esto arrastra hasta las 6 horas de GitHub.
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

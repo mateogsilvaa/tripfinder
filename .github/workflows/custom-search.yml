@@ -1,33 +1,32 @@
 name: Busqueda personalizada
 
-# Se dispara cuando la web abre una issue "[buscar] <lo que sea>".
-# Igual que el alojamiento: la web es estatica, asi que la issue es la cola.
+# La web manda un repository_dispatch directo desde el navegador, con el token
+# de la cuenta. Ya no escucha issues: el camino por issue existio cuando no
+# habia cuentas, pero cada issue del repositorio —incluidas las de aviso de
+# chollo, que se abren solas— arrancaba un run de esto para descartarlo en el
+# `if`, y encima por partida doble (`opened` y `labeled`).
 
 on:
   repository_dispatch:
     types: [search]
-  issues:
-    types: [opened, labeled]
 
 permissions:
   contents: write
   actions: write # para lanzar el deploy de Pages
-  issues: write
 
 concurrency:
   # Un grupo por busqueda: con un grupo comun, al encolar una nueva GitHub
   # cancelaba la anterior que estaba esperando y desaparecia sin decir nada.
   # Los commits no chocan porque cada una escribe su fichero y hay rebase.
-  group: busqueda-${{ github.event.client_payload.dest || github.event.issue.number || github.run_id }}
+  group: busqueda-${{ github.event.client_payload.dest || github.run_id }}
   cancel-in-progress: false
 
 jobs:
   buscar:
-    if: >
-      github.event_name == 'repository_dispatch' ||
-      (github.event.issue.user.login == github.repository_owner &&
-       startsWith(github.event.issue.title, '[buscar] '))
     runs-on: ubuntu-latest
+    # Un barrido "donde sea" son ~8 minutos. Si pasa de 30 es que algo se ha
+    # colgado, y sin esto se queda hasta el limite de 6 horas de GitHub.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -41,9 +40,6 @@ jobs:
       - name: Leer los parametros
         id: parse
         env:
-          EVENT: ${{ github.event_name }}
-          TITLE: ${{ github.event.issue.title }}
-          BODY: ${{ github.event.issue.body }}
           P_DEST: ${{ github.event.client_payload.dest }}
           P_LABEL: ${{ github.event.client_payload.label }}
           P_MAX: ${{ github.event.client_payload.max_price }}
@@ -56,21 +52,13 @@ jobs:
           P_OWNER: ${{ github.event.client_payload.owner }}
           P_OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
-          # Igual que en el alojamiento: la web manda los datos ya estructurados.
-          if [ "$EVENT" = "repository_dispatch" ]; then
-            {
-              echo "dest=$P_DEST"; echo "label=$P_LABEL"; echo "max_price=$P_MAX"
-              echo "nights=$P_NIGHTS"; echo "months=$P_MONTHS"; echo "weekend=$P_WEEKEND"
-              echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
-              echo "owner=$P_OWNER"; echo "owner_name=$P_OWNER_NAME"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "label=${TITLE#\[buscar\] }" >> "$GITHUB_OUTPUT"
-          for key in dest max_price nights months weekend adults depart return_date; do
-            value=$(printf '%s' "$BODY" | grep -m1 "^${key}:" | cut -d' ' -f2- | tr -d '\r')
-            echo "${key}=${value}" >> "$GITHUB_OUTPUT"
-          done
+          # La web manda los datos ya estructurados: aqui no se parsea texto.
+          {
+            echo "dest=$P_DEST"; echo "label=$P_LABEL"; echo "max_price=$P_MAX"
+            echo "nights=$P_NIGHTS"; echo "months=$P_MONTHS"; echo "weekend=$P_WEEKEND"
+            echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
+            echo "owner=$P_OWNER"; echo "owner_name=$P_OWNER_NAME"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Buscar
         env:
@@ -102,8 +90,7 @@ jobs:
           if [ -n "$OWNER" ];      then args+=(--owner "$OWNER"); fi
           if [ -n "$OWNER_NAME" ]; then args+=(--owner-name "$OWNER_NAME"); fi
           python -m tripfinder search \
-            --dest "$DEST" --label "$LABEL" "${args[@]}" \
-            --summary-out summary.md
+            --dest "$DEST" --label "$LABEL" "${args[@]}"
 
       - name: Publicar resultados
         run: |
@@ -147,20 +134,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pages.yml --ref main
-
-      - name: Contestar en la issue
-        if: github.event_name == 'issues'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh issue comment ${{ github.event.issue.number }} --body-file summary.md
-          gh issue close ${{ github.event.issue.number }} \
-            --comment "Resultados publicados en la web (tarda ~1 min en desplegarse)."
-
-      - name: Avisar si algo fallo
-        if: failure() && github.event_name == 'issues'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh issue comment ${{ github.event.issue.number }} \
-            --body "La busqueda fallo. Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

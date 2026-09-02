@@ -45,6 +45,36 @@ PARTES = WEB / "partes"
 # styles.css, app.js, auth.js o log.js: es lo que rompe la cache del navegador.
 BUILD = 28
 
+# Donde se publica el sitio. Solo lo usa la 404: Pages la sirve para CUALQUIER
+# ruta que no exista, asi que desde `/tripfinder/lo/que/sea` los enlaces
+# relativos apuntarian a `/tripfinder/lo/que/styles.css` y la pagina saldria
+# en blanco. Si el repositorio cambia de nombre, se toca aqui.
+SITIO = "/tripfinder/"
+
+# El arreglo va condicionado a proposito. Un `<base>` fijo dejaria la 404
+# inservible en cualquier sitio que no sea esa ruta exacta: abierta a doble
+# clic, en una vista previa local o en un fork con otro nombre, todos los
+# enlaces apuntarian a un `/tripfinder/` que ahi no existe. Asi solo se pone
+# cuando de verdad estamos colgando de esa raiz y ademas mas hondo que ella,
+# que es el unico caso en que los enlaces relativos fallan. Va en un <script>
+# ANTES del primer <link>: lo que se inserta ahi afecta a lo que el parser lee
+# despues.
+ARREGLO_BASE = """<script>
+/* Pages sirve esta pagina para cualquier direccion que no exista. Desde una
+   ruta honda los enlaces relativos apuntarian al sitio equivocado. */
+(function () {
+  try {
+    var raiz = "%s";
+    var aqui = location.pathname;
+    if (aqui.indexOf(raiz) !== 0 || aqui.slice(raiz.length).indexOf("/") < 0) return;
+    var b = document.createElement("base");
+    b.href = raiz;
+    document.head.appendChild(b);
+  } catch (e) { /* sin arreglo: la pagina se ve sin estilos, pero se lee */ }
+})();
+</script>
+""" % SITIO
+
 DESCRIPCION = (
     "Escapadas de fin de semana desde Madrid por debajo de su precio habitual, "
     "con busqueda de alojamiento bajo demanda."
@@ -61,6 +91,12 @@ GUIONES_PANEL = (
     '<script src="log.js?v={v}"></script>\n'
     '<script src="auth.js?v={v}"></script>\n'
 )
+# La 404 no tiene datos que pintar: le basta el tema y el chip de cuenta.
+GUIONES_MINIMO = '<script src="log.js?v={v}"></script>\n'
+
+NOTA_404 = (
+    '  <span>Los precios vuelan: confirma siempre antes de reservar.</span>\n'
+)
 
 NOTA_WEB = (
     '  <span id="frescura">—</span>\n'
@@ -76,6 +112,7 @@ NOTA_PANEL = (
 # aparece en las tres paginas publicas de golpe.
 PAGINAS = {
     "index.html": {
+        "base": "",
         "titulo": "TripFinder · escapadas desde Madrid",
         "meta": f'<meta name="description" content="{DESCRIPCION}">',
         "favicon": "✈️",
@@ -87,6 +124,7 @@ PAGINAS = {
         "guiones": GUIONES_WEB,
     },
     "buscar.html": {
+        "base": "",
         "titulo": "TripFinder · trazar un viaje",
         "meta": f'<meta name="description" content="{DESCRIPCION}">',
         "favicon": "✈️",
@@ -98,6 +136,7 @@ PAGINAS = {
         "guiones": GUIONES_WEB,
     },
     "seguimientos.html": {
+        "base": "",
         "titulo": "TripFinder · en observación",
         "meta": f'<meta name="description" content="{DESCRIPCION}">',
         "favicon": "✈️",
@@ -108,9 +147,25 @@ PAGINAS = {
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
     },
+    # La pagina que sirve Pages cuando la direccion no existe. Lleva el nav
+    # (es lo unico util que puedes hacer desde ahi) pero no las hojas de
+    # alojamiento, y no se indexa.
+    "404.html": {
+        "base": ARREGLO_BASE,
+        "titulo": "TripFinder · fuera de la carta",
+        "meta": '<meta name="robots" content="noindex">',
+        "favicon": "✈️",
+        "flaps": '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>',
+        "rotulo": "índice de escapadas · origen Madrid",
+        "vivo": "",
+        "zona": None,
+        "nota": NOTA_404,
+        "guiones": GUIONES_MINIMO,
+    },
     # El panel no es una zona publica: no lleva nav, ni las hojas de
     # alojamiento, ni se indexa.
     "admin.html": {
+        "base": "",
         "titulo": "TripFinder · panel",
         "meta": '<meta name="robots" content="noindex">',
         "favicon": "🛠️",
