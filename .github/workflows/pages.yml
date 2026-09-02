@@ -6,6 +6,7 @@ on:
     paths:
       - "web/**"
       - "data/**"
+      - "tools/montar.py"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -24,10 +25,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # La cabecera, el nav, las hojas y el pie viven una sola vez en
+      # web/partes/. Si alguien edito una region a mano en vez de tocar la
+      # parte, mejor parar aqui que publicar cuatro cabeceras distintas.
+      - name: Comprobar que las partes estan montadas
+        run: python tools/montar.py --check
+
       - name: Montar el sitio
         run: |
           mkdir -p _site
           cp -r web/* _site/
+          rm -rf _site/partes        # las partes son fuente, no pagina
           mkdir -p _site/data
           cp -r data/* _site/data/ 2>/dev/null || true
           touch _site/.nojekyll

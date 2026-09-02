@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="es">
+<!-- tf:parte cabeza -->
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,12 +17,16 @@
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
 </head>
+<!-- /tf:parte -->
 <body>
+<!-- tf:parte capas -->
 <div class="grain" aria-hidden="true"></div>
 <div class="glow" aria-hidden="true"></div>
 <div class="registro" aria-hidden="true"></div>
+<!-- /tf:parte -->
 
 <header class="masthead">
+<!-- tf:parte barra -->
   <div class="topbar">
     <div class="board" aria-hidden="true">
       <span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>
@@ -32,6 +37,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <b aria-hidden="true"></b><span class="tema-txt">noche</span>
     </button>
   </div>
+<!-- /tf:parte -->
 
   <h1>Trazar <em>un viaje</em></h1>
   <p class="lede">
@@ -41,11 +47,13 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
   <dl class="stats" id="stats"></dl>
 
+<!-- tf:parte zonas -->
   <nav class="zonas" aria-label="Zonas">
     <a href="./" class="zona" data-zona="promos">hoja del día</a>
     <a href="buscar.html" class="zona activa" data-zona="buscar" aria-current="page">trazar un viaje</a>
     <a href="seguimientos.html" class="zona" data-zona="follows">en observación</a>
   </nav>
+<!-- /tf:parte -->
 </header>
 
 <main>
@@ -113,6 +121,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 </main>
 
+<!-- tf:parte hojas -->
 <aside id="panel" class="panel" hidden aria-label="Alojamiento">
   <header class="panel-head">
     <div>
@@ -136,7 +145,9 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     <div id="destList" class="dest-list"></div>
   </div>
 </div>
+<!-- /tf:parte -->
 
+<!-- tf:parte pie -->
 <footer class="foot">
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
@@ -146,5 +157,6 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <script src="log.js?v=28"></script>
 <script src="auth.js?v=28"></script>
 <script src="app.js?v=28"></script>
+<!-- /tf:parte -->
 </body>
 </html>

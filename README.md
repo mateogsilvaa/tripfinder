@@ -252,6 +252,43 @@ El correo (`src/tripfinder/notify/render.py`) lleva la misma paleta y las mismas
 reglas. Lo único que no viaja son las fuentes —ningún cliente de correo carga
 tipografías externas—, así que ahí van Georgia y la monoespaciada del sistema.
 
+## Tocar la web
+
+La web sigue siendo HTML plano: sin build, sin dependencias, y se abre haciendo
+doble clic en `web/index.html`. Lo que cambió es que la cabecera, el nav, las
+hojas de alojamiento y el pie ya **no están copiados en los cuatro HTML**: viven
+una sola vez en `web/partes/` y `tools/montar.py` los escribe dentro de cada
+página, entre marcas:
+
+```html
+<!-- tf:parte zonas -->
+  ...lo que escribe el montador...
+<!-- /tf:parte -->
+```
+
+Escribe en el propio fichero, no en una copia: los HTML del repositorio siguen
+siendo los que se publican y los que se abren en local. No hay generador de
+sitios; esto solo sustituye texto entre dos comentarios.
+
+```bash
+python tools/montar.py            # monta y guarda
+python tools/montar.py --check    # no toca nada; falla si algo está sin montar
+```
+
+- **Para cambiar una entrada del nav**, el rótulo de la barra o el pie: se toca
+  la parte en `web/partes/` y se pasa el montador. Sale en las cuatro páginas.
+- **Lo que cambia de una página a otra** (título, descripción, favicon, zona
+  activa, qué scripts carga) está en la tabla `PAGINAS` de `tools/montar.py`.
+- **Para romper la caché del navegador** tras tocar `styles.css`, `app.js`,
+  `auth.js` o `log.js`: se sube `BUILD` en `tools/montar.py` y se monta. El `?v=`
+  de los cuatro HTML y el `build N` del pie salen de ahí, así que ya no pueden
+  desincronizarse — que es exactamente lo que había pasado: el panel se quedó en
+  `build 27` mientras las otras tres iban por la 28.
+
+`pages.yml` pasa `--check` antes de publicar y `tests/test_montar.py` lo
+comprueba en la suite: si alguien edita una región a mano en vez de tocar la
+parte, se para ahí en lugar de publicar cuatro cabeceras distintas.
+
 ## Lo que no te da ningun comparador
 
 Buscadores de vuelos hay cientos. Estas dos cosas no las hace ninguno, y son las
