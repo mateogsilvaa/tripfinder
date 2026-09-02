@@ -601,9 +601,11 @@ def _stays_markdown(
     ]
     if resumen:
         lines[3:3] = [
-            f"**Escapada completa para {resumen['party']}: {resumen['total']:.0f} EUR** "
-            f"({resumen['per_person']:.0f} EUR por persona) = vuelos {resumen['flights']:.0f} "
-            f"+ alojamiento {resumen['stay']:.0f}",
+            (
+                f"**Escapada completa para {resumen['party']}: {resumen['total']:.0f} EUR** "
+                f"({resumen['per_person']:.0f} EUR por persona) = vuelos {resumen['flights']:.0f} "
+                f"+ alojamiento {resumen['stay']:.0f}"
+            ),
             "",
         ]
     for s in stays[:15]:
@@ -861,7 +863,7 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
 
 def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
     """Manda un parte diario, probando los transportes hasta que uno pase."""
-    from .notify import _configured, render  # noqa: PLC0415
+    from .notify import _configured, render
 
     asunto = render.subject_watch_digest(estado)
     cuerpo = render.render_watch_digest(estado)
@@ -1043,7 +1045,7 @@ def cmd_users(args: argparse.Namespace) -> int:
 
     if args.accion == "prefs":
         ok = U.cambiar_prefs(
-            args.user or args.id or "", prefs or {}, args.email if args.email else None
+            args.user or args.id or "", prefs or {}, args.email or None
         )
         print("Preferencias guardadas." if ok else "No existe esa cuenta.")
         return 0

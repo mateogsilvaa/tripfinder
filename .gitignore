@@ -6,3 +6,9 @@ venv/
 .cache/
 .pytest_cache/
 .DS_Store
+
+# Las herramientas de la web (linter y humo de frontend). La web publicada no
+# lleva nada de esto: sigue siendo HTML plano sin build.
+node_modules/
+playwright-report/
+test-results/

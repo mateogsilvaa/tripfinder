@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "globals": {
+    "tfSesion": "readonly",
+    "tfUid": "readonly",
+    "tfNombre": "readonly",
+    "tfClave": "readonly",
+    "tfToken": "readonly",
+    "tfDispatch": "readonly",
+    "tfEntrar": "readonly",
+    "tfSalir": "readonly",
+    "tfAbrirLogin": "readonly",
+    "tfLeerUsuarios": "readonly",
+    "tfClaveDe": "readonly",
+    "tfCryptoOK": "readonly",
+    "tfHacerSobre": "readonly",
+    "tfAbrirSobre": "readonly",
+    "tfCerrarToken": "readonly",
+    "tfProbarToken": "readonly",
+    "tfNuevaMaestra": "readonly",
+    "tfVaciarLog": "readonly",
+    "tfLog": "readonly",
+    "TF_REPO": "readonly",
+    "tfApuntar": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^(tf|TF_)",
+        "caughtErrors": "all"
+      }
+    ],
+    "no-undef": "error",
+    "no-func-assign": "error"
+  },
+  "ignorePatterns": [
+    "partes/**"
+  ]
+}

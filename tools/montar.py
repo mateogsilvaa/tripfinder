@@ -64,7 +64,7 @@ ARREGLO_BASE = """<script>
    ruta honda los enlaces relativos apuntarian al sitio equivocado. */
 (function () {
   try {
-    var raiz = "%s";
+    var raiz = "__RAIZ__";
     var aqui = location.pathname;
     if (aqui.indexOf(raiz) !== 0 || aqui.slice(raiz.length).indexOf("/") < 0) return;
     var b = document.createElement("base");
@@ -73,7 +73,7 @@ ARREGLO_BASE = """<script>
   } catch (e) { /* sin arreglo: la pagina se ve sin estilos, pero se lee */ }
 })();
 </script>
-""" % SITIO
+""".replace("__RAIZ__", SITIO)  # el bloque lleva llaves de JS: nada de format
 
 DESCRIPCION = (
     "Escapadas de fin de semana desde Madrid por debajo de su precio habitual, "

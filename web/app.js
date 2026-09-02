@@ -1478,6 +1478,11 @@ function syncFinder() {
   $("#nightsWrap").hidden = cuando === "exact";
   $("#monthsWrap").hidden = cuando === "exact";
   $("#finderHint").textContent = HINTS[`${donde}|${cuando}`] || "";
+  // El calendario solo pinta cuando has dicho "fechas exactas". Esto vivia mas
+  // abajo, reasignando `syncFinder` por encima de si misma: el efecto era que
+  // el original quedaba enganchado dos veces al `change` y corria dos veces por
+  // cada cambio. Aqui dentro se hace una sola vez y se lee de corrido.
+  if (existe("#cal") && cuando !== "exact") $("#cal").hidden = true;
 }
 ["#fWhere", "#fWhen"].forEach((s) => on(s, "change", syncFinder));
 if (existe("#finderForm")) syncFinder();
@@ -2127,11 +2132,5 @@ Object.entries(CALS).forEach(([clave, c]) =>
   })
 );
 
-/* El mapa solo aparece cuando eliges un sitio concreto. */
-const syncOriginal = syncFinder;
-syncFinder = function () {
-  syncOriginal();
-  if ($("#fWhen").value !== "exact") $("#cal").hidden = true;
-};
-["#fWhere", "#fWhen"].forEach((s) => on(s, "change", syncFinder));
-if (existe("#finderForm")) syncFinder();
+/* Lo de esconder el calendario cuando no toca vive dentro de `syncFinder`, que
+   ya esta enganchado a los dos selectores mas arriba. */

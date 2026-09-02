@@ -285,6 +285,40 @@ El correo (`src/tripfinder/notify/render.py`) lleva la misma paleta y las mismas
 reglas. Lo único que no viaja son las fuentes —ningún cliente de correo carga
 tipografías externas—, así que ahí van Georgia y la monoespaciada del sistema.
 
+## Antes de mezclar nada
+
+`ci.yml` corre en cada push y en cada pull request, y es lo que decide si algo
+entra. En local es lo mismo, con dos órdenes:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+ruff check .                      # linter de Python
+python -m pytest -q               # los tests
+python tools/montar.py --check    # las partes de la web están montadas
+
+npm ci
+npm run lint                      # linter de JS (oxlint)
+npm run humo                      # humo de frontend (Playwright)
+```
+
+**El humo de frontend** son nueve pruebas sobre un Chromium sin red: que la
+portada pinta la plancha del día y una fila por oferta, que el esqueleto de
+carga se quita al llegar los datos y dice lo que pasa si no llegan, que sin
+sesión los formularios salen apagados con el motivo, que una dirección
+inventada da la 404 de la web con sus estilos, y que las tres zonas montan
+cabecera, nav y pie. Los datos salen de `tests/web/datos/`, no de `data/`: ese
+cambia dos veces al día y las pruebas dirían una cosa distinta cada vez.
+
+`npm` es **solo para estas herramientas**. La web publicada sigue siendo HTML
+plano sin build ni dependencias: `node_modules/` no llega a Pages.
+
+Las reglas de ruff están elegidas a mano en `pyproject.toml` en vez de heredar
+las de la versión, y la versión va clavada en `requirements-dev.txt`. Los
+valores por defecto cambian entre releases, y con CI eso significa que el repo
+puede amanecer en rojo un martes cualquiera sin que nadie haya tocado nada.
+Las dos reglas apagadas llevan su motivo escrito al lado.
+
+
 ## Tocar la web
 
 La web sigue siendo HTML plano: sin build, sin dependencias, y se abre haciendo

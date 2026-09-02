@@ -110,7 +110,7 @@ window.fetch = async function (...args) {
     raiz.dataset.tema = oscuro ? "claro" : "oscuro";
     try {
       localStorage.setItem("tf_tema", oscuro ? "claro" : "oscuro");
-    } catch (e) {
+    } catch {
       /* navegacion privada: el tema dura lo que la pestaña */
     }
     pintar();

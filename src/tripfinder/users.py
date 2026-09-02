@@ -40,7 +40,7 @@ import logging
 import re
 import secrets
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from .config import DATA_DIR
@@ -58,7 +58,7 @@ _USUARIO_OK = re.compile(r"^[a-z0-9._-]{3,24}$")
 
 
 def _ahora() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def _b64(crudo: bytes) -> str:

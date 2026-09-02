@@ -516,7 +516,7 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
     if ryanair is not None:
         for salida, regreso in fechas:
             params = {
-                **ryanair._base_params(route),  # noqa: SLF001 - mismo paquete
+                **ryanair._base_params(route),
                 "outboundDepartureDateFrom": salida.isoformat(),
                 "outboundDepartureDateTo": salida.isoformat(),
                 "inboundDepartureDateFrom": regreso.isoformat(),
@@ -532,7 +532,7 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
                     inboundDepartureTimeTo=weekend_cfg.get("inbound_before", "23:59"),
                 )
             try:
-                for oferta in ryanair._paginate(params, route, 60):  # noqa: SLF001
+                for oferta in ryanair._paginate(params, route, 60):
                     if nombres_dest and oferta.destination not in nombres_dest:
                         continue
                     anotar(oferta)

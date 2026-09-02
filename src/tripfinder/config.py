@@ -100,7 +100,7 @@ class Config:
 
 def load_config(path: str | Path | None = None) -> Config:
     p = Path(path) if path else DEFAULT_CONFIG
-    with open(p, "r", encoding="utf-8") as fh:
+    with open(p, encoding="utf-8") as fh:
         return Config(raw=yaml.safe_load(fh) or {})
 
 

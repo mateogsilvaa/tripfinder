@@ -30,7 +30,7 @@ from .util import get_text, throttle
 
 log = logging.getLogger("tripfinder")
 
-CARD_RE = re.compile(r'<li class="pIav2d"[^>]*>(.*?)</li>', re.S)
+CARD_RE = re.compile(r'<li class="pIav2d"[^>]*>(.*?)</li>', re.DOTALL)
 TAGS_RE = re.compile(r"<[^>]+>")
 # "1 escala 2 h CDG Aeropuerto de Paris-Charles de Gaulle"
 LAYOVER_RE = re.compile(r"(\d+)\s+escalas?\s+(?:\d+\s*h(?:\s*\d+\s*min)?\s+)?([A-Z]{3})")

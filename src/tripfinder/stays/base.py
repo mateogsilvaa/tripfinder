@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from typing import Any, Callable
+from typing import Any
 
 from ..models import StayOffer
 
 log = logging.getLogger("tripfinder")
 
-REGISTRY: dict[str, type["StayProvider"]] = {}
+REGISTRY: dict[str, type[StayProvider]] = {}
 
 
 @dataclass

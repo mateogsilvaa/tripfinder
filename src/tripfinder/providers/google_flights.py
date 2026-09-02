@@ -38,7 +38,7 @@ URL = "https://www.google.com/travel/flights"
 CONSENT_COOKIE = "SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVzIAEaBgiA_LyaBg"
 
 LABEL_RE = re.compile(r'aria-label="([^"]{60,400})"')
-CARD_RE = re.compile(r'<li class="pIav2d"[^>]*>(.*?)</li>', re.S)
+CARD_RE = re.compile(r'<li class="pIav2d"[^>]*>(.*?)</li>', re.DOTALL)
 TAGS_RE = re.compile(r"<[^>]+>")
 CARD_PRICE_RE = re.compile(r"(\d[\d.]*)\s*€")
 CARD_TIME_RE = re.compile(r"(\d{1,2}:\d{2})")
@@ -51,10 +51,10 @@ AIRLINE_RE = re.compile(
     r"(?:Vuelos? directos? de|Vuelos? (?:de|con|operados? por|operado por))\s+([^.]+?)\."
 )
 # "Air France. Operado por HOP!." -> nos quedamos con quien vende el billete.
-OPERADO_RE = re.compile(r"\s*Operad[oa]s? por\s+[^.]+\.?$", re.I)
+OPERADO_RE = re.compile(r"\s*Operad[oa]s? por\s+[^.]+\.?$", re.IGNORECASE)
 # "Vuelo con 1 escala de British Airways" cuela el numero de escalas dentro del
 # nombre de la compania, y entonces no casa con ningun enlace de reserva.
-ESCALAS_PREFIJO_RE = re.compile(r"^\s*(?:\d+\s+)?escalas?\s+(?:de|con)\s+", re.I)
+ESCALAS_PREFIJO_RE = re.compile(r"^\s*(?:\d+\s+)?escalas?\s+(?:de|con)\s+", re.IGNORECASE)
 TIME_RE = re.compile(r"Sale de .*? a las (\d{1,2}:\d{2})")
 ARRIVE_RE = re.compile(r"Llega a .*? a las (\d{1,2}:\d{2})")
 STOPS_RE = re.compile(r"(\d+)\s+escala")
@@ -249,7 +249,7 @@ class GoogleFlightsProvider(FlightProvider):
             return []
 
         best_por_aerolinea: dict[str, FlightOffer] = {}
-        etiquetas = [l for l in LABEL_RE.findall(html) if "euros" in l and "Sale de" in l]
+        etiquetas = [e for e in LABEL_RE.findall(html) if "euros" in e and "Sale de" in e]
         if not etiquetas:
             # En algunas rutas Google no pone la etiqueta de accesibilidad con el
             # precio (visto en MAD-STR: 18 vuelos de SWISS y Lufthansa que se

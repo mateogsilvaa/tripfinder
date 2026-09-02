@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 @dataclass
@@ -105,7 +105,7 @@ class FlightOffer:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "FlightOffer":
+    def from_dict(cls, d: dict[str, Any]) -> FlightOffer:
         known = {k: v for k, v in d.items() if k in cls.__dataclass_fields__}
         return cls(**known)
 

@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from .config import DATA_DIR, Config
 from .util import get_json
@@ -51,7 +51,7 @@ def _leer_cache(origen: str) -> dict[str, tuple[str, str]] | None:
         cuando = datetime.fromisoformat(crudo["generado"])
     except (json.JSONDecodeError, KeyError, ValueError):
         return None
-    if datetime.now(timezone.utc) - cuando > timedelta(days=CACHE_DIAS):
+    if datetime.now(UTC) - cuando > timedelta(days=CACHE_DIAS):
         return None
     return {k: (v[0], v[1]) for k, v in crudo.get("destinos", {}).items()}
 
@@ -61,7 +61,7 @@ def _guardar_cache(origen: str, destinos: dict[str, tuple[str, str]]) -> None:
         json.dumps(
             {
                 "origen": origen,
-                "generado": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                "generado": datetime.now(UTC).isoformat(timespec="seconds"),
                 "destinos": {k: list(v) for k, v in sorted(destinos.items())},
             },
             ensure_ascii=False,
@@ -100,7 +100,7 @@ def rutas_wizz(origen: str) -> dict[str, tuple[str, str]]:
     from .providers.wizzair import destinos_desde
 
     try:
-        return {d: ("", "") for d in destinos_desde(origen)}
+        return dict.fromkeys(destinos_desde(origen), ("", ""))
     except Exception as exc:  # noqa: BLE001
         log.warning("Wizz: no se pudo leer el mapa de rutas (%s)", exc)
         return {}

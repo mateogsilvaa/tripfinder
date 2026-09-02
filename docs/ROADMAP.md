@@ -181,7 +181,15 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 
 - [x] **#25 · Tests de scoring y de parseo de providers** `infra`
   - 10 tests en `tests/`, `python -m pytest` en verde.
-- [ ] **#26 · CI: ruff + pytest en cada PR** `infra`
+- [x] **#26 · CI: ruff + pytest en cada PR** `infra`
+  - `ci.yml` en cada push y cada PR, con dos trabajos: **backend** (ruff, pytest y
+    `montar --check`) y **web** (oxlint y humo de frontend con Playwright).
+  - Reglas de ruff elegidas a mano en `pyproject.toml` y versión clavada en
+    `requirements-dev.txt`: las de por defecto cambian entre releases y dejarían
+    el repo en rojo sin que nadie toque nada. Las dos apagadas van con su motivo.
+  - Humo: nueve pruebas sobre Chromium sin red, con el JSON de ejemplo del repo.
+    Comprobado que una portada rota (sin filas, o con un error de sintaxis) las
+    pone en rojo. Falta la del test de destinos, que no existe todavía.
 - [ ] **#27 · Manejo de errores por provider sin tumbar el scan** `core`
   - Parcialmente hecho: cada provider ya va en try/except; falta reportar fallos en la web.
 - [ ] **#28 · Alertas si el workflow lleva N días sin encontrar nada** `infra` `nice-to-have`
@@ -192,5 +200,5 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 
 1. #10 (rate limiting) — evita que te bloqueen antes de escalar providers.
 2. #24 (coste total) — es lo que de verdad decide un viaje.
-3. #26 (CI) — barato y evita regresiones en los parsers.
+3. ~~#26 (CI)~~ — hecho: ruff, pytest y humo de frontend en cada PR.
 4. #9 / #13 / #17 — cuando lo demás esté estable.

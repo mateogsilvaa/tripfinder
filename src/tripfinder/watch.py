@@ -15,7 +15,6 @@ import json
 import logging
 from dataclasses import asdict, dataclass, field
 from datetime import date
-from pathlib import Path
 from typing import Any
 
 from .config import DATA_DIR, Config

@@ -26,10 +26,12 @@ class DeepLinksProvider(StayProvider):
         links = [
             (
                 "Booking.com",
-                f"https://www.booking.com/searchresults.es.html?ss={city}"
-                f"&checkin_year={y}&checkin_month={m}&checkin_monthday={d}"
-                f"&checkout_year={y2}&checkout_month={m2}&checkout_monthday={d2}"
-                f"&group_adults={req.adults}&no_rooms=1&order=price",
+                (
+                    f"https://www.booking.com/searchresults.es.html?ss={city}"
+                    f"&checkin_year={y}&checkin_month={m}&checkin_monthday={d}"
+                    f"&checkout_year={y2}&checkout_month={m2}&checkout_monthday={d2}"
+                    f"&group_adults={req.adults}&no_rooms=1&order=price"
+                ),
                 "Ordenado por precio",
             ),
             (
@@ -44,14 +46,18 @@ class DeepLinksProvider(StayProvider):
             ),
             (
                 "Google Hotels",
-                f"https://www.google.com/travel/hotels/{city}?q={city}%20hotels"
-                f"&checkin={ci}&checkout={co}",
+                (
+                    f"https://www.google.com/travel/hotels/{city}?q={city}%20hotels"
+                    f"&checkin={ci}&checkout={co}"
+                ),
                 "Vista de mapa y precios",
             ),
             (
                 "Hostelworld",
-                f"https://www.hostelworld.com/search?search_keywords={city}"
-                f"&date_from={ci}&date_to={co}&number_of_guests={req.adults}",
+                (
+                    f"https://www.hostelworld.com/search?search_keywords={city}"
+                    f"&date_from={ci}&date_to={co}&number_of_guests={req.adults}"
+                ),
                 "Opcion mas barata para hostales",
             ),
         ]
