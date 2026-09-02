@@ -231,13 +231,17 @@
     "ryanair-MAD-DUB-20261106": {
       "price": 98.56,
       "date": "2026-08-29"
+    },
+    "ryanair-MAD-RAK-20261211": {
+      "price": 114.46,
+      "date": "2026-09-02"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-01",
-    "tytus.zasowski@gmail.com": "2026-09-01"
+    "mateogonsilva@gmail.com": "2026-09-02",
+    "tytus.zasowski@gmail.com": "2026-09-02"
   },
   "watch_digest": {
-    "mateogonsilva@gmail.com": "2026-09-01"
+    "mateogonsilva@gmail.com": "2026-09-02"
   }
 }
