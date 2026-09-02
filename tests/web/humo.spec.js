@@ -348,6 +348,116 @@ test.describe("lo que está pasando se dice", () => {
   });
 });
 
+test.describe("se acierta con el dedo", () => {
+  /* El criterio de la #25: los botones pequeños se aciertan a la primera en un
+     móvil de 320 px. Lo que se agranda es el área de acierto, no el dibujo:
+     el cuadratín de observación sigue midiendo 22 px, que es lo que pide el
+     sistema. Se mide con elementFromPoint, que es lo que decide de verdad
+     dónde cae un dedo. */
+
+  /* `reducedMotion` no es un atajo: el CSS lo respeta y apaga las animaciones,
+     asi que la caja que se mide es la definitiva. Sin esto se medía el panel
+     a mitad del deslizamiento de entrada y el toque caía donde ya no estaba.
+     De paso queda probado que ese camino funciona. */
+  test.use({ viewport: { width: 320, height: 640 }, hasTouch: true, reducedMotion: "reduce" });
+
+  /* La caja del elemento cuando ha dejado de moverse. Los diálogos entran
+     deslizándose y las filas con un fundido: medir a mitad de camino daba
+     coordenadas de donde el botón ya no está. Se lee dos veces seguidas y se
+     espera a que coincidan, que es inmune a cómo estén configuradas las
+     animaciones —y por tanto no se rompe si alguien cambia una duración. */
+  async function cajaQuieta(locator) {
+    const leer = () =>
+      locator.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left, y: r.top, width: r.width, height: r.height };
+      });
+    let previa = await leer();
+    for (let i = 0; i < 40; i++) {
+      await new Promise((s) => setTimeout(s, 50));
+      const ahora = await leer();
+      if (ahora.x === previa.x && ahora.y === previa.y && ahora.width === previa.width) return ahora;
+      previa = ahora;
+    }
+    return previa;
+  }
+
+  /* Dónde cae un dedo lo decide `elementFromPoint`, no el rectángulo. */
+  const quienHayEn = (page, x, y, sel) =>
+    page.evaluate(
+      ([px, py, s]) => {
+        const el = document.elementFromPoint(px, py);
+        return { ok: !!(el && el.closest(s)), el: el ? el.id || el.className || el.tagName : "nada" };
+      },
+      [x, y, sel]
+    );
+
+  test("el cuadratín de observación tiene 44 px de acierto", async ({ page }) => {
+    await page.goto("/index.html");
+    const fav = page.locator(".brow .fav").first();
+    await expect(fav).toBeVisible();
+    await fav.scrollIntoViewIfNeeded();
+    const caja = await cajaQuieta(fav);
+    // El dibujo sigue siendo pequeño: esto no es agrandar el botón.
+    expect(caja.width).toBeLessThan(32);
+
+    // Pero un toque a 20 px del centro, dentro de los 44, lo acierta.
+    const cx = caja.x + caja.width / 2;
+    const cy = caja.y + caja.height / 2;
+    for (const [dx, dy] of [[0, 0], [-18, 0], [18, 0], [0, -18], [0, 18]]) {
+      const r = await quienHayEn(page, cx + dx, cy + dy, ".fav");
+      expect(r.ok, `un toque a (${dx}, ${dy}) del centro cae en: ${r.el}`).toBe(true);
+    }
+  });
+
+  test("quitar y cerrar también", async ({ page }) => {
+    await page.goto("/index.html");
+    await page.locator("[data-stay]").first().click();
+    const cerrar = page.locator("#panelClose");
+    await expect(cerrar).toBeVisible();
+
+    const caja = await cajaQuieta(cerrar);
+    const cx = caja.x + caja.width / 2;
+    const cy = caja.y + caja.height / 2;
+    // Arriba y abajo del centro, dentro de los 44 px de alto.
+    for (const dy of [-18, 0, 18]) {
+      const r = await quienHayEn(page, cx, cy + dy, "#panelClose");
+      expect(r.ok, `un toque a ${dy}px del centro cae en: ${r.el}`).toBe(true);
+    }
+  });
+
+  test("y se pulsa de verdad, no solo se toca el sitio", async ({ page }) => {
+    // Con sesión, porque sin ella el cuadratín abre el login a propósito: un
+    // viaje apuntado es de alguien. Aquí lo que se comprueba es que el toque
+    // descentrado llega al botón y dispara su acción de verdad.
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-prueba", user: "p", name: "P" }));
+      } catch (e) { /* nada */ }
+    });
+    await page.goto("/index.html");
+
+    const fav = page.locator(".brow .fav").first();
+    await expect(fav).toHaveAttribute("aria-pressed", "false");
+    await fav.scrollIntoViewIfNeeded();
+    const caja = await cajaQuieta(fav);
+
+    // 16 px por debajo del centro: fuera del dibujo de 22 px, dentro de los 44.
+    await page.touchscreen.tap(caja.x + caja.width / 2, caja.y + caja.height / 2 + 16);
+    await expect(fav).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("sin sesión, ese mismo toque abre el login (que es lo que toca)", async ({ page }) => {
+    await page.goto("/index.html");
+    const fav = page.locator(".brow .fav").first();
+    await fav.scrollIntoViewIfNeeded();
+    const caja = await cajaQuieta(fav);
+    await page.touchscreen.tap(caja.x + caja.width / 2, caja.y + caja.height / 2 + 16);
+    // El toque llegó al botón: un viaje apuntado es de alguien.
+    await expect(page.locator("#tfModal")).toBeVisible();
+  });
+});
+
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */

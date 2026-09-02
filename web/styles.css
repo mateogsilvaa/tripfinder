@@ -34,14 +34,16 @@
 
 /* --- color: la plancha (tema claro) -------------------------------------- */
 :root {
+  /* Un solo papel. No hay `--card` ni `--paper-2`: el atlas no tiene tarjetas,
+     y un token de superficie que no usa nadie es como se vuelven a colar. */
   --paper: #f2efe6;          /* marfil de plancha */
-  --paper-2: #eeeade;        /* zona reglada, cabeceras de tabla */
-  --card: #f7f5ef;           /* bloque destacado */
-  --card-2: #e9e4d5;         /* caja hundida, campo */
 
   --ink: #10202b;            /* tinta de grabado */
   --muted: #4a5c68;
-  --faint: #6a7a84;
+  /* 4.72:1 sobre el papel. Va aqui porque es el color del texto MAS pequeño
+     que tiene la web —las versalitas mono a 9.5px— y ahi 4.5:1 no es un
+     adorno. Lo comprueba `tools/contraste.py` en cada CI. */
+  --faint: #5c6c77;
 
   --line: rgba(16, 32, 43, 0.22);      /* meridiano: borde y regla mayor */
   --line-2: rgba(16, 32, 43, 0.1);     /* paralelo: regla menor, entre filas */
@@ -67,12 +69,9 @@
 /* --- color: la carta de noche (tema por defecto) ------------------------- */
 :root[data-tema="oscuro"] {
   --paper: #0b1720;
-  --paper-2: #0f1d27;
-  --card: #12222d;
-  --card-2: #162833;
   --ink: #eae5d8;
   --muted: #8fa3ae;
-  --faint: #6e828d;
+  --faint: #7a8e99;          /* 5.32:1 sobre la tinta de noche */
   --line: rgba(234, 229, 216, 0.2);
   --line-2: rgba(234, 229, 216, 0.09);
   --azul: #e8574a;
@@ -1282,10 +1281,37 @@ input[type="range"]::-moz-range-thumb {
   .zona::after { right: 18px; }
 }
 
-/* Nada pulsable por debajo del minimo tactil. */
+/* --- area tactil -------------------------------------------------------- */
+
+/* El cuadratin de observacion mide 22px porque asi lo pide el sistema: es una
+   anotacion al margen, no un boton. Lo que se agranda es donde SE ACIERTA, no
+   lo que se ve — un pseudoelemento centrado de 44x44 que no ocupa sitio en la
+   rejilla ni mueve nada de su sitio. Misma idea para "quitar" y "cerrar", que
+   son palabras pequeñas en versalitas.
+
+   44px es el minimo de WCAG 2.5.5 y lo que hace que se acierten a la primera
+   en un movil de 320px. */
+.fav, .quitar, #panelClose, #destClose, .modal-head button, [data-cerrar] {
+  position: relative;
+}
+.fav::after,
+.quitar::after,
+#panelClose::after,
+#destClose::after,
+.modal-head button::after,
+[data-cerrar]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
+  transform: translate(-50%, -50%);
+}
+
+/* Lo que ya es una caja con texto solo necesita no quedarse corto de alto. */
 @media (pointer: coarse) {
-  .btn, .zona, .tema, .quitar, .cuenta, .date-btn { min-height: var(--tap-min); }
-  .fav { width: 28px; height: 28px; }
+  .btn, .zona, .tema, .cuenta, .date-btn { min-height: var(--tap-min); }
 }
 
 @media (prefers-reduced-motion: reduce) {

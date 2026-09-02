@@ -270,7 +270,14 @@ sistema entero:
   versalitas mono; poner un viaje en observación es un cuadratín que se rellena de rojo.
 - **Tres tintas y un papel**: rojo de carta (`--azul`, lo que hay que mirar), azul de
   sondeo (`--sello`, lo informativo) y verde de curva de nivel (`--verde`, lo que baja).
-  No hay una cuarta.
+  No hay una cuarta. Y un solo fondo: no existe `--card` ni `--paper-2`, porque el
+  atlas no tiene tarjetas y un token de superficie sin usar es como se vuelven a colar.
+- **Todo texto llega a 4.5:1** sobre el papel, en los dos temas. El más pequeño de la
+  web son las versalitas mono a 9.5px y ahí no es un adorno; `tools/contraste.py` lo
+  comprueba leyendo los tokens del CSS, y corre en CI.
+- **44 px de área táctil** en lo pequeño (el cuadratín de observación, quitar, cerrar).
+  Se agranda dónde se acierta con un pseudoelemento centrado, no el dibujo: el
+  cuadratín sigue midiendo 22 px, que es lo que pide el sistema.
 
 Detrás de todo van tres capas fijas en todas las pantallas: `.grain` es la fibra del
 papel, `.glow` es la **graticula** (paralelos y meridianos cada 32px, con línea de
@@ -295,6 +302,7 @@ pip install -r requirements.txt -r requirements-dev.txt
 ruff check .                      # linter de Python
 python -m pytest -q               # los tests
 python tools/montar.py --check    # las partes de la web están montadas
+python tools/contraste.py         # contraste de la paleta, en los dos temas
 
 npm ci
 npm run lint                      # linter de JS (oxlint)

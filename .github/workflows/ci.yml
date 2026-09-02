@@ -46,6 +46,11 @@ jobs:
       - name: Las partes de la web estan montadas
         run: python tools/montar.py --check
 
+      # El texto mas pequeño de la web va a 9.5px: 4.5:1 no es un adorno. Lee
+      # los tokens del CSS, asi que salta si alguien aclara un color de mas.
+      - name: Contraste de la paleta
+        run: python tools/contraste.py --check
+
   web:
     name: humo de frontend
     runs-on: ubuntu-latest
