@@ -69,8 +69,12 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#16 · Workflow de despliegue a Pages** `infra`
   - AC: cada push a `main` publica `web/` + `data/`.
 - [x] **#17 · Identidad visual propia** `web` `ux`
-  - Tema oscuro cálido, tarjetas con troquel de billete, Fraunces + DM Mono, grano y
-    animación de entrada escalonada. Respeta `prefers-reduced-motion`.
+  - **Rehecha como atlas** (build 28): carta de noche por defecto y plancha impresa en
+    claro, radios a 0, sin sombras ni blur, sin tarjetas —regla mayor con cuadratín
+    rojo y hairlines—, puntos guía entre topónimo y cifra, graticula y neatline de
+    fondo, Newsreader + Sora + Martian Mono. Sin iconos ni emoji: las acciones se
+    escriben. El correo va con la misma paleta. Respeta `prefers-reduced-motion`.
+  - Antes: tema oscuro cálido con troquel de billete, Fraunces + DM Mono y ámbar.
 - [x] **#34 · Bug: el panel de alojamiento no se cerraba** `web`
   - `.panel` tenía `display:flex`, que ganaba al atributo `hidden`. Ahora `[hidden]` es global.
 - [ ] **#35 · PWA instalable** `web` `nice-to-have`

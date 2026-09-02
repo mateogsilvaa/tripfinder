@@ -5,17 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripFinder · panel</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0d0b0a">
+<meta name="theme-color" content="#0b1720">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=27">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Sora:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Sora:wght@300;400;500;600&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@300;400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300;1,6..72,400&family=Sora:wght@300;400;500;600&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=28">
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
 </head>
 <body data-sin-cuenta>
 <div class="grain" aria-hidden="true"></div>
+<div class="glow" aria-hidden="true"></div>
+<div class="registro" aria-hidden="true"></div>
 
 <header class="masthead">
   <div class="topbar">
@@ -23,8 +27,8 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <span class="flap">A</span><span class="flap">D</span><span class="flap">M</span>
       <span class="board-label">panel · cuentas y registro de errores</span>
     </div>
-    <button id="tema" class="tema" type="button" aria-label="Cambiar entre tema claro y oscuro">
-      <b aria-hidden="true">◐</b><span class="tema-txt">tema</span>
+    <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
+      <b aria-hidden="true"></b><span class="tema-txt">noche</span>
     </button>
   </div>
   <h1>El <em>panel</em></h1>
@@ -130,8 +134,8 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <span class="build">build 27</span>
 </footer>
 
-<script src="log.js?v=27"></script>
-<script src="auth.js?v=27"></script>
+<script src="log.js?v=28"></script>
+<script src="auth.js?v=28"></script>
 <script>
 /* El panel: la contraseña abre la puerta, el token de GitHub es lo que de
    verdad deja escribir. Sin token no se puede crear ni borrar nada, porque
@@ -478,7 +482,8 @@ async function pintarCuentas(forzar = true) {
           <button class="btn ghost small" data-activar="${esc(u.user)}" data-a="${
             u.active === false ? "1" : "0"
           }">${u.active === false ? "Activar" : "Desactivar"}</button>
-          <button class="quitar" data-borrar="${esc(u.user)}" title="Borrar la cuenta">✕</button>
+          <button class="quitar" type="button" data-borrar="${esc(u.user)}"
+            aria-label="Borrar la cuenta">borrar</button>
         </span>
         <div class="detalle" hidden></div>
       </div>`;
@@ -538,7 +543,7 @@ function pedir(titulo, campos, alAceptar) {
   const caja = tfModal(`
     <header class="modal-head">
       <h2>${esc(titulo)}</h2>
-      <button data-cerrar aria-label="Cerrar">✕</button>
+      <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
     <form id="formModal" class="modal-form">
       ${campos

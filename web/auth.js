@@ -494,7 +494,7 @@ async function tfAbrirLogin() {
   const caja = tfModal(`
     <header class="modal-head">
       <h2>Entrar</h2>
-      <button data-cerrar aria-label="Cerrar">✕</button>
+      <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
     <form id="tfLoginForm" class="modal-form">
       <p class="meta">
@@ -581,7 +581,7 @@ async function tfAbrirCuenta() {
   const caja = tfModal(`
     <header class="modal-head">
       <h2>${tfEsc(s.name || s.user)}</h2>
-      <button data-cerrar aria-label="Cerrar">✕</button>
+      <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
     <form id="tfPrefsForm" class="modal-form">
       <p class="meta">

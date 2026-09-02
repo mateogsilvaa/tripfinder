@@ -109,10 +109,12 @@ function conGrupo(ofertas, cuantos) {
 /* Version de una linea, para las filas del panel de salidas. */
 function precioCorto(o) {
   const { gente, unidad, estimado } = reparto(o);
-  if (gente <= 1) return `${fmtEUR(unidad)}<small>por persona</small>`;
-  return `${estimado ? "≈" : ""}${fmtEUR(unidad * gente)}<small>${Math.round(
-    unidad
-  )} €/persona</small>`;
+  if (gente <= 1) {
+    return `<span class="cifra">${fmtEUR(unidad)}</span><small>por persona</small>`;
+  }
+  return `<span class="cifra">${estimado ? "≈" : ""}${fmtEUR(
+    unidad * gente
+  )}</span><small>${Math.round(unidad)} €/persona</small>`;
 }
 
 /* Comparadores que valen la pena abrir con la ruta ya puesta. eDreams va
@@ -189,12 +191,14 @@ function favResumen(o) {
   };
 }
 
+/* Marcar una entrada no es una estrella de favorito: es la anotacion al margen
+   de un indice, un cuadratin que se rellena de rojo. La palabra la pone el
+   aria-label; el dibujo, el CSS. */
 function favBtn(o) {
   const activo = esFav(o.id);
-  return `<button class="fav${activo ? " on" : ""}" data-fav="${esc(o.id)}"
-    aria-pressed="${activo}" title="${
-    activo ? "Quitar de favoritos" : "Guardar y vigilar el precio"
-  }"><span aria-hidden="true">${activo ? "★" : "☆"}</span></button>`;
+  const que = activo ? "Dejar de seguir este viaje" : "Poner este viaje en observación";
+  return `<button class="fav${activo ? " on" : ""}" type="button" data-fav="${esc(o.id)}"
+    aria-pressed="${activo}" aria-label="${que}" title="${que}"><span aria-hidden="true"></span></button>`;
 }
 
 function alternar(o) {
@@ -228,8 +232,9 @@ function pintarFavs(raiz = document) {
     const activo = esFav(b.dataset.fav);
     b.classList.toggle("on", activo);
     b.setAttribute("aria-pressed", String(activo));
-    const icono = b.querySelector("span");
-    if (icono) icono.textContent = activo ? "★" : "☆";
+    const que = activo ? "Dejar de seguir este viaje" : "Poner este viaje en observación";
+    b.setAttribute("aria-label", que);
+    b.title = que;
   });
 }
 
@@ -294,9 +299,9 @@ function deltaHTML(o) {
   const dif = porPersona(o) - Number(f.precio_inicial);
   if (Math.abs(dif) < 1) return "";
   const baja = dif < 0;
-  return `<small class="delta ${baja ? "baja" : "sube"}" title="Desde que lo guardaste">${
-    baja ? "▼" : "▲"
-  } ${Math.abs(Math.round(dif))} €</small>`;
+  return `<small class="delta ${baja ? "baja" : "sube"}" title="Desde que lo apuntaste">${
+    baja ? "−" : "+"
+  }${Math.abs(Math.round(dif))} €</small>`;
 }
 
 /* El aviso de arriba. Es lo que hace que "la web te avise": vive en las tres
@@ -331,7 +336,7 @@ function avisoFicha(f) {
       <div class="cambio-precio">
         <s>${Math.round(antes)} €</s>
         <b>${Math.round(ahora)}<span>€</span></b>
-        <em class="sello-dif">${baja ? "▼" : "▲"} ${Math.round(dif)} €${
+        <em class="sello-dif">${baja ? "−" : "+"}${Math.round(dif)} €${
     pct ? ` · ${pct}%` : ""
   }</em>
         <span class="cambio-nota">por persona</span>
@@ -367,7 +372,7 @@ function refrescarAvisoFavs() {
   // El titular dice lo unico que se quiere saber antes de leer nada: cuanto
   // dinero se mueve y en que direccion. Manda lo que baja, que es lo que hace
   // que te levantes a mirar; lo que sube va detras y en pequeño.
-  const cuantos = (n) => `${n} favorito${n > 1 ? "s" : ""}`;
+  const cuantos = (n) => `${n} viaje${n > 1 ? "s" : ""} apuntado${n > 1 ? "s" : ""}`;
   const titulo = bajan.length ? `Baja ${suma(bajan)} €` : `Sube ${suma(suben)} €`;
   const detalle = bajan.length
     ? `en ${cuantos(bajan.length)}` +
@@ -390,7 +395,7 @@ function refrescarAvisoFavs() {
     </div>
     <div class="cambios">${bajan.concat(suben).map(avisoFicha).join("")}</div>
     <div class="aviso-pie">
-      <a href="seguimientos.html#favoritos">Ver todos mis favoritos</a>
+      <a href="seguimientos.html#favoritos">Ver todo lo que sigo</a>
     </div>`;
 
   const boton = document.getElementById("favVisto");
@@ -450,11 +455,12 @@ function favFila(f) {
         f.return_date ? ` → ${fmtDate(f.return_date, true)}` : ""
       }${f.nights ? `<small>${f.nights} noches</small>` : ""}</span>
       <span class="spark-cell">${sparkline(f.historia)}</span>
+      <span class="leader" aria-hidden="true"></span>
       <span class="price">
-        ${Math.round(ahora)} €<small>por persona</small>
+        <span class="cifra">${Math.round(ahora)} €</span><small>por persona</small>
         ${
           Math.abs(dif) >= 1
-            ? `<small class="delta ${baja ? "baja" : "sube"}">${baja ? "▼" : "▲"} ${Math.abs(
+            ? `<small class="delta ${baja ? "baja" : "sube"}">${baja ? "−" : "+"}${Math.abs(
                 Math.round(dif)
               )} € desde ${Math.round(inicial)} €</small>`
             : `<small class="delta igual">sin cambios</small>`
@@ -466,7 +472,8 @@ function favFila(f) {
             ? `<a class="btn ghost small" href="${esc(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
             : ""
         }
-        <button class="quitar" data-desfav="${esc(f.id)}" title="Quitar de favoritos">✕</button>
+        <button class="quitar" type="button" data-desfav="${esc(f.id)}"
+          aria-label="Dejar de seguir ${esc(f.destination_name || f.destination)}">quitar</button>
       </span>
     </div>`;
 }
@@ -477,15 +484,15 @@ function pintarListaFavs() {
   const lista = Object.values(FAVS).sort((a, b) => (b.desde || 0) - (a.desde || 0));
   if (!lista.length) {
     caja.innerHTML = `
-      <h3 class="watch-head">Favoritos</h3>
-      <p class="meta">Todavía no has guardado ningún vuelo. Dale a la ☆ de cualquier
-      viaje y aquí verás si sube o baja de precio cada vez que se actualicen los datos.</p>`;
+      <h3 class="watch-head">en observación</h3>
+      <p class="vacio">Todavía no has apuntado ningún viaje. Marca el cuadratín de cualquier
+      entrada y aquí verás si sube o baja de precio cada vez que se actualicen los datos.</p>`;
     return;
   }
   caja.innerHTML =
-    `<h3 class="watch-head">Favoritos · ${lista.length} vuelo${lista.length > 1 ? "s" : ""} vigilado${
+    `<h3 class="watch-head">en observación · ${lista.length} viaje${
       lista.length > 1 ? "s" : ""
-    }</h3>` + lista.map(favFila).join("");
+    } apuntado${lista.length > 1 ? "s" : ""}</h3>` + lista.map(favFila).join("");
   caja.querySelectorAll("[data-desfav]").forEach((b) =>
     b.addEventListener("click", () => {
       delete FAVS[b.dataset.desfav];
@@ -734,6 +741,7 @@ async function init() {
   priceInput.max = Math.ceil(maxPrice / 10) * 10;
   priceInput.value = priceInput.max;
   $("#priceOut").textContent = priceInput.value;
+  pintarRegla(priceInput);
 
   // El continente no viene en la oferta: se cruza con el listado de aeropuertos.
   try {
@@ -779,7 +787,7 @@ async function init() {
 }
 
 const statBlock = (label, value, hot = false) =>
-  `<div><dd class="${hot ? "hot" : ""}">${esc(value)}</dd><dt>${esc(label)}</dt></div>`;
+  `<div><dt>${esc(label)}</dt><dd class="${hot ? "hot" : ""}">${esc(value)}</dd></div>`;
 
 /* Cuanto hace que se actualizo: sin esto no sabes si miras datos de hoy o de
    hace tres dias, que en precios de vuelo es toda la diferencia. */
@@ -794,7 +802,7 @@ function frescura(iso) {
   const horas = Math.round((Date.now() - d.getTime()) / 3600000);
   const texto =
     horas < 1 ? "hace menos de una hora" : horas < 24 ? `hace ${horas} h` : `hace ${Math.round(horas / 24)} días`;
-  el.textContent = `Actualizado ${texto} · se revisa cada 12 h`;
+  el.textContent = `levantamiento: ${texto} · se revisa cada 12 h`;
   el.className = horas > 36 ? "viejo" : "";
 }
 
@@ -890,52 +898,63 @@ function altsHTML(o) {
   return `<div class="alts">también ${links}</div>`;
 }
 
-/* El mejor chollo se lleva un billete entero: es lo primero que hay que ver. */
+/* LA PLANCHA. El destino del dia no es una tarjeta: es la lamina de un atlas.
+   Regla mayor arriba con su cuadratin rojo, el toponimo grande en serif ligero,
+   la referencia de cuadricula y la cifra en rojo a la derecha, y debajo la
+   tabla reglada con los tramos. Sin fondo, sin marco, sin talon, sin troquel:
+   lo que la delimita es la regla, igual que en una plancha impresa. */
 function heroTicket(o) {
   const sub = [o.destination_country, o.airline, escalas(o), o.weekend ? "escapada de finde" : ""]
     .filter(Boolean)
     .join(" · ");
+  const extra = [o.hidden_city ? AVISO_HIDDEN : "", altsHTML(o)].filter(Boolean).join("");
   return `
     <article class="ticket" id="offer-${esc(o.id)}">
-      <div class="stub">
-        <span class="kicker-tag">${o.return_date ? "ida y vuelta" : "solo ida"}</span>
-        ${precioHTML(o, { grande: true })}
-        ${o.baseline > o.price ? `<span class="was">${fmtEUR(o.baseline)}</span>` : ""}
-        <span class="per-person">vuelo completo${o.return_date ? ", ida y vuelta" : ""}</span>
-        ${favBtn(o)}
+      <span class="regla" aria-hidden="true"></span>
+      <div class="ticket-top">
+        <span class="kicker-tag">hoja del día · ${o.return_date ? "ida y vuelta" : "solo ida"}</span>
+        <span class="ticket-ref">
+          <span class="codes">${esc(o.origin)} — ${esc(o.destination)}</span>
+          ${favBtn(o)}
+        </span>
       </div>
-      <div class="hero-body">
-        ${o.hidden_city ? AVISO_HIDDEN : ""}
+      <div class="ticket-cab">
+        <h2 class="dest">${esc(o.destination_name || o.destination)}<small>${esc(sub)}</small></h2>
+        <div class="ticket-precio">
+          ${
+            o.discount_pct >= 5
+              ? `<span class="stamp">chollo<b>−${Math.round(o.discount_pct)}%</b></span>`
+              : ""
+          }
+          ${precioHTML(o, { grande: true })}
+          <span class="ticket-notas">
+            ${o.baseline > o.price ? `<s class="was">${fmtEUR(o.baseline)}</s>` : ""}
+            <span class="per-person">vuelo completo${o.return_date ? ", ida y vuelta" : ""}</span>
+          </span>
+        </div>
+      </div>
+      <dl class="legs">
+        ${leg("Ida", o.depart_date, o.depart_time, o.arrive_time, o.weekend)}
+        ${leg("Vuelta", o.return_date, o.return_time, o.return_arrive_time, o.weekend)}
+        ${o.nights ? `<div><dt>Noches</dt><dd>${o.nights}</dd></div>` : ""}
         ${
-          o.discount_pct >= 5
-            ? `<div class="stamp">chollo<b>−${Math.round(o.discount_pct)}%</b></div>`
+          o.useful_hours
+            ? `<div><dt>Viaje real</dt><dd class="useful">${Math.round(
+                o.useful_hours
+              )} h · ${o.price_per_hour} €/h</dd></div>`
             : ""
         }
-        <div class="codes">${esc(o.origin)}<span class="line"></span>${esc(o.destination)}</div>
-        <h2 class="dest">${esc(o.destination_name || o.destination)}<small>${esc(sub)}</small></h2>
-        <dl class="legs">
-          ${leg("Ida", o.depart_date, o.depart_time, o.arrive_time, o.weekend)}
-          ${leg("Vuelta", o.return_date, o.return_time, o.return_arrive_time, o.weekend)}
-          ${o.nights ? `<div><dt>Noches</dt><dd>${o.nights}</dd></div>` : ""}
-          ${
-            o.useful_hours
-              ? `<div><dt>Viaje real</dt><dd class="useful">${Math.round(
-                  o.useful_hours
-                )} h · ${o.price_per_hour} €/h</dd></div>`
-              : ""
-          }
-        </dl>
-        ${altsHTML(o)}
-        <div class="actions">
-          <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
-          <a class="btn ghost" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
-          ${
-            o.airline_link
-              ? `<a class="btn ghost" href="${esc(o.airline_link)}" target="_blank" rel="noopener">
-                   Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
-              : ""
-          }
-        </div>
+      </dl>
+      ${extra ? `<div class="hero-extra">${extra}</div>` : ""}
+      <div class="actions">
+        <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
+        <a class="btn ghost" href="${esc(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+        ${
+          o.airline_link
+            ? `<a class="btn ghost" href="${esc(o.airline_link)}" target="_blank" rel="noopener">
+                 Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
+            : ""
+        }
       </div>
     </article>`;
 }
@@ -971,6 +990,7 @@ function boardRow(o, i) {
       <span class="airline">${esc(o.airline || o.provider)}<small>${escalas(o)}${
         o.useful_hours ? ` · ${Math.round(o.useful_hours)} h de viaje` : ""
       }${o.long_haul ? " · larga distancia" : ""}</small></span>
+      <span class="leader" aria-hidden="true"></span>
       <span class="price">${precioCorto(o)}${
         o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : ""
       }${deltaHTML(o)}</span>
@@ -1069,9 +1089,21 @@ function wireRows(raiz = document) {
   });
 }
 
+/* El tope es una regla graduada: lo recorrido va en rojo y lo que queda en
+   linea fina. El navegador no lo hace solo, asi que la proporcion se calcula
+   aqui y la pinta el CSS. */
+function pintarRegla(input) {
+  if (!input) return;
+  const min = Number(input.min) || 0;
+  const span = (Number(input.max) || 100) - min || 1;
+  const pct = ((Number(input.value) - min) / span) * 100;
+  input.style.setProperty("--pct", `${Math.max(0, Math.min(100, pct))}%`);
+}
+
 function render() {
   if (!existe("#offers")) return;
   $("#priceOut").textContent = $("#price").value;
+  pintarRegla($("#price"));
   const list = currentList();
 
   $("#hero").innerHTML = list.length ? heroTicket(list[0]) : "";
@@ -1262,7 +1294,9 @@ function startPolling(id) {
 }
 
 function stayRow(s) {
-  const meta = [s.provider, s.rating ? `★ ${s.rating}` : "", s.note].filter(Boolean).join(" · ");
+  const meta = [s.provider, s.rating ? `valoración ${s.rating}` : "", s.note]
+    .filter(Boolean)
+    .join(" · ");
   const precio = s.price_total
     ? `<div class="amount-s">${fmtEUR(s.price_total)}<small>${
         s.price_per_night ? `${fmtEUR(s.price_per_night)} la noche` : ""
@@ -1515,7 +1549,8 @@ async function loadSearches() {
         <b>${esc(s.label)}</b>
         <span class="meta">${s.count} viajes · buscado ${esc(desde(s.generated_at))}</span>
         ${s.best_price ? `<span class="best">desde ${fmtEUR(s.best_price)}</span>` : ""}
-        <button class="quitar" data-borrar="${esc(s.slug)}" title="Quitar esta búsqueda">✕</button>
+        <button class="quitar" type="button" data-borrar="${esc(s.slug)}"
+          aria-label="Quitar esta búsqueda">quitar</button>
         <div class="saved-rows" hidden></div>
       </div>`
     )
@@ -1652,7 +1687,8 @@ function pendienteHTML(p, caducada) {
   return caducada
     ? `<div class="saved"><b>${esc(p.label)}</b>
          <span class="meta">no llegó a terminar · vuelve a lanzarla</span>
-         <button class="quitar" data-olvidar="${esc(p.label)}">✕</button></div>`
+         <button class="quitar" type="button" data-olvidar="${esc(p.label)}"
+           aria-label="Olvidar esta búsqueda">olvidar</button></div>`
     : `<div class="saved"><b>${esc(p.label)}</b>
          <span class="meta"><span class="spin"></span>buscando… tarda 2–3 min</span></div>`;
 }
@@ -1864,7 +1900,8 @@ async function cargarWatches() {
         }${w.last_checked ? ` · revisado ${esc(desde(w.last_checked))}` : ""}${
           (w.last_offers || []).length ? ` · ${w.last_offers.length} resultados` : " · sin resultados aún"
         }</span>
-          <button class="quitar" data-unwatch="${esc(w.id)}" title="Dejar de seguir">✕</button>
+          <button class="quitar" type="button" data-unwatch="${esc(w.id)}"
+            aria-label="Dejar de seguir">quitar</button>
           <div class="watch-rows" hidden></div>
         </div>`
       )

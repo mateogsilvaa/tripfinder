@@ -203,22 +203,54 @@ abre una issue `[buscar] ...` que dispara `custom-search.yml`. En local:
 python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
 ```
 
-## Dos temas
+## El atlas: dos cartas de la misma hoja
 
-La web va **en oscuro por defecto**: el panel de salidas de siempre, negro cálido y
-ámbar. Con el botón de la esquina se pasa al papel de billete impreso —fondo manila
-con la trama de seguridad, tinta azul, sello de goma y los datos en monoespaciada—.
-La elección se guarda en el navegador y se aplica en un `<script>` del `<head>`,
-antes de pintar, para que no pegue el fogonazo al entrar de noche.
+TripFinder no se dibuja como un panel de salidas: se dibuja como un **atlas**. Quien
+lo usa no está mirando un tablero de aeropuerto, está eligiendo un sitio al que ir, y
+el índice de topónimos del final de una carta es exactamente eso: nombres de lugar y
+una referencia al lado. De ahí sale todo lo demás.
+
+**Los dos temas son la misma carta a dos horas.** De casa se entra en la **carta de
+noche** (fondo de tinta azul muy oscura, `#0b1720`, y texto marfil); con el botón de
+la esquina se pasa a **la plancha**, el papel impreso (marfil `#f2efe6` y tinta de
+grabado). El acento **no cambia entre temas**: el rojo de carta es la marca. La
+elección se guarda en el navegador y se aplica en un `<script>` del `<head>`, antes
+de pintar, para que no pegue el fogonazo al entrar de noche.
 
 Por eso el claro es un estado con nombre (`data-tema="claro"`) y no la ausencia de
 atributo: si "sin atributo" siguiera significando claro, la primera pintada sería
 blanca en todas las visitas.
 
-Todo el CSS usa tokens semanticos (`--paper`, `--card`, `--ink`, `--azul`, `--sello`),
-asi que el tema oscuro son los mismos tokens con valores de noche mas cuatro cosas
-estructurales: la trama del papel, los degradados del fondo, el troquelado y las filas
-del panel.
+Lo que hay que respetar al tocar `web/styles.css`, porque es lo que sostiene el
+sistema entero:
+
+- **Todos los radios valen 0.** La única excepción es `--r-punto` (50%), el punto del
+  testigo "en vivo".
+- **No hay sombras y no hay blur.** `--sombra` y `--relieve` existen y valen `none`;
+  el velo de las capas modales es tinta plana, como el papel de calco sobre una lámina.
+- **No hay tarjetas.** Un bloque se abre con una **regla mayor** de 2px en tinta, con
+  un cuadratín rojo de 46px a la izquierda, y se cierra con una hairline.
+- **Los puntos guía** (`.leader`) son el gesto que define el sistema: entre el topónimo
+  y su cifra corre una línea de puntos, como en el índice del final de un atlas, y al
+  pasar por encima se pone roja y el precio también. Es lo que sustituye a la tarjeta.
+- **No hay iconos ni emoji.** Cerrar, quitar y enterado se escriben con palabras en
+  versalitas mono; poner un viaje en observación es un cuadratín que se rellena de rojo.
+- **Tres tintas y un papel**: rojo de carta (`--azul`, lo que hay que mirar), azul de
+  sondeo (`--sello`, lo informativo) y verde de curva de nivel (`--verde`, lo que baja).
+  No hay una cuarta.
+
+Detrás de todo van tres capas fijas en todas las pantallas: `.grain` es la fibra del
+papel, `.glow` es la **graticula** (paralelos y meridianos cada 32px, con línea de
+grado cada 160px) y `.registro` es el **neatline**, el marco graduado de la carta.
+
+Las tipografías son **Newsreader** para topónimos y titulares (peso 200 y tracking
+positivo: es un rótulo cartográfico, se abre en vez de cerrarse), **Sora** para prosa
+e interfaz y **Martian Mono** para todo dato. El mono es ancho a propósito, y por eso
+sus tamaños bajan: una cifra tiene que ocupar sitio, no gritar.
+
+El correo (`src/tripfinder/notify/render.py`) lleva la misma paleta y las mismas
+reglas. Lo único que no viaja son las fuentes —ningún cliente de correo carga
+tipografías externas—, así que ahí van Georgia y la monoespaciada del sistema.
 
 ## Lo que no te da ningun comparador
 

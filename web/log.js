@@ -91,11 +91,11 @@ window.fetch = async function (...args) {
 
   const pintar = () => {
     const oscuro = raiz.dataset.tema === "oscuro";
-    // La etiqueta dice a donde vas, no donde estas.
-    if (texto) texto.textContent = oscuro ? "claro" : "oscuro";
+    // La etiqueta dice a donde vas, no donde estas: la carta de dia o la de noche.
+    if (texto) texto.textContent = oscuro ? "día" : "noche";
     boton.setAttribute("aria-pressed", String(oscuro));
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", oscuro ? "#0d0b0a" : "#ece6da");
+    if (meta) meta.setAttribute("content", oscuro ? "#0b1720" : "#f2efe6");
   };
 
   boton.addEventListener("click", () => {
