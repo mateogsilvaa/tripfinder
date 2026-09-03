@@ -5,9 +5,10 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import random
 import sys
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from .config import Config, Route, load_config, site_url
@@ -291,6 +292,10 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
             o.destination_name, pais = _nombre_mundial(o.destination)
             o.destination_country = o.destination_country or pais
 
+    if getattr(args, "nocturno", False):
+        for o in found:
+            o.nocturno = True
+
     found = _dedupe(found)
     deals = _dedupe(deals)
     found.sort(key=lambda o: (-o.score, o.price))
@@ -351,6 +356,28 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
         print(f"{len(to_notify)} ofertas notificables, pero --no-email esta activo.")
         return 0
 
+    # El barrido de madrugada no escribe a nadie: lo apunta y lo manda el scan
+    # de la manana con lo suyo (#36). Un correo a las tres de la madrugada es
+    # exactamente lo contrario de la gracia de buscar de noche.
+    if getattr(args, "diferir_avisos", False):
+        nuevas = aparcar_avisos(state, to_notify[:max_email])
+        store.save_state(state)
+        print(
+            f"{len(nuevas)} avisos aparcados para el proximo scan "
+            f"({len(state['avisos_pendientes'])} en total). No se envia nada ahora."
+        )
+        return 0
+
+    # Y aqui se recogen. Van delante porque llevan horas esperando, y entran
+    # tambien en `deals` para que un resumen diario o semanal los vea: si el
+    # precio se movio de madrugada a la manana, hoy podrian no estar.
+    aparcados = recoger_aparcados(state)
+    if aparcados:
+        ids = {a.id for a in aparcados}
+        to_notify = aparcados + [o for o in to_notify if o.id not in ids]
+        deals = aparcados + [o for o in deals if o.id not in ids]
+        log.info("%d avisos venian aparcados del barrido de madrugada", len(aparcados))
+
     # A quien se le manda y que. Cada cuenta decide cada cuanto quiere saber de
     # los chollos y a partir de que precio le interesan; el buzon de la config
     # sigue recibiendo lo de siempre si no hay una cuenta que ya lo cubra.
@@ -383,6 +410,10 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     if enviado_algo:
         for o in to_notify[:max_email]:
             state.setdefault("notified", {})[o.id] = {"price": o.price, "date": today}
+        # Lo aparcado ya se conto: si el envio fallo, sigue ahi para la proxima.
+        # Es lo que garantiza que un chollo de madrugada se cuente una vez, ni
+        # cero ni dos.
+        state.pop("avisos_pendientes", None)
     store.save_state(state)
     return 0
 
@@ -398,6 +429,32 @@ def _cada_cuanto(frecuencia: str, ultimo: str) -> bool:
     except ValueError:
         return True
     return dias >= (7 if frecuencia == "semanal" else 1)
+
+
+def aparcar_avisos(state: dict, ofertas: list[FlightOffer]) -> list[FlightOffer]:
+    """Guarda en `state` los avisos que el barrido de madrugada no manda ahora.
+
+    Devuelve los que se apuntaron de nuevo. Los repetidos no se duplican: si dos
+    barridos seguidos encuentran la misma ruta, sigue siendo un aviso."""
+    pendientes = state.setdefault("avisos_pendientes", [])
+    ya = {d.get("id") for d in pendientes}
+    nuevas = [o for o in ofertas if o.id not in ya]
+    pendientes.extend(o.to_dict() for o in nuevas)
+    return nuevas
+
+
+def recoger_aparcados(state: dict) -> list[FlightOffer]:
+    """Lo que dejo el barrido de madrugada, listo para el correo de la manana.
+
+    No se borra aqui: solo se borra cuando de verdad salio algun correo, que es
+    lo que garantiza que un chollo de madrugada se cuente una vez y no cero."""
+    salida = []
+    for d in state.get("avisos_pendientes", []):
+        try:
+            salida.append(FlightOffer.from_dict(d))
+        except (TypeError, ValueError) as exc:  # un state.json a medias no tumba el scan
+            log.warning("Aviso aparcado ilegible, se descarta: %s", exc)
+    return salida
 
 
 def _reparto_de_chollos(
@@ -957,6 +1014,65 @@ def cmd_skiplag(args: argparse.Namespace) -> int:
 
 
 # --------------------------------------------------------------------------- #
+# --------------------------------------------------------------------------- #
+# nocturno
+# --------------------------------------------------------------------------- #
+def toca_nocturno(
+    ahora: datetime | None = None,
+    state: dict | None = None,
+    manual: bool = False,
+) -> tuple[bool, str]:
+    """Si el barrido de madrugada tiene que correr AHORA. Devuelve (si, porque).
+
+    Hay dos cron para la misma ventana —uno para el horario de verano y otro
+    para el de invierno— porque Actions programa en UTC y no sabe de cambios de
+    hora. De los dos, solo trabaja el que cae dentro de la ventana peninsular,
+    y asi en marzo y en octubre no hay que tocar nada.
+
+    Encima va un cerrojo semanal, porque el planificador de GitHub se retrasa:
+    si el cron de las 00:17 UTC se demora hasta la hora del de las 01:17, los
+    dos se verian dentro de la ventana y correrian los dos.
+    """
+    from zoneinfo import ZoneInfo
+
+    ahora = ahora or datetime.now(ZoneInfo("Europe/Madrid"))
+    semana = "{}-W{:02d}".format(*ahora.isocalendar()[:2])
+    hecha = (state or {}).get("nocturno_semana", "")
+
+    if hecha == semana:
+        return False, f"el barrido de la semana {semana} ya esta hecho"
+    if manual:
+        return True, "lanzado a mano"
+    if ahora.hour not in (2, 3):
+        return False, f"son las {ahora:%H:%M} peninsulares, fuera de la ventana 02:00-03:59"
+    return True, f"{ahora:%H:%M} peninsulares, semana {semana}"
+
+
+def cmd_nocturno(args: argparse.Namespace) -> int:
+    """El guardian del barrido de madrugada. Lo llama el workflow antes de nada."""
+    from zoneinfo import ZoneInfo
+
+    store = Store()
+    state = store.load_state()
+    ahora = datetime.now(ZoneInfo("Europe/Madrid"))
+    si, porque = toca_nocturno(ahora, state, manual=args.manual)
+
+    print(f"{'SI' if si else 'NO'} toca: {porque}")
+    if si and args.marcar:
+        # Se marca ANTES de buscar, no despues. `data/state.json` solo se
+        # commitea si el job llega al final, asi que una tanda que se cae deja
+        # la marca sin guardar y la semana que viene se puede reintentar; una
+        # que termina la deja puesta y el segundo cron no la repite.
+        state["nocturno_semana"] = "{}-W{:02d}".format(*ahora.isocalendar()[:2])
+        store.save_state(state)
+
+    salida = os.environ.get("GITHUB_OUTPUT")
+    if salida:
+        with open(salida, "a", encoding="utf-8") as fh:
+            fh.write(f"toca={'si' if si else 'no'}\n")
+    return 0
+
+
 def cmd_test_email(args: argparse.Namespace) -> int:
     from .config import load_config
     from .notify import notify_offers
@@ -1129,7 +1245,24 @@ def build_parser() -> argparse.ArgumentParser:
     f.add_argument("--dry-run", action="store_true", help="No escribe ni envia email")
     f.add_argument("--no-email", action="store_true")
     f.add_argument("--limit", type=int, default=120, help="Ofertas maximas a publicar en la web")
+    f.add_argument(
+        "--diferir-avisos",
+        action="store_true",
+        help="No escribe a nadie ahora: aparca los avisos para el siguiente scan",
+    )
+    f.add_argument(
+        "--nocturno",
+        action="store_true",
+        help="Marca lo encontrado como salido del barrido de madrugada",
+    )
     f.set_defaults(func=cmd_scan_flights)
+
+    n = sub.add_parser(
+        "nocturno", help="Dice si toca el barrido de madrugada (lo usa scan-nocturno.yml)"
+    )
+    n.add_argument("--manual", action="store_true", help="Salta la ventana horaria (dispatch)")
+    n.add_argument("--marcar", action="store_true", help="Apunta la semana si toca")
+    n.set_defaults(func=cmd_nocturno)
 
     s = sub.add_parser("scan-stays", help="Busca alojamiento para una oferta concreta")
     s.add_argument("--offer-id", required=True)

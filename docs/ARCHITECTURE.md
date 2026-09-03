@@ -22,6 +22,7 @@
 | Workflow | Se dispara | Qué hace |
 | --- | --- | --- |
 | `scan-flights.yml` | cron cada 12 h, o a mano | El barrido: busca vuelos, puntúa contra el histórico, avisa por correo y publica `data/`. Después revisa los seguimientos. |
+| `scan-nocturno.yml` | cron la madrugada del miércoles, o a mano | El barrido de las 02:00–03:00 peninsulares: el mapa entero de Google (110 consultas a 7 s, `config/watchlist-nocturno.yml`) sin escribir a nadie. Lo que encuentra se aparca en `state.json` y lo manda el scan de la mañana. |
 | `custom-search.yml` | `repository_dispatch: search` | Una búsqueda concreta pedida desde la web: destino, fechas y tope. Escribe `data/searches/<slug>.json`. |
 | `stay-request.yml` | `repository_dispatch: stay`, o una issue `[stay] …` | Busca cama para unas fechas exactas. Escribe `data/stays/<offer_id>.json`. |
 | `watch.yml` | `repository_dispatch: watch / unwatch / delete_search` | Apunta, quita o borra: sólo toca `data/watch.json` y `data/searches/`. Acepta lotes. |
@@ -47,8 +48,19 @@ La regla para cualquier cron que se añada:
   hora local de Europa/Madrid y se sale si no toca. Cuesta un job que a veces
   no hace nada, y a cambio la hora está clavada todo el año.
 
-Lo que no vale es un solo cron con un comentario que afirme una hora local:
-`tests/test_crons.py` lo comprueba.
+El segundo caso ya existe: `scan-nocturno.yml` lleva los dos cron (`17 0 * * 3`
+y `17 1 * * 3`) y el guardián es `python -m tripfinder nocturno --marcar`, que
+además apunta la semana ISO en `data/state.json` (`nocturno_semana`). Sin ese
+cerrojo, un cron retrasado hasta la hora del otro haría correr los dos: el
+planificador de GitHub no es puntual, y por eso el minuto tampoco es `0`.
+
+El guardián acepta las horas **02 y 03** peninsulares, no sólo la 02. Es una
+concesión a ese mismo retraso: un cron de las 02:17 que llega a las 03:05 sigue
+siendo el barrido de esa semana, y perderlo entero por veinte minutos de cola
+sale más caro que hacerlo un rato más tarde.
+
+Lo que no vale es un solo cron con un comentario que afirme una hora local sin
+decir de qué estación habla: `tests/test_crons.py` lo comprueba.
 
 
 ## Flujo de datos

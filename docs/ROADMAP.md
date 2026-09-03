@@ -202,13 +202,21 @@ todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
 - [x] **#31 · Una sola cabecera** `infra`
   - Las partes comunes en `web/partes/`, montadas por `tools/montar.py`.
 - [x] **#32 · Humo de frontend en CI** `infra`
+- [x] **#30 · Partir `app.js` en módulos** `infra`
+  - Once módulos ES en `web/js/`, sin bundler.
+- [x] **#33 · Barrido nocturno de la madrugada del miércoles** `scraper` `infra`
+  - Dos cron y un guardián de hora local, con cerrojo semanal.
 - [x] **#34 · Horas peninsulares de verdad en todos los crons** `infra`
+- [x] **#35 · El barrido nocturno recorre el mapa entero** `core` `scraper`
+  - `config/watchlist-nocturno.yml` hereda de `watchlist.yml` y sube a 110
+    consultas a 7 s. El diario sigue con sus 40 a 4 s.
+- [x] **#36 · El correo del barrido nocturno no llega a las tres de la mañana** `email` `ux`
+  - Aviso diferido: se aparca en `state.json` y lo manda el scan de la mañana.
 
 Y el sistema de diseño nuevo —el atlas— por encima de todo eso.
 
 Lo que queda: el test de destinos (#6-#12, que es una funcionalidad entera y no
-un arreglo), partir `app.js` (#30), el barrido nocturno (#33, #35, #36), y
-#13, #15 y #22.
+un arreglo), y #13, #15 y #22.
 
 
 ## M5 · Robustez y calidad

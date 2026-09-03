@@ -221,12 +221,13 @@ runs se factura. Aun así conviene saber dónde está el gasto, por si algún d�
 | Workflow | Cuándo | Duración | A la semana |
 | --- | --- | ---: | ---: |
 | `scan-flights` | cron, 2 al día | ~37 min | **~520 min** |
+| `scan-nocturno` | cron, 1 a la semana (madrugada del miércoles) | ~45-60 min | ~50 min |
 | `custom-search` | cada búsqueda que se lanza | ~1-8 min | según uso |
 | `stay-request` | cada búsqueda de alojamiento | ~2 min | según uso |
 | `watch` | apuntar, quitar o borrar | ~30 s | según uso |
 | `pages` | tras cada cambio de datos | ~30 s | — |
 
-El barrido diario es el **95 %** del total, y no se puede acelerar sin más: el scraper va en
+El barrido diario es el **90 %** del total, y no se puede acelerar sin más: el scraper va en
 serie a propósito, con un `throttle` por proveedor, porque paralelizarlo es la forma rápida de
 acabar baneado. Si algún día hay que recortar, la palanca es la **frecuencia del cron**, que es
 una decisión de producto: cada pasada menos son ~37 minutos menos y una oportunidad menos de

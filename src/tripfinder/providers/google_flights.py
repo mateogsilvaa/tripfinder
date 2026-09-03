@@ -169,7 +169,14 @@ class GoogleFlightsProvider(FlightProvider):
             except Exception as exc:  # noqa: BLE001 - una consulta fallida no tumba el scan
                 log.warning("Google Flights %s %s: %s", dest, out_date, exc)
         consultas = min(len(pairs), max_queries)
-        log.info("Google Flights %s: %d tarifas en %d consultas", route.origin, len(offers), consultas)
+        # Cuantos DESTINOS distintos, no solo cuantas consultas: es lo que
+        # separa el barrido de madrugada del diario, y sin verlo en el log no
+        # hay forma de saber si de verdad recorrio el mapa entero (#35).
+        destinos = len({d for d, _, _ in pairs[:max_queries]})
+        log.info(
+            "Google Flights %s: %d tarifas en %d consultas sobre %d destinos",
+            route.origin, len(offers), consultas, destinos,
+        )
         # Paginas vacias en cadena = nos han capado. Es importante que se vea:
         # antes parecia "no hay vuelos" cuando en realidad no nos contestaban.
         if consultas >= 5 and (self.paginas_vacias > consultas * 0.3 or len(offers) < consultas * 0.2):

@@ -69,6 +69,9 @@ class FlightOffer:
     useful_hours: float = 0.0
     price_per_hour: float = 0.0
     weekend: bool = False  # encaja con la escapada viernes tarde -> domingo tarde
+    # Salio del barrido de madrugada (#36). Se guarda para poder ver con el
+    # tiempo si esa hora encuentra cosas que las de las 08:00 y las 20:00 no.
+    nocturno: bool = False
     # Mismo viaje con otras companias, para no perderlas al quedarnos con la mas barata
     alternatives: list[dict[str, Any]] = field(default_factory=list)
     # Rellenados por scoring.py

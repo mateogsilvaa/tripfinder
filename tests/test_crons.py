@@ -14,8 +14,10 @@ import yaml
 RAIZ = Path(__file__).resolve().parent.parent
 FLUJOS = sorted((RAIZ / ".github" / "workflows").glob("*.yml"))
 
-# "hora peninsular", "hora española", "hora local"… al lado de un cron.
-AFIRMA_LOCAL = re.compile(r"hora\s+(peninsular|espa|local)", re.IGNORECASE)
+# Una hora local al lado de un cron: "08:00 hora peninsular", "02:17 peninsular".
+AFIRMA_LOCAL = re.compile(r"\d{1,2}[:.]\d{2}[^#]*?(peninsular|espa\w*ola|local)", re.IGNORECASE)
+# …salvo que diga de qué estación habla, que es lo que la vuelve cierta.
+DICE_LA_ESTACION = re.compile(r"verano|invierno|CES?T", re.IGNORECASE)
 
 
 def _lineas_de_cron(texto: str) -> list[tuple[int, str]]:
@@ -25,9 +27,12 @@ def _lineas_de_cron(texto: str) -> list[tuple[int, str]]:
 @pytest.mark.parametrize("flujo", FLUJOS, ids=lambda p: p.name)
 def test_ningun_cron_afirma_una_hora_local_en_su_linea(flujo):
     for numero, linea in _lineas_de_cron(flujo.read_text(encoding="utf-8")):
-        assert not AFIRMA_LOCAL.search(linea), (
-            f"{flujo.name}:{numero} dice una hora local al lado del cron, y eso "
-            "sólo es cierto medio año. Ver docs/ARCHITECTURE.md."
+        if not AFIRMA_LOCAL.search(linea):
+            continue
+        assert DICE_LA_ESTACION.search(linea), (
+            f"{flujo.name}:{numero} dice una hora local al lado del cron sin decir "
+            "de qué estación habla, y eso sólo es cierto medio año. "
+            "Ver docs/ARCHITECTURE.md."
         )
 
 
