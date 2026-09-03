@@ -6,7 +6,7 @@ búsqueda bajo demanda de alojamiento (hoteles + Airbnb) para esas fechas exacta
 Todo corre **gratis sobre GitHub**: Actions como scheduler/backend y Pages como web.
 
 ```
-                 ┌──────────────────────── GitHub Actions (cron 6h) ─────────────────────────┐
+                 ┌─────────────────────── GitHub Actions (cron 12h) ─────────────────────────┐
                  │  scan-flights.yml → tripfinder scan-flights                                │
                  │     · providers: Ryanair (sin API key) + Amadeus (opcional)                │
                  │     · scoring vs. histórico de precios  →  data/offers.json (commit)       │

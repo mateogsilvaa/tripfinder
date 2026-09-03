@@ -649,7 +649,16 @@ test.describe("la escapada completa", () => {
     await page.locator("[data-stay]").first().click();
     await page.locator("#launch").click();
     lanzada = true;
-    await page.clock.runFor(21_000);
+    // El polling no arranca hasta que el dispatch resuelve. Sin esperar a que
+    // el panel diga "Buscando…", adelantar el reloj aquí es una carrera: unas
+    // veces llega antes que el `setInterval` y la prueba parpadea.
+    await expect(page.locator("#panelBody")).toContainText(/buscando/i);
+    await expect
+      .poll(async () => {
+        await page.clock.runFor(21_000);
+        return page.locator(".ticket .escapada.real").count();
+      })
+      .toBe(1);
 
     const e = page.locator(".ticket .escapada");
     await expect(e).toHaveClass(/real/);

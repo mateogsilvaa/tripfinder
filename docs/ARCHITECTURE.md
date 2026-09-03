@@ -15,9 +15,31 @@
 | `web/auth.js` | GitHub Pages | Quién está delante: sesión, login contra `data/users.json` y el espacio de nombres de `localStorage` por cuenta. |
 | `.github/workflows/` | GitHub Actions | Cron de vuelos, cola de alojamiento vía issues, deploy de Pages. |
 
+## La hora de los cron
+
+Los `schedule` de GitHub Actions **van en UTC y no saben de horarios de verano**,
+así que un comentario del tipo `# 08:00 hora peninsular` sólo es cierto medio
+año: en invierno (CET, UTC+1) esa misma línea son las 07:00.
+
+La regla para cualquier cron que se añada:
+
+- **Si una hora arriba o abajo da igual** —el scan cada doce horas, por
+  ejemplo— se deja un solo `cron` y el comentario dice las dos horas:
+  `# 08:00 y 20:00 en verano, 07:00 y 19:00 en invierno`. Cuesta cero y no
+  engaña a quien lo lea.
+- **Si la ventana importa de verdad** —un barrido que tiene que caer entre las
+  02:00 y las 03:00 peninsulares— hacen falta **dos `cron` y un guardián**: se
+  programan las dos horas UTC posibles y el primer paso del job comprueba la
+  hora local de Europa/Madrid y se sale si no toca. Cuesta un job que a veces
+  no hace nada, y a cambio la hora está clavada todo el año.
+
+Lo que no vale es un solo cron con un comentario que afirme una hora local:
+`tests/test_crons.py` lo comprueba.
+
+
 ## Flujo de datos
 
-1. **Cron (cada 6 h)** → `scan-flights`. Se monta el mapa de destinos del origen
+1. **Cron (cada 12 h)** → `scan-flights`. Se monta el mapa de destinos del origen
    (`routes.destinos`) y cada provider habilitado busca según `config/watchlist.yml`.
    Ryanair y Wizz barren sus propias rutas por API; Google Flights cubre el resto del
    mapa, una consulta por destino y fecha, con el presupuesto de `google.max_queries`.

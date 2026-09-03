@@ -2,7 +2,12 @@ name: Buscar chollos de vuelo
 
 on:
   schedule:
-    - cron: "0 6,18 * * *" # 08:00 y 20:00 hora peninsular
+    # Los cron de GitHub van en UTC y no saben de horarios de verano: esto es
+    # las 08:00 y 20:00 en verano (CEST) y las 07:00 y 19:00 en invierno (CET).
+    # Para un barrido cada doce horas, una hora arriba o abajo da igual, asi que
+    # se deja un solo cron y se dice la verdad en el comentario. La regla, en
+    # docs/ARCHITECTURE.md.
+    - cron: "0 6,18 * * *"
   workflow_dispatch:
     inputs:
       no_email:
