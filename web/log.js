@@ -290,3 +290,40 @@ function tfAnunciar(mensaje) {
 function tfOlvidarAnuncio() {
   tfUltimoAnuncio = "";
 }
+
+/* --------------------------------------------------- la aplicacion instalable
+   Se registra solo donde hay manifiesto, que son las tres paginas publicas: el
+   panel escribe en el repo con un token y la 404 no es un sitio, y ninguno de
+   los dos gana nada con una copia en disco.
+
+   El `scope` sale de la ruta del propio fichero, asi que en /tripfinder/ cubre
+   /tripfinder/ y no la raiz del dominio. */
+if (
+  "serviceWorker" in navigator &&
+  document.querySelector('link[rel="manifest"]') &&
+  // Solo en contexto seguro. En https siempre; en file:// no hay nada que hacer.
+  window.isSecureContext
+) {
+  window.addEventListener("load", () => {
+    // La version va en la URL: sin ella el navegador se queda con el sw.js
+    // guardado y un despliegue nuevo no llegaria a activarse nunca.
+    const v = (document.querySelector('link[rel="manifest"]')?.href.split("v=")[1] || "").trim();
+    navigator.serviceWorker
+      .register(`sw.js${v ? `?v=${encodeURIComponent(v)}` : ""}`)
+      .catch((err) => {
+        // Que falle no rompe nada: la web funciona igual, solo que sin red no
+        // abre. Se apunta porque un registro que falla siempre es un sintoma.
+        if (typeof tfApuntar === "function") tfApuntar("sw", "No se pudo registrar", String(err));
+      });
+  });
+}
+
+/* Si lo ultimo que se pinto salio de la caja y no de la red. Lo pone `fetchJSON`
+   al ver la cabecera que mete el service worker, y lo lee el pie. */
+let tfDeLaCaja = false;
+function tfMarcarCaja(si) {
+  tfDeLaCaja = !!si;
+}
+function tfEsDeLaCaja() {
+  return tfDeLaCaja;
+}

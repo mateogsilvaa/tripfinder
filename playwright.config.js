@@ -16,6 +16,13 @@ module.exports = defineConfig({
   use: {
     baseURL: `http://localhost:${PUERTO}`,
     trace: "retain-on-failure",
+    // El service worker se queda fuera salvo donde se prueba a proposito.
+    // Motivo: las peticiones de datos las hace EL WORKER, y ni `page.route` ni
+    // `context.setOffline` llegan hasta ahi. Con el activo, media docena de
+    // pruebas que sirven un JSON de mentira dejaban de recibirlo y fallaban sin
+    // que nada estuviera roto. Las de la #22 lo vuelven a encender con
+    // `test.use({ serviceWorkers: "allow" })` y cortan la red en el servidor.
+    serviceWorkers: "block",
   },
 
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],

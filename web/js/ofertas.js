@@ -153,8 +153,13 @@ function frescura(iso) {
   const horas = Math.round((Date.now() - d.getTime()) / 3600000);
   const texto =
     horas < 1 ? "hace menos de una hora" : horas < 24 ? `hace ${horas} h` : `hace ${Math.round(horas / 24)} días`;
-  el.textContent = `levantamiento: ${texto} · se revisa cada 12 h`;
-  el.className = horas > 36 ? "viejo" : "";
+  // Sin línea, lo que se ve es la última tanda guardada, y hay que decirlo: un
+  // precio de anteayer con el aspecto de uno de hoy es peor que no tener nada.
+  const deLaCaja = typeof tfEsDeLaCaja === "function" && tfEsDeLaCaja();
+  el.textContent = deLaCaja
+    ? `sin conexión · lo último guardado, ${texto}`
+    : `levantamiento: ${texto} · se revisa cada 12 h`;
+  el.className = deLaCaja || horas > 36 ? "viejo" : "";
 }
 
 function renderStats(payload) {

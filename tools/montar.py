@@ -107,6 +107,15 @@ DESCRIPCIONES = {
     ),
 }
 
+# La aplicacion instalable (#22). Solo en las tres paginas publicas: instalar el
+# panel o la 404 no tiene sentido, y un `scope` que las incluyera haria que el
+# service worker se colara donde no pinta nada.
+MANIFIESTO = (
+    '<link rel="manifest" href="manifest.webmanifest?v={v}">\n'
+    '<link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">\n'
+    '<meta name="apple-mobile-web-app-title" content="TripFinder">\n'
+)
+
 VIVO = '      <span class="board-live"><i></i>en vivo</span>\n'
 
 GUIONES_WEB = (
@@ -140,6 +149,7 @@ NOTA_PANEL = (
 PAGINAS = {
     "index.html": {
         "base": "",
+        "manifiesto": MANIFIESTO,
         "titulo": "TripFinder · escapadas desde Madrid",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["index.html"]}">',
         "favicon": "✈️",
@@ -152,6 +162,7 @@ PAGINAS = {
     },
     "buscar.html": {
         "base": "",
+        "manifiesto": MANIFIESTO,
         "titulo": "TripFinder · trazar un viaje",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["buscar.html"]}">',
         "favicon": "✈️",
@@ -164,6 +175,7 @@ PAGINAS = {
     },
     "seguimientos.html": {
         "base": "",
+        "manifiesto": MANIFIESTO,
         "titulo": "TripFinder · en observación",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["seguimientos.html"]}">',
         "favicon": "✈️",
@@ -178,6 +190,7 @@ PAGINAS = {
     # (es lo unico util que puedes hacer desde ahi) pero no las hojas de
     # alojamiento, y no se indexa.
     "404.html": {
+        "manifiesto": "",
         "base": ARREGLO_BASE,
         "titulo": "TripFinder · fuera de la carta",
         "meta": '<meta name="robots" content="noindex">',
@@ -192,6 +205,7 @@ PAGINAS = {
     # El panel no es una zona publica: no lleva nav, ni las hojas de
     # alojamiento, ni se indexa.
     "admin.html": {
+        "manifiesto": "",
         "base": "",
         "titulo": "TripFinder · panel",
         "meta": '<meta name="robots" content="noindex">',
@@ -228,7 +242,10 @@ def render(nombre_parte: str, datos: dict, version: str = BUILD) -> str:
     """Una parte con sus huecos rellenos. Los huecos son `{{nombre}}`."""
     texto = (PARTES / f"{nombre_parte}.html").read_text(encoding="utf-8").rstrip("\n")
     huecos = {**datos, "v": str(version), **_zonas(datos.get("zona"))}
-    huecos["guiones"] = str(huecos.get("guiones", "")).format(v=version)
+    # Los dos bloques que llevan la version dentro: se rellenan aparte porque
+    # son valores, no partes, y `sustituir` solo mira los huecos de la plantilla.
+    for clave in ("guiones", "manifiesto"):
+        huecos[clave] = str(huecos.get(clave, "")).format(v=version)
 
     def sustituir(m: re.Match) -> str:
         clave = m.group(1)
@@ -257,8 +274,15 @@ def montar_texto(html: str, datos: dict, version: str = BUILD) -> str:
 IMPORT_RELATIVO = re.compile(r'(from |import )("\./[\w-]+\.js)(")')
 
 
+# El service worker guarda el armazon en una caja con la version en el nombre.
+# Sin sellarla, un despliegue nuevo seguiria sirviendo el CSS del anterior desde
+# disco y no habria forma de saberlo desde fuera.
+VERSION_SW = re.compile(r'^const VERSION = "[^"]*";', re.MULTILINE)
+
+
 def sellar_modulos(version: str) -> list[str]:
-    """Pone `?v=version` en los import relativos de web/js/. Devuelve los tocados."""
+    """Pone `?v=version` en los import relativos de web/js/ y en la caja del
+    service worker. Devuelve los ficheros tocados."""
     tocados = []
     for ruta in sorted((WEB / "js").glob("*.js")):
         antes = ruta.read_text(encoding="utf-8")
@@ -266,6 +290,14 @@ def sellar_modulos(version: str) -> list[str]:
         if antes != despues:
             ruta.write_text(despues, encoding="utf-8")
             tocados.append(ruta.name)
+
+    sw = WEB / "sw.js"
+    if sw.exists():
+        antes = sw.read_text(encoding="utf-8")
+        despues = VERSION_SW.sub(f'const VERSION = "{version}";', antes, count=1)
+        if antes != despues:
+            sw.write_text(despues, encoding="utf-8")
+            tocados.append(sw.name)
     return tocados
 
 

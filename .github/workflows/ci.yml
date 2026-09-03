@@ -51,6 +51,11 @@ jobs:
       - name: Contraste de la paleta
         run: python tools/contraste.py --check
 
+      # Los iconos de la aplicacion instalable salen de la paleta del CSS, no
+      # de un editor. Si alguien cambia un color y no los regenera, aqui salta.
+      - name: Los iconos cuadran con la paleta
+        run: python tools/iconos.py --check
+
   web:
     name: humo de frontend
     runs-on: ubuntu-latest

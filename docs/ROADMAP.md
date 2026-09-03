@@ -195,6 +195,8 @@ todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
 - [x] **#20 · Fuentes que no bloquean** `perf`
 - [x] **#21 · Versión de assets automática** `infra`
   - La sella `pages.yml` con el hash del commit; en el repo vale `dev`.
+- [x] **#22 · PWA instalable y ofertas en frío** `web` `nice-to-have`
+  - Red primero para los datos: sin línea abre con lo último y lo dice.
 - [x] **#23 · Diálogos accesibles en toda la web** `accessibility`
 - [x] **#24 · Anunciar lo que está pasando** `accessibility`
 - [x] **#25 · Contraste y tamaño táctil** `accessibility`
@@ -220,7 +222,7 @@ todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
 Y el sistema de diseño nuevo —el atlas— por encima de todo eso.
 
 Lo que queda: el test de destinos (#6-#12, que es una funcionalidad entera y no
-un arreglo) y la PWA (#22).
+un arreglo).
 
 
 ## M5 · Robustez y calidad

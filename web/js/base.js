@@ -20,9 +20,17 @@ export const fmtEUR = (n) => `${Math.round(n)} €`;
 export const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 export const DAYS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];
 
+/* Una fecha ISO, con hora o sin ella. La hora se corta a proposito: aqui todo
+   son dias, y el desfase horario del navegador cambiaria el dia de sitio.
+
+   Antes se partia por guiones sin mirar: con "2026-09-02T10:46:00" el ultimo
+   trozo era "02T10:46:00", que da NaN, y `new Date(2026, 8, NaN)` es una fecha
+   invalida que NO es null. El pie acababa diciendo "hace NaN dias". El scan
+   escribe la fecha pelada, asi que no se veia; una busqueda a mano o un
+   fichero de otra procedencia si traen la hora. */
 export function parseISO(iso) {
-  const [y, m, d] = (iso || "").split("-").map(Number);
-  return y ? new Date(y, m - 1, d) : null;
+  const [y, m, d] = String(iso || "").split("T")[0].split("-").map(Number);
+  return y && m && d ? new Date(y, m - 1, d) : null;
 }
 
 export function fmtDate(iso, withDay = false) {
@@ -73,10 +81,15 @@ export function escURL(valor) {
   return esc(crudo);
 }
 
-/* Cache-buster: Pages sirve los JSON con cache agresiva y aqui siempre queremos lo ultimo. */
+/* Cache-buster: Pages sirve los JSON con cache agresiva y aqui siempre queremos
+   lo ultimo. El `no-store` y el `?t=` siguen igual con el service worker puesto:
+   el worker manda el dato a la red primero y solo tira de su copia si no hay
+   linea, y en ese caso lo dice con una cabecera. Enseñar precios de anteayer
+   callando es el unico fallo que no nos podemos permitir (#22). */
 export const fetchJSON = (path) =>
   fetch(`${path}${path.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" }).then((r) => {
     if (!r.ok) throw new Error(r.status);
+    if (typeof tfMarcarCaja === "function") tfMarcarCaja(r.headers.get("X-TF-Cache") === "1");
     return r.json();
   });
 
