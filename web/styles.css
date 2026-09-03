@@ -56,8 +56,8 @@
   --ancho: 1200px;
 
   /* ---- tipografía ---------------------------------------------------- */
-  --font-sans: "Switzer", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-display: "Switzer", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-sans: "Switzer", "Switzer respaldo", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Switzer", "Switzer respaldo", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-script: "Pinyon Script", "Snell Roundhand", cursive;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 
@@ -123,6 +123,34 @@
   --code-ink: #fffdf8;
   --sobre-acento: #12110f;
   --velo: rgba(22, 21, 15, 0.5);
+}
+
+/* ==========================================================================
+   EL RESPALDO DE SWITZER
+
+   Switzer vive en un solo sitio —el CDN de Fontshare— y no está en Google
+   Fonts. Si ese dominio va lento, se cae o se lo bloquean a alguien, la web
+   entera pasa a la tipografía del sistema. Eso no se puede evitar sin
+   auto-alojar la fuente; lo que SÍ se puede evitar es que además se mueva todo
+   de sitio cuando llega.
+
+   Estas cifras están medidas, no estimadas: se sacan de comparar
+   `switzer-latin-400-normal.woff2` con Liberation Sans (métricamente
+   compatible con Arial, que es el respaldo más probable):
+
+     Switzer   ascendente 98,0%  descendente 25,0%  interlínea 9,0%  ancho medio 510/1000em
+     Arial     ascendente 90,5%  descendente 21,2%  interlínea 3,3%  ancho medio 490/1000em
+
+   Con los `override` y el `size-adjust` al 104,3%, el texto de respaldo ocupa
+   la misma caja que Switzer: no hay salto de maquetación cuando la fuente
+   entra, ni párrafos que cambian de altura a mitad de carga. */
+@font-face {
+  font-family: "Switzer respaldo";
+  src: local("Arial"), local("Helvetica Neue"), local("Liberation Sans"), local("Roboto");
+  ascent-override: 98%;
+  descent-override: 25%;
+  line-gap-override: 9%;
+  size-adjust: 104.3%;
 }
 
 /* ==========================================================================

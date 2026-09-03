@@ -271,6 +271,13 @@ Lo que hay que respetar al tocar `web/styles.css`:
   de sobra como **relleno** (con tinta oscura encima) pero como **texto** sobre papel
   claro se queda en 3,6:1. Oscurecerlo hasta 4,5 arreglaba el texto y rompía el botón:
   un solo token no puede hacer los dos trabajos.
+- **Switzer lleva un respaldo medido.** Vive en un solo sitio —el CDN de
+  Fontshare, no está en Google Fonts— así que si ese dominio va lento o se lo
+  bloquean a alguien, la web pasa a la del sistema. Eso solo se evita del todo
+  auto-alojándola; lo que sí se evita es el salto de maquetación, con una
+  `@font-face` de respaldo cuyos `ascent-override`, `descent-override` y
+  `size-adjust` (104,3 %) salen de **medir** el `.woff2` contra Liberation Sans.
+  El respaldo no descarga nada: es `local()`.
 - **Tres voces tipográficas.** **Switzer** para todo lo que se lee, **IBM Plex Mono**
   para todo lo que es un **dato** (precios, códigos IATA, horas, rótulos) y **Pinyon
   Script** como acento manuscrito. La manuscrita aparece cinco veces contadas en toda

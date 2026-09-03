@@ -114,3 +114,31 @@ def test_se_preconecta_a_los_dos_proveedores():
     `<link>` y se come el DNS y el TLS antes de empezar a bajar nada."""
     for host in ("api.fontshare.com", "fonts.googleapis.com", "fonts.gstatic.com"):
         assert f'rel="preconnect" href="https://{host}"' in CABEZA, host
+
+
+# ------------------------------------------------- el respaldo de Switzer
+def test_switzer_tiene_un_respaldo_medido():
+    """Switzer vive en un solo CDN y no está en Google Fonts. Si no llega, la
+    web pasa al sistema; lo que no puede pasar además es que se mueva todo de
+    sitio, y para eso el respaldo tiene que ocupar la misma caja.
+
+    Las cifras salen de medir el .woff2 contra Liberation Sans (métricamente
+    compatible con Arial). Si alguien cambia la familia y no vuelve a medir,
+    esto no lo detecta —no hay forma sin la fuente delante— pero al menos deja
+    escrito que son medidas y no un número puesto a ojo."""
+    assert '"Switzer respaldo"' in CSS, "la familia de respaldo no está declarada"
+    bloque = CSS[CSS.index('font-family: "Switzer respaldo"') :][:400]
+    for propiedad in ("ascent-override", "descent-override", "line-gap-override", "size-adjust"):
+        assert propiedad in bloque, propiedad
+    # Y va DELANTE del sistema en la pila, o no serviría de nada.
+    pila = re.search(r"--font-sans:([^;]+);", CSS).group(1)
+    assert pila.index("Switzer respaldo") < pila.index("system-ui")
+
+
+def test_el_respaldo_no_descarga_nada():
+    """`local()` y solo `local()`: el respaldo usa una fuente que ya está en la
+    máquina. Si tuviera una `url()` sería otra descarga, que es justo lo que se
+    está intentando evitar."""
+    bloque = CSS[CSS.index('font-family: "Switzer respaldo"') :][:400]
+    assert "local(" in bloque
+    assert "url(" not in bloque
