@@ -465,6 +465,11 @@ h1 {
 }
 h1 em { font-size: 1.3em; }
 
+/* La rejilla de estadísticas es un fondo con hilos de un píxel: vacía —el
+   panel la deja así hasta que entras— se quedaba pintando un filete suelto
+   debajo del titular. */
+.stats:empty { display: none; }
+
 .lede {
   margin: 0;
   max-width: 48ch;
@@ -575,29 +580,46 @@ h1 em { font-size: 1.3em; }
 
 /* Los cuatro tramos, con la misma rejilla de un píxel que las estadísticas. */
 .legs {
+  /* La misma rejilla se usa en dos sitios con tintas OPUESTAS: dentro de la
+     lámina invertida del chollo y dentro del detalle de una fila, que va sobre
+     el papel de la página. Sin estas variables locales el detalle pintaba
+     marfil sobre marfil y los horarios no se veían. */
+  --legs-hilo: var(--hair);
+  --legs-fondo: var(--surface2);
+  --legs-ink: var(--ink);
+  --legs-muted: var(--muted);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
   margin: 0;
-  background: var(--hero-hair);
-  border: 1px solid var(--hero-hair);
+  background: var(--legs-hilo);
+  border: 1px solid var(--legs-hilo);
+  color: var(--legs-ink);
+}
+.ticket .legs {
+  --legs-hilo: var(--hero-hair);
+  --legs-fondo: var(--hero-bg);
+  --legs-ink: var(--hero-ink);
+  --legs-muted: var(--hero-muted);
 }
 .ticket-izq .legs { margin-top: auto; }
-.legs > div { background: var(--hero-bg); padding: 11px 12px; min-width: 0; }
+.legs > div { background: var(--legs-fondo); padding: 11px 12px; min-width: 0; }
 .legs dt {
   font: 400 var(--fs-caps-l) / 1 var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--hero-muted);
+  color: var(--legs-muted);
 }
 .legs dd {
   margin: 3px 0 0;
   font-size: var(--fs-body-s);
+  color: var(--legs-ink);
 }
+.legs dd i { color: var(--legs-muted); font-style: normal; }
 .legs .hhmm { display: block; margin-top: 1px; font: 400 var(--fs-body-s) var(--font-mono); }
 .legs .dias { font: 400 20px/1 var(--font-mono); }
 .legs .useful { font: 400 var(--fs-body-s) var(--font-mono); }
-.legs .useful small { display: block; font-size: var(--fs-ui-s); color: var(--hero-muted); }
+.legs .useful small { display: block; font-size: var(--fs-ui-s); color: var(--legs-muted); }
 
 .ticket-der {
   border-left: 1px solid var(--hero-hair);
@@ -690,7 +712,16 @@ h1 em { font-size: 1.3em; }
 .btn.small { padding: 9px 16px; font-size: var(--fs-ui-s); }
 .btn.deep { background: var(--deep); border-color: var(--deep); color: #0e1614; }
 .btn.deep:hover { background: transparent; color: var(--deep); filter: none; }
-.btn[disabled], .btn.apagado { opacity: 0.4; cursor: default; filter: none; }
+/* Un botón apagado no se difumina: sobre el relleno naranja, bajarle la
+   opacidad dejaba el rótulo casi ilegible. Se vacía y se queda con el hilo. */
+.btn[disabled], .btn.apagado {
+  background: transparent;
+  border-color: var(--hair);
+  color: var(--muted);
+  cursor: default;
+  filter: none;
+}
+.btn[disabled]:hover, .btn.apagado:hover { filter: none; color: var(--muted); }
 /* Dentro de la lámina invertida los botones fantasma cambian de tinta. */
 .ticket .btn.ghost { border-color: var(--hero-hair); color: var(--hero-ink); }
 .ticket .btn.ghost:hover { border-color: var(--hero-ink); }
@@ -980,7 +1011,17 @@ h1 em { font-size: 1.3em; }
   border-top: 1px solid var(--hair);
   margin-top: 11px;
   padding-top: 14px;
+  display: grid;
+  gap: 14px;
 }
+/* En la lámina los botones van uno debajo de otro porque la columna es
+   estrecha; aquí hay toda la fila, así que van en línea y a su ancho. */
+.brow-detail .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.brow-detail .actions > .btn { flex: 0 0 auto; }
 
 .ver-mas { display: flex; justify-content: center; margin-top: 14px; }
 
@@ -1077,6 +1118,12 @@ h1 em { font-size: 1.3em; }
   gap: 2px;
   min-width: 0;
 }
+/* "Destino" y "Fechas" se encienden por separado según lo que se elija arriba.
+   El que se quede solo ocupa la fila entera: si no, el hueco de al lado deja
+   ver el fondo de la rejilla y parece una celda rota. */
+.finder-form:has(#destWrap[hidden]) #departWrap:not([hidden]),
+.finder-form:has(#departWrap[hidden]) #destWrap:not([hidden]) { grid-column: 1 / -1; }
+
 .finder-form label > span {
   font: 400 var(--fs-caps) / 1 var(--font-mono);
   letter-spacing: 0.12em;
@@ -1114,7 +1161,13 @@ h1 em { font-size: 1.3em; }
   justify-content: space-between;
   gap: 4px;
 }
-.hint { font-size: var(--fs-ui-s); color: var(--muted); line-height: 1.45; }
+.hint { font-size: var(--fs-ui-s); color: var(--muted); line-height: 1.45; max-width: 70ch; }
+/* Un renglón de texto no se estira a lo ancho del panel: a más de setenta
+   caracteres el ojo pierde el salto de línea. Estas notas llevan su propio
+   filete arriba, así que se acorta el TEXTO —de ahí el `span`— y no la caja,
+   que si no el filete quedaba a media anchura. */
+.vacio { max-width: 74ch; }
+.nota-txt { display: inline-block; max-width: 74ch; vertical-align: middle; }
 .finder-form + .candado-nota { margin-top: 0; }
 .candado-nota, .cuenta-nota {
   font-size: var(--fs-ui-s);
@@ -1123,7 +1176,7 @@ h1 em { font-size: 1.3em; }
   padding-top: 12px;
 }
 .candado-nota a, .cuenta-nota a { color: var(--accent-txt); text-decoration: underline; text-underline-offset: 2px; }
-.finder-form.candado > .btn { opacity: 0.45; }
+.finder-form.candado > .btn { background: transparent; border-color: var(--hair); color: var(--muted); }
 
 /* La página completa de una herramienta: la misma caja, sin borde ni fondo,
    porque ahí ya no compite con nada. */
@@ -1225,6 +1278,21 @@ h1 em { font-size: 1.3em; }
 .historia.barato span { color: var(--deep); }
 .historia.caro span { color: var(--accent-txt); }
 .spark-cell svg, .historia svg { display: block; }
+/* La curva se pintaba con la tinta del texto: un trazo blanco tan fuerte como
+   el titular de al lado. Va con el color de lo que cuenta —verde si ha bajado,
+   apagado si ha subido— y sobre una caja con su propio fondo, para que se lea
+   como un gráfico y no como un garabato. */
+.spark {
+  color: var(--muted);
+  background: var(--surface2);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-tag);
+  padding: 2px 4px;
+  box-sizing: content-box;
+}
+.spark.baja { color: var(--deep); }
+.spark.sube { color: var(--accent-txt); }
+.ticket .spark { background: none; border-color: var(--hero-hair); }
 .cambios { display: grid; gap: 6px; }
 .cambio-precio { font: 600 var(--fs-data) var(--font-mono); }
 .cambio-nota { font-size: var(--fs-ui-s); color: var(--muted); }
@@ -1493,7 +1561,43 @@ h1 em { font-size: 1.3em; }
 .total-head { font: 400 var(--fs-caps-l) var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .total-figure { font: 600 var(--fs-figure) var(--font-mono); letter-spacing: -0.03em; }
 .total-break { font-size: var(--fs-ui-s); color: var(--muted); }
-.wait, .status { font: 400 var(--fs-data) var(--font-mono); color: var(--muted); }
+/* El monoespaciado va bien para una línea corta de estado ("Buscando…"), pero
+   un párrafo de tres renglones así se lee como un volcado de consola. El texto
+   corrido vuelve a la de leer. */
+.wait, .status {
+  font: 400 var(--fs-data) var(--font-mono);
+  color: var(--muted);
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  align-items: center;
+}
+.wait p, .status p {
+  margin: 0;
+  max-width: 62ch;
+  font: 400 var(--fs-body-s) / 1.55 var(--font-sans);
+}
+.wait strong, .status strong { color: var(--ink); font-weight: 600; }
+/* El "¿cuántos viajáis?" de la hoja de camas no vive dentro de un formulario
+   con rejilla, así que su caja hay que ponérsela aquí. */
+.panel .party {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 400 var(--fs-body-s) var(--font-sans);
+  color: var(--ink);
+}
+.panel .party input {
+  width: 66px;
+  padding: 9px 10px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  background: var(--field);
+  color: var(--ink);
+  font: 400 var(--fs-input) var(--font-mono);
+  text-align: center;
+}
+.panel .party input:hover, .panel .party input:focus { border-color: var(--muted); }
 .link-tag { font-size: var(--fs-ui-s); color: var(--accent-txt); }
 .rescan { justify-self: start; }
 .perdido { color: var(--muted); font-size: var(--fs-body-s); }
@@ -1503,16 +1607,22 @@ h1 em { font-size: 1.3em; }
    EL CALENDARIO
    ========================================================================== */
 
+/* Ojo con los selectores: `calendario.js` pinta `.meses > .mes > .semana` (las
+   iniciales de los días) y `.dias` (los botones). La hoja anterior buscaba los
+   botones dentro de `.semana`, no los encontraba nunca y los días salían con
+   el gris de fábrica del navegador, sin rejilla y sin número legible. */
 .cal {
   border: 1px solid var(--line);
   border-radius: var(--r);
   background: var(--surface);
   padding: 14px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 18px;
   max-height: 340px;
   overflow-y: auto;
+}
+.meses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 20px 24px;
 }
 .mes { min-width: 0; }
 .mes h4 {
@@ -1522,22 +1632,36 @@ h1 em { font-size: 1.3em; }
   color: var(--muted);
   margin-bottom: 8px;
 }
-.semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.semana button, .semana span {
+.semana, .dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.semana {
+  margin-bottom: 4px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--hair);
+}
+.semana i {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  font-style: normal;
+  letter-spacing: 0;
+  text-align: center;
+  color: var(--muted);
+}
+.dia {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
+  padding: 0;
   border: none;
   background: transparent;
   color: var(--ink);
   font: 400 var(--fs-ui-s) var(--font-mono);
   border-radius: var(--r-tag);
   cursor: pointer;
+  transition: background var(--t) var(--ease), color var(--t) var(--ease);
 }
-.semana button:hover { background: var(--surface2); }
-.semana button.activa { background: var(--accent); color: var(--sobre-acento); }
-.semana button.dentro { background: var(--hair); }
-.semana button[disabled] { color: var(--hair); cursor: default; }
+.dia:hover:not([disabled]), .dia:focus-visible:not([disabled]) { background: var(--surface2); }
+.dia.extremo { background: var(--accent); color: var(--sobre-acento); }
+.dia.dentro { background: var(--hair); }
+.dia[disabled] { color: var(--hair); cursor: default; }
 
 /* ==========================================================================
    EL TEST DE DESTINOS

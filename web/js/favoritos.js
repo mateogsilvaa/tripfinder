@@ -300,7 +300,7 @@ export function sparkline(historia, ancho = 108, alto = 30) {
       aria-label="Evolución del precio: de ${Math.round(precios[0])} a ${Math.round(ultimo)} euros">
       <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6"
             stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${(ancho).toFixed(1)}" cy="${y(ultimo).toFixed(1)}" r="2.4" fill="currentColor"/>
+      <circle cx="${(ancho - 2.4).toFixed(1)}" cy="${y(ultimo).toFixed(1)}" r="2.4" fill="currentColor"/>
     </svg>`;
 }
 
