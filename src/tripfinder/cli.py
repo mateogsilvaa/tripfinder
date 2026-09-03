@@ -343,6 +343,9 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     # mundial, que es estatico, asi que casi siempre escribe lo mismo y no
     # genera commit; esta aqui para que no se pueda quedar viejo.
     store.save_continents()
+    # Y lo que cuesta dormir en cada sitio, para poder estimar la escapada
+    # completa en el tablon sin abrir el panel de alojamiento.
+    store.save_beds()
 
     if args.no_email:
         print(f"{len(to_notify)} ofertas notificables, pero --no-email esta activo.")
@@ -557,6 +560,9 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
     path = store.save_stays(
         args.offer_id, offer, stays, req.checkin, req.checkout, errors, summary=resumen
     )
+    # Cada busqueda de cama mejora la estimacion del tablon: aqui es cuando hay
+    # dato nuevo que destilar.
+    store.save_beds()
     print(f"\nGuardado en {path}")
     if args.summary_out:
         with open(args.summary_out, "w", encoding="utf-8") as fh:

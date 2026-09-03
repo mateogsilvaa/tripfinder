@@ -581,6 +581,83 @@ test.describe("las cuentas que se publican", () => {
   });
 });
 
+test.describe("la escapada completa", () => {
+  /* La #29: el vuelo es por persona y la cama es para el grupo. Sumarlos bien
+     da el único número que decide un viaje, y hasta ahora sólo salía después
+     de pedir alojamiento, que son varios minutos. */
+
+  test("sale en el tablón sin abrir el panel de alojamiento", async ({ page }) => {
+    await page.goto("/index.html");
+    // MAN es la plancha del día: 55.98 de vuelo + 2 noches a 55 (por país).
+    const plancha = page.locator(".ticket .escapada");
+    await expect(plancha).toBeVisible();
+    await expect(plancha).toHaveText(/escapada ≈ 166 €/);
+    // El panel de alojamiento sigue cerrado.
+    await expect(page.locator("#panel")).toBeHidden();
+  });
+
+  test("se ve que es una estimación, no un precio consultado", async ({ page }) => {
+    await page.goto("/index.html");
+    const e = page.locator(".ticket .escapada");
+    await expect(e).toHaveText(/≈/);
+    await expect(e).not.toHaveClass(/real/);
+    await expect(e).toHaveAttribute("title", /estimación/i);
+    // Y dice de dónde sale el número.
+    await expect(e).toHaveAttribute("title", /costó dormir/i);
+  });
+
+  test("donde no hay dato de camas, no se inventa un número", async ({ page }) => {
+    await page.goto("/index.html");
+    // ACE (España) no está ni en destinos ni en países del fixture.
+    const fila = page.locator(".brow", { has: page.locator(".iata", { hasText: "ACE" }) });
+    await expect(fila).toBeVisible();
+    await expect(fila.locator(".escapada")).toHaveCount(0);
+    // Pero BGY sí, con su propio dato de destino: 59.98 + 2 × 72 = 204.
+    const bgy = page.locator(".brow", { has: page.locator(".iata", { hasText: "BGY" }) });
+    await expect(bgy.locator(".escapada")).toHaveText(/escapada ≈ 204 €/);
+  });
+
+  test("al pedir alojamiento de verdad, el número real la sustituye", async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-p", user: "p", name: "P" }));
+        localStorage.setItem("tf_token", "ghp_de_mentira");
+      } catch (e) { /* nada */ }
+    });
+    await page.route("https://api.github.com/**", (r) => r.fulfill({ status: 204, body: "" }));
+    // Como pasa de verdad: al abrir el panel todavía no hay nada, se lanza la
+    // búsqueda, y el fichero aparece en una vuelta del polling.
+    let lanzada = false;
+    await page.route("**/data/stays/*.json*", (r) => {
+      if (!lanzada) return r.fulfill({ status: 404, body: "" });
+      return r.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          offer_id: "ryanair-MAD-MAN-20261113",
+          generated_at: "2026-09-02T11:00:00",
+          summary: { party: 1, flights: 55.98, stay: 90, total: 145.98, per_person: 145.98 },
+          stays: [{ name: "Una cama", provider: "airbnb", url: "https://example.com/a", price_total: 90 }],
+        }),
+      });
+    });
+
+    await page.goto("/index.html");
+    await expect(page.locator(".ticket .escapada")).toHaveText(/≈ 166 €/);
+
+    await page.clock.install();
+    await page.locator("[data-stay]").first().click();
+    await page.locator("#launch").click();
+    lanzada = true;
+    await page.clock.runFor(21_000);
+
+    const e = page.locator(".ticket .escapada");
+    await expect(e).toHaveClass(/real/);
+    await expect(e).toHaveText(/escapada 146 €/);
+    await expect(e).not.toHaveText(/≈/);
+  });
+});
+
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */

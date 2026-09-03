@@ -724,6 +724,23 @@ input[type="range"]::-moz-range-thumb {
 .brow .price small.off { color: var(--verde); }
 .brow .fav { justify-self: end; align-self: center; }
 
+/* La escapada completa: vuelos de todos mas una cama para todos. Va con el
+   filete azul de sondeo —la tinta de lo informativo— y con el `≈` delante,
+   porque es una cuenta nuestra y no un precio consultado. Al pedir alojamiento
+   de verdad, el numero real la sustituye. */
+.escapada {
+  display: inline-block; margin-top: 6px; padding-left: 7px;
+  border-left: 2px solid var(--sello);
+  font: 400 var(--fs-meta) var(--font-mono); color: var(--sello);
+  white-space: nowrap; cursor: help;
+}
+.brow .price .escapada, .favrow .price .escapada { color: var(--sello); }
+.ticket-precio .escapada { margin-top: 12px; }
+/* Cuando ya no es una cuenta nuestra sino un precio consultado: verde, la
+   tinta de lo que se sabe de verdad, y sin el `≈`. */
+.escapada.real { border-left-color: var(--verde); color: var(--verde); }
+.brow .price .escapada.real, .favrow .price .escapada.real { color: var(--verde); }
+
 /* Lo que se ha movido desde tu ultima visita. Va calificado con la columna
    porque ".price small" es mas especifico y si no se comeria el color. */
 .delta { font: 400 var(--fs-meta) var(--font-mono); }

@@ -91,6 +91,85 @@ class Store:
         )
         return plano
 
+    # -- camas ------------------------------------------------------------
+    def save_beds(self, minimo_muestras: int = 3) -> dict[str, Any]:
+        """Lo que cuesta una cama por noche, sacado de lo ya buscado.
+
+        El vuelo es por persona y la cama es para el grupo: sumarlos bien da el
+        unico numero que decide un viaje. Hoy ese numero solo aparece DESPUES
+        de pedir alojamiento, que es un workflow de varios minutos, asi que
+        quien mira el tablon no lo ve nunca.
+
+        Aqui se destila lo que ya se busco alguna vez —`data/stays/*.json`— en
+        una mediana de precio por noche, por destino y por pais. La mediana y
+        no la media: un atico de 400 EUR entre veinte anuncios de 50 no puede
+        mover la estimacion de todos.
+
+        Lo que NO hace: inventarse un valor por defecto para los destinos que
+        nadie ha buscado todavia. Un numero igual para todos no informa, y
+        ademas parece que sabe algo. Donde no hay dato, no hay estimacion; y la
+        cobertura crece sola cada vez que alguien pide alojamiento.
+        """
+        carpeta = self.root / "stays"
+        por_destino: dict[str, list[float]] = {}
+        por_pais: dict[str, list[float]] = {}
+        nombres: dict[str, str] = {}
+
+        for f in sorted(carpeta.glob("*.json")) if carpeta.exists() else []:
+            try:
+                datos = json.loads(f.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            oferta = datos.get("offer") or {}
+            codigo = oferta.get("destination")
+            if not codigo:
+                continue
+            noches = max(1, int(oferta.get("nights") or 1))
+
+            # Por noche, y del EXTREMO BARATO. Airbnb devuelve desde una
+            # habitacion compartida hasta un chalet: en Lanzarote la lista va de
+            # 28 a 405 EUR la noche, asi que la mediana del catalogo estimaria
+            # un viaje que nadie hace. El numero que luego sustituye a esto
+            # —`_trip_summary`— coge la cama mas barata, asi que la estimacion
+            # tiene que medir lo mismo o el "real" pareceria una rebaja.
+            #
+            # Los tres mas baratos y la mediana de esos tres: un solo minimo es
+            # un anuncio suelto que puede ser cualquier cosa.
+            noche = sorted(
+                s.get("price_per_night") or (s["price_total"] / noches)
+                for s in datos.get("stays", [])
+                if s.get("price_total") or s.get("price_per_night")
+            )
+            if not noche:
+                continue
+            baratos = noche[:3]
+            por_destino.setdefault(codigo, []).extend(baratos)
+            if oferta.get("destination_country"):
+                por_pais.setdefault(oferta["destination_country"], []).extend(baratos)
+            if oferta.get("destination_name"):
+                nombres[codigo] = oferta["destination_name"]
+
+        def _mediana(xs: list[float]) -> float:
+            xs = sorted(xs)
+            mitad = len(xs) // 2
+            return xs[mitad] if len(xs) % 2 else (xs[mitad - 1] + xs[mitad]) / 2
+
+        payload = {
+            "generated_at": date.today().isoformat(),
+            "destinos": {
+                c: {"noche": round(_mediana(v), 2), "muestras": len(v), "nombre": nombres.get(c, "")}
+                for c, v in sorted(por_destino.items())
+                if len(v) >= minimo_muestras
+            },
+            "paises": {
+                p: {"noche": round(_mediana(v), 2), "muestras": len(v)}
+                for p, v in sorted(por_pais.items())
+                if len(v) >= minimo_muestras
+            },
+        }
+        self._write("camas.json", payload)
+        return payload
+
     # -- historico de precios -------------------------------------------
     def load_history(self) -> dict[str, list[dict]]:
         return self._read("history.json", {})

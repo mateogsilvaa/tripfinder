@@ -1,0 +1,16 @@
+{
+ "generated_at": "2026-09-02",
+ "destinos": {
+  "BGY": {
+   "noche": 72.0,
+   "muestras": 3,
+   "nombre": "Bergamo"
+  }
+ },
+ "paises": {
+  "Reino Unido": {
+   "noche": 55.0,
+   "muestras": 3
+  }
+ }
+}

@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-09-03",
+  "destinos": {
+    "ACE": {
+      "noche": 62.0,
+      "muestras": 3,
+      "nombre": "Lanzarote"
+    },
+    "AGA": {
+      "noche": 28.0,
+      "muestras": 3,
+      "nombre": "Agadir"
+    },
+    "BGY": {
+      "noche": 72.0,
+      "muestras": 3,
+      "nombre": "Bergamo"
+    }
+  },
+  "paises": {
+    "España": {
+      "noche": 62.0,
+      "muestras": 3
+    },
+    "Italia": {
+      "noche": 72.0,
+      "muestras": 3
+    },
+    "Marruecos": {
+      "noche": 28.0,
+      "muestras": 3
+    }
+  }
+}

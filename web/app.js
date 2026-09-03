@@ -113,6 +113,58 @@ function reparto(o) {
   return { gente: GRUPO, unidad: porPersona(o), estimado: GRUPO > 1 };
 }
 
+/* ------------------------------------------------- la escapada completa
+
+   El vuelo es por persona y la cama es para el grupo: sumarlos bien da el
+   unico numero que decide un viaje. Hasta ahora ese numero solo salia DESPUES
+   de pedir alojamiento, que es un workflow de varios minutos, asi que quien
+   miraba el tablon no lo veia nunca.
+
+   `data/camas.json` trae lo que costo dormir en cada sitio, destilado de las
+   busquedas de alojamiento que ya se hicieron. Donde no hay dato no se estima
+   nada: un numero igual para todos no informa y encima parece que sabe algo.
+   La cobertura crece sola cada vez que alguien pide una cama. */
+let CAMAS = null;
+
+function camaPorNoche(o) {
+  if (!CAMAS) return null;
+  const porDestino = CAMAS.destinos && CAMAS.destinos[o.destination];
+  if (porDestino) return { noche: porDestino.noche, de: "este destino" };
+  const porPais = CAMAS.paises && CAMAS.paises[o.destination_country];
+  if (porPais) return { noche: porPais.noche, de: esc(o.destination_country) };
+  return null;
+}
+
+/* Lo que costaria el finde entero, por cabeza. Devuelve null si no hay con que
+   estimarlo, que es la mitad de las veces y no pasa nada. */
+function escapadaEstimada(o) {
+  const noches = Number(o.nights);
+  const cama = camaPorNoche(o);
+  if (!cama || !noches) return null;
+  const { gente } = reparto(o);
+  const vuelos = porPersona(o) * gente;
+  const total = vuelos + cama.noche * noches;
+  return { total, porCabeza: total / gente, gente, noches, de: cama.de };
+}
+
+/* Y como se escribe. El `≈` es el mismo trato honesto que el del selector de
+   personas: se ve a simple vista que es una cuenta nuestra y no un precio
+   consultado. */
+function escapadaHTML(o) {
+  // Si ya se pidio alojamiento de verdad, manda el numero real y se va el `≈`.
+  const real = ESCAPADAS_REALES[o.id];
+  if (real && real.total) {
+    return `<small class="escapada real" title="Vuelos + la cama más barata de las que salieron. Precio consultado, no estimado."
+      >escapada ${Math.round(real.total)} €</small>`;
+  }
+  const e = escapadaEstimada(o);
+  if (!e) return "";
+  return `<small class="escapada" title="Vuelos de ${e.gente} + ${e.noches} noche${
+    e.noches === 1 ? "" : "s"
+  } de cama, con lo que costó dormir en ${e.de}. Estimación: al buscar alojamiento sale el precio real."
+    >escapada ≈ ${Math.round(e.total)} €</small>`;
+}
+
 /* El bloque de precio, igual en el billete grande, en el panel de salidas y en
    las filas de una busqueda guardada. */
 function precioHTML(o, { grande = false } = {}) {
@@ -808,6 +860,13 @@ async function init() {
   // El fichero viene agrupado por continente y con los codigos pegados en una
   // sola cadena, que es lo que lo deja en 10 KB en vez de 61: los codigos IATA
   // miden siempre tres letras, asi que se parte de tres en tres.
+  // Lo que costo dormir en cada sitio. Si no esta, simplemente no se estima.
+  try {
+    CAMAS = await fetchJSON("data/camas.json");
+  } catch {
+    CAMAS = null;
+  }
+
   try {
     const mapa = await fetchJSON("data/continentes.json");
     for (const [continente, codigos] of Object.entries(mapa)) {
@@ -999,6 +1058,7 @@ function heroTicket(o) {
             ${o.baseline > o.price ? `<s class="was">${fmtEUR(o.baseline)}</s>` : ""}
             <span class="per-person">vuelo completo${o.return_date ? ", ida y vuelta" : ""}</span>
           </span>
+          ${escapadaHTML(o)}
         </div>
       </div>
       <dl class="legs">
@@ -1061,7 +1121,7 @@ function boardRow(o, i) {
       <span class="leader" aria-hidden="true"></span>
       <span class="price">${precioCorto(o)}${
         o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : ""
-      }${deltaHTML(o)}</span>
+      }${deltaHTML(o)}${escapadaHTML(o)}</span>
       ${favBtn(o)}
       <div class="brow-detail" hidden></div>
     </div>`;
@@ -1279,7 +1339,17 @@ async function openStays(id) {
    render peta, hay que decirlo, no ofrecer otra busqueda como si no hubiera
    nada. Ese enredo es lo que hacia que "Buscar alojamiento" no diera nunca
    resultados aunque el scraper hubiera funcionado. */
+/* Los viajes de los que ya se sabe el precio real de la cama, en esta sesion.
+   En cuanto uno entra aqui, su fila deja de estimar. */
+const ESCAPADAS_REALES = {};
+
 function pintarStays(datos, offer) {
+  const id = (datos && datos.offer_id) || (offer && offer.id);
+  if (id && datos && datos.summary && datos.summary.total) {
+    ESCAPADAS_REALES[id] = datos.summary;
+    // La fila y la plancha dejan de decir "≈": ya no es una cuenta nuestra.
+    if (existe("#offers")) render();
+  }
   try {
     renderStays(datos);
   } catch (err) {

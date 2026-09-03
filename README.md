@@ -377,6 +377,17 @@ TripFinder calcula las horas despierto en destino (de aterrizar a despegar, meno
 8 h de sueno por noche), las puntua en el score y te deja ordenar por **euros por
 hora de viaje**. Es la diferencia entre un finde y un aeropuerto.
 
+**3. La escapada completa, antes de buscar cama.** El vuelo es por persona y la
+cama es para el grupo: sumarlos bien da el único número que decide un viaje, y
+hasta ahora sólo salía **después** de pedir alojamiento —un workflow de varios
+minutos—, así que quien miraba el tablón no lo veía nunca. Ahora
+`data/camas.json` destila lo que costó dormir en cada sitio de las búsquedas
+que ya se hicieron, y el listado enseña `escapada ≈ X €` marcado como
+estimación. Donde no hay dato **no se estima**: un número igual para todos no
+informa y encima parece que sabe algo. La cobertura crece sola cada vez que
+alguien pide una cama. Al pedirla de verdad, el número real sustituye a la
+estimación y pierde el `≈`.
+
 **2. Cada precio dice a cuanta gente cubre.** Cada `FlightOffer` guarda su campo
 `adults`, porque "240 €" tanto puede ser lo que pagas tu como lo que pagais los
 cuatro, y esa duda es justo la que hace perder un chollo. Cuando va mas de uno, la
