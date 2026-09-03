@@ -513,6 +513,74 @@ test.describe("lo que pide la portada", () => {
   });
 });
 
+test.describe("las cuentas que se publican", () => {
+  /* La #14: `data/users.json` llevaba el email en claro de cada cuenta y
+     `pages.yml` lo copiaba tal cual al sitio. Lo que sube ahora va recortado;
+     esto comprueba que con ese fichero la web sigue funcionando igual. */
+
+  const RECORTADO = {
+    updated: "2026-09-02T10:00:00+00:00",
+    admin: { salt: "c2FsdA==", hash: "aGFzaA==", iterations: 210000, sobre: {} },
+    site: { token: { iv: "aXY=", data: "ZGF0YQ==" } },
+    users: [
+      {
+        id: "u-e77f874b", user: "mateo", name: "Mateo",
+        salt: "c2FsdA==", hash: "aGFzaA==", iterations: 210000,
+        active: true, sobre: { iv: "aXY=", data: "ZGF0YQ==" },
+        prefs: { chollos: "cada_vez" },
+        tiene_email: true,
+      },
+    ],
+  };
+
+  test("el fichero publicado no lleva ninguna dirección", async () => {
+    expect(JSON.stringify(RECORTADO)).not.toContain("@");
+  });
+
+  test("con el recortado, el modal no le dice a nadie que no tiene correo", async ({ page }) => {
+    await page.route("**/users.json*", (r) =>
+      r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(RECORTADO) })
+    );
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem(
+          "tf_sesion",
+          JSON.stringify({ uid: "u-e77f874b", user: "mateo", name: "Mateo" })
+        );
+      } catch (e) { /* nada */ }
+    });
+    await page.goto("/index.html");
+    await page.locator("#tfCuenta, .cuenta").first().click();
+
+    const email = page.locator("#tfEmail");
+    await expect(email).toBeVisible();
+    // Vacío, porque la dirección ya no viaja...
+    await expect(email).toHaveValue("");
+    // ...pero diciendo la verdad: que hay una guardada.
+    await expect(email).toHaveAttribute("placeholder", /ya tienes guardado/i);
+    await expect(page.locator("#tfPrefsForm")).toContainText(/déjalo en blanco para no cambiarlo/i);
+  });
+
+  test("y a quien no tiene, se lo dice", async ({ page }) => {
+    const sin = JSON.parse(JSON.stringify(RECORTADO));
+    sin.users[0].tiene_email = false;
+    await page.route("**/users.json*", (r) =>
+      r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(sin) })
+    );
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem(
+          "tf_sesion",
+          JSON.stringify({ uid: "u-e77f874b", user: "mateo", name: "Mateo" })
+        );
+      } catch (e) { /* nada */ }
+    });
+    await page.goto("/index.html");
+    await page.locator("#tfCuenta, .cuenta").first().click();
+    await expect(page.locator("#tfEmail")).toHaveAttribute("placeholder", /no recibes nada/i);
+  });
+});
+
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */

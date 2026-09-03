@@ -50,6 +50,24 @@ jobs:
           cp -r data/* _site/data/ 2>/dev/null || true
           touch _site/.nojekyll
 
+      # `data/users.json` lleva el email en claro de cada cuenta, y la copia de
+      # arriba lo publicaba tal cual: cualquiera que abriera
+      # …github.io/tripfinder/data/users.json leia las direcciones. La web no
+      # los necesita —solo saber SI hay uno, para no decirle "no recibes nada"
+      # a quien si recibe—, asi que se pisa con la version recortada. El
+      # fichero del repo se queda entero: de ahi los saca el cron.
+      - name: Publicar las cuentas sin las direcciones de correo
+        run: PYTHONPATH=src python -m tripfinder users publish --out _site/data/users.json
+
+      - name: Comprobar que no se publica ningun email
+        run: |
+          if grep -q "@" _site/data/users.json; then
+            echo "Hay una arroba en el users.json que iba a publicarse:"
+            grep -n "@" _site/data/users.json
+            exit 1
+          fi
+          echo "Sin direcciones de correo."
+
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

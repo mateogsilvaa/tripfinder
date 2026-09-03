@@ -352,20 +352,56 @@ def cambiar_prefs(ident: str, prefs: dict[str, Any], email: str | None = None) -
 
     El email entra aqui y no en un comando aparte porque "a donde me llegan" es
     parte de la misma decision que "cuales me llegan".
+
+    **Vacio significa "no lo toques", no "borralo".** El formulario de la web
+    manda el campo siempre, y desde que el `users.json` publicado no lleva las
+    direcciones, ese campo sale en blanco salvo que escribas uno nuevo: si esto
+    lo tomara al pie de la letra, guardar "avisame los domingos" te dejaria sin
+    avisos. Para quitar el correo a proposito esta el panel.
+
+    Hasta ahora la salvaguarda vivia en un `or None` del CLI, o sea a un
+    refactor de distancia del silencio total.
     """
     datos = _cargar()
     clave = (ident or "").strip().lower()
     limpias = prefs_validas(prefs)
+    nuevo_email = (email or "").strip()
     tocado = False
     for d in datos["users"]:
         if clave in ((d.get("id") or "").lower(), (d.get("user") or "").lower()):
             d["prefs"] = limpias
-            if email is not None:
-                d["email"] = email.strip()
+            if nuevo_email:
+                d["email"] = nuevo_email
             tocado = True
     if tocado:
         _guardar(datos)
     return tocado
+
+
+def para_publicar() -> dict[str, Any]:
+    """`users.json` sin las direcciones de correo, para subir a Pages.
+
+    `pages.yml` copia `data/*` entero al sitio, asi que hasta ahora cualquiera
+    que abriera `…github.io/tripfinder/data/users.json` leia el email en claro
+    de todas las cuentas. La web no lo necesita: de ese fichero usa el id, el
+    nombre, la sal, el hash, las iteraciones, el sobre y las preferencias.
+
+    Lo que si necesita es SABER SI hay un email guardado, y eso no es lo mismo
+    que el email: sin ese dato, el modal de preferencias le diria "no recibes
+    nada" a quien si recibe, y quien lo lea escribira otro creyendo que no
+    tenia. Por eso va un `tiene_email` booleano en su sitio.
+
+    Guardar preferencias con el campo vacio NO borra el correo —`cambiar_prefs`
+    trata la cadena vacia como "no lo toques"—, asi que publicar esto no puede
+    dejar a nadie sin avisos.
+    """
+    datos = _cargar()
+    publicos = []
+    for u in datos.get("users", []):
+        limpio = {k: v for k, v in u.items() if k != "email"}
+        limpio["tiene_email"] = bool(str(u.get("email") or "").strip())
+        publicos.append(limpio)
+    return {**datos, "users": publicos}
 
 
 def autenticar(user: str, password: str) -> User | None:

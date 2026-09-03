@@ -383,7 +383,7 @@ function detalleHTML(u) {
         <div>
           <h4>Correos</h4>
           <ul class="lista-seca">
-            ${linea(`Van a <b>${esc(u.email || "ningún email")}</b>`)}
+            ${linea(`Van a <b>${u.tiene_email ? "su dirección" : "ningún email"}</b>`)}
             ${linea(`Chollos: <b>${esc(FREQ_TXT[p.chollos] || "en cuanto aparezca")}</b>${
               p.chollos_max_precio ? `, solo por debajo de ${Math.round(p.chollos_max_precio)} €` : ""
             }`)}
@@ -488,7 +488,7 @@ async function pintarCuentas(forzar = true) {
         <span class="dest-cell">
           <span class="city">${esc(u.name || u.user)}</span>
           <span class="country">${esc(u.user)}<span class="solo-ancho"> · ${esc(u.id)}</span>${
-            u.email ? ` · ${esc(u.email)}` : " · sin email"
+            u.tiene_email ? " · con email" : " · sin email"
           }<br>${u.active === false ? "desactivada" : "activa"} · ${
             cosas ? `${cosas} cosa${cosas > 1 ? "s" : ""} suya${cosas > 1 ? "s" : ""}` : "nada suyo todavía"
           }</span>

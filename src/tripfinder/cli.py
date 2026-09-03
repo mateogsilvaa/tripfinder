@@ -8,6 +8,7 @@ import logging
 import random
 import sys
 from datetime import date, timedelta
+from pathlib import Path
 
 from .config import Config, Route, load_config, site_url
 from .models import FlightOffer, StayOffer
@@ -1054,6 +1055,16 @@ def cmd_users(args: argparse.Namespace) -> int:
         print("Preferencias guardadas." if ok else "No existe esa cuenta.")
         return 0
 
+    if args.accion == "publish":
+        # Lo que sube a Pages: lo mismo menos las direcciones de correo.
+        destino = Path(args.out or "users.public.json")
+        destino.parent.mkdir(parents=True, exist_ok=True)
+        destino.write_text(
+            json.dumps(U.para_publicar(), ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"Escrito {destino} sin emails.")
+        return 0
+
     if args.accion == "site-token":
         # Lo que llega es el token ya cifrado por el navegador con la clave
         # maestra. Ni este proceso ni el log de Actions lo ven en claro.
@@ -1175,9 +1186,10 @@ def build_parser() -> argparse.ArgumentParser:
         "accion",
         choices=[
             "add", "list", "remove", "passwd", "prefs",
-            "enable", "disable", "set-admin", "site-token",
+            "enable", "disable", "set-admin", "site-token", "publish",
         ],
     )
+    c.add_argument("--out", help="publish: donde escribir el users.json sin emails")
     c.add_argument("--user", help="Nombre con el que entra (o el id)")
     c.add_argument("--id", help="Id de la cuenta, si se quiere fijar")
     c.add_argument("--name", help="Como se le llama en la web")

@@ -9,7 +9,7 @@
 | `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. |
 | `tripfinder.scoring` | `src/tripfinder/` | Convierte precio + histórico en un `score` 0-100 y decide si es chollo. |
 | `tripfinder.store` | `src/tripfinder/` | Persistencia en JSON dentro de `data/` (el propio repo es la base de datos). |
-| `tripfinder.users` | `src/tripfinder/` | Las cuentas: `data/users.json` con un PBKDF2-SHA256 por contraseña. El mismo algoritmo que calcula el navegador en `web/auth.js`. |
+| `tripfinder.users` | `src/tripfinder/` | Las cuentas: `data/users.json` con un PBKDF2-SHA256 por contraseña. Lo que se publica en Pages va sin las direcciones de correo (`users publish`): la web solo necesita saber **si** hay una, no cuál. El mismo algoritmo que calcula el navegador en `web/auth.js`. |
 | `tripfinder.notify` | `src/tripfinder/notify/` | Resend / SMTP / issue de GitHub + plantillas. Si el metodo elegido falla, prueba los demas. |
 | `web/` | GitHub Pages | Lee `data/offers.json`, `data/continentes.json` (el mapa código → continente que necesita el filtro, derivado de `airports_world.json` en cada scan) y `data/stays/*.json`. Cero build: las partes comunes (`web/partes/`) las escribe `tools/montar.py` dentro de los HTML, que siguen abriéndose a doble clic. |
 | `web/auth.js` | GitHub Pages | Quién está delante: sesión, login contra `data/users.json` y el espacio de nombres de `localStorage` por cuenta. |

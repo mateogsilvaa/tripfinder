@@ -598,8 +598,13 @@ async function tfAbrirCuenta() {
       </p>
 
       <label for="tfEmail">Tus avisos van a</label>
-      <input id="tfEmail" type="email" autocomplete="email" placeholder="sin email: no recibes nada"
-        value="${tfEsc(yo.email || "")}">
+      <input id="tfEmail" type="email" autocomplete="email"
+        placeholder="${yo.tiene_email ? "el que ya tienes guardado" : "sin email: no recibes nada"}">
+      <p class="meta">${
+        yo.tiene_email
+          ? "Ya tienes uno guardado. Déjalo en blanco para no cambiarlo, o escribe otro."
+          : "Sin dirección no se te manda nada."
+      }</p>
 
       <label for="tfChollos">Chollos del día</label>
       <select id="tfChollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
