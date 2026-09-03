@@ -18,7 +18,8 @@ import binascii
 import json
 import logging
 import re
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 from urllib.parse import quote
 
 from ..models import StayOffer
@@ -28,9 +29,9 @@ from .base import StayProvider, StayRequest, register
 log = logging.getLogger("tripfinder")
 
 SEARCH = "https://www.airbnb.es/s/{place}/homes"
-STATE_RE = re.compile(r'id="data-deferred-state-0"[^>]*>(\{.*?\})</script>', re.S)
+STATE_RE = re.compile(r'id="data-deferred-state-0"[^>]*>(\{.*?\})</script>', re.DOTALL)
 NUM_RE = re.compile(r"(\d[\d.,]*)")
-NIGHTS_RE = re.compile(r"(\d+)\s*noche", re.I)
+NIGHTS_RE = re.compile(r"(\d+)\s*noche", re.IGNORECASE)
 MAX_RESULTS = 18
 
 

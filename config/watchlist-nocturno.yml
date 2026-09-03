@@ -1,0 +1,36 @@
+# El barrido de la noche del martes al miercoles. Hereda TODO de watchlist.yml
+# y solo cambia lo que la hora permite cambiar (#35).
+#
+# La idea: de dia el scan esta capado a 40 consultas a Google porque comparte
+# la IP de Actions con todo el mundo y porque hay gente esperando resultados.
+# A las dos de la manana no hay nadie esperando, asi que se puede recorrer el
+# mapa entero y —esto es lo importante— IR MAS DESPACIO. Lo que hace que Google
+# devuelva paginas vacias no es el numero de consultas, es el ritmo.
+hereda: watchlist.yml
+
+search:
+  google:
+    # Los ~105 destinos del mapa de Madrid, de una tirada. Es el mismo tope que
+    # ya se usa en la busqueda a mano (`max_queries_search: 110`), que lleva
+    # meses funcionando; la diferencia es que aquella sale de una IP domestica
+    # y esta de una de Actions. Si Google capa, `errors` lo dice y se ve en la
+    # web: es justamente por eso que el criterio de aceptacion pide mirarlo.
+    max_queries: 110
+    # 7 s en vez de 4. Son 110 consultas x 7 s = ~13 min de job, y nadie los
+    # esta esperando. Subir el intervalo es lo unico que de verdad evita el
+    # capado; bajarlo para "aprovechar la noche" seria justo lo contrario.
+    min_interval_seconds: 7
+
+  # Wizz mira un mes mas lejos que de dia: los chollos de verdad estan a 4-8
+  # meses y de dia no da tiempo a asomarse tan lejos.
+  wizz_months: 5
+
+  # El barajado del resto del mapa se siembra con el dia (`date.toordinal()`),
+  # asi que el trozo del miercoles no repite el del martes por si solo. Con 110
+  # consultas ya cabe el mapa entero y el barajado deja de importar: no hay
+  # "resto" que dejar fuera.
+
+# Largo radio: la noche es el momento de mirar lejos con calma.
+long_haul:
+  months: 10
+  max_queries: 24

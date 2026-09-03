@@ -191,7 +191,7 @@ async function tfLeerUsuarios(forzar = false) {
 /* -------------------------------------------------------------- disparador
    Escribir en el repo (una cuenta nueva, un seguimiento) no lo puede hacer la
    web sola: llama a la API de GitHub con el token que vive SOLO en este
-   navegador y un workflow aplica el cambio. Esta aqui, y no en app.js, porque
+   navegador y un workflow aplica el cambio. Esta aqui, y no en los modulos de js/, porque
    el panel de administracion tambien lo necesita y dos copias se desincronizan.
 
    Dicho de otra forma: la contrasena del panel es la puerta de la casa, pero
@@ -332,10 +332,28 @@ async function tfEntrar(usuario, password) {
   // La contrasena abre el sobre, el sobre da la clave maestra y esa abre el
   // token con el que la web escribe. Es lo unico que se hace con la contrasena
   // aparte de comprobarla, y pasa entero aqui dentro.
+  // Por que no se puede escribir, cuando no se puede. Son tres averias
+  // distintas y se arreglan en sitios distintos; decir "no se puede" a secas
+  // manda a la gente a mirar donde no es (#15).
   let token = "";
-  if (u.sobre && u.sobre.data && !u.sobre.stale) {
+  let porque = "";
+  if (!u.sobre || !u.sobre.data) {
+    porque =
+      "Esta cuenta no tiene sobre: se creó antes de que se guardara el token del sitio. " +
+      "Puedes mirar la web y guardar favoritos, pero no lanzar búsquedas ni seguir viajes. " +
+      "Quien lleve el panel lo arregla con «Darle acceso».";
+  } else if (u.sobre.stale) {
+    porque =
+      "El sobre de esta cuenta es de un token anterior y ya no abre nada. " +
+      "Quien lleve el panel lo arregla con «Darle acceso».";
+  } else {
     const maestra = await tfAbrirSobre(password, u.sobre);
     token = maestra ? await tfAbrirToken(maestra, datos.site) : "";
+    if (!token) {
+      porque =
+        "La contraseña es correcta, pero el token del sitio no se ha podido abrir. " +
+        "Suele ser que el token se cambió y todavía no se ha vuelto a repartir.";
+    }
   }
 
   const sesion = {
@@ -354,7 +372,7 @@ async function tfEntrar(usuario, password) {
   tfAdoptarAnonimos(u.id);
   // Entrar funciona igual sin token (ver la web, los favoritos); lo que no se
   // puede sin el es lanzar nada, y la web lo dice donde toca.
-  return { ok: true, sesion, puedeEscribir: !!token };
+  return { ok: true, sesion, puedeEscribir: !!token, porque };
 }
 
 function tfSalir() {
@@ -426,25 +444,27 @@ function tfModal(html) {
       if (e.target === caja) tfCerrarModal();
     });
   }
-  caja.innerHTML = `<div class="modal-caja estrecha" role="dialog" aria-modal="true">${html}</div>`;
+  caja.innerHTML = `<div class="modal-caja estrecha" role="dialog">${html}</div>`;
   caja.hidden = false;
   const cerrar = caja.querySelector("[data-cerrar]");
   if (cerrar) cerrar.addEventListener("click", tfCerrarModal);
+  // El aria-modal, la trampa de foco, el Escape y devolver el foco a quien
+  // abrio los pone tfAbrirDialogo (log.js), igual que en los otros tres
+  // dialogos de la web.
+  tfAbrirDialogo(caja, {
+    dialogo: caja.querySelector(".modal-caja"),
+    alCerrar: () => {
+      caja.hidden = true;
+      caja.innerHTML = "";
+    },
+  });
   return caja;
 }
 
 function tfCerrarModal() {
   const caja = document.getElementById("tfModal");
-  if (caja) {
-    caja.hidden = true;
-    caja.innerHTML = "";
-  }
+  if (caja) tfCerrarDialogo(caja);
 }
-
-document.addEventListener("keydown", (e) => {
-  const caja = document.getElementById("tfModal");
-  if (e.key === "Escape" && caja && !caja.hidden) tfCerrarModal();
-});
 
 /* Un campo de contraseña con el ojo para verla. En el móvil, escribir a ciegas
    una contraseña que te han pasado por WhatsApp es la mitad de los "no me deja
@@ -494,7 +514,7 @@ async function tfAbrirLogin() {
   const caja = tfModal(`
     <header class="modal-head">
       <h2>Entrar</h2>
-      <button data-cerrar aria-label="Cerrar">✕</button>
+      <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
     <form id="tfLoginForm" class="modal-form">
       <p class="meta">
@@ -526,6 +546,12 @@ async function tfAbrirLogin() {
       msg.textContent = "Faltan el usuario o la contraseña.";
       return;
     }
+    // Segunda pulsacion, ya sabiendo lo que hay: se entra sin repetir el aviso.
+    if (boton.dataset.avisado === "1") {
+      tfCerrarModal();
+      location.reload();
+      return;
+    }
     msg.textContent = "Comprobando…";
     tfOcupado(boton, true);
     let r = await tfEntrar(usuario, clave);
@@ -537,6 +563,21 @@ async function tfAbrirLogin() {
     tfOcupado(boton, false);
     if (!r.ok) {
       msg.textContent = r.error;
+      return;
+    }
+    // Entrar ha funcionado, pero la cuenta puede no poder lanzar nada. Antes eso
+    // se descubria pulsando un boton que no respondia; ahora se dice aqui, que
+    // es cuando se puede hacer algo al respecto (#15).
+    if (!r.puedeEscribir && r.porque) {
+      msg.innerHTML = `<span class="ojo">${tfEsc(r.porque)}</span>`;
+      boton.textContent = "Entendido, entrar";
+      boton.dataset.avisado = "1";
+      if (typeof tfAnunciar === "function") tfAnunciar(r.porque);
+      // La sesión ya está guardada: cerrar el aviso con la X no puede dejar la
+      // página con la cabecera de antes y la sesión abierta por detrás.
+      caja.querySelectorAll("[data-cerrar]").forEach((b) =>
+        b.addEventListener("click", () => location.reload())
+      );
       return;
     }
     tfCerrarModal();
@@ -581,7 +622,7 @@ async function tfAbrirCuenta() {
   const caja = tfModal(`
     <header class="modal-head">
       <h2>${tfEsc(s.name || s.user)}</h2>
-      <button data-cerrar aria-label="Cerrar">✕</button>
+      <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
     <form id="tfPrefsForm" class="modal-form">
       <p class="meta">
@@ -596,8 +637,13 @@ async function tfAbrirCuenta() {
       </p>
 
       <label for="tfEmail">Tus avisos van a</label>
-      <input id="tfEmail" type="email" autocomplete="email" placeholder="sin email: no recibes nada"
-        value="${tfEsc(yo.email || "")}">
+      <input id="tfEmail" type="email" autocomplete="email"
+        placeholder="${yo.tiene_email ? "el que ya tienes guardado" : "sin email: no recibes nada"}">
+      <p class="meta">${
+        yo.tiene_email
+          ? "Ya tienes uno guardado. Déjalo en blanco para no cambiarlo, o escribe otro."
+          : "Sin dirección no se te manda nada."
+      }</p>
 
       <label for="tfChollos">Chollos del día</label>
       <select id="tfChollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>

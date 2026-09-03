@@ -126,7 +126,7 @@ def score_offer(
     # Bonus de escapada: dos ofertas iguales, gana la que sale viernes tarde.
     weekend_pts = float((weekend_cfg or WEEKEND_DEFAULTS).get("bonus", 15)) if offer.weekend else 0.0
 
-    offer.score = int(round(min(100.0, discount_pts + budget_pts + weekend_pts + hours_pts)))
+    offer.score = round(min(100.0, discount_pts + budget_pts + weekend_pts + hours_pts))
     return offer
 
 

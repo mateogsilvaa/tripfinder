@@ -1,1166 +1,1348 @@
-/* TripFinder — dos temas, un solo juego de variables.
+/* TripFinder — el atlas.
 
-   Claro (por defecto): papel de billete impreso. Oscuro (`data-tema="oscuro"`):
-   el panel de salidas nocturno de siempre. Todo el CSS de abajo usa tokens
-   semanticos (--paper, --card, --ink, --azul, --sello), asi que cambiar de
-   tema es cambiar los tokens del bloque de mas abajo y cuatro cosas
-   estructurales: la trama del papel, los degradados de fondo y poco mas.
+   El producto no es un e-commerce de viajes: es un atlas. Una carta con su
+   graticula, sus reglas y su indice de toponimos al final, donde cada destino
+   es una entrada y cada precio la referencia que va al lado, unidos por una
+   linea de puntos.
 
-   TripFinder — papel de billete.
-   La pagina entera imita un billete de avion impreso: fondo manila con la
-   trama de seguridad, tinta azul de imprenta, sello de goma rojo y todo lo que
-   son datos (precios, horas, codigos) en monoespaciada, como sale en la
-   tarjeta de embarque. El chollo del dia se lleva un billete grande troquelado
-   con su codigo de barras; el resto cae en el listado de salidas. */
+   Tema oscuro por defecto: la carta de noche (tinta azul muy oscura y marfil).
+   Tema claro: la plancha impresa (marfil y tinta de grabado). El acento —el
+   rojo de carta— NO cambia de papel entre temas: es la marca.
 
+   Reglas duras del sistema, que no se negocian al tocar este fichero:
+     · Todos los radios valen 0. La unica excepcion es --r-punto (50%).
+     · No hay sombras. --sombra y --relieve existen y valen `none`.
+     · No hay blur en ninguna parte; el velo de las capas es tinta plana.
+     · No hay tarjetas: un bloque se abre con una regla mayor de 2px y se
+       cierra con una hairline.
+     · No hay iconos ni emoji: cerrar, enterado y las demas acciones se
+       escriben con palabras en versalitas mono. */
+
+/* ======================================================================== */
+/* TOKENS                                                                    */
+/* ======================================================================== */
+
+/* --- tipografias --------------------------------------------------------- */
+/* Newsreader para toponimos y titulares, Sora para prosa e interfaz, Martian
+   Mono para TODO dato. El serif se pone grande y ligero (peso 200, tracking
+   positivo): es un rotulo cartografico, y por eso se abre en vez de cerrarse. */
 :root {
-  --paper: #ece6da;         /* manila del billete */
-  --paper-2: #f5f1e8;
-  --card: #fffdf8;
-  --card-2: #f7f3ea;
-  --ink: #171a20;
-  --muted: #545c6a;
-  --faint: #737a88;   /* el mas claro que sigue siendo legible sobre papel */
-  --line: rgba(23, 26, 32, 0.16);
-  --line-2: rgba(23, 26, 32, 0.075);
-  --azul: #135078;          /* tinta de imprenta */
-  --azul-2: #1c6ea1;
-  --azul-soft: rgba(19, 80, 120, 0.09);
-  --sello: #bd3f27;         /* rojo de sello de goma */
-  --sello-soft: rgba(189, 63, 39, 0.1);
-  --verde: #1d7a55;
-  --sobre-acento: #fffdf8;  /* texto encima del color de acento */
-  --radius: 14px;
-  --stub-w: 200px;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --sombra: 0 1px 2px rgba(23, 26, 32, 0.06), 0 12px 28px -18px rgba(23, 26, 32, 0.5);
+  --font-display: "Newsreader", "Times New Roman", Georgia, serif;
+  --font-sans: "Sora", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: "Martian Mono", ui-monospace, "SFMono-Regular", monospace;
+}
+
+/* --- color: la plancha (tema claro) -------------------------------------- */
+:root {
+  /* Un solo papel. No hay `--card` ni `--paper-2`: el atlas no tiene tarjetas,
+     y un token de superficie que no usa nadie es como se vuelven a colar. */
+  --paper: #f2efe6;          /* marfil de plancha */
+
+  --ink: #10202b;            /* tinta de grabado */
+  --muted: #4a5c68;
+  /* 4.72:1 sobre el papel. Va aqui porque es el color del texto MAS pequeño
+     que tiene la web —las versalitas mono a 9.5px— y ahi 4.5:1 no es un
+     adorno. Lo comprueba `tools/contraste.py` en cada CI. */
+  --faint: #5c6c77;
+
+  --line: rgba(16, 32, 43, 0.22);      /* meridiano: borde y regla mayor */
+  --line-2: rgba(16, 32, 43, 0.1);     /* paralelo: regla menor, entre filas */
+
+  /* acento: el rojo de carta. Marca lo que hay que mirar. */
+  --azul: #c3392b;
+  --azul-2: #a52d21;
+  --azul-soft: rgba(195, 57, 43, 0.08);
+
+  /* segunda tinta: azul de sondeo, para lo informativo */
+  --sello: #1f4f6b;
+  --sello-soft: rgba(31, 79, 107, 0.08);
+
+  /* verde de curva de nivel: lo que baja de precio */
+  --verde: #2f6b4f;
+  --verde-soft: rgba(47, 107, 79, 0.08);
+
+  --sobre-acento: #f7f5ef;
+  --velo: rgba(16, 32, 43, 0.5);
   color-scheme: light;
 }
 
-/* --- tema oscuro: el panel de salidas de siempre ------------------------- */
-/* Mismos tokens, valores de noche. Negro cálido y ámbar. */
+/* --- color: la carta de noche (tema por defecto) ------------------------- */
 :root[data-tema="oscuro"] {
-  --paper: #0d0b0a;
-  --paper-2: #16120f;
-  --card: #1c1713;
-  --card-2: #241d18;
-  --ink: #f7f1e6;
-  --muted: #a2937f;
-  --faint: #8a7c6a;
-  --line: rgba(247, 241, 230, 0.12);
-  --line-2: rgba(247, 241, 230, 0.06);
-  /* En el tema oscuro el acento es uno solo: el ámbar del panel de salidas. */
-  --azul: #ffb02e;
-  --azul-2: #ffc667;
-  --azul-soft: rgba(255, 176, 46, 0.13);
-  --sello: #ffb02e;
-  --sello-soft: rgba(255, 176, 46, 0.13);
-  --verde: #7fd6a2;
-  --sobre-acento: #1a1206;
-  --sombra: 0 34px 70px -46px rgba(0, 0, 0, 1);
+  --paper: #0b1720;
+  --ink: #eae5d8;
+  --muted: #8fa3ae;
+  --faint: #7a8e99;          /* 5.32:1 sobre la tinta de noche */
+  --line: rgba(234, 229, 216, 0.2);
+  --line-2: rgba(234, 229, 216, 0.09);
+  --azul: #e8574a;
+  --azul-2: #f2776b;
+  --azul-soft: rgba(232, 87, 74, 0.11);
+  --sello: #7bb0cf;
+  --sello-soft: rgba(123, 176, 207, 0.1);
+  --verde: #6fae8a;
+  --verde-soft: rgba(111, 174, 138, 0.09);
+  --sobre-acento: #0b1720;
+  --velo: rgba(4, 10, 14, 0.72);
   color-scheme: dark;
 }
 
-/* Lo que no es un color y también cambia. */
-:root[data-tema="oscuro"] .grain { mix-blend-mode: soft-light; opacity: 0.3; }
-:root[data-tema="oscuro"] .glow {
-  background:
-    radial-gradient(55rem 38rem at 82% -12%, rgba(255, 176, 46, 0.17), transparent 62%),
-    radial-gradient(42rem 32rem at 4% 8%, rgba(127, 214, 162, 0.06), transparent 68%);
-}
-/* El troquelado y las casillas vuelven a ser de plástico retroiluminado. */
-:root[data-tema="oscuro"] .flap,
-:root[data-tema="oscuro"] .iata {
-  background: linear-gradient(180deg, var(--card-2) 0 49%, var(--paper-2) 51% 100%);
-  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.6);
-}
-:root[data-tema="oscuro"] .ticket {
-  background: linear-gradient(148deg, var(--card) 0%, var(--paper-2) 100%);
-  border-color: rgba(255, 176, 46, 0.28);
-}
-:root[data-tema="oscuro"] .ticket::before { display: none; }  /* la banda impresa es de papel */
-:root[data-tema="oscuro"] .stub { background: none; }
-:root[data-tema="oscuro"] .stub::before,
-:root[data-tema="oscuro"] .stub::after { box-shadow: none; }
-:root[data-tema="oscuro"] .hero-body::after { opacity: 0.35; }
-/* Las filas del panel no son fichas de papel: van sobre el fondo. */
-:root[data-tema="oscuro"] .brow { background: none; }
-:root[data-tema="oscuro"] .brow:hover,
-:root[data-tema="oscuro"] .brow:focus-visible,
-:root[data-tema="oscuro"] .brow.open {
-  background: rgba(255, 176, 46, 0.05); border-color: transparent;
-  border-bottom-color: var(--line-2); border-radius: 0; box-shadow: none;
-}
-:root[data-tema="oscuro"] .stamp { background: none; }
-:root[data-tema="oscuro"] .finder-form input[type="date"] { color-scheme: dark; }
-:root[data-tema="oscuro"] .backdrop,
-:root[data-tema="oscuro"] .modal { background: rgba(6, 5, 4, 0.75); }
-:root[data-tema="oscuro"] input[type="range"]::-webkit-slider-thumb,
-:root[data-tema="oscuro"] input[type="range"]::-moz-range-thumb {
-  background: var(--azul); border-color: var(--paper);
+/* --- tipografia: tamaños ------------------------------------------------- */
+/* Martian Mono es ancho: los tamaños de dato BAJAN respecto a un mono normal.
+   Una cifra tiene que ocupar sitio, no gritar. */
+:root {
+  --fs-display: clamp(52px, 9.5vw, 122px);
+  --fs-title: clamp(40px, 6vw, 68px);
+  --fs-heading: 30px;
+  --fs-subhead: 22px;
+  --fs-city-s: 20px;
+  --fs-name-s: 17px;
+
+  --fs-lede: 16px;
+  --fs-body: 15.5px;
+  --fs-body-s: 14px;
+  --fs-ui: 13px;
+  --fs-ui-s: 12.5px;
+  --fs-input: 15px;
+
+  --fs-amount: clamp(34px, 4vw, 44px);
+  --fs-figure: 27px;
+  --fs-cifra: 17px;
+  --fs-stat: 19px;
+  --fs-data: 13px;
+  --fs-data-s: 11.5px;
+  --fs-meta: 10.5px;
+  --fs-caps: 9.5px;
+  --fs-caps-l: 10.5px;
+
+  --lh-display: 0.9;
+  --lh-title: 0.95;
+  --lh-tight: 1.15;
+  --lh-body: 1.65;
+  --lh-data: 1.5;
+
+  --ls-display: 0.005em;
+  --ls-title: 0.01em;
+  --ls-amount: -0.04em;
+  --ls-cifra: -0.03em;
+  --ls-caps: 0.2em;
+  --ls-caps-wide: 0.26em;
+  --ls-code: 0.14em;
 }
 
-/* --- el interruptor ------------------------------------------------------ */
-.topbar { display: flex; align-items: center; gap: 14px; }
-.topbar .board { flex: 1; min-width: 0; }
-.tema {
-  flex: none; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-  background: var(--card); border: 1px solid var(--line); border-radius: 99px;
-  color: var(--muted); padding: 7px 13px 6px;
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.14em; transition: color 0.2s, border-color 0.2s;
-}
-.tema:hover { color: var(--ink); border-color: var(--azul); }
-.tema b { font-size: 13px; font-weight: 500; color: var(--azul); line-height: 1; }
+/* --- espacio y medida ---------------------------------------------------- */
+:root {
+  --gap-inline: 10px;
+  --gap-form: 12px;
+  --gap-stack: 16px;
+  --gap-section: 34px;
 
-/* El atributo hidden gana siempre a los display de más abajo. */
-[hidden] { display: none !important; }
+  --w-page: 1140px;
+  --pad-page: clamp(20px, 5vw, 44px);
+  --w-panel: min(500px, 100%);
+  --w-modal: min(680px, 100%);
+  --measure-lede: 46ch;
+  --measure-prose: 64ch;
+  --tap-min: 44px;                    /* nada pulsable por debajo de esto */
+}
+
+/* --- forma: todos los radios valen 0, no hay sombras --------------------- */
+:root {
+  --radius: 0;
+  --r-punto: 50%;
+  --bw: 1px;
+  --border: 1px solid var(--line);
+  --border-hair: 1px solid var(--line-2);
+  --regla: 2px solid var(--ink);
+  --sombra: none;
+  --relieve: none;
+}
+
+/* --- movimiento ---------------------------------------------------------- */
+/* Un atlas no se mueve. Una sola curva, de 0.14 a 0.34 s, y solo translacion
+   y opacidad: sin rebote, sin giro, sin escala. */
+:root {
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-micro: 0.14s;
+  --t: 0.18s;
+  --t-med: 0.26s;
+  --t-panel: 0.34s;
+}
+
+@keyframes tf-flap { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes tf-rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes tf-stamp { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes fade { from { opacity: 0; } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes tf-fade { from { opacity: 0; } }
+@keyframes tf-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes tf-slide { from { transform: translateX(100%); } }
+@keyframes tf-sube { from { transform: translateY(16px); opacity: 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ======================================================================== */
+/* BASE                                                                      */
+/* ======================================================================== */
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
+[hidden] { display: none !important; }
 
 body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 400 16px/1.6 "Familjen Grotesk", "Segoe UI", sans-serif;
+  font: 400 var(--fs-body) / var(--lh-body) var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
 
-/* --- atmósfera: trama de seguridad y fibra del papel --------------------- */
-.grain {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.5;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
-  mix-blend-mode: multiply;
+a { color: var(--azul); text-decoration: none; border-bottom: 1px solid var(--line); }
+a:hover { color: var(--sello); border-color: currentColor; }
+
+/* Un solo foco visible en toda la web. */
+:is(input, select, button, a, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--azul); outline-offset: 2px;
 }
-/* Las rayas finas en diagonal son las del fondo de un billete de verdad. */
+
+::selection { background: var(--azul-soft); }
+
+/* ======================================================================== */
+/* LAS TRES CAPAS DE ATMOSFERA                                               */
+/* ======================================================================== */
+
+/* Fibra del papel: lo unico que sobrevive del sistema anterior. */
+.grain {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  opacity: 0.42; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
+}
+:root[data-tema="oscuro"] .grain { opacity: 0.26; mix-blend-mode: soft-light; }
+
+/* La GRATICULA: paralelos y meridianos cada 32px, con una linea de grado mas
+   marcada cada 160px. Es la firma del sistema y va en todas las pantallas. */
 .glow {
   position: fixed; inset: 0; z-index: 0; pointer-events: none;
   background:
-    repeating-linear-gradient(58deg,
-      rgba(19, 80, 120, 0.045) 0 1px, transparent 1px 9px),
-    radial-gradient(60rem 40rem at 88% -14%, rgba(189, 63, 39, 0.07), transparent 60%),
-    radial-gradient(48rem 34rem at -6% 4%, rgba(19, 80, 120, 0.08), transparent 64%);
+    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 160px),
+    repeating-linear-gradient(180deg, var(--line) 0 1px, transparent 1px 160px),
+    repeating-linear-gradient(90deg, var(--line-2) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(180deg, var(--line-2) 0 1px, transparent 1px 32px);
+  opacity: 0.55;
 }
+:root[data-tema="oscuro"] .glow { opacity: 0.4; }
+
+/* El NEATLINE: el marco graduado de la carta, con sus ticks cada 40px. */
+.registro {
+  position: fixed; inset: 14px; z-index: 0; pointer-events: none;
+  border: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 40px) top / 100% 6px no-repeat,
+    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 40px) bottom / 100% 6px no-repeat,
+    repeating-linear-gradient(180deg, var(--line) 0 1px, transparent 1px 40px) left / 6px 100% no-repeat,
+    repeating-linear-gradient(180deg, var(--line) 0 1px, transparent 1px 40px) right / 6px 100% no-repeat;
+}
+@media (max-width: 620px) { .registro { display: none; } }
+
+/* ======================================================================== */
+/* PUNTOS GUIA Y REGLAS                                                      */
+/* ======================================================================== */
+
+/* EL GESTO DEL SISTEMA. Entre el toponimo y su cifra corre una linea de
+   puntos, como en el indice del final de un atlas; al pasar por encima se pone
+   roja y el precio tambien. Es lo que sustituye a la tarjeta: no hace falta
+   una caja para agrupar un nombre con su numero si hay una linea que los une. */
+.leader {
+  min-width: 24px; align-self: flex-end; height: 1em;
+  background: radial-gradient(circle at 2px 100%, var(--line) 1px, transparent 1.2px) 0 -3px / 7px 7px repeat-x;
+}
+.leader.on { background-image: radial-gradient(circle at 2px 100%, var(--azul) 1.3px, transparent 1.5px); }
+
+/* La regla mayor que abre una seccion, con su cuadratin rojo de 46px. */
+.regla { display: block; height: 2px; background: var(--ink); position: relative; }
+.regla::before {
+  content: ""; position: absolute; left: 0; top: 0; width: 46px; height: 2px;
+  background: var(--azul);
+}
+
+/* Versalitas mono: la etiqueta de todo lo que no es prosa ni dato. Cada sitio
+   pone su tamaño; esto solo fija la familia y el registro. */
+.kicker-tag, .board-label, .board-live {
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+  letter-spacing: var(--ls-caps);
+}
+
+/* ======================================================================== */
+/* ARMAZON DE PAGINA                                                         */
+/* ======================================================================== */
 
 main, .masthead, .foot { position: relative; z-index: 1; }
 .masthead, main, .foot {
-  max-width: 1140px; margin: 0 auto; padding-inline: clamp(20px, 5vw, 44px);
+  max-width: var(--w-page); margin-inline: auto; padding-inline: var(--pad-page);
 }
+.masthead { padding-top: clamp(34px, 5vw, 62px); }
+main { margin-top: 30px; }
 
-/* --- cabecera ----------------------------------------------------------- */
-.masthead { padding-top: clamp(26px, 5vw, 54px); }
+/* --- la cabecera de la carta --------------------------------------------- */
+.topbar { display: flex; align-items: center; gap: 16px; }
+.topbar .board { flex: 1; min-width: 0; }
 
 .board {
-  display: flex; align-items: center; gap: 5px;
-  font: 500 11px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.16em; color: var(--muted);
+  display: flex; align-items: center; gap: 4px;
+  font: 400 var(--fs-caps-l)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
 }
-/* Las tres letras del origen, troqueladas como en la casilla del billete. */
+
+/* Las iniciales del origen: ya no son un troquel de panel de salidas, son las
+   iniciales grabadas de una plancha, cada una en su casilla reglada. */
 .flap {
-  background: var(--card);
-  border: 1px solid var(--line); border-radius: 3px;
-  color: var(--azul); font-size: 14px; font-weight: 500; letter-spacing: 0;
-  padding: 6px 7px 5px; box-shadow: inset 0 -2px 0 rgba(19, 80, 120, 0.12);
-  animation: flap 0.5s var(--ease) backwards;
+  display: inline-grid; place-items: center; min-width: 26px;
+  padding: 6px 5px 5px; border: 1px solid var(--line); background: none;
+  color: var(--ink); font: 400 var(--fs-data-s)/1 var(--font-mono);
+  letter-spacing: 0.06em; border-radius: 0;
+  animation: tf-flap 0.5s var(--ease) backwards;
 }
 .flap:nth-child(2) { animation-delay: 0.07s; }
 .flap:nth-child(3) { animation-delay: 0.14s; }
-@keyframes flap {
-  from { transform: rotateX(-88deg); opacity: 0; }
-  to { transform: rotateX(0); opacity: 1; }
+
+.board-label {
+  margin-left: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-.board-label { margin-left: 10px; }
-.board-live { margin-left: auto; display: flex; align-items: center; gap: 7px; }
+.board-live { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
 .board-live i {
-  width: 6px; height: 6px; border-radius: 50%; background: var(--verde);
-  box-shadow: 0 0 0 0 rgba(29, 122, 85, 0.5); animation: pulse 2.6s infinite;
-}
-@keyframes pulse {
-  70% { box-shadow: 0 0 0 8px rgba(29, 122, 85, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(29, 122, 85, 0); }
+  width: 5px; height: 5px; border-radius: var(--r-punto); background: var(--verde);
+  animation: tf-pulse 2.6s infinite;
 }
 
+/* Dia o noche de la carta. Rectangulo reglado y una palabra: sin glifo. */
+.tema {
+  flex: none; display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
+  background: none; border: 1px solid var(--line); border-radius: 0;
+  color: var(--muted); padding: 8px 12px 7px; min-height: 32px;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+  transition: color var(--t), border-color var(--t);
+}
+.tema:hover { color: var(--ink); border-color: var(--azul); }
+/* El cuadro de 9px mitad tinta: la unica "icono" del cambio de tema. */
+.tema b {
+  width: 9px; height: 9px; flex: none; border: 1px solid var(--azul);
+  background: linear-gradient(90deg, var(--azul) 0 50%, transparent 50% 100%);
+  font-size: 0; line-height: 0;
+}
+
+/* --- titular: el rotulo de la plancha ------------------------------------ */
 h1 {
-  font: 300 clamp(44px, 8.4vw, 96px)/0.95 "Fraunces", Georgia, serif;
-  letter-spacing: -0.03em; margin: 24px 0 0;
+  margin: 30px 0 0;
+  font: 200 var(--fs-display)/var(--lh-display) var(--font-display);
+  letter-spacing: var(--ls-display);
 }
-h1 em {
-  display: block; font-style: italic; font-weight: 500; color: var(--azul);
-  font-variation-settings: "SOFT" 40, "WONK" 1;
-}
-.lede { max-width: 44ch; color: var(--muted); margin: 18px 0 0; font-size: 16.5px; }
+h1 em { display: block; font-style: italic; font-weight: 300; color: var(--azul); }
 
+.lede {
+  max-width: var(--measure-lede); color: var(--muted); margin: 22px 0 0;
+  font: 300 var(--fs-lede)/var(--lh-body) var(--font-sans);
+}
+
+/* Lo que la web hace POR TI, que no es lo mismo que el tipo de viaje que
+   busca. Va colgando de una hairline, no en un banner: el trato se cuenta, no
+   se anuncia. En movil no añade ningun elemento a la cabecera —es la misma
+   columna de texto, una linea mas abajo. */
+.trato {
+  max-width: var(--measure-prose); margin: 18px 0 0; padding-top: 16px;
+  border-top: 1px solid var(--line-2);
+  font: 300 var(--fs-body-s)/1.75 var(--font-sans); color: var(--muted);
+}
+.trato a {
+  color: var(--azul); border-bottom: 1px solid var(--line); white-space: nowrap;
+}
+.trato a:hover { border-color: currentColor; }
+
+/* --- las cifras de la hoja, en celdas regladas --------------------------- */
 .stats {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 18px 24px; margin: 34px 0 0; padding: 20px 0 0;
-  border-top: 1px dashed var(--line);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0; margin: var(--gap-section) 0 0; padding: 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
 }
-.stats div { display: flex; flex-direction: column-reverse; gap: 4px; }
+.stats div {
+  display: flex; flex-direction: column; gap: 9px; padding: 16px 20px 15px 0;
+}
+.stats div + div { border-left: 1px solid var(--line-2); padding-left: 20px; }
 .stats dt {
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.16em; color: var(--faint);
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
 }
-.stats dd { margin: 0; font: 500 25px/1 "DM Mono", monospace; color: var(--azul); }
-.stats dd.hot { color: var(--sello); }
+.stats dd {
+  margin: 0; font: 400 var(--fs-stat)/1 var(--font-mono);
+  letter-spacing: -0.03em; color: var(--ink); white-space: nowrap;
+}
+.stats dd.hot { color: var(--azul); }
 
-/* --- chollo destacado: el billete ---------------------------------------- */
+/* --- las zonas: entradas de indice colgando de una regla ----------------- */
+.zonas {
+  display: flex; flex-wrap: wrap; gap: 0; margin-top: 30px;
+  border-bottom: 1px solid var(--line); align-items: flex-end;
+}
+.zona {
+  position: relative; bottom: -1px; padding: 0 26px 14px 0; margin-right: 4px;
+  border-bottom: 0; white-space: nowrap; color: var(--faint);
+  font: 400 var(--fs-caps-l)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+  transition: color var(--t);
+}
+.zona::after {
+  content: ""; position: absolute; left: 0; right: 26px; bottom: -1px; height: 2px;
+  background: transparent;
+}
+.zona:hover { color: var(--ink); }
+.zona:hover::after { background: var(--line); }
+.zona.activa { color: var(--ink); }
+.zona.activa::after { background: var(--azul); }
+
+/* --- el pie -------------------------------------------------------------- */
+/* La regla del pie se alinea con la columna de contenido, no con la caja: un
+   borde normal se comeria el padding lateral y saldria mas ancho que las demas
+   reglas de la pagina. */
+.foot {
+  display: flex; flex-wrap: wrap; gap: 8px 26px; align-items: center;
+  margin-top: 66px; padding-block: 22px 54px;
+  background: linear-gradient(var(--ink), var(--ink)) no-repeat;
+  background-size: calc(100% - 2 * var(--pad-page)) 2px;
+  background-position: var(--pad-page) 0;
+  font: 400 var(--fs-ui-s) var(--font-mono); color: var(--faint);
+}
+.foot a { color: var(--azul); }
+.build { margin-left: auto; opacity: 0.6; }
+#frescura { white-space: nowrap; }
+#frescura.viejo { color: var(--azul); }
+
+/* ======================================================================== */
+/* LA PLANCHA: el destino del dia                                            */
+/* ======================================================================== */
+
+/* No es una tarjeta: es la lamina de un atlas. Regla mayor arriba con su
+   cuadratin rojo, el toponimo enorme en serif ligero, la cifra en rojo a la
+   derecha y una tabla reglada de tramos debajo. Sin fondo, sin marco, sin
+   talon, sin troquel. */
 .hero { margin: 40px 0 34px; }
+.ticket { position: relative; display: block; }
 
-.ticket {
-  position: relative; display: grid; grid-template-columns: var(--stub-w) 1fr;
-  background: var(--card);
-  border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--sombra);
-  animation: rise 0.6s var(--ease) backwards;
+.ticket-top {
+  display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  padding: 12px 0 0;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps-wide); color: var(--faint);
 }
-/* La banda azul de arriba, como la cabecera impresa de la tarjeta. */
-.ticket::before {
-  content: ""; position: absolute; inset: 0 0 auto; height: 5px;
-  border-radius: var(--radius) var(--radius) 0 0;
-  background: linear-gradient(90deg, var(--azul) 0 62%, var(--sello) 62% 100%);
-}
-@keyframes rise {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: none; }
-}
+.codes { letter-spacing: var(--ls-code); white-space: nowrap; }
 
-/* Troquel: dos muescas grandes y una hilera de agujeros punzados entre ellas. */
-.stub {
-  position: relative; padding: 34px 26px 30px; display: flex;
-  flex-direction: column; justify-content: center; gap: 6px;
-  background: linear-gradient(180deg, var(--card-2), var(--card));
-  border-radius: var(--radius) 0 0 var(--radius);
-}
-.stub::before, .stub::after {
-  content: ""; position: absolute; right: -10px; width: 18px; height: 18px;
-  border-radius: 50%; background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-.stub::before { top: -10px; }
-.stub::after { bottom: -10px; }
-.ticket::after {
-  content: ""; position: absolute; top: 14px; bottom: 14px;
-  left: var(--stub-w); width: 5px; transform: translateX(-2.5px);
-  background: radial-gradient(circle at 2.5px 5.5px, var(--paper) 2.4px, transparent 2.6px)
-    0 0 / 5px 13px repeat-y;
-}
-
-.kicker-tag {
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.18em; color: var(--faint);
-}
-.amount { font: 500 clamp(46px, 6vw, 62px)/0.95 "DM Mono", monospace; letter-spacing: -0.05em; }
-.amount span { font-size: 0.42em; color: var(--muted); margin-left: 3px; letter-spacing: 0; }
-.was { font: 400 13px "DM Mono", monospace; color: var(--faint); text-decoration: line-through; }
-.per-person { font: 400 11px/1.4 "DM Mono", monospace; color: var(--faint); margin-top: 6px; }
-
-/* Sello de goma, como el de un pasaporte. */
-.stamp {
-  position: absolute; top: 30px; right: 34px; transform: rotate(-11deg);
-  border: 2px solid rgba(189, 63, 39, 0.5); color: var(--sello);
-  border-radius: 10px; padding: 8px 12px; text-align: center;
-  font: 500 11px/1.25 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.12em; opacity: 0.9; background: rgba(255, 253, 248, 0.6);
-  animation: stamp 0.5s var(--ease) 0.35s backwards;
-}
-.stamp b { display: block; font-size: 21px; letter-spacing: -0.02em; font-weight: 500; }
-@keyframes stamp {
-  from { opacity: 0; transform: rotate(-24deg) scale(1.5); }
-  to { opacity: 0.9; transform: rotate(-11deg) scale(1); }
-}
-
-.hero-body {
-  position: relative; padding: 34px 30px 26px;
-  display: flex; flex-direction: column; gap: 16px;
-}
-/* Codigo de barras al pie, puramente decorativo. */
-.hero-body::after {
-  content: ""; height: 26px; margin-top: 4px; opacity: 0.75;
-  background: repeating-linear-gradient(90deg,
-    var(--ink) 0 1px, transparent 1px 3px, var(--ink) 3px 5px, transparent 5px 6px,
-    var(--ink) 6px 9px, transparent 9px 12px, var(--ink) 12px 13px, transparent 13px 17px);
-  -webkit-mask-image: linear-gradient(90deg, #000 0 62%, transparent 100%);
-  mask-image: linear-gradient(90deg, #000 0 62%, transparent 100%);
-}
-.codes {
-  display: flex; align-items: center; gap: 10px; padding-right: 120px;
-  font: 500 12px/1 "DM Mono", monospace; letter-spacing: 0.18em; color: var(--muted);
-}
-.codes .line { flex: 1; height: 1px; background: var(--line); position: relative; }
-.codes .line::after {
-  content: "✈"; position: absolute; right: -2px; top: -9px;
-  font-size: 12px; color: var(--azul); letter-spacing: 0;
+.ticket-cab {
+  display: grid; gap: 8px 40px; align-items: end; padding: 26px 0 30px;
+  grid-template-columns: minmax(240px, 1fr) auto;
 }
 .dest {
-  margin: 0; font: 500 clamp(34px, 5vw, 48px)/1 "Fraunces", Georgia, serif;
-  letter-spacing: -0.025em;
+  margin: 0; font: 300 var(--fs-title)/var(--lh-title) var(--font-display);
+  letter-spacing: var(--ls-title);
 }
 .dest small {
-  display: block; margin-top: 8px; letter-spacing: 0;
-  font: 400 14px/1.4 "Familjen Grotesk", sans-serif; color: var(--muted);
+  display: block; margin-top: 14px;
+  font: 400 var(--fs-caps-l)/1.6 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--muted);
 }
-.legs {
-  display: flex; gap: 30px; flex-wrap: wrap; margin: 0; padding: 14px 0;
-  border-top: 1px dashed var(--line); border-bottom: 1px dashed var(--line);
+.ticket-precio { text-align: right; }
+.amount {
+  display: block; font: 400 var(--fs-amount)/1 var(--font-mono);
+  letter-spacing: var(--ls-amount); color: var(--azul);
 }
-.legs div { display: flex; flex-direction: column; gap: 4px; }
-.legs dt {
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.14em; color: var(--faint);
+.amount span { font-size: 0.44em; margin-left: 4px; letter-spacing: 0; }
+.ticket-notas {
+  display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
+  margin-top: 10px; font: 400 var(--fs-data-s)/1.4 var(--font-mono); color: var(--faint);
 }
-.legs dd { margin: 0; font: 400 15px/1.2 "DM Mono", monospace; }
-.legs .weekend { color: var(--sello); }
-.legs .hhmm { display: block; margin-top: 4px; font-size: 13px; color: var(--muted); }
+.was { text-decoration: line-through; }
+.per-person { color: var(--faint); }
+.pax-nota { font: 400 var(--fs-meta)/1.5 var(--font-mono); color: var(--faint); }
 
-.alts { font: 400 12px/1.6 "DM Mono", monospace; color: var(--muted); }
-.alts a { color: var(--azul); text-decoration: none; border-bottom: 1px solid var(--line); }
+/* El CARTUCHO: la cajita reglada donde una carta pone su escala o su leyenda.
+   Ya no hay sello de goma girado, ni nada que se solape con la cifra: el
+   cartucho va encima del precio, en la misma columna. */
+.stamp {
+  display: inline-flex; align-items: baseline; gap: 10px; margin-bottom: 14px;
+  border: 1px solid var(--azul); border-radius: 0; padding: 7px 11px 6px;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  animation: tf-stamp 0.5s var(--ease) 0.25s backwards;
+}
+.stamp b {
+  font: 500 var(--fs-cifra)/1 var(--font-mono);
+  letter-spacing: var(--ls-cifra); color: var(--azul);
+}
+
+/* La referencia de cuadricula y la marca de observacion, juntas a la derecha
+   de la regla que abre la plancha. */
+.ticket-ref { display: inline-flex; align-items: center; gap: 14px; flex: none; }
+.hero-extra { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+
+/* --- los tramos: tabla reglada ------------------------------------------- */
+.legs {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0; margin: 0;
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+}
+.legs div {
+  display: flex; flex-direction: column; gap: 7px; padding: 16px 20px 15px 0;
+}
+.legs div + div { border-left: 1px solid var(--line-2); padding-left: 20px; }
+.legs dt {
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+}
+.legs dd {
+  margin: 0; font: 400 var(--fs-data)/1.4 var(--font-mono); color: var(--ink);
+}
+.legs .weekend { color: var(--ink); }
+.legs .useful { color: var(--verde); }
+.legs .hhmm { display: block; margin-top: 5px; color: var(--muted); font-size: var(--fs-data-s); }
+
+.alts { font: 400 var(--fs-meta)/1.9 var(--font-mono); color: var(--muted); }
+.alts a { color: var(--azul); border-bottom: 1px solid var(--line); }
 .alts a:hover { color: var(--sello); border-color: currentColor; }
 
-.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
+/* ======================================================================== */
+/* BOTONES                                                                   */
+/* ======================================================================== */
+
+/* Rectangulo exacto, sin radio y sin sombra. Al pulsar no se encoge: se
+   oscurece, como una plancha que recibe mas presion. */
+.actions { display: flex; gap: var(--gap-inline); flex-wrap: wrap; margin-top: 22px; }
 .btn {
-  border: 1px solid transparent; border-radius: 9px; cursor: pointer;
-  padding: 12px 18px; text-decoration: none; display: inline-block;
-  font: 500 14px "Familjen Grotesk", sans-serif;
-  transition: transform 0.2s var(--ease), background 0.2s, border-color 0.2s, color 0.2s;
+  display: inline-flex; align-items: center; justify-content: center;
+  white-space: nowrap; cursor: pointer; padding: 13px 22px;
+  border: 1px solid var(--azul); border-radius: 0; text-decoration: none;
+  font: 500 var(--fs-ui)/1 var(--font-sans); letter-spacing: 0.04em;
+  transition: background var(--t), color var(--t), border-color var(--t);
 }
-.btn:active { transform: scale(0.97); }
 .btn.primary { background: var(--azul); color: var(--sobre-acento); }
-.btn.primary:hover { background: var(--azul-2); }
-.btn.ghost { color: var(--muted); border-color: var(--line); background: var(--card); }
-.btn.ghost:hover { color: var(--azul); border-color: var(--azul); }
+.btn.primary:hover { background: var(--azul-2); border-color: var(--azul-2); }
+.btn.ghost { background: none; border-color: var(--line); color: var(--ink); }
+.btn.ghost:hover { background: var(--azul-soft); color: var(--azul); border-color: var(--azul); }
+.btn.small { padding: 8px 14px; font-size: var(--fs-ui-s); }
+.btn[disabled], .btn.apagado { opacity: 0.4; cursor: default; }
 
-/* --- buscador personalizado --------------------------------------------- */
-.finder {
-  border: 1px solid var(--line); border-radius: var(--radius);
-  background: var(--card); box-shadow: var(--sombra);
-  margin-top: 40px;
+/* "Cerrar", "enterado", "quitar": palabras en versalitas, no glifos. */
+.quitar, #panelClose, #destClose, .modal-head button, [data-cerrar] {
+  background: none; border: 1px solid var(--line); border-radius: 0;
+  color: var(--muted); cursor: pointer; padding: 7px 10px 6px;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+  transition: color var(--t), border-color var(--t);
 }
-.finder > summary {
-  cursor: pointer; padding: 20px 24px; list-style: none;
-  font: 500 20px "Fraunces", Georgia, serif; color: var(--ink);
-}
-.finder > summary::-webkit-details-marker { display: none; }
-.finder > summary::before { content: "+ "; color: var(--sello); }
-.finder[open] > summary::before { content: "− "; }
-.finder-body { padding: 0 24px 24px; }
-.finder-lede { margin: 0 0 20px; color: var(--muted); font-size: 14.5px; max-width: 64ch; }
-.hint { margin: 14px 0 0; font: 400 12px "DM Mono", monospace; color: var(--faint); }
-.finder-form input[type="date"] {
-  font-family: "DM Mono", monospace; font-size: 13px; color-scheme: light;
-}
-.token-box {
-  border: 1px dashed var(--line); border-radius: 12px; padding: 16px 18px;
-  margin-top: 16px; font-size: 14px; color: var(--muted); background: var(--card-2);
-}
-.token-box input {
-  width: 100%; margin: 10px 0; background: var(--card); color: var(--ink);
-  border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px;
-  font: 400 13px "DM Mono", monospace;
-}
-.token-box a { color: var(--azul); }
-.token-box .btn { margin-right: 8px; }
-.token-status { margin: 12px 0 0; font: 400 13px/1.5 "DM Mono", monospace; color: var(--sello); }
-.finder-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
-.finder-form input {
-  background: var(--card); color: var(--ink); border: 1px solid var(--line);
-  border-radius: 9px; padding: 11px 13px; font: 400 15px "Familjen Grotesk", sans-serif;
-}
-.finder-form .field.grow input { width: 100%; }
-.finder-form input[type="number"] { width: 96px; font-family: "DM Mono", monospace; }
+.quitar:hover, #panelClose:hover, #destClose:hover,
+.modal-head button:hover, [data-cerrar]:hover { color: var(--azul); border-color: var(--azul); }
+.quitar[disabled] { opacity: 0.4; cursor: default; }
 
-.searches { margin-top: 22px; }
-.saved {
-  border-top: 1px solid var(--line-2); padding: 14px 0;
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+/* Anotacion al margen del indice: un cuadratin que se rellena de rojo. No es
+   una estrella de favorito. */
+.fav {
+  display: grid; place-items: center; width: 22px; height: 22px; padding: 0;
+  border: 1px solid var(--line); border-radius: 0; background: none; cursor: pointer;
+  transition: border-color var(--t);
 }
-.saved b { font: 500 17px "Fraunces", Georgia, serif; font-weight: 500; }
-.saved .meta { font: 400 12.5px "DM Mono", monospace; color: var(--faint); }
-.saved .best { margin-left: auto; font: 500 20px "DM Mono", monospace; color: var(--sello); }
-.saved-rows { width: 100%; }
+.fav span {
+  width: 10px; height: 10px; background: transparent; font-size: 0; line-height: 0;
+  transition: background var(--t);
+}
+.fav:hover { border-color: var(--azul); }
+.fav:hover span { background: var(--azul-soft); }
+.fav.on { border-color: var(--azul); }
+.fav.on span { background: var(--azul); }
 
-/* --- filtros ------------------------------------------------------------ */
+/* ======================================================================== */
+/* FORMULARIO: las casillas de un impreso                                    */
+/* ======================================================================== */
+
+/* Las casillas no son controles con fondo: son las casillas de un impreso.
+   Laterales hairline y base de tinta; al pasar por encima la base se pone roja. */
 .controls {
-  display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 0 0 26px;
+  display: flex; flex-wrap: wrap; gap: var(--gap-form) 20px; align-items: flex-end;
+  margin-bottom: 30px;
 }
-.field { display: flex; flex-direction: column; gap: 7px; }
+.field { display: flex; flex-direction: column; gap: 8px; }
 .field.grow { flex: 1 1 220px; }
-.field label, .switch {
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.16em; color: var(--faint);
+.field label {
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
 }
-.field input[type="search"], .field select {
-  background: var(--card); color: var(--ink);
-  border: 1px solid var(--line); border-radius: 9px; padding: 11px 14px;
-  font: 400 15px "Familjen Grotesk", sans-serif;
-  transition: border-color 0.2s;
-}
-.field input[type="search"]:hover, .field select:hover { border-color: var(--azul); }
-.field output { color: var(--sello); }
-:is(input, select, button, a):focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
+.field output { color: var(--azul); }
 
+.field input[type="search"], .field select,
+.finder-form input, .finder-form select, .date-btn, .modal-form input,
+#destSearch, .token-box input, .party input {
+  background: none; color: var(--ink); border-radius: 0;
+  border: 1px solid var(--line-2); border-bottom: 1px solid var(--ink);
+  padding: 11px 12px 10px;
+  font: 300 var(--fs-input) var(--font-sans);
+  transition: border-color var(--t);
+}
+.field input[type="search"]:hover, .field select:hover,
+.finder-form input:hover, .finder-form select:hover, .date-btn:hover,
+.modal-form input:hover, #destSearch:hover, .token-box input:hover {
+  border-bottom-color: var(--azul);
+}
+.finder-form input[type="number"], .party input, .token-box input {
+  font: 400 var(--fs-data) var(--font-mono);
+}
+.finder-form input[type="number"] { width: 96px; }
+.finder-form .field.grow input { width: 100%; }
+:root[data-tema="oscuro"] .finder-form input[type="date"] { color-scheme: dark; }
+
+.date-btn { text-align: left; width: 100%; cursor: pointer; color: var(--muted); }
+.date-btn.puesto { color: var(--ink); font: 400 var(--fs-data) var(--font-mono); }
+
+/* Casilla de verificacion: un cuadratin que se rellena. */
 .switch {
-  display: flex; align-items: center; gap: 9px; cursor: pointer;
-  padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px;
-  background: var(--card); transition: color 0.2s, border-color 0.2s;
+  display: flex; align-items: center; gap: 10px; cursor: pointer; white-space: nowrap;
+  padding: 11px 0 10px; border: 0; background: none;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  transition: color var(--t);
 }
-.switch:hover { color: var(--muted); border-color: var(--azul); }
-.switch input { accent-color: var(--azul); width: 14px; height: 14px; margin: 0; }
-.switch:has(input:checked) { color: var(--ink); border-color: var(--azul); }
+.switch:hover { color: var(--muted); }
+.switch:has(input:checked) { color: var(--ink); }
+.switch input {
+  appearance: none; -webkit-appearance: none; margin: 0; flex: none;
+  width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 0;
+  background: none; cursor: pointer; display: grid; place-items: center;
+  transition: border-color var(--t);
+}
+.switch input::after {
+  content: ""; width: 8px; height: 8px; background: transparent;
+  transition: background var(--t);
+}
+.switch:hover input, .switch input:checked { border-color: var(--azul); }
+.switch input:checked::after { background: var(--azul); }
+.switch.suelto { margin-top: 10px; }
 
+/* El tope de precio: una regla graduada de 2px, sin pista con fondo. */
 input[type="range"] {
-  -webkit-appearance: none; appearance: none; width: 180px; height: 24px;
-  background: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none; width: 100%; min-width: 160px;
+  height: 26px; background: none; cursor: pointer; border-radius: 0;
+  background-image: linear-gradient(90deg, var(--azul) 0 var(--pct, 100%), var(--line) var(--pct, 100%) 100%);
+  background-size: 100% 2px; background-position: 0 50%; background-repeat: no-repeat;
 }
-input[type="range"]::-webkit-slider-runnable-track {
-  height: 3px; border-radius: 2px;
-  background: linear-gradient(90deg, var(--azul), var(--line));
-}
+input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: none; }
 input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; width: 15px; height: 15px; margin-top: -6px;
-  border-radius: 50%; background: var(--card); border: 3px solid var(--azul);
-  box-shadow: 0 1px 3px rgba(23, 26, 32, 0.3);
+  -webkit-appearance: none; appearance: none; margin-top: -6px;
+  width: 4px; height: 14px; border-radius: 0; background: var(--azul); border: 0;
 }
+input[type="range"]::-moz-range-track { height: 2px; background: none; }
 input[type="range"]::-moz-range-thumb {
-  width: 13px; height: 13px; border-radius: 50%;
-  background: var(--card); border: 3px solid var(--azul);
+  width: 4px; height: 14px; border-radius: 0; background: var(--azul); border: 0;
 }
 
-/* --- panel de salidas: el listado impreso -------------------------------- */
+/* ======================================================================== */
+/* EL INDICE: cabecera de columnas y entradas                                */
+/* ======================================================================== */
+
+/* La rejilla la comparten cabecera y entradas. La quinta columna es la de los
+   puntos guia y no lleva etiqueta. Si cambias una, cambia la otra. */
 .board-head, .brow {
-  display: grid; align-items: center; gap: 18px;
-  grid-template-columns: 62px minmax(140px, 1.3fr) minmax(200px, 1.4fr) 0.8fr auto auto;
+  display: grid; align-items: center; gap: 16px;
+  grid-template-columns:
+    54px minmax(150px, 1.1fr) minmax(160px, 1fr) minmax(96px, auto)
+    minmax(30px, 1fr) auto 34px;
 }
 .board-head {
-  padding: 0 16px 10px; border-bottom: 1px solid var(--line);
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.16em; color: var(--faint);
+  align-items: end; padding: 0 0 9px; border-bottom: 2px solid var(--ink);
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
 }
 .board-head span:first-child { grid-column: span 2; }
 .board-head span:last-child { text-align: right; }
 
 .brow {
-  position: relative; width: 100%; text-align: left; background: var(--card);
-  border: 1px solid transparent; border-bottom: 1px solid var(--line-2);
-  color: inherit; padding: 15px 16px; cursor: pointer; font: inherit;
-  transition: background 0.25s var(--ease), box-shadow 0.25s var(--ease),
-              border-color 0.25s var(--ease);
+  position: relative; width: 100%; text-align: left; background: none;
+  border: 0; border-bottom: 1px solid var(--line-2);
+  color: inherit; padding: 16px 0; cursor: pointer; font: inherit;
+  transition: background var(--t) var(--ease);
   animation: fade-in 0.45s var(--ease) backwards;
 }
-@keyframes fade-in { from { opacity: 0; } }
-.brow::before {
-  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-  background: var(--azul); transform: scaleY(0); transition: transform 0.3s var(--ease);
+.brow:hover, .brow:focus-visible, .brow.open { background: var(--azul-soft); }
+.brow:hover .leader, .brow:focus-visible .leader, .brow.open .leader {
+  background-image: radial-gradient(circle at 2px 100%, var(--azul) 1.3px, transparent 1.5px);
 }
-.brow:hover, .brow:focus-visible {
-  background: var(--card); border-color: var(--line); border-radius: 10px;
-  box-shadow: var(--sombra);
-}
-.brow:hover::before, .brow:focus-visible::before { transform: scaleY(1); }
+.brow:hover .price .cifra, .brow:focus-visible .price .cifra,
+.brow.open .price .cifra { color: var(--azul); }
+/* La entrada que llega marcada desde el correo: filete rojo al margen. */
+.brow.target { background: var(--azul-soft); box-shadow: inset 2px 0 0 var(--azul); }
 .brow-detail {
-  grid-column: 1 / -1; padding: 4px 0 10px;
-  display: flex; flex-direction: column; gap: 14px;
-  animation: fade-in 0.3s var(--ease);
+  grid-column: 1 / -1; padding: 6px 0 14px;
+  display: flex; flex-direction: column; gap: 16px;
+  animation: fade var(--t-med) var(--ease);
 }
-.brow.open {
-  background: var(--card); border-color: var(--line); border-radius: 10px;
-  box-shadow: var(--sombra);
-}
-.brow.open::before { transform: scaleY(1); }
-.brow .btn { font-size: 13.5px; padding: 10px 15px; }
+.brow .btn { font-size: var(--fs-ui-s); padding: 10px 16px; }
 
-.brow.target { background: var(--sello-soft); border-color: rgba(189, 63, 39, 0.35); }
-
-/* La casilla del codigo, como va impresa en la tarjeta de embarque. */
+/* La casilla del codigo: una referencia de cuadricula, sin fondo ni radio. */
 .iata {
-  justify-self: start; background: var(--card-2);
-  border: 1px solid var(--line); border-radius: 4px; color: var(--azul);
-  font: 500 13px/1 "DM Mono", monospace; padding: 8px 9px 7px;
-  box-shadow: inset 0 -2px 0 rgba(19, 80, 120, 0.1);
+  justify-self: start; display: inline-grid; place-items: center; min-width: 54px;
+  padding: 7px 6px 6px; background: none; border: 1px solid var(--line);
+  border-radius: 0; color: var(--muted);
+  font: 400 var(--fs-data-s)/1 var(--font-mono); letter-spacing: var(--ls-code);
 }
-.brow .dest-cell { display: flex; flex-direction: column; gap: 2px; }
-.brow .city { font: 500 20px/1.15 "Fraunces", Georgia, serif; letter-spacing: -0.015em; }
-.brow .country { font-size: 12.5px; color: var(--faint); }
-.brow .when {
-  font: 400 13px/1.5 "DM Mono", monospace; color: var(--muted);
-  text-wrap: balance;
-}
-.brow .when b { color: var(--ink); font-weight: 500; }
-.brow .when.weekend b { color: var(--sello); }
-.brow .when small {
-  display: block; margin-top: 3px; font-size: 11.5px; color: var(--faint);
-}
-.legs .useful { color: var(--verde); }
+/* Ciudad oculta: se aterriza lejos del centro y hay que decirlo. */
+.iata.hidden { border-color: var(--azul); color: var(--azul); }
 
-.brow .airline { font-size: 13.5px; color: var(--muted); }
-.brow .airline small { display: block; color: var(--faint); font-size: 11.5px; }
-.brow .price {
-  text-align: right; font: 500 24px/1 "DM Mono", monospace; letter-spacing: -0.03em;
+.brow .dest-cell, .favrow .dest-cell {
+  display: flex; flex-direction: column; gap: 3px; min-width: 0;
 }
-.brow .price small {
-  display: block; margin-top: 5px; font: 400 11px "DM Mono", monospace; color: var(--verde);
+.brow .city {
+  font: 400 var(--fs-subhead)/1.1 var(--font-display); letter-spacing: var(--ls-title);
 }
+.brow .country, .favrow .country {
+  font: 400 var(--fs-caps)/1.4 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+}
+.brow .when, .favrow .when {
+  font: 400 var(--fs-data-s)/1.6 var(--font-mono); color: var(--ink); text-wrap: balance;
+}
+.brow .when b, .favrow .when b { color: var(--ink); font-weight: 500; }
+.brow .when small, .favrow .when small {
+  display: block; margin-top: 3px; color: var(--faint);
+}
+.brow .airline { font: 300 var(--fs-body-s)/1.5 var(--font-sans); color: var(--muted); }
+.brow .airline small { display: block; color: var(--faint); font-size: var(--fs-meta); }
 
+.brow .price, .favrow .price { text-align: right; white-space: nowrap; }
+.brow .price .cifra, .favrow .price .cifra {
+  font: 500 var(--fs-cifra)/1 var(--font-mono); letter-spacing: var(--ls-cifra);
+  transition: color var(--t);
+}
+.brow .price .cifra span { font-size: 0.5em; color: var(--muted); margin-left: 2px; }
+.brow .price small, .favrow .price small {
+  display: block; margin-top: 6px; font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--faint);
+}
+.brow .price small.off { color: var(--verde); }
+.brow .fav { justify-self: end; align-self: center; }
+
+/* La escapada completa: vuelos de todos mas una cama para todos. Va con el
+   filete azul de sondeo —la tinta de lo informativo— y con el `≈` delante,
+   porque es una cuenta nuestra y no un precio consultado. Al pedir alojamiento
+   de verdad, el numero real la sustituye. */
+.escapada {
+  display: inline-block; margin-top: 6px; padding-left: 7px;
+  border-left: 2px solid var(--sello);
+  font: 400 var(--fs-meta) var(--font-mono); color: var(--sello);
+  white-space: nowrap; cursor: help;
+}
+.brow .price .escapada, .favrow .price .escapada { color: var(--sello); }
+.ticket-precio .escapada { margin-top: 12px; }
+/* Cuando ya no es una cuenta nuestra sino un precio consultado: verde, la
+   tinta de lo que se sabe de verdad, y sin el `≈`. */
+.escapada.real { border-left-color: var(--verde); color: var(--verde); }
+.brow .price .escapada.real, .favrow .price .escapada.real { color: var(--verde); }
+
+/* Lo que se ha movido desde tu ultima visita. Va calificado con la columna
+   porque ".price small" es mas especifico y si no se comeria el color. */
+.delta { font: 400 var(--fs-meta) var(--font-mono); }
+.delta.baja, .brow .price small.delta.baja, .favrow .price small.delta.baja { color: var(--verde); }
+.delta.sube, .brow .price small.delta.sube, .favrow .price small.delta.sube { color: var(--azul); }
+.delta.igual, .brow .price small.delta.igual, .favrow .price small.delta.igual { color: var(--faint); }
+
+/* ======================================================================== */
+/* NOTAS AL MARGEN Y ESTADOS                                                 */
+/* ======================================================================== */
+
+/* Nota al margen: un filete de color a la izquierda y texto. Ni caja de color
+   ni icono. */
 .hidden-warn {
-  border: 1px solid rgba(189, 63, 39, 0.35); background: var(--sello-soft);
-  border-radius: 12px; padding: 14px 16px; font-size: 13.5px; line-height: 1.55;
-  color: var(--ink);
+  border-left: 2px solid var(--azul); padding-left: 14px;
+  font: 300 var(--fs-body-s)/1.7 var(--font-sans); color: var(--muted);
 }
-.hidden-warn strong { color: var(--sello); }
-.iata.hidden { border-color: rgba(189, 63, 39, 0.5); color: var(--sello); }
+.hidden-warn strong { color: var(--azul); font-weight: 500; }
 
-.empty, .errors { color: var(--muted); font-size: 15px; margin-top: 30px; }
-.errors summary { cursor: pointer; color: var(--faint); font-size: 13px; }
-.errors li { font: 400 12px "DM Mono", monospace; color: var(--faint); }
-
-.foot {
-  display: flex; flex-wrap: wrap; gap: 8px 26px; align-items: center;
-  margin-top: 60px; padding-block: 26px 54px; border-top: 1px dashed var(--line);
-  font: 400 12.5px "DM Mono", monospace; color: var(--faint);
+.empty, .errors {
+  color: var(--muted); font: 300 var(--fs-body)/var(--lh-body) var(--font-sans);
+  margin-top: 30px;
 }
-.foot a { color: var(--azul); }
+.empty, .vacio { border-left: 2px solid var(--line); padding-left: 14px; }
+/* Un vacio dice que hacer, y para eso tiene que leerse: prosa, no versalitas. */
+.vacio {
+  margin: 16px 0 0; max-width: var(--measure-prose);
+  font: 300 var(--fs-body-s)/1.75 var(--font-sans); color: var(--muted);
+}
+.errors summary {
+  cursor: pointer; color: var(--faint);
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+}
+.errors ul { margin: 12px 0 0; padding-left: 18px; }
+.errors li { font: 400 var(--fs-meta)/1.8 var(--font-mono); color: var(--faint); }
 
-/* El numero que no da ningun comparador: cuanto cuesta el finde entero. */
+/* El numero que no da ningun comparador: lo que cuesta el finde entero. */
 .total {
-  border: 1px solid var(--line); border-radius: 12px;
-  background: linear-gradient(150deg, var(--azul-soft), transparent 70%);
-  padding: 18px 20px; margin-bottom: 20px;
+  border-top: 2px solid var(--ink); padding: 14px 0 0;
+  display: flex; flex-direction: column; gap: 9px;
 }
 .total-head {
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.16em; color: var(--faint);
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
 }
-.total-figure {
-  margin: 10px 0 8px; font: 500 38px/1 "DM Mono", monospace;
-  letter-spacing: -0.04em; color: var(--azul);
-}
-.total-figure span {
-  display: block; margin-top: 7px; font-size: 13px; letter-spacing: 0; color: var(--ink);
-}
-.total-break { font: 400 12px/1.5 "DM Mono", monospace; color: var(--muted); }
+.total-figure { font: 400 var(--fs-figure)/1 var(--font-mono); letter-spacing: -0.035em; }
+.total-figure span { font-size: 0.5em; color: var(--muted); margin-left: 3px; }
+.total-break { font: 400 var(--fs-meta)/1.7 var(--font-mono); color: var(--muted); }
 
-.party {
-  display: flex; align-items: center; gap: 12px; margin: 4px 0 14px;
-  font: 400 14px "Familjen Grotesk", sans-serif; color: var(--ink);
-}
-.party input {
-  width: 68px; background: var(--card); color: var(--ink);
-  border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px;
-  font: 500 16px "DM Mono", monospace; text-align: center;
-}
-.rescan {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  flex-wrap: wrap; padding-bottom: 6px; margin-bottom: 6px;
-  font: 400 12.5px "DM Mono", monospace; color: var(--faint);
-}
-.btn.small { padding: 8px 12px; font-size: 13px; }
-.stay { text-decoration: none; color: inherit; }
-.stay:hover .name { color: var(--azul); }
-.link-tag { font: 500 13px "DM Mono", monospace; color: var(--muted); }
+.party { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.party input { width: 70px; }
+.rescan { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
 
-/* --- panel de alojamiento ----------------------------------------------- */
-.backdrop {
-  position: fixed; inset: 0; z-index: 8; background: rgba(23, 26, 32, 0.35);
-  backdrop-filter: blur(3px); animation: fade 0.3s var(--ease);
+/* La lectura del historico de una ruta, al abrir la entrada. */
+.historia {
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  border-left: 2px solid var(--line); padding-left: 14px;
 }
-@keyframes fade { from { opacity: 0; } }
+.historia > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.historia b { font: 500 var(--fs-data) var(--font-mono); color: var(--ink); }
+.historia span { font: 300 var(--fs-body-s)/1.5 var(--font-sans); color: var(--muted); }
+.historia.chollo, .historia.bien { border-left-color: var(--verde); }
+.historia.chollo span, .historia.bien span { color: var(--verde); }
+.historia.mal { border-left-color: var(--azul); }
+.historia.mal span { color: var(--azul); }
 
+/* La curva de precio: un perfil de altimetria. Linea fina, sin relleno. */
+.spark { display: block; overflow: visible; }
+.spark.baja { color: var(--verde); }
+.spark.sube { color: var(--azul); }
+
+/* Etiqueta de una linea: rectangulo reglado con versalitas. */
+.insignia {
+  display: inline-flex; align-items: center; padding: 6px 9px 5px;
+  border: 1px solid var(--verde); border-radius: 0; color: var(--verde);
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+}
+
+/* Lo que se dice pero no se ve: la region donde se anuncian las esperas. No
+   vale `display:none` ni `visibility:hidden` —eso lo esconde tambien del
+   lector, que es justo a quien va dirigido. */
+.solo-lector {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+  border: 0;
+}
+
+/* ======================================================================== */
+/* MIENTRAS LLEGAN LOS DATOS, Y CUANDO NO HAY                                */
+/* ======================================================================== */
+
+/* El hueco no puede estar vacio entre que se pide offers.json y se pinta: con
+   la red lenta la pagina parece rota. Se enseñan las reglas del indice sin
+   datos, que es justo lo que va a aparecer encima. Un atlas no se mueve, asi
+   que la espera se dice con opacidad —nunca con un barrido de luz. */
+.cargando { display: block; padding-top: 2px; }
+.cargando-nota {
+  margin: 0 0 4px; font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  animation: tf-respira 2.4s var(--ease) infinite;
+}
+.cargando-fila {
+  display: block; height: 53px; border-bottom: 1px solid var(--line-2);
+}
+@keyframes tf-respira { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* Sin JavaScript no hay absolutamente nada que enseñar, y callarse es peor que
+   decirlo: al menos que se sepa por que la pagina esta en blanco. */
+.sin-js {
+  position: relative; z-index: 1;
+  max-width: var(--w-page); margin: 26px auto 0; padding-inline: var(--pad-page);
+  border-left: 2px solid var(--azul);
+  font: 300 var(--fs-body-s)/1.7 var(--font-sans); color: var(--muted);
+}
+
+/* La direccion que no existe. Mismo bloque que cualquier otro: regla mayor
+   arriba con su cuadratin, y la referencia que no estaba en el indice. */
+.perdido { position: relative; padding-top: 14px; }
+.perdido .regla { position: absolute; top: 0; left: 0; right: 0; }
+.perdido-ref {
+  margin: 0 0 4px; font: 400 var(--fs-data-s)/1.6 var(--font-mono);
+  color: var(--faint); word-break: break-all;
+}
+.perdido .vacio { margin-top: 12px; }
+.perdido .actions { margin-top: 26px; }
+
+/* ======================================================================== */
+/* LA HOJA DE ALOJAMIENTO                                                    */
+/* ======================================================================== */
+
+/* Entra desde la derecha. Aqui no hay velo borroso: la pagina de detras se
+   cubre con tinta plana, como el papel de calco sobre una lamina. */
+.backdrop { position: fixed; inset: 0; z-index: 8; background: var(--velo); animation: fade 0.22s var(--ease); }
 .panel {
-  position: fixed; top: 0; right: 0; bottom: 0; z-index: 9;
-  width: min(500px, 100%); display: flex; flex-direction: column;
-  background: var(--paper-2); border-left: 1px solid var(--line);
-  box-shadow: -30px 0 60px -30px rgba(23, 26, 32, 0.5);
-  animation: slide 0.42s var(--ease);
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 9; width: var(--w-panel);
+  display: flex; flex-direction: column; background: var(--paper);
+  border-left: 1px solid var(--ink); border-radius: 0;
+  animation: tf-slide var(--t-panel) var(--ease);
 }
-@keyframes slide { from { transform: translateX(100%); } }
-
 .panel-head {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
-  padding: 24px 26px 20px; border-bottom: 1px dashed var(--line); background: var(--card);
+  padding: 26px 26px 20px; border-bottom: 2px solid var(--ink);
 }
 .kicker {
-  margin: 0 0 6px; font: 500 10px/1 "DM Mono", monospace;
-  text-transform: uppercase; letter-spacing: 0.18em; color: var(--faint);
+  margin: 0; font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps-wide); color: var(--faint);
 }
-.panel-head h2 { margin: 0; font: 500 27px/1.1 "Fraunces", Georgia, serif; letter-spacing: -0.02em; }
-.panel-dates { margin: 8px 0 0; font: 400 13px "DM Mono", monospace; color: var(--muted); }
-#panelClose {
-  background: var(--card); border: 1px solid var(--line); border-radius: 9px;
-  color: var(--muted); font-size: 15px; line-height: 1; cursor: pointer;
-  padding: 9px 11px; transition: color 0.2s, border-color 0.2s;
+.panel-head h2 {
+  margin: 12px 0 0; font: 300 var(--fs-heading)/1.05 var(--font-display);
+  letter-spacing: var(--ls-title);
 }
-#panelClose:hover { color: var(--sello); border-color: var(--sello); }
-
-.panel-body { overflow-y: auto; padding: 20px 26px 40px; }
+.panel-dates { margin: 10px 0 0; font: 400 var(--fs-data-s) var(--font-mono); color: var(--muted); }
+.panel-body {
+  overflow-y: auto; padding: 22px 26px 40px;
+  display: flex; flex-direction: column; gap: 20px;
+}
 .panel-body h3 {
-  font: 500 11px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.16em; color: var(--faint); margin: 30px 0 6px;
+  margin: 0; font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  padding-bottom: 9px; border-bottom: 2px solid var(--ink);
 }
 
 .stay {
-  display: flex; gap: 14px; align-items: center;
+  display: grid; grid-template-columns: 74px 1fr auto; gap: 14px; align-items: center;
   padding: 14px 0; border-bottom: 1px solid var(--line-2);
+  text-decoration: none; color: inherit;
 }
 .stay:last-child { border-bottom: 0; }
-.stay img {
-  width: 66px; height: 66px; flex: none; object-fit: cover;
-  border-radius: 10px; border: 1px solid var(--line);
-}
-.stay .name { font-size: 15px; line-height: 1.35; }
-.stay .name a { color: var(--ink); text-decoration: none; }
-.stay .name a:hover { color: var(--azul); }
-.stay .meta { font: 400 12px "DM Mono", monospace; color: var(--faint); margin-top: 3px; }
+.stay img { width: 74px; height: 56px; object-fit: cover; border-radius: 0; filter: grayscale(1) contrast(1.05); }
+.stay .name { font: 300 var(--fs-body-s)/1.4 var(--font-sans); }
+.stay .name a { color: var(--ink); border-bottom: 0; }
+.stay:hover .name, .stay .name a:hover { color: var(--azul); }
+.stay .meta { font: 400 var(--fs-meta)/1.6 var(--font-mono); color: var(--faint); margin-top: 3px; }
 .stay .amount-s {
-  margin-left: auto; text-align: right; white-space: nowrap;
-  font: 500 19px "DM Mono", monospace;
+  text-align: right; white-space: nowrap;
+  font: 500 var(--fs-cifra)/1 var(--font-mono); letter-spacing: var(--ls-cifra);
 }
 .stay .amount-s small {
-  display: block; font: 400 11px "DM Mono", monospace; color: var(--faint); margin-top: 3px;
+  display: block; margin-top: 5px; font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--faint); letter-spacing: 0;
 }
+.link-tag { font: 400 var(--fs-data-s) var(--font-mono); color: var(--muted); }
 
-.status {
-  border: 1px solid rgba(29, 122, 85, 0.3); background: rgba(29, 122, 85, 0.08);
-  color: var(--verde); border-radius: 12px; padding: 14px 16px; font-size: 14px;
-  margin-bottom: 18px;
-}
-.status.wait {
-  border-color: rgba(189, 63, 39, 0.3); background: var(--sello-soft); color: var(--sello);
-}
+.status { border-left: 2px solid var(--sello); padding-left: 14px; color: var(--muted); }
+.status.wait { border-left-color: var(--azul); }
 .status p { margin: 0 0 12px; color: var(--muted); }
 .spin {
-  display: inline-block; width: 12px; height: 12px; margin-right: 8px;
-  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  display: inline-block; width: 11px; height: 11px; margin-right: 8px;
+  border: 1px solid currentColor; border-right-color: transparent; border-radius: 50%;
   animation: spin 0.8s linear infinite; vertical-align: -1px;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- responsive --------------------------------------------------------- */
+/* ======================================================================== */
+/* LA LAMINA DE DESTINOS Y EL CALENDARIO                                     */
+/* ======================================================================== */
+
+/* No sube desde abajo como una hoja de movil: se centra, como una lamina que
+   se pone sobre la mesa. */
+.modal {
+  position: fixed; inset: 0; z-index: 12; display: grid; place-items: center;
+  padding: 20px; background: var(--velo); animation: fade 0.22s var(--ease);
+}
+.modal-caja {
+  width: var(--w-modal); max-height: 84vh; display: flex; flex-direction: column; gap: 20px;
+  background: var(--paper); border: 1px solid var(--ink); border-radius: 0;
+  padding: 24px 26px 28px; animation: tf-rise var(--t-med) var(--ease);
+}
+.modal-caja.estrecha { width: min(440px, 100%); }
+.modal-head {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
+  border-bottom: 2px solid var(--ink); padding-bottom: 14px;
+}
+.modal-head h2 {
+  margin: 0; font: 300 26px/1 var(--font-display); letter-spacing: var(--ls-title);
+}
+
+#destSearch { width: 100%; }
+.dest-list { overflow-y: auto; padding-bottom: 4px; }
+.pais { border-top: 1px solid var(--line-2); padding: 12px 0; }
+.pais-todo {
+  display: flex; align-items: baseline; gap: 12px; width: 100%; text-align: left;
+  background: none; border: 0; border-radius: 0; cursor: pointer;
+  padding: 8px 4px; color: var(--ink); transition: background var(--t);
+}
+.pais-todo:hover { background: var(--azul-soft); }
+.pais-todo span { font: 400 var(--fs-name-s) var(--font-display); letter-spacing: var(--ls-title); }
+.pais-todo em {
+  font: 400 var(--fs-meta) var(--font-mono); font-style: normal; color: var(--faint);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+}
+.ciudades { display: flex; flex-wrap: wrap; gap: 7px; padding: 8px 4px 0; }
+.ciudad {
+  display: inline-flex; gap: 10px; align-items: baseline; cursor: pointer;
+  background: none; border: 1px solid var(--line-2); border-radius: 0;
+  color: var(--muted); padding: 8px 12px 7px;
+  font: 300 var(--fs-body-s) var(--font-sans); transition: all var(--t);
+}
+.ciudad:hover { background: var(--azul-soft); border-color: var(--azul); color: var(--ink); }
+.ciudad i {
+  font-style: normal; font-family: var(--font-mono); color: var(--faint);
+  font-size: var(--fs-meta); letter-spacing: var(--ls-code);
+}
+
+/* El calendario es una tabla de efemerides: meses en columnas regladas, dias
+   en mono, sin fondos redondeados. */
+.cal {
+  border: 1px solid var(--line); border-radius: 0; padding: 20px 18px;
+  background: none; max-height: 340px; overflow-y: auto; margin-top: 14px;
+}
+.meses { display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); }
+.mes h4 {
+  margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--ink);
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--ink);
+}
+.semana, .dias { display: grid; grid-template-columns: repeat(7, 1fr); }
+.semana i {
+  font: 400 var(--fs-caps)/1 var(--font-mono); font-style: normal; color: var(--faint);
+  text-align: center; padding: 0 0 8px; letter-spacing: 0; text-transform: lowercase;
+}
+.dias .dia, .dias span {
+  aspect-ratio: 1; display: grid; place-items: center; border-radius: 0;
+  border: 1px solid transparent; background: none; cursor: pointer;
+  color: var(--muted); font: 400 var(--fs-data-s) var(--font-mono);
+}
+.dias .dia:hover:not([disabled]) { background: var(--azul-soft); }
+.dias .dia[disabled] { color: var(--faint); opacity: 0.4; cursor: default; }
+.dias .dia.extremo { background: var(--azul); border-color: var(--azul); color: var(--sobre-acento); }
+.dias .dia.dentro { background: var(--azul-soft); }
+
+/* ======================================================================== */
+/* TRAZAR UN VIAJE Y LO QUE SIGUES                                           */
+/* ======================================================================== */
+
+/* Un bloque se abre con una regla mayor y se cierra con una hairline. */
+.finder {
+  border: 0; border-top: 2px solid var(--ink); border-radius: 0;
+  background: none; margin-bottom: 30px; position: relative;
+}
+.finder::before {
+  content: ""; position: absolute; left: 0; top: -2px; width: 46px; height: 2px;
+  background: var(--azul);
+}
+.finder > summary {
+  list-style: none; cursor: pointer; padding: 14px 0 12px;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps-wide); color: var(--faint);
+}
+.finder > summary::-webkit-details-marker { display: none; }
+.finder > summary::after { content: " · desplegar"; color: var(--azul); }
+.finder[open] > summary::after { content: " · plegar"; }
+.finder-body { padding: 0 0 26px; border-bottom: 1px solid var(--line-2); }
+.finder-lede {
+  margin: 0 0 22px; color: var(--muted); max-width: var(--measure-prose);
+  font: 300 var(--fs-body-s)/1.75 var(--font-sans);
+}
+.finder-lede strong { color: var(--ink); font-weight: 500; }
+.finder-form { display: flex; flex-wrap: wrap; gap: var(--gap-form) 20px; align-items: flex-end; }
+.hint { margin: 14px 0 0; font: 400 var(--fs-meta)/1.7 var(--font-mono); color: var(--faint); }
+.finder.abierta { margin-bottom: 22px; }
+
+.searches, .watches { margin-top: 26px; }
+.watch-head, .favoritos h3 {
+  margin: 0 0 4px; padding-bottom: 9px; border-bottom: 2px solid var(--ink);
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+}
+.saved, .watch {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 15px 0; border-bottom: 1px solid var(--line-2); cursor: pointer;
+}
+.saved b, .watch b {
+  font: 400 var(--fs-name-s) var(--font-display); letter-spacing: var(--ls-title);
+}
+.saved .meta, .watch .meta, .favoritos .meta {
+  font: 400 var(--fs-meta)/1.7 var(--font-mono); color: var(--faint);
+  text-transform: none; letter-spacing: 0;
+}
+.saved .best {
+  margin-left: auto; font: 500 var(--fs-cifra) var(--font-mono);
+  letter-spacing: var(--ls-cifra); color: var(--azul);
+}
+.saved-rows, .watch-rows { width: 100%; padding-top: 6px; }
+
+/* Una busqueda que ya estaba hecha: se ofrece en vez de volver a barrer. El
+   filete azul de sondeo dice "esto es informacion", no "esto es un chollo". */
+.saved.ya-hecha { border-left: 2px solid var(--sello); padding-left: 14px; }
+.saved.ya-hecha .btn { margin-left: auto; }
+
+/* ======================================================================== */
+/* EL AVISO DE CAMBIO DE PRECIO                                              */
+/* ======================================================================== */
+
+/* Vive en las tres paginas: es lo que hace que "la web te avise". Se abre con
+   la regla mayor, como cualquier otra seccion. */
+.fav-aviso {
+  border-top: 2px solid var(--ink); padding: 16px 0 24px; margin-bottom: 30px;
+  position: relative; animation: fade var(--t-med) var(--ease);
+}
+.fav-aviso::before {
+  content: ""; position: absolute; left: 0; top: -2px; width: 46px; height: 2px;
+  background: var(--azul);
+}
+.aviso-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+.aviso-head .kicker { margin: 0; }
+.aviso-head h3 {
+  margin: 0; font: 300 var(--fs-heading)/1.1 var(--font-display);
+  letter-spacing: var(--ls-title);
+}
+.aviso-head h3 small {
+  display: block; margin-top: 8px;
+  font: 400 var(--fs-meta)/1.6 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+}
+.aviso-head .btn { margin-left: auto; }
+.cambios {
+  display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  margin-top: 22px; border-top: 1px solid var(--line);
+}
+.cambio {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 18px 20px 18px 14px; border-bottom: 1px solid var(--line-2);
+  border-left: 2px solid var(--line);
+}
+.cambio.baja { border-left-color: var(--verde); }
+.cambio.sube { border-left-color: var(--azul); }
+.cambio header { display: grid; gap: 4px; }
+.cambio h4 {
+  margin: 0; font: 400 var(--fs-city-s)/1.1 var(--font-display);
+  letter-spacing: var(--ls-title); color: var(--ink);
+}
+.cambio header p { margin: 0; font: 400 var(--fs-meta)/1.6 var(--font-mono); color: var(--faint); }
+.cambio-precio { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.cambio-precio s { font: 400 var(--fs-data-s) var(--font-mono); color: var(--faint); }
+.cambio-precio b {
+  font: 400 var(--fs-figure)/1 var(--font-mono); letter-spacing: -0.035em; color: var(--ink);
+}
+.cambio-precio b span { font-size: 0.45em; color: var(--muted); margin-left: 3px; }
+.sello-dif {
+  font-style: normal; border: 1px solid currentColor; padding: 6px 9px 5px;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+}
+.cambio.baja .sello-dif { color: var(--verde); }
+.cambio.sube .sello-dif { color: var(--azul); }
+.cambio-nota { font: 400 var(--fs-meta) var(--font-mono); color: var(--faint); }
+.cambio-curva { min-height: 34px; }
+.cambio.baja .cambio-curva { color: var(--verde); }
+.cambio.sube .cambio-curva { color: var(--azul); }
+.cambio footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.aviso-pie { margin-top: 16px; font: 400 var(--fs-meta) var(--font-mono); }
+.aviso-pie a { color: var(--azul); border-bottom: 1px solid var(--line); }
+.aviso-pie a:hover { color: var(--sello); border-color: currentColor; }
+
+/* ======================================================================== */
+/* LA LISTA DE SEGUIDOS                                                      */
+/* ======================================================================== */
+
+.favoritos { margin-top: 34px; }
+.favrow {
+  display: grid; align-items: center; gap: 10px 18px;
+  grid-template-columns:
+    54px minmax(130px, 1.1fr) minmax(150px, 1fr) auto minmax(24px, 1fr) auto auto;
+  padding: 16px 0; border-bottom: 1px solid var(--line-2);
+  background: none; transition: background var(--t);
+}
+.favrow:hover { background: var(--azul-soft); }
+.favrow:hover .leader {
+  background-image: radial-gradient(circle at 2px 100%, var(--azul) 1.3px, transparent 1.5px);
+}
+/* Lo que se ha movido desde tu ultima visita: filete rojo, no fondo de color. */
+.favrow.nuevo { border-left: 2px solid var(--azul); padding-left: 14px; }
+.favrow .city {
+  font: 400 var(--fs-city-s)/1.1 var(--font-display); letter-spacing: var(--ls-title);
+}
+.favrow .spark-cell { display: flex; align-items: center; }
+.favrow .favacc { display: flex; align-items: center; gap: 10px; }
+
+/* ======================================================================== */
+/* CUENTAS Y PANEL                                                           */
+/* ======================================================================== */
+
+.cuenta {
+  display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
+  background: none; border: 1px solid var(--line); border-radius: 0;
+  color: var(--muted); padding: 8px 12px 7px; min-height: 32px;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+  transition: color var(--t), border-color var(--t);
+}
+.cuenta:hover { color: var(--ink); border-color: var(--azul); }
+.cuenta b {
+  display: grid; place-items: center; width: 18px; height: 18px;
+  border: 1px solid var(--line); font-size: var(--fs-caps); font-weight: 400;
+}
+.cuenta.dentro { color: var(--ink); border-color: var(--azul); }
+.cuenta.dentro b { background: var(--azul); color: var(--sobre-acento); border-color: var(--azul); }
+.cuenta-txt { white-space: nowrap; }
+
+.modal-form { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.modal-form label {
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  margin-top: 8px;
+}
+.modal-form .meta { margin: 0 0 4px; }
+.modal-form .btn { margin-top: 14px; }
+.estrecha-form { max-width: 420px; }
+.solo-ancho { display: inline; }
+
+.cuenta-nota {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  border-top: 1px solid var(--line-2); padding-top: 12px; margin-top: 12px;
+  font: 300 var(--fs-body-s)/1.7 var(--font-sans); color: var(--muted);
+}
+.cuenta-row { grid-template-columns: 92px 1fr auto; align-items: center; }
+.cuenta-row.apagada { opacity: 0.5; }
+.cuenta-row .favacc { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cuenta-row .detalle { grid-column: 1 / -1; }
+.cuenta-detalle { border-top: 1px solid var(--line-2); margin-top: 12px; padding-top: 14px; }
+.detalle-cols { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.detalle-cols h4 {
+  margin: 0 0 8px; font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+}
+.lista-seca { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lista-seca li { font: 400 var(--fs-data-s)/1.6 var(--font-mono); color: var(--muted); }
+.lista-seca b { color: var(--ink); font-weight: 500; }
+.lista-seca .apagado { color: var(--faint); }
+.ojo { color: var(--azul); }
+
+/* Una cuenta sin sobre no puede lanzar nada, y hasta ahora eso se descubría
+   pulsando un botón que no respondía. En el atlas no hay tarjetas ni sombras
+   con las que llamar la atención: lo que hay es una regla al margen, que es
+   como se marca una anotación en una carta (#15). */
+.cuenta-row.sin-acceso { border-left: 2px solid var(--azul); padding-left: 12px; }
+.aviso-acceso {
+  display: block; padding-top: 4px;
+  font: 400 var(--fs-meta)/1.6 var(--font-mono);
+}
+.btn.urge { color: var(--azul); border-color: var(--azul); }
+
+.token-box { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.token-box input { width: 100%; }
+.token-box a { color: var(--azul); }
+.token-status { margin: 12px 0 0; font: 400 var(--fs-data-s)/1.6 var(--font-mono); color: var(--sello); }
+.finder-form.candado > .btn { opacity: 0.45; }
+.candado-nota { font: 400 var(--fs-meta)/1.7 var(--font-mono); color: var(--faint); }
+.campo-clave { position: relative; display: flex; }
+.campo-clave input { width: 100%; padding-right: 84px; }
+.ver-clave {
+  position: absolute; right: 0; top: 0; bottom: 0;
+  background: none; border: 0; border-left: 1px solid var(--line-2);
+  color: var(--faint); cursor: pointer; padding: 0 12px;
+  font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps);
+}
+.ver-clave:hover, .ver-clave:focus-visible { color: var(--azul); }
+
+.rows { display: block; }
+
+/* ======================================================================== */
+/* RESPONSIVE                                                                */
+/* ======================================================================== */
+
 @media (max-width: 860px) {
   .board-head { display: none; }
   .brow {
-    grid-template-columns: 58px 1fr auto; gap: 8px 14px; padding: 16px 12px;
-    grid-template-areas: "iata city price" ". when when" ". airline airline";
+    grid-template-columns: 54px 1fr auto; gap: 8px 14px;
+    grid-template-areas: "iata city price" ". when when" ". airline airline" ". fav fav";
   }
   .brow .iata { grid-area: iata; }
   .brow .dest-cell { grid-area: city; }
   .brow .when { grid-area: when; }
   .brow .airline { grid-area: airline; }
   .brow .price { grid-area: price; }
+  .brow .fav { grid-area: fav; justify-self: start; }
+  .brow .leader { display: none; }
+
+  .favrow { grid-template-columns: 54px 1fr auto; gap: 8px 14px; }
+  .favrow .leader, .favrow .spark-cell { display: none; }
+  .favrow .when { grid-column: 2 / -1; }
+  .favrow .favacc { grid-column: 2 / -1; }
+
+  .cuenta-row { grid-template-columns: 58px 1fr; }
+  .cuenta-row .favacc { grid-column: 1 / -1; }
 }
 
 @media (max-width: 680px) {
-  :root { --stub-w: 100%; }
-  .ticket { grid-template-columns: 1fr; }
-  .ticket::after { display: none; }
-  .stub {
-    padding: 26px 22px 18px; border-radius: var(--radius) var(--radius) 0 0;
-    border-bottom: 1px dashed var(--line);
-  }
-  .stub::before, .stub::after { top: auto; bottom: -10px; }
-  .stub::before { right: auto; left: -10px; }
-  .stamp { top: 20px; right: 18px; }
-  .hero-body { padding: 22px; }
-  .codes { padding-right: 0; }
+  .ticket-cab { grid-template-columns: 1fr; }
+  .ticket-precio { text-align: left; }
+  .ticket-notas { justify-content: flex-start; }
+
+  /* En dos columnas fijas se sabe cual empieza fila: sin esto una celda que
+     baja de linea se lleva un filete a la izquierda que no separa nada. */
+  .legs { grid-template-columns: repeat(2, 1fr); }
+  .legs div + div { border-left: 0; padding-left: 0; }
+  .legs div:nth-child(even) { border-left: 1px solid var(--line-2); padding-left: 20px; }
+  .legs div:nth-child(n + 3) { border-top: 1px solid var(--line-2); }
 }
 
 @media (max-width: 620px) {
   .finder-form { gap: 10px; }
   .finder-form .field, .finder-form .switch, .finder-form .btn { width: 100%; }
   .finder-form input, .finder-form select, .date-btn {
-    width: 100%; font-size: 16px; /* menos de 16px hace que iOS haga zoom solo */
+    width: 100%; font-size: 16px;  /* menos de 16px hace que iOS haga zoom solo */
   }
   .finder-form input[type="number"] { width: 100%; }
   .controls { gap: 10px; }
   .controls .field, .controls .switch { width: 100%; }
   .controls input[type="range"] { width: 100%; }
-  .modal-caja { max-height: 92vh; padding: 16px 16px 0; }
+  .modal { padding: 0; place-items: end center; }
+  .modal-caja { max-height: 92vh; padding: 18px 18px 22px; }
   .meses { grid-template-columns: 1fr; }
   .cal { max-height: 60vh; }
-  .dias .dia { font-size: 15px; }
-  .panel { width: 100%; }
-  .stats { grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); gap: 14px 16px; }
-  .stats dd { font-size: 21px; }
+  .dias .dia { font-size: 14px; }
+  .panel { width: 100%; border-left: 0; }
+  .stats { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+  .stats div + div { border-left: 0; border-top: 1px solid var(--line-2); padding-left: 0; }
   .foot { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .build { margin-left: 0; }
+  .zonas { gap: 0; }
+  .zona { padding-right: 18px; font-size: 10px; }
+  .zona::after { right: 18px; }
+}
+
+/* --- area tactil -------------------------------------------------------- */
+
+/* El cuadratin de observacion mide 22px porque asi lo pide el sistema: es una
+   anotacion al margen, no un boton. Lo que se agranda es donde SE ACIERTA, no
+   lo que se ve — un pseudoelemento centrado de 44x44 que no ocupa sitio en la
+   rejilla ni mueve nada de su sitio. Misma idea para "quitar" y "cerrar", que
+   son palabras pequeñas en versalitas.
+
+   44px es el minimo de WCAG 2.5.5 y lo que hace que se acierten a la primera
+   en un movil de 320px. */
+.fav, .quitar, #panelClose, #destClose, .modal-head button, [data-cerrar] {
+  position: relative;
+}
+.fav::after,
+.quitar::after,
+#panelClose::after,
+#destClose::after,
+.modal-head button::after,
+[data-cerrar]::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
+  transform: translate(-50%, -50%);
+}
+
+/* Lo que ya es una caja con texto solo necesita no quedarse corto de alto. */
+@media (pointer: coarse) {
+  .btn, .zona, .tema, .cuenta, .date-btn { min-height: var(--tap-min); }
 }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
-}
-
-/* --- selector de destino en ventana -------------------------------------- */
-.modal {
-  position: fixed; inset: 0; z-index: 12; display: flex; align-items: flex-end;
-  justify-content: center; background: rgba(23, 26, 32, 0.4); backdrop-filter: blur(3px);
-  animation: fade 0.25s var(--ease);
-}
-.modal-caja {
-  width: min(680px, 100%); max-height: 88vh; display: flex; flex-direction: column;
-  background: var(--paper-2); border: 1px solid var(--line);
-  border-radius: 18px 18px 0 0; padding: 20px 20px 0;
-  animation: sube 0.3s var(--ease);
-}
-@keyframes sube { from { transform: translateY(24px); opacity: 0; } }
-.modal-head { display: flex; justify-content: space-between; align-items: center; }
-.modal-head h2 { margin: 0; font: 500 22px "Fraunces", Georgia, serif; }
-.modal-head button {
-  background: var(--card); border: 1px solid var(--line); border-radius: 9px;
-  color: var(--muted); font-size: 15px; cursor: pointer; padding: 9px 11px;
-}
-#destSearch {
-  width: 100%; margin: 16px 0 12px; background: var(--card); color: var(--ink);
-  border: 1px solid var(--line); border-radius: 9px; padding: 13px 14px;
-  font: 400 16px "Familjen Grotesk", sans-serif;
-}
-.dest-list { overflow-y: auto; padding-bottom: 24px; }
-.pais { border-top: 1px solid var(--line-2); padding: 12px 0; }
-.pais-todo {
-  display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-  width: 100%; background: none; border: 0; cursor: pointer; text-align: left;
-  color: var(--ink); padding: 6px 4px; border-radius: 8px;
-}
-.pais-todo:hover { background: var(--azul-soft); }
-.pais-todo span { font: 500 17px "Fraunces", Georgia, serif; }
-.pais-todo em {
-  font: 400 11px "DM Mono", monospace; color: var(--faint); font-style: normal;
-}
-.ciudades { display: flex; flex-wrap: wrap; gap: 7px; padding: 8px 4px 0; }
-.ciudad {
-  background: var(--card); border: 1px solid var(--line); border-radius: 99px;
-  color: var(--muted); cursor: pointer; padding: 8px 13px;
-  font: 400 13.5px "Familjen Grotesk", sans-serif;
-}
-.ciudad i { font-style: normal; font-family: "DM Mono", monospace; color: var(--faint); font-size: 11px; }
-.ciudad:hover { border-color: var(--azul); color: var(--ink); }
-
-.watches { margin-top: 20px; }
-.watch-head {
-  font: 500 11px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: .16em; color: var(--faint); margin: 0 0 8px;
-}
-.watch {
-  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
-  padding: 11px 0; border-top: 1px solid var(--line-2);
-}
-.watch b { font: 500 16px "Fraunces", Georgia, serif; }
-.watch .meta { font: 400 12px "DM Mono", monospace; color: var(--faint); }
-
-/* --- calendario de un solo campo ---------------------------------------- */
-.date-btn {
-  background: var(--card); color: var(--ink); border: 1px solid var(--line);
-  border-radius: 9px; padding: 11px 14px; cursor: pointer; text-align: left;
-  font: 400 15px "Familjen Grotesk", sans-serif; width: 100%;
-}
-.date-btn:hover { border-color: var(--azul); }
-.cal {
-  margin-top: 16px; border: 1px solid var(--line); border-radius: var(--radius);
-  padding: 18px; background: var(--card);
-  max-height: 340px; overflow-y: auto;
-}
-.meses { display: grid; gap: 22px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
-.mes h4 {
-  margin: 0 0 10px; font: 500 13px "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: .12em; color: var(--azul);
-}
-.semana, .dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.semana i {
-  font: 400 10px "DM Mono", monospace; color: var(--faint);
-  text-align: center; font-style: normal; padding-bottom: 4px;
-}
-.dias .dia, .dias span {
-  aspect-ratio: 1; display: grid; place-items: center; border: 0; border-radius: 7px;
-  background: none; color: var(--ink); font: 400 13px "DM Mono", monospace; cursor: pointer;
-}
-.dias .dia:hover:not([disabled]) { background: var(--azul-soft); }
-.dias .dia[disabled] { color: var(--faint); opacity: .45; cursor: default; }
-.dias .dia.extremo { background: var(--azul); color: var(--sobre-acento); font-weight: 500; }
-.dias .dia.dentro { background: var(--azul-soft); }
-
-.quitar {
-  margin-left: auto; background: var(--card); border: 1px solid var(--line);
-  border-radius: 8px; color: var(--faint); cursor: pointer;
-  font-size: 12px; line-height: 1; padding: 6px 9px; transition: color .2s, border-color .2s;
-}
-.quitar:hover { color: var(--sello); border-color: rgba(189, 63, 39, .5); }
-.quitar[disabled] { opacity: .4; cursor: default; }
-
-.build { margin-left: auto; opacity: .6; }
-
-/* --- zonas y frescura ---------------------------------------------------- */
-.zonas { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 26px; }
-.zona {
-  padding: 10px 16px; border: 1px solid var(--line); border-radius: 99px;
-  background: var(--card); color: var(--muted); text-decoration: none;
-  font: 500 13.5px "Familjen Grotesk", sans-serif; transition: all .2s;
-}
-.zona:hover { color: var(--ink); border-color: var(--azul); }
-.zona.activa { background: var(--azul); color: var(--sobre-acento); border-color: var(--azul); }
-#frescura.viejo { color: var(--sello); }
-.watch { cursor: pointer; }
-.watch-rows { width: 100%; padding-top: 6px; }
-
-/* ========================================================================
-   build 26 — precio por persona, favoritos e histórico
-   ======================================================================== */
-
-/* --- precio: el total manda, el por persona explica ---------------------- */
-.pax-nota {
-  display: block; margin-top: 6px;
-  font: 400 11px/1.4 "DM Mono", monospace; color: var(--faint);
-  letter-spacing: 0.02em;
-}
-.stub .pax-nota { margin-top: 4px; }
-.brow .price .cifra {
-  font: 500 24px/1 "DM Mono", monospace; letter-spacing: -0.03em; color: var(--ink);
-}
-.brow .price .cifra span { font-size: 0.5em; color: var(--muted); margin-left: 2px; }
-.brow .price .pax-nota { color: var(--faint); margin-top: 4px; }
-/* El descuento sigue siendo verde; lo demás, discreto. */
-.brow .price small.off { color: var(--verde); }
-
-/* --- la estrella --------------------------------------------------------- */
-.fav {
-  background: none; border: 1px solid transparent; border-radius: 8px;
-  color: var(--faint); cursor: pointer; line-height: 1;
-  font-size: 19px; padding: 4px 7px 5px;
-  transition: color 0.18s var(--ease), border-color 0.18s var(--ease),
-              transform 0.18s var(--ease);
-}
-.fav:hover { color: var(--sello); border-color: var(--line); transform: scale(1.12); }
-.fav.on { color: var(--sello); }
-.fav:focus-visible { outline: 2px solid var(--azul); outline-offset: 2px; }
-.brow .fav { justify-self: end; align-self: center; }
-.stub .fav {
-  align-self: flex-start; margin-top: 10px; font-size: 21px; padding: 4px 6px 5px;
-}
-
-/* --- cuánto ha cambiado -------------------------------------------------- */
-.delta {
-  display: block; margin-top: 4px;
-  font: 500 11px/1.4 "DM Mono", monospace; letter-spacing: 0.02em;
-}
-.delta.baja { color: var(--verde); }
-.delta.sube { color: var(--sello); }
-.delta.igual { color: var(--faint); font-weight: 400; }
-
-/* --- el aviso de favoritos ----------------------------------------------
-   Un favorito que se mueve es la unica cosa de esta web que exige atencion
-   ahora mismo, asi que se le da el peso de un titular: la cifra que ha cambiado
-   grande y en monoespaciada, el precio viejo tachado al lado y la diferencia
-   dentro de un sello de goma. El resto (fechas, compania, curva) es letra
-   pequena que solo se lee si la cifra te ha hecho parar. */
-.fav-aviso {
-  margin: 0 0 30px; padding: 20px 20px 16px;
-  background: var(--card); border: 1px solid var(--line);
-  border-radius: var(--radius); box-shadow: var(--sombra);
-  animation: fade-in 0.4s var(--ease);
-  position: relative; overflow: hidden;
-}
-/* La banda de arriba canta la direccion antes de leer nada, y su reparto es el
-   reparto real de los cambios (lo pone el JS en --pbaja). */
-.fav-aviso {
-  --pbaja: 100%;
-}
-.fav-aviso::before {
-  content: ""; position: absolute; inset: 0 0 auto; height: 3px;
-  background: linear-gradient(90deg, var(--verde) 0 var(--pbaja), var(--sello) var(--pbaja) 100%);
-}
-.aviso-head {
-  display: flex; align-items: baseline; gap: 14px 18px; flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-.aviso-head .kicker { margin: 0; }
-.aviso-head h3 {
-  margin: 0; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
-  font: 500 clamp(24px, 3.4vw, 32px)/1 "Fraunces", Georgia, serif;
-  letter-spacing: -0.02em; color: var(--ink);
-}
-.aviso-head h3 small {
-  font: 400 12.5px "DM Mono", monospace; color: var(--faint);
-  letter-spacing: 0.02em;
-}
-.aviso-head .btn { margin-left: auto; }
-
-.cambios { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
-
-.cambio {
-  position: relative; display: grid; gap: 10px;
-  padding: 15px 16px 13px 19px;
-  background: var(--card-2); border: 1px solid var(--line-2); border-radius: 12px;
-  animation: fade-in 0.45s var(--ease) backwards;
-}
-/* El troquel de color a la izquierda, como el de las filas del panel. */
-.cambio::before {
-  content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px;
-  border-radius: 0 3px 3px 0; background: currentColor;
-}
-.cambio.baja { color: var(--verde); }
-.cambio.sube { color: var(--sello); }
-
-.cambio header { display: grid; gap: 3px; }
-.cambio h4 {
-  margin: 0; font: 500 19px/1.15 "Fraunces", Georgia, serif;
-  letter-spacing: -0.015em; color: var(--ink);
-}
-.cambio header p { margin: 0; font: 400 11.5px/1.4 "DM Mono", monospace; color: var(--faint); }
-
-.cambio-precio { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.cambio-precio s {
-  font: 400 15px "DM Mono", monospace; color: var(--faint);
-  text-decoration-thickness: 1px;
-}
-.cambio-precio b {
-  font: 500 34px/1 "DM Mono", monospace; letter-spacing: -0.04em; color: var(--ink);
-}
-.cambio-precio b span { font-size: 0.45em; color: var(--muted); margin-left: 2px; }
-/* El sello: tinta de color sobre su propio fondo, con el borde a trazos del
-   resto de sellos de la web. */
-.sello-dif {
-  font: 500 12px/1 "DM Mono", monospace; font-style: normal; letter-spacing: 0.02em;
-  color: currentColor; border: 1px dashed currentColor; border-radius: 6px;
-  padding: 5px 8px 4px;
-}
-.cambio-nota {
-  flex-basis: 100%; font: 400 11px "DM Mono", monospace; color: var(--faint);
-}
-.cambio-curva { min-height: 34px; color: currentColor; }
-.cambio footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.insignia {
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase; letter-spacing: 0.12em;
-  color: var(--verde); background: rgba(29, 122, 85, 0.12); border-radius: 99px;
-  padding: 6px 10px 5px;
-}
-
-.aviso-pie {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 14px;
-  border-top: 1px dashed var(--line-2); padding-top: 12px;
-}
-.aviso-pie a {
-  color: var(--azul); font: 400 12.5px "DM Mono", monospace;
-  text-decoration: none; border-bottom: 1px solid var(--line);
-}
-.aviso-pie a:hover { color: var(--sello); border-color: currentColor; }
-
-/* --- la curva de precio -------------------------------------------------- */
-.spark { display: block; overflow: visible; }
-.spark.baja { color: var(--verde); }
-.spark.sube { color: var(--sello); }
-
-.historia {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 10px;
-  background: var(--card-2);
-}
-.historia > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.historia b { font: 500 15px "DM Mono", monospace; color: var(--ink); }
-.historia span { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
-/* El veredicto tiñe el borde: se ve antes de leerlo. */
-.historia.chollo { border-color: rgba(29, 122, 85, 0.5); background: rgba(29, 122, 85, 0.07); }
-.historia.chollo span, .historia.bien span { color: var(--verde); }
-.historia.bien { border-color: rgba(29, 122, 85, 0.3); }
-.historia.mal { border-color: rgba(189, 63, 39, 0.35); }
-.historia.mal span { color: var(--sello); }
-
-/* --- la lista de favoritos ---------------------------------------------- */
-.favoritos { margin-top: 34px; }
-.favoritos .meta {
-  font: 400 13.5px/1.6 "DM Mono", monospace; color: var(--faint); max-width: 60ch;
-}
-.favrow {
-  display: grid; align-items: center; gap: 10px 18px;
-  grid-template-columns: 62px minmax(130px, 1.2fr) minmax(150px, 1fr) auto auto auto;
-  padding: 15px 16px; background: var(--card);
-  border: 1px solid transparent; border-bottom: 1px solid var(--line-2);
-  animation: fade-in 0.45s var(--ease) backwards;
-}
-.favrow:hover {
-  border-color: var(--line); border-radius: 10px; box-shadow: var(--sombra);
-}
-/* Lo que ha cambiado desde la última vez se marca hasta que le das a Enterado. */
-.favrow.nuevo { background: var(--sello-soft); border-color: rgba(189, 63, 39, 0.28); border-radius: 10px; }
-.favrow .dest-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.favrow .city { font: 500 19px/1.15 "Fraunces", Georgia, serif; letter-spacing: -0.015em; }
-.favrow .country { font-size: 12px; color: var(--faint); }
-.favrow .when { font: 400 12.5px/1.5 "DM Mono", monospace; color: var(--muted); }
-.favrow .when b { color: var(--ink); font-weight: 500; }
-.favrow .when small { display: block; margin-top: 3px; font-size: 11px; color: var(--faint); }
-.favrow .spark-cell { display: flex; align-items: center; }
-.favrow .price {
-  text-align: right; font: 500 22px/1 "DM Mono", monospace; letter-spacing: -0.03em;
-}
-.favrow .price small {
-  display: block; margin-top: 5px; font: 400 11px "DM Mono", monospace; color: var(--faint);
-}
-.favrow .favacc { display: flex; align-items: center; gap: 8px; }
-
-@media (max-width: 860px) {
-  .brow {
-    grid-template-areas: "iata city price" ". when when" ". airline airline" ". fav fav";
-  }
-  .brow .fav { grid-area: fav; justify-self: start; margin-left: -7px; }
-  .favrow {
-    grid-template-columns: 58px 1fr auto;
-    grid-template-areas: "iata city price" ". when when" ". spark spark" ". acc acc";
-    gap: 8px 14px; padding: 16px 12px;
-  }
-  .favrow .iata { grid-area: iata; }
-  .favrow .dest-cell { grid-area: city; }
-  .favrow .when { grid-area: when; }
-  .favrow .spark-cell { grid-area: spark; }
-  .favrow .price { grid-area: price; }
-  .favrow .favacc { grid-area: acc; }
-}
-
-/* --- tema oscuro: lo que no se resuelve solo con los tokens -------------- */
-:root[data-tema="oscuro"] .favrow { background: none; }
-:root[data-tema="oscuro"] .favrow:hover { background: rgba(255, 176, 46, 0.05); box-shadow: none; }
-:root[data-tema="oscuro"] .favrow.nuevo {
-  background: rgba(255, 176, 46, 0.09); border-color: rgba(255, 176, 46, 0.3);
-}
-:root[data-tema="oscuro"] .historia.chollo { background: rgba(127, 214, 162, 0.08); }
-:root[data-tema="oscuro"] .fav-aviso { background: var(--card); }
-
-/* --- cuentas -------------------------------------------------------------
-   El tablon de chollos es de todos; los favoritos y los seguimientos son de
-   quien entra. Todo esto es la parte visible de esa diferencia: el boton de la
-   barra, el formulario de entrar y las filas del panel. */
-.cuenta {
-  flex: none; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
-  background: var(--card); border: 1px solid var(--line); border-radius: 99px;
-  color: var(--muted); padding: 7px 13px 6px;
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.14em; transition: color 0.2s, border-color 0.2s;
-}
-.cuenta:hover { color: var(--ink); border-color: var(--azul); }
-.cuenta b {
-  display: grid; place-items: center; width: 17px; height: 17px; border-radius: 99px;
-  font-size: 10px; font-weight: 500; color: var(--azul); line-height: 1;
-}
-/* Dentro de una cuenta el boton lleva su inicial en un sello: de un vistazo se
-   ve quien esta usando la web, que es justo lo que importa si la comparten. */
-.cuenta.dentro { color: var(--ink); border-color: var(--azul); }
-.cuenta.dentro b { background: var(--azul); color: var(--paper); }
-
-.modal-caja.estrecha { width: min(440px, 100%); padding-bottom: 22px; }
-.modal-form { display: flex; flex-direction: column; gap: 8px; padding: 16px 0 4px; }
-.modal-form label {
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.14em; color: var(--muted); margin-top: 6px;
-}
-.modal-form input {
-  background: var(--card); color: var(--ink); border: 1px solid var(--line);
-  border-radius: 9px; padding: 12px 13px;
-  font: 400 16px "Familjen Grotesk", sans-serif;
-}
-.modal-form .meta { margin: 0 0 4px; }
-.modal-form .btn { margin-top: 14px; }
-.estrecha-form { max-width: 420px; }
-
-/* El recordatorio de que hay cosas que no ves porque no has entrado. */
-.cuenta-nota {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  border-top: 1px dashed var(--line-2); padding-top: 12px; margin-top: 12px;
-}
-
-/* Filas del panel: mismo troquelado que las de vuelos, con hueco para los
-   botones de contrasena, activar y borrar. */
-.cuenta-row {
-  grid-template-columns: 92px 1fr auto; grid-template-areas: none; align-items: center;
-}
-.cuenta-row.apagada { opacity: 0.5; }
-.cuenta-row .favacc { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-
-/* En movil los botones de cada cuenta se bajan a su propia linea: en una fila
-   de 360 px no caben tres botones y el nombre sin partirse por la mitad. */
-@media (max-width: 860px) {
-  .cuenta-row { grid-template-columns: 58px 1fr; }
-  .cuenta-row .dest-cell { grid-area: auto; }
-  .cuenta-row .favacc { grid-column: 1 / -1; }
-}
-
-/* --- lo que tiene cada cuenta (panel) ------------------------------------ */
-.cuenta-detalle { border-top: 1px dashed var(--line-2); margin-top: 12px; padding-top: 14px; }
-.detalle-cols {
-  display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-}
-.detalle-cols h4 {
-  margin: 0 0 8px; font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.14em; color: var(--faint);
-}
-.lista-seca { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.lista-seca li { font: 400 12.5px/1.45 "DM Mono", monospace; color: var(--muted); }
-.lista-seca b { color: var(--ink); font-weight: 500; }
-.lista-seca .apagado { color: var(--faint); }
-/* Lo que pide una decisión tuya se marca en rojo de sello, como el resto. */
-.ojo { color: var(--sello); }
-.cuenta-row .detalle { grid-column: 1 / -1; }
-.finder.abierta { margin-bottom: 22px; }
-.switch.suelto { margin-top: 10px; }
-
-/* --- lo que necesita cuenta ---------------------------------------------- */
-/* Se apagan los campos, no el bloque entero: un hijo no puede ser mas opaco que
-   su padre, y el boton de entrar tiene que quedar bien vivo porque es la salida. */
-.finder-form.candado .field,
-.finder-form.candado > .btn { opacity: 0.45; }
-.candado-nota {
-  flex-basis: 100%; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-  margin: 4px 0 0; font: 400 13px "DM Mono", monospace; color: var(--muted);
-}
-.token-box .btn.small { margin-top: 10px; }
-
-/* --- contraseñas ---------------------------------------------------------
-   El ojo dentro del campo. Media web pide contraseñas a ciegas y luego se
-   extraña de que la gente no acierte: si te la han pasado por WhatsApp y la
-   tecleas en un móvil, poder mirarla es la diferencia entre entrar y rendirse. */
-.campo-clave { position: relative; display: flex; }
-.campo-clave input { width: 100%; padding-right: 74px; }
-.ver-clave {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  background: var(--card-2); border: 1px solid var(--line); border-radius: 7px;
-  color: var(--muted); cursor: pointer; padding: 7px 10px 6px;
-  font: 500 10px/1 "DM Mono", monospace; text-transform: uppercase;
-  letter-spacing: 0.1em; min-height: 32px;
-}
-.ver-clave:hover, .ver-clave:focus-visible { color: var(--ink); border-color: var(--azul); }
-
-/* --- móvil ---------------------------------------------------------------
-   Lo que cambia de verdad en una pantalla de 360 px: los modales pasan a ser
-   hojas que suben desde abajo con el botón siempre alcanzable, los campos van a
-   16 px (menos que eso e iOS hace zoom solo al enfocar, y ya no vuelve), y todo
-   lo que se pulsa mide al menos 40 px de alto. */
-@media (max-width: 620px) {
-  /* Los dos botones arriba a la derecha, el panel de letras debajo a lo ancho:
-     en 390 px los tres en fila dejaban el rótulo partido en dos líneas. */
-  .topbar { flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
-  .topbar .board { order: 3; flex-basis: 100%; }
-  .board-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .board-live { white-space: nowrap; flex: none; }
-  .cuenta, .tema { padding: 9px 14px 8px; min-height: 38px; }
-  .cuenta { max-width: 58%; }
-  .cuenta-txt { max-width: 11ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  .modal { align-items: flex-end; }
-  .modal-caja.estrecha { width: 100%; max-height: 90vh; overflow-y: auto; }
-  .modal-form { gap: 6px; padding-bottom: 10px; }
-  .modal-form input, .modal-form select { font-size: 16px; min-height: 46px; }
-  .modal-form .btn { width: 100%; min-height: 46px; }
-  .modal-head button { min-width: 44px; min-height: 44px; }
-
-  .candado-nota { justify-content: space-between; }
-  .candado-nota .btn { flex: 1; min-height: 42px; }
-  .cambios { grid-template-columns: 1fr; }
-  .aviso-head { gap: 8px 14px; }
-  .aviso-head .btn { margin-left: 0; }
-  /* La fila de una cuenta en vertical: sello, nombre, y los botones abajo a lo
-     ancho. Sin resetear el grid-area heredado, el sello acababa al final. */
-  .cuenta-row { grid-template-columns: 46px 1fr; gap: 6px 12px; }
-  .cuenta-row .iata, .cuenta-row .dest-cell { grid-area: auto; min-width: 0; }
-  .cuenta-row .city { font-size: 18px; }
-  .cuenta-row .favacc { grid-column: 1 / -1; }
-  .cuenta-row .favacc .btn { flex: 1; }
-  .cuenta-row .favacc .btn, .cuenta-row .favacc .quitar { min-height: 40px; }
-  /* El id de la cuenta no cabe y no se usa desde el móvil. */
-  .solo-ancho { display: none; }
-  .detalle-cols { gap: 16px; }
 }

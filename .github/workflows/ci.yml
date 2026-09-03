@@ -1,0 +1,85 @@
+name: CI
+
+# Todo lo que tiene que estar bien antes de mezclar, en un solo sitio: el
+# backend (ruff + pytest), el montaje de las partes de la web y el humo de
+# frontend. Si esto esta en verde, la portada pinta y los scrapers parsean.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Un PR al que le llegan tres pushes seguidos no necesita tres CI: vale el
+# ultimo. En main no se cancela, que ahi el historico importa.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: ruff + pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12" # la misma que el resto de workflows
+          cache: pip
+
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: ruff
+        run: ruff check .
+
+      - name: pytest
+        run: python -m pytest -q
+
+      # La cabecera, el nav y el pie viven una vez en web/partes/. Si alguien
+      # edito una region a mano, mejor saberlo aqui que publicar cuatro
+      # cabeceras distintas.
+      - name: Las partes de la web estan montadas
+        run: python tools/montar.py --check
+
+      # El texto mas pequeño de la web va a 9.5px: 4.5:1 no es un adorno. Lee
+      # los tokens del CSS, asi que salta si alguien aclara un color de mas.
+      - name: Contraste de la paleta
+        run: python tools/contraste.py --check
+
+  web:
+    name: humo de frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Linter de JS
+        run: npm run lint
+
+      # Solo Chromium: esto es humo, no una matriz de navegadores.
+      - name: Instalar Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Humo
+        run: npm run humo
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

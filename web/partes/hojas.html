@@ -1,0 +1,23 @@
+<aside id="panel" class="panel" hidden aria-label="Alojamiento">
+  <header class="panel-head">
+    <div>
+      <p class="kicker">Alojamiento</p>
+      <h2 id="panelTitle"></h2>
+      <p id="panelDates" class="panel-dates"></p>
+    </div>
+    <button id="panelClose" type="button" aria-label="Cerrar el panel de alojamiento">cerrar</button>
+  </header>
+  <div id="panelBody" class="panel-body"></div>
+</aside>
+<div id="backdrop" class="backdrop" hidden></div>
+
+<div id="destModal" class="modal" hidden>
+  <div class="modal-caja" role="dialog" aria-label="Elegir destino">
+    <header class="modal-head">
+      <h2>¿A dónde?</h2>
+      <button id="destClose" type="button" aria-label="Cerrar">cerrar</button>
+    </header>
+    <input id="destSearch" type="search" placeholder="Escribe una ciudad o un país…" autocomplete="off">
+    <div id="destList" class="dest-list"></div>
+  </div>
+</div>

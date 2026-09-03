@@ -1,6 +1,12 @@
 from tripfinder.config import Route
 from tripfinder.models import FlightOffer
-from tripfinder.scoring import baseline_for, is_deal, score_offer, should_notify, weekend_fit
+from tripfinder.scoring import (
+    baseline_for,
+    is_deal,
+    score_offer,
+    should_notify,
+    weekend_fit,
+)
 
 
 def offer(price: float = 40.0) -> FlightOffer:
@@ -51,11 +57,11 @@ def test_no_se_reenvia_el_aviso_si_el_precio_no_baja_lo_suficiente():
 
 
 def weekend_offer(**kw) -> FlightOffer:
-    base = dict(
-        provider="ryanair", origin="MAD", destination="FCO",
-        depart_date="2026-09-11", return_date="2026-09-13",  # viernes -> domingo
-        depart_time="19:05", return_time="21:30", price=40.0,
-    )
+    base = {
+        "provider": "ryanair", "origin": "MAD", "destination": "FCO",
+        "depart_date": "2026-09-11", "return_date": "2026-09-13",  # viernes -> domingo
+        "depart_time": "19:05", "return_time": "21:30", "price": 40.0,
+    }
     base.update(kw)
     return FlightOffer(**base)
 

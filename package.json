@@ -1,0 +1,14 @@
+{
+  "name": "tripfinder-web",
+  "private": true,
+  "description": "Solo las herramientas de la web: la web en si no tiene build ni dependencias.",
+  "scripts": {
+    "lint": "oxlint --config web/.oxlintrc.json web",
+    "humo": "playwright test",
+    "servir": "node tests/web/servidor.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "oxlint": "1.42.0"
+  }
+}

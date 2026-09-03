@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Callable
 from datetime import date
-from typing import Any, Callable
+from typing import Any
 
 from ..config import Route
 from ..models import FlightOffer, Leg
 
 log = logging.getLogger("tripfinder")
 
-REGISTRY: dict[str, type["FlightProvider"]] = {}
+REGISTRY: dict[str, type[FlightProvider]] = {}
 
 
 def register(name: str) -> Callable[[type], type]:
@@ -42,7 +43,7 @@ class FlightProvider:
     def search_oneway(
         self,
         route: Route,
-        day: "date",
+        day: date,
         *,
         inbound: bool = False,
         destinations: list[str] | None = None,

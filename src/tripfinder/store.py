@@ -52,6 +52,124 @@ class Store:
             },
         )
 
+    # -- continentes -----------------------------------------------------
+    def save_continents(self) -> dict[str, str] | None:
+        """El mapa codigo -> continente que necesita la portada, y nada mas.
+
+        La portada solo usa `airports_world.json` para saber en que continente
+        cae cada destino y poder pintar el filtro. Cargar 270 KB para eso —mas
+        los 180 de `offers.json`— era casi medio mega de JSON para pintar 120
+        filas, en un movil y antes de ver nada.
+
+        Se guarda AGRUPADO POR CONTINENTE y con los codigos pegados en una sola
+        cadena, no como `{"MAD": "Europa", ...}`. Suena raro y es a proposito:
+        el mapa plano son 61 KB porque repite el nombre del continente 3.270
+        veces; asi son 10 KB. El nombre del continente se escribe seis veces en
+        total y los codigos IATA siempre miden tres letras, asi que partir la
+        cadena de tres en tres es todo lo que hay que hacer para leerlo.
+
+        Devuelve el mapa plano (util para los tests), o None si no esta el
+        listado mundial: es un fichero estatico del repo, no algo que el scan
+        genere, y sin el no hay nada que derivar.
+        """
+        mundial = self.root / "airports_world.json"
+        if not mundial.exists():
+            return None
+        try:
+            crudo = json.loads(mundial.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return None
+
+        plano = {a["code"]: a["cont"] for a in crudo if a.get("code") and a.get("cont")}
+        agrupado: dict[str, list[str]] = {}
+        for codigo, continente in plano.items():
+            agrupado.setdefault(continente, []).append(codigo)
+
+        self._write(
+            "continentes.json",
+            {c: "".join(sorted(codigos)) for c, codigos in sorted(agrupado.items())},
+        )
+        return plano
+
+    # -- camas ------------------------------------------------------------
+    def save_beds(self, minimo_muestras: int = 3) -> dict[str, Any]:
+        """Lo que cuesta una cama por noche, sacado de lo ya buscado.
+
+        El vuelo es por persona y la cama es para el grupo: sumarlos bien da el
+        unico numero que decide un viaje. Hoy ese numero solo aparece DESPUES
+        de pedir alojamiento, que es un workflow de varios minutos, asi que
+        quien mira el tablon no lo ve nunca.
+
+        Aqui se destila lo que ya se busco alguna vez —`data/stays/*.json`— en
+        una mediana de precio por noche, por destino y por pais. La mediana y
+        no la media: un atico de 400 EUR entre veinte anuncios de 50 no puede
+        mover la estimacion de todos.
+
+        Lo que NO hace: inventarse un valor por defecto para los destinos que
+        nadie ha buscado todavia. Un numero igual para todos no informa, y
+        ademas parece que sabe algo. Donde no hay dato, no hay estimacion; y la
+        cobertura crece sola cada vez que alguien pide alojamiento.
+        """
+        carpeta = self.root / "stays"
+        por_destino: dict[str, list[float]] = {}
+        por_pais: dict[str, list[float]] = {}
+        nombres: dict[str, str] = {}
+
+        for f in sorted(carpeta.glob("*.json")) if carpeta.exists() else []:
+            try:
+                datos = json.loads(f.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                continue
+            oferta = datos.get("offer") or {}
+            codigo = oferta.get("destination")
+            if not codigo:
+                continue
+            noches = max(1, int(oferta.get("nights") or 1))
+
+            # Por noche, y del EXTREMO BARATO. Airbnb devuelve desde una
+            # habitacion compartida hasta un chalet: en Lanzarote la lista va de
+            # 28 a 405 EUR la noche, asi que la mediana del catalogo estimaria
+            # un viaje que nadie hace. El numero que luego sustituye a esto
+            # —`_trip_summary`— coge la cama mas barata, asi que la estimacion
+            # tiene que medir lo mismo o el "real" pareceria una rebaja.
+            #
+            # Los tres mas baratos y la mediana de esos tres: un solo minimo es
+            # un anuncio suelto que puede ser cualquier cosa.
+            noche = sorted(
+                s.get("price_per_night") or (s["price_total"] / noches)
+                for s in datos.get("stays", [])
+                if s.get("price_total") or s.get("price_per_night")
+            )
+            if not noche:
+                continue
+            baratos = noche[:3]
+            por_destino.setdefault(codigo, []).extend(baratos)
+            if oferta.get("destination_country"):
+                por_pais.setdefault(oferta["destination_country"], []).extend(baratos)
+            if oferta.get("destination_name"):
+                nombres[codigo] = oferta["destination_name"]
+
+        def _mediana(xs: list[float]) -> float:
+            xs = sorted(xs)
+            mitad = len(xs) // 2
+            return xs[mitad] if len(xs) % 2 else (xs[mitad - 1] + xs[mitad]) / 2
+
+        payload = {
+            "generated_at": date.today().isoformat(),
+            "destinos": {
+                c: {"noche": round(_mediana(v), 2), "muestras": len(v), "nombre": nombres.get(c, "")}
+                for c, v in sorted(por_destino.items())
+                if len(v) >= minimo_muestras
+            },
+            "paises": {
+                p: {"noche": round(_mediana(v), 2), "muestras": len(v)}
+                for p, v in sorted(por_pais.items())
+                if len(v) >= minimo_muestras
+            },
+        }
+        self._write("camas.json", payload)
+        return payload
+
     # -- historico de precios -------------------------------------------
     def load_history(self) -> dict[str, list[dict]]:
         return self._read("history.json", {})

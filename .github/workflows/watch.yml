@@ -15,10 +15,15 @@ concurrency:
   # Un grupo por accion: con uno comun, GitHub cancelaba la que estuviera en
   # cola y el seguimiento o el borrado desaparecian sin avisar.
   group: watch-${{ github.event.action }}-${{ github.event.client_payload.id || github.run_id }}
+  # Un lote entero es un solo run: ya no hay cinco corriendo a la vez por
+  # borrar cinco busquedas.
   cancel-in-progress: false
 
 jobs:
   seguir:
+    # Esto solo escribe en un JSON: si tarda mas de un cuarto de hora, algo
+    # va mal.
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -33,6 +38,9 @@ jobs:
           PYTHONPATH: src
           TIPO: ${{ github.event.action }}
           ID: ${{ github.event.client_payload.id }}
+          # Varios de golpe: la web junta los borrados de una tacada y manda
+          # UNA sola llamada, en vez de un workflow entero por cada fichero.
+          IDS: ${{ toJSON(github.event.client_payload.ids) }}
           DEST: ${{ github.event.client_payload.dest }}
           LABEL: ${{ github.event.client_payload.label }}
           DEPART: ${{ github.event.client_payload.depart }}
@@ -41,17 +49,35 @@ jobs:
           MONTHS: ${{ github.event.client_payload.months }}
           ADULTS: ${{ github.event.client_payload.adults }}
           WEEKEND: ${{ github.event.client_payload.weekend }}
+          # De donde sale: la web manda "formulario" o "test" (#13).
+          SOURCE: ${{ github.event.client_payload.source }}
           OWNER: ${{ github.event.client_payload.owner }}
           OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
           git config user.name  "tripfinder-bot"
           git config user.email "actions@github.com"
 
+          # Los ids a los que se aplica esto: el lote si viene, y si no el
+          # unico de siempre. `null` es lo que manda toJSON cuando no hay lote.
+          lote() {
+            if [ -n "$IDS" ] && [ "$IDS" != "null" ]; then
+              printf '%s' "$IDS" | jq -r '.[]'
+            else
+              printf '%s\n' "$ID"
+            fi
+          }
+
           aplicar() {
             if [ "$TIPO" = "unwatch" ]; then
-              python -m tripfinder watch remove --id "$ID" --owner "$OWNER"
+              lote | while read -r uno; do
+                [ -n "$uno" ] || continue
+                python -m tripfinder watch remove --id "$uno" --owner "$OWNER"
+              done
             elif [ "$TIPO" = "delete_search" ]; then
-              python -m tripfinder watch remove-search --id "$ID" --owner "$OWNER"
+              lote | while read -r uno; do
+                [ -n "$uno" ] || continue
+                python -m tripfinder watch remove-search --id "$uno" --owner "$OWNER"
+              done
             else
               args=()
               if [ -n "$DEST" ];        then args+=(--dest "$DEST"); fi
@@ -62,6 +88,7 @@ jobs:
               if [ -n "$MONTHS" ];      then args+=(--months "$MONTHS"); fi
               if [ -n "$ADULTS" ];      then args+=(--adults "$ADULTS"); fi
               if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
+              if [ -n "$SOURCE" ];      then args+=(--source "$SOURCE"); fi
               # De quien es el seguimiento: sin esto todos serian de todos.
               if [ -n "$OWNER" ];      then args+=(--owner "$OWNER"); fi
               if [ -n "$OWNER_NAME" ]; then args+=(--owner-name "$OWNER_NAME"); fi

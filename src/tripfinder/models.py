@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 @dataclass
@@ -69,6 +69,9 @@ class FlightOffer:
     useful_hours: float = 0.0
     price_per_hour: float = 0.0
     weekend: bool = False  # encaja con la escapada viernes tarde -> domingo tarde
+    # Salio del barrido de madrugada (#36). Se guarda para poder ver con el
+    # tiempo si esa hora encuentra cosas que las de las 08:00 y las 20:00 no.
+    nocturno: bool = False
     # Mismo viaje con otras companias, para no perderlas al quedarnos con la mas barata
     alternatives: list[dict[str, Any]] = field(default_factory=list)
     # Rellenados por scoring.py
@@ -105,7 +108,7 @@ class FlightOffer:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "FlightOffer":
+    def from_dict(cls, d: dict[str, Any]) -> FlightOffer:
         known = {k: v for k, v in d.items() if k in cls.__dataclass_fields__}
         return cls(**known)
 

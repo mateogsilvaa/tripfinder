@@ -1,0 +1,59 @@
+# Solo configuracion de ruff. A proposito NO hay tabla `[project]`: esto no es
+# un paquete instalable, se ejecuta con `PYTHONPATH=src python -m tripfinder`,
+# y anadirla haria que pip intentara construirlo.
+
+[tool.ruff]
+line-length = 110          # el codigo ya esta escrito a esta anchura
+target-version = "py312"   # la de todos los workflows
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+# Las reglas se eligen a mano en vez de heredar las de ruff. Los valores por
+# defecto cambian entre versiones, y con CI eso significa que un martes
+# cualquiera el repo amanece en rojo sin que nadie haya tocado nada. Lo que
+# esta aqui es lo que este codigo cumple hoy, comprobado.
+select = [
+  "F",     # errores de verdad: nombres que no existen, imports sin usar
+  "E",     # pycodestyle
+  "W",     # espacios al final, saltos raros
+  "I",     # imports ordenados
+  "UP",    # modismos que ya no hacen falta en 3.12
+  "B",     # trampas conocidas (mutable por defecto, bucle que captura mal)
+  "BLE",   # `except Exception` a pelo. El codigo ya venia con sus `# noqa:
+           # BLE001` puestos a mano y su motivo al lado, asi que la regla
+           # estaba pensada: lo que faltaba era encenderla.
+  "C4",    # comprensiones y literales
+  "SIM",   # simplificaciones
+  "RUF",   # las propias de ruff
+  "FURB",  # modernizaciones
+  "ISC",   # concatenacion implicita de cadenas
+  "DTZ",   # fechas y horas sin zona
+]
+
+ignore = [
+  # El proyecto trabaja con FECHAS de vuelo, no con instantes: "el viernes 13"
+  # es el mismo dia mires desde donde mires, y `date.today()` es exactamente lo
+  # que se quiere decir. Donde la zona SI importa —a que hora del dia
+  # peninsular corre cada cron— es un problema aparte y esta abierto como #34;
+  # cambiar 27 llamadas aqui no lo arreglaria y taparia el sitio real.
+  "DTZ011",
+
+  # El codigo usa clausulas de guarda: una condicion por linea, cada una con su
+  # `return False` y su motivo al lado. SIM103 pide juntarlas en un `return not
+  # (...)` que se lee bastante peor y esconde cual de las tres falló.
+  "SIM103",
+
+  # El producto escribe español con tipografia de verdad: la raya de rango en
+  # "19:05–21:30", el apostrofo curvo en los nombres de aeropuerto ("Val d’Or")
+  # y el menos real en "−12 €". RUF001 los ve como caracteres que se parecen a
+  # otros; aqui son los correctos y cambiarlos empeoraria el texto.
+  "RUF001",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# En los tests se montan diccionarios de prueba con nombres largos a posta.
+"tests/*" = ["E501"]
+# Las plantillas de correo llevan el CSS en linea dentro del atributo `style`,
+# porque los clientes de correo ignoran las hojas de estilo. Partir esas lineas
+# no las hace mas legibles: las convierte en un puzle de concatenaciones.
+"src/tripfinder/notify/render.py" = ["E501"]

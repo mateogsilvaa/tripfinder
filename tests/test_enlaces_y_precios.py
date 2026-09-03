@@ -54,8 +54,8 @@ def test_una_aerolinea_desconocida_no_inventa_enlace():
 
 # --------------------------------------------------------------- precios
 def _oferta(**extra):
-    base = dict(provider="google", origin="MAD", destination="OTP",
-                depart_date="2026-11-06", price=240.0)
+    base = {"provider": "google", "origin": "MAD", "destination": "OTP",
+            "depart_date": "2026-11-06", "price": 240.0}
     base.update(extra)
     return FlightOffer(**base)
 

@@ -38,7 +38,7 @@ URL = "https://www.google.com/travel/flights"
 CONSENT_COOKIE = "SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVzIAEaBgiA_LyaBg"
 
 LABEL_RE = re.compile(r'aria-label="([^"]{60,400})"')
-CARD_RE = re.compile(r'<li class="pIav2d"[^>]*>(.*?)</li>', re.S)
+CARD_RE = re.compile(r'<li class="pIav2d"[^>]*>(.*?)</li>', re.DOTALL)
 TAGS_RE = re.compile(r"<[^>]+>")
 CARD_PRICE_RE = re.compile(r"(\d[\d.]*)\s*€")
 CARD_TIME_RE = re.compile(r"(\d{1,2}:\d{2})")
@@ -51,10 +51,10 @@ AIRLINE_RE = re.compile(
     r"(?:Vuelos? directos? de|Vuelos? (?:de|con|operados? por|operado por))\s+([^.]+?)\."
 )
 # "Air France. Operado por HOP!." -> nos quedamos con quien vende el billete.
-OPERADO_RE = re.compile(r"\s*Operad[oa]s? por\s+[^.]+\.?$", re.I)
+OPERADO_RE = re.compile(r"\s*Operad[oa]s? por\s+[^.]+\.?$", re.IGNORECASE)
 # "Vuelo con 1 escala de British Airways" cuela el numero de escalas dentro del
 # nombre de la compania, y entonces no casa con ningun enlace de reserva.
-ESCALAS_PREFIJO_RE = re.compile(r"^\s*(?:\d+\s+)?escalas?\s+(?:de|con)\s+", re.I)
+ESCALAS_PREFIJO_RE = re.compile(r"^\s*(?:\d+\s+)?escalas?\s+(?:de|con)\s+", re.IGNORECASE)
 TIME_RE = re.compile(r"Sale de .*? a las (\d{1,2}:\d{2})")
 ARRIVE_RE = re.compile(r"Llega a .*? a las (\d{1,2}:\d{2})")
 STOPS_RE = re.compile(r"(\d+)\s+escala")
@@ -169,7 +169,14 @@ class GoogleFlightsProvider(FlightProvider):
             except Exception as exc:  # noqa: BLE001 - una consulta fallida no tumba el scan
                 log.warning("Google Flights %s %s: %s", dest, out_date, exc)
         consultas = min(len(pairs), max_queries)
-        log.info("Google Flights %s: %d tarifas en %d consultas", route.origin, len(offers), consultas)
+        # Cuantos DESTINOS distintos, no solo cuantas consultas: es lo que
+        # separa el barrido de madrugada del diario, y sin verlo en el log no
+        # hay forma de saber si de verdad recorrio el mapa entero (#35).
+        destinos = len({d for d, _, _ in pairs[:max_queries]})
+        log.info(
+            "Google Flights %s: %d tarifas en %d consultas sobre %d destinos",
+            route.origin, len(offers), consultas, destinos,
+        )
         # Paginas vacias en cadena = nos han capado. Es importante que se vea:
         # antes parecia "no hay vuelos" cuando en realidad no nos contestaban.
         if consultas >= 5 and (self.paginas_vacias > consultas * 0.3 or len(offers) < consultas * 0.2):
@@ -249,7 +256,7 @@ class GoogleFlightsProvider(FlightProvider):
             return []
 
         best_por_aerolinea: dict[str, FlightOffer] = {}
-        etiquetas = [l for l in LABEL_RE.findall(html) if "euros" in l and "Sale de" in l]
+        etiquetas = [e for e in LABEL_RE.findall(html) if "euros" in e and "Sale de" in e]
         if not etiquetas:
             # En algunas rutas Google no pone la etiqueta de accesibilidad con el
             # precio (visto en MAD-STR: 18 vuelos de SWISS y Lufthansa que se

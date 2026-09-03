@@ -69,8 +69,12 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#16 · Workflow de despliegue a Pages** `infra`
   - AC: cada push a `main` publica `web/` + `data/`.
 - [x] **#17 · Identidad visual propia** `web` `ux`
-  - Tema oscuro cálido, tarjetas con troquel de billete, Fraunces + DM Mono, grano y
-    animación de entrada escalonada. Respeta `prefers-reduced-motion`.
+  - **Rehecha como atlas** (build 28): carta de noche por defecto y plancha impresa en
+    claro, radios a 0, sin sombras ni blur, sin tarjetas —regla mayor con cuadratín
+    rojo y hairlines—, puntos guía entre topónimo y cifra, graticula y neatline de
+    fondo, Newsreader + Sora + Martian Mono. Sin iconos ni emoji: las acciones se
+    escriben. El correo va con la misma paleta. Respeta `prefers-reduced-motion`.
+  - Antes: tema oscuro cálido con troquel de billete, Fraunces + DM Mono y ámbar.
 - [x] **#34 · Bug: el panel de alojamiento no se cerraba** `web`
   - `.panel` tenía `display:flex`, que ganaba al atributo `hidden`. Ahora `[hidden]` es global.
 - [ ] **#35 · PWA instalable** `web` `nice-to-have`
@@ -173,11 +177,67 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
   - Hoy, si alguien la olvida, se la cambias tú desde el panel (y eso le rehace el sobre).
     No hay email de reseteo porque no hay servidor que lo mande de forma fiable.
 
+## M10-M16 · Auditoría de la web  🚧 en curso
+
+De la auditoría salieron 31 tareas (issues #6 a #36). Lo cerrado hasta ahora,
+todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
+
+- [x] **#13 · Marcar de dónde viene cada seguimiento** `core` `email`
+  - Campo `source` en `Watch`, propagado desde el `client_payload`.
+- [x] **#14 · Dejar de publicar los emails de las cuentas** `seguridad`
+- [x] **#15 · El panel avisa (y arregla) los sobres que faltan** `web` `infra`
+  - Se canta en la fila plegada y en el login, con «Darle acceso» al lado.
+- [x] **#16 · CI: ruff + pytest en cada PR** `infra`
+- [x] **#17 · Poner al día README, ARCHITECTURE y ROADMAP** `documentation`
+- [x] **#18 · `esc()` valida el esquema en las URL** `seguridad`
+- [x] **#19 · No cargar 270 KB de aeropuertos en la portada** `perf`
+  - De ~450 KB a 190 KB de JSON en la portada.
+- [x] **#20 · Fuentes que no bloquean** `perf`
+- [x] **#21 · Versión de assets automática** `infra`
+  - La sella `pages.yml` con el hash del commit; en el repo vale `dev`.
+- [x] **#23 · Diálogos accesibles en toda la web** `accessibility`
+- [x] **#24 · Anunciar lo que está pasando** `accessibility`
+- [x] **#25 · Contraste y tamaño táctil** `accessibility`
+  - `tools/contraste.py` audita la paleta en CI; 44 px de área táctil.
+- [x] **#26 · La portada dice qué es esto** `ux`
+- [x] **#27 · Cada página con su texto** `ux`
+- [x] **#28 · 404 y estados vacíos** `ux`
+- [x] **#29 · Coste total de la escapada en el listado** `core` `ux`
+- [x] **#31 · Una sola cabecera** `infra`
+  - Las partes comunes en `web/partes/`, montadas por `tools/montar.py`.
+- [x] **#32 · Humo de frontend en CI** `infra`
+- [x] **#30 · Partir `app.js` en módulos** `infra`
+  - Once módulos ES en `web/js/`, sin bundler.
+- [x] **#33 · Barrido nocturno de la madrugada del miércoles** `scraper` `infra`
+  - Dos cron y un guardián de hora local, con cerrojo semanal.
+- [x] **#34 · Horas peninsulares de verdad en todos los crons** `infra`
+- [x] **#35 · El barrido nocturno recorre el mapa entero** `core` `scraper`
+  - `config/watchlist-nocturno.yml` hereda de `watchlist.yml` y sube a 110
+    consultas a 7 s. El diario sigue con sus 40 a 4 s.
+- [x] **#36 · El correo del barrido nocturno no llega a las tres de la mañana** `email` `ux`
+  - Aviso diferido: se aparca en `state.json` y lo manda el scan de la mañana.
+
+Y el sistema de diseño nuevo —el atlas— por encima de todo eso.
+
+Lo que queda: el test de destinos (#6-#12, que es una funcionalidad entera y no
+un arreglo) y la PWA (#22).
+
+
 ## M5 · Robustez y calidad
 
 - [x] **#25 · Tests de scoring y de parseo de providers** `infra`
-  - 10 tests en `tests/`, `python -m pytest` en verde.
-- [ ] **#26 · CI: ruff + pytest en cada PR** `infra`
+  - Suite en `tests/`, con `ruff` y `pytest` en cada push y cada PR (`ci.yml`).
+    Sin número aquí a propósito: cualquiera que se escriba se queda viejo a la
+    semana. Lo que hay es lo que salga de `python -m pytest`.
+- [x] **#26 · CI: ruff + pytest en cada PR** `infra`
+  - `ci.yml` en cada push y cada PR, con dos trabajos: **backend** (ruff, pytest y
+    `montar --check`) y **web** (oxlint y humo de frontend con Playwright).
+  - Reglas de ruff elegidas a mano en `pyproject.toml` y versión clavada en
+    `requirements-dev.txt`: las de por defecto cambian entre releases y dejarían
+    el repo en rojo sin que nadie toque nada. Las dos apagadas van con su motivo.
+  - Humo: nueve pruebas sobre Chromium sin red, con el JSON de ejemplo del repo.
+    Comprobado que una portada rota (sin filas, o con un error de sintaxis) las
+    pone en rojo. Falta la del test de destinos, que no existe todavía.
 - [ ] **#27 · Manejo de errores por provider sin tumbar el scan** `core`
   - Parcialmente hecho: cada provider ya va en try/except; falta reportar fallos en la web.
 - [ ] **#28 · Alertas si el workflow lleva N días sin encontrar nada** `infra` `nice-to-have`
@@ -188,5 +248,5 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 
 1. #10 (rate limiting) — evita que te bloqueen antes de escalar providers.
 2. #24 (coste total) — es lo que de verdad decide un viaje.
-3. #26 (CI) — barato y evita regresiones en los parsers.
+3. ~~#26 (CI)~~ — hecho: ruff, pytest y humo de frontend en cada PR.
 4. #9 / #13 / #17 — cuando lo demás esté estable.

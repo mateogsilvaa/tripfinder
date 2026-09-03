@@ -98,10 +98,42 @@ class Config:
         return int(self.stays.get("adults", 2))
 
 
-def load_config(path: str | Path | None = None) -> Config:
-    p = Path(path) if path else DEFAULT_CONFIG
-    with open(p, "r", encoding="utf-8") as fh:
-        return Config(raw=yaml.safe_load(fh) or {})
+def _mezclar(base: dict[str, Any], encima: dict[str, Any]) -> dict[str, Any]:
+    """Une dos configuraciones. Los diccionarios se funden clave a clave; todo
+    lo demas —listas incluidas— lo pisa el de encima.
+
+    Las listas se pisan enteras a proposito: `providers: [ryanair]` en una
+    config que hereda tiene que significar *solo* Ryanair, no "Ryanair ademas
+    de los cuatro de siempre". Fundirlas haria imposible quitar uno."""
+    salida = dict(base)
+    for clave, valor in encima.items():
+        de_antes = salida.get(clave)
+        if isinstance(de_antes, dict) and isinstance(valor, dict):
+            salida[clave] = _mezclar(de_antes, valor)
+        else:
+            salida[clave] = valor
+    return salida
+
+
+def load_config(path: str | Path | None = None, _vistos: set[Path] | None = None) -> Config:
+    """Lee un watchlist.yml. Si lleva `hereda: otro.yml`, lo carga primero y le
+    pone encima lo de este.
+
+    Existe por el barrido nocturno (#35): cambia cuatro numeros de las ~300
+    lineas de `watchlist.yml`, y copiarlas todas garantizaba que los dos
+    ficheros se separaran en cuanto se tocara uno."""
+    p = (Path(path) if path else DEFAULT_CONFIG).resolve()
+    _vistos = _vistos or set()
+    if p in _vistos:
+        raise ValueError(f"'hereda' da vueltas en circulo: {p}")
+    _vistos.add(p)
+    with open(p, encoding="utf-8") as fh:
+        crudo = yaml.safe_load(fh) or {}
+    padre = crudo.pop("hereda", None)
+    if padre:
+        ruta_padre = (p.parent / str(padre)).resolve()
+        crudo = _mezclar(load_config(ruta_padre, _vistos).raw, crudo)
+    return Config(raw=crudo)
 
 
 def env(key: str, default: str = "") -> str:

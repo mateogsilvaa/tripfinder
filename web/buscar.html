@@ -1,55 +1,74 @@
 <!doctype html>
 <html lang="es">
+<!-- tf:parte cabeza -->
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TripFinder · búsqueda avanzada</title>
-<meta name="description" content="Escapadas de fin de semana desde Madrid por debajo de su precio habitual, con busqueda de alojamiento bajo demanda.">
-<meta name="theme-color" content="#0d0b0a">
+<title>TripFinder · trazar un viaje</title>
+<meta name="description" content="Dile a donde quieres ir y se recorre finde a finde hasta el año que viene, preguntando a todas las companias y no solo a las low cost.">
+<meta name="theme-color" content="#0b1720">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=27">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=dev">
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
 </head>
+<!-- /tf:parte -->
 <body>
+<!-- tf:parte capas -->
 <div class="grain" aria-hidden="true"></div>
 <div class="glow" aria-hidden="true"></div>
+<div class="registro" aria-hidden="true"></div>
+
+<noscript>
+  <p class="sin-js">
+    Esta web necesita JavaScript: los precios se leen de un fichero de datos y
+    se pintan en tu navegador, así que sin él no hay nada que enseñar. Los
+    chollos también llegan por correo, que sí funciona sin nada.
+  </p>
+</noscript>
+<!-- /tf:parte -->
 
 <header class="masthead">
+<!-- tf:parte barra -->
   <div class="topbar">
     <div class="board" aria-hidden="true">
       <span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>
-      <span class="board-label">salidas · escapadas de fin de semana</span>
+      <span class="board-label">índice de escapadas · origen Madrid</span>
       <span class="board-live"><i></i>en vivo</span>
     </div>
-    <button id="tema" class="tema" type="button" aria-label="Cambiar entre tema claro y oscuro">
-      <b aria-hidden="true">◐</b><span class="tema-txt">tema</span>
+    <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
+      <b aria-hidden="true"></b><span class="tema-txt">noche</span>
     </button>
   </div>
+<!-- /tf:parte -->
 
-  <h1>Buscar <em>un viaje</em></h1>
+  <h1>Trazar <em>un viaje</em></h1>
   <p class="lede">
-    Viernes por la tarde fuera, domingo por la tarde de vuelta. Solo precios que han
-    caído por debajo de lo que cuesta ese mismo viaje habitualmente.
+    Aquí dices tú a dónde. Se recorre finde a finde hasta el año que viene, o para
+    las fechas exactas que le pongas, preguntando a todas las compañías.
   </p>
 
   <dl class="stats" id="stats"></dl>
 
-  <nav class="zonas">
-    <a href="./" class="zona" data-zona="promos">Chollos del día</a>
-    <a href="buscar.html" class="zona activa" data-zona="buscar">Búsqueda avanzada</a>
-    <a href="seguimientos.html" class="zona" data-zona="follows">Lo que sigues</a>
+<!-- tf:parte zonas -->
+  <nav class="zonas" aria-label="Zonas">
+    <a href="./" class="zona" data-zona="promos">hoja del día</a>
+    <a href="buscar.html" class="zona activa" data-zona="buscar" aria-current="page">trazar un viaje</a>
+    <a href="seguimientos.html" class="zona" data-zona="follows">en observación</a>
   </nav>
+<!-- /tf:parte -->
 </header>
 
 <main>
 
 <section id="favAviso" class="fav-aviso" hidden aria-live="polite"></section>
   <details class="finder" open>
-    <summary>Buscar un viaje concreto</summary>
+    <summary>trazar un viaje concreto</summary>
     <div class="finder-body">
       <p class="finder-lede">
         Arriba está lo que hay barato hoy. Aquí dices tú a dónde quieres ir: se recorre
@@ -110,6 +129,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 </main>
 
+<!-- tf:parte hojas -->
 <aside id="panel" class="panel" hidden aria-label="Alojamiento">
   <header class="panel-head">
     <div>
@@ -117,7 +137,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <h2 id="panelTitle"></h2>
       <p id="panelDates" class="panel-dates"></p>
     </div>
-    <button id="panelClose" aria-label="Cerrar">✕</button>
+    <button id="panelClose" type="button" aria-label="Cerrar el panel de alojamiento">cerrar</button>
   </header>
   <div id="panelBody" class="panel-body"></div>
 </aside>
@@ -127,21 +147,24 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <div class="modal-caja" role="dialog" aria-label="Elegir destino">
     <header class="modal-head">
       <h2>¿A dónde?</h2>
-      <button id="destClose" aria-label="Cerrar">✕</button>
+      <button id="destClose" type="button" aria-label="Cerrar">cerrar</button>
     </header>
     <input id="destSearch" type="search" placeholder="Escribe una ciudad o un país…" autocomplete="off">
     <div id="destList" class="dest-list"></div>
   </div>
 </div>
+<!-- /tf:parte -->
 
+<!-- tf:parte pie -->
 <footer class="foot">
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
-  <span class="build">build 27</span>
+  <span class="build">build dev</span>
 </footer>
 
-<script src="log.js?v=27"></script>
-<script src="auth.js?v=27"></script>
-<script src="app.js?v=27"></script>
+<script src="log.js?v=dev"></script>
+<script src="auth.js?v=dev"></script>
+<script type="module" src="js/tripfinder.js?v=dev"></script>
+<!-- /tf:parte -->
 </body>
 </html>

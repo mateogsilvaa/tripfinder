@@ -1,0 +1,51 @@
+{
+  "$schema": "https://raw.githubusercontent.com/oxc-project/oxc/main/npm/oxlint/configuration_schema.json",
+  "env": {
+    "browser": true,
+    "es2022": true
+  },
+  "globals": {
+    "TF_REPO": "readonly",
+    "tfAbrirDialogo": "readonly",
+    "tfAbrirLogin": "readonly",
+    "tfAbrirSobre": "readonly",
+    "tfAnunciar": "readonly",
+    "tfApuntar": "readonly",
+    "tfCerrarDialogo": "readonly",
+    "tfCerrarModal": "readonly",
+    "tfCerrarToken": "readonly",
+    "tfClave": "readonly",
+    "tfClaveDe": "readonly",
+    "tfCryptoOK": "readonly",
+    "tfDispatch": "readonly",
+    "tfEntrar": "readonly",
+    "tfHacerSobre": "readonly",
+    "tfHayDialogo": "readonly",
+    "tfLeerUsuarios": "readonly",
+    "tfLog": "readonly",
+    "tfModal": "readonly",
+    "tfNombre": "readonly",
+    "tfNuevaMaestra": "readonly",
+    "tfOlvidarAnuncio": "readonly",
+    "tfProbarToken": "readonly",
+    "tfSalir": "readonly",
+    "tfSesion": "readonly",
+    "tfToken": "readonly",
+    "tfUid": "readonly",
+    "tfVaciarLog": "readonly"
+  },
+  "rules": {
+    "no-unused-vars": [
+      "error",
+      {
+        "varsIgnorePattern": "^(tf|TF_)",
+        "caughtErrors": "all"
+      }
+    ],
+    "no-undef": "error",
+    "no-func-assign": "error"
+  },
+  "ignorePatterns": [
+    "partes/**"
+  ]
+}

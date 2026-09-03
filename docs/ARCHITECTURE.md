@@ -9,15 +9,63 @@
 | `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. |
 | `tripfinder.scoring` | `src/tripfinder/` | Convierte precio + histórico en un `score` 0-100 y decide si es chollo. |
 | `tripfinder.store` | `src/tripfinder/` | Persistencia en JSON dentro de `data/` (el propio repo es la base de datos). |
-| `tripfinder.users` | `src/tripfinder/` | Las cuentas: `data/users.json` con un PBKDF2-SHA256 por contraseña. El mismo algoritmo que calcula el navegador en `web/auth.js`. |
+| `tripfinder.users` | `src/tripfinder/` | Las cuentas: `data/users.json` con un PBKDF2-SHA256 por contraseña. Lo que se publica en Pages va sin las direcciones de correo (`users publish`): la web solo necesita saber **si** hay una, no cuál. El mismo algoritmo que calcula el navegador en `web/auth.js`. |
 | `tripfinder.notify` | `src/tripfinder/notify/` | Resend / SMTP / issue de GitHub + plantillas. Si el metodo elegido falla, prueba los demas. |
-| `web/` | GitHub Pages | Lee `data/offers.json` y `data/stays/*.json`. Cero build. |
+| `web/` | GitHub Pages | Lee `data/offers.json`, `data/continentes.json` (el mapa código → continente que necesita el filtro, derivado de `airports_world.json` en cada scan) y `data/stays/*.json`. Cero build: las partes comunes (`web/partes/`) las escribe `tools/montar.py` dentro de los HTML, que siguen abriéndose a doble clic. |
+| `web/js/` | GitHub Pages | Once módulos ES, uno por asunto (`ofertas`, `busqueda`, `seguimientos`, `favoritos`, `alojamiento`, `precios`, `historia`, `destinos`, `calendario`, `disparador` y `base`, que es lo compartido). `arranque.js` es lo único que *hace* algo al cargar; `tripfinder.js` es la puerta que abren las páginas. Sin bundler: el navegador resuelve los `import`. |
 | `web/auth.js` | GitHub Pages | Quién está delante: sesión, login contra `data/users.json` y el espacio de nombres de `localStorage` por cuenta. |
-| `.github/workflows/` | GitHub Actions | Cron de vuelos, cola de alojamiento vía issues, deploy de Pages. |
+| `tools/` | — | Utilidades que no se publican: `montar.py` (las partes comunes de la web), `contraste.py` (auditoría de la paleta). |
+| `.github/workflows/` | GitHub Actions | Los siete, en la tabla de abajo. |
+
+## Los workflows
+
+| Workflow | Se dispara | Qué hace |
+| --- | --- | --- |
+| `scan-flights.yml` | cron cada 12 h, o a mano | El barrido: busca vuelos, puntúa contra el histórico, avisa por correo y publica `data/`. Después revisa los seguimientos. |
+| `scan-nocturno.yml` | cron la madrugada del miércoles, o a mano | El barrido de las 02:00–03:00 peninsulares: el mapa entero de Google (110 consultas a 7 s, `config/watchlist-nocturno.yml`) sin escribir a nadie. Lo que encuentra se aparca en `state.json` y lo manda el scan de la mañana. |
+| `custom-search.yml` | `repository_dispatch: search` | Una búsqueda concreta pedida desde la web: destino, fechas y tope. Escribe `data/searches/<slug>.json`. |
+| `stay-request.yml` | `repository_dispatch: stay`, o una issue `[stay] …` | Busca cama para unas fechas exactas. Escribe `data/stays/<offer_id>.json`. |
+| `watch.yml` | `repository_dispatch: watch / unwatch / delete_search` | Apunta, quita o borra: sólo toca `data/watch.json` y `data/searches/`. Acepta lotes. |
+| `users.yml` | `repository_dispatch: user_* / admin_* / site_token / claim` | Las cuentas: altas, contraseñas, preferencias y el token del sitio cifrado. |
+| `pages.yml` | push a `main` sobre `web/`, `data/` o `tools/montar.py` | Monta el sitio: comprueba las partes, sella la versión, quita lo que no es página y publica sin los emails. |
+| `ci.yml` | cada push y cada pull request | Lo que decide si algo entra: ruff, pytest, montaje, contraste, oxlint y humo de frontend. |
+
+## La hora de los cron
+
+Los `schedule` de GitHub Actions **van en UTC y no saben de horarios de verano**,
+así que un comentario del tipo `# 08:00 hora peninsular` sólo es cierto medio
+año: en invierno (CET, UTC+1) esa misma línea son las 07:00.
+
+La regla para cualquier cron que se añada:
+
+- **Si una hora arriba o abajo da igual** —el scan cada doce horas, por
+  ejemplo— se deja un solo `cron` y el comentario dice las dos horas:
+  `# 08:00 y 20:00 en verano, 07:00 y 19:00 en invierno`. Cuesta cero y no
+  engaña a quien lo lea.
+- **Si la ventana importa de verdad** —un barrido que tiene que caer entre las
+  02:00 y las 03:00 peninsulares— hacen falta **dos `cron` y un guardián**: se
+  programan las dos horas UTC posibles y el primer paso del job comprueba la
+  hora local de Europa/Madrid y se sale si no toca. Cuesta un job que a veces
+  no hace nada, y a cambio la hora está clavada todo el año.
+
+El segundo caso ya existe: `scan-nocturno.yml` lleva los dos cron (`17 0 * * 3`
+y `17 1 * * 3`) y el guardián es `python -m tripfinder nocturno --marcar`, que
+además apunta la semana ISO en `data/state.json` (`nocturno_semana`). Sin ese
+cerrojo, un cron retrasado hasta la hora del otro haría correr los dos: el
+planificador de GitHub no es puntual, y por eso el minuto tampoco es `0`.
+
+El guardián acepta las horas **02 y 03** peninsulares, no sólo la 02. Es una
+concesión a ese mismo retraso: un cron de las 02:17 que llega a las 03:05 sigue
+siendo el barrido de esa semana, y perderlo entero por veinte minutos de cola
+sale más caro que hacerlo un rato más tarde.
+
+Lo que no vale es un solo cron con un comentario que afirme una hora local sin
+decir de qué estación habla: `tests/test_crons.py` lo comprueba.
+
 
 ## Flujo de datos
 
-1. **Cron (cada 6 h)** → `scan-flights`. Se monta el mapa de destinos del origen
+1. **Cron (cada 12 h)** → `scan-flights`. Se monta el mapa de destinos del origen
    (`routes.destinos`) y cada provider habilitado busca según `config/watchlist.yml`.
    Ryanair y Wizz barren sus propias rutas por API; Google Flights cubre el resto del
    mapa, una consulta por destino y fecha, con el presupuesto de `google.max_queries`.

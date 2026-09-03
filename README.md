@@ -6,7 +6,7 @@ búsqueda bajo demanda de alojamiento (hoteles + Airbnb) para esas fechas exacta
 Todo corre **gratis sobre GitHub**: Actions como scheduler/backend y Pages como web.
 
 ```
-                 ┌──────────────────────── GitHub Actions (cron 6h) ─────────────────────────┐
+                 ┌─────────────────────── GitHub Actions (cron 12h) ─────────────────────────┐
                  │  scan-flights.yml → tripfinder scan-flights                                │
                  │     · providers: Ryanair (sin API key) + Amadeus (opcional)                │
                  │     · scoring vs. histórico de precios  →  data/offers.json (commit)       │
@@ -26,9 +26,19 @@ Todo corre **gratis sobre GitHub**: Actions como scheduler/backend y Pages como 
                  └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Por qué issues como cola:** GitHub Pages es estático, no puede ejecutar el scraper. Abrir una
-issue desde el navegador es el único disparador gratuito, autenticado y sin exponer ningún token
-en el cliente. La web hace polling del JSON de resultados.
+**Por qué hace falta disparar algo:** GitHub Pages es estático, no puede ejecutar el scraper.
+La web manda un `repository_dispatch` desde el navegador con el token de tu cuenta —que sale
+cifrado del sobre al entrar, nunca está en el HTML— y hace polling del JSON de resultados.
+
+Las issues fueron el primer disparador, cuando no había cuentas: abrir una era la única forma
+gratuita y autenticada de arrancar un workflow desde una web estática. Hoy **las búsquedas ya no
+pasan por ahí**; solo queda como último recurso para el alojamiento, si el dispatch falla con el
+panel ya abierto.
+
+**Lo que no se lanza:** antes de levantar nada, la web mira si esa misma búsqueda ya está
+publicada. Si lo está, te la ofrece con la fecha en que se hizo en vez de repetirla —un barrido
+"donde sea" son unos ocho minutos de scraping— y te deja repetirla a mano si quieres precios de
+hoy. Y borrar varias búsquedas seguidas manda **una** llamada con la lista, no una por fichero.
 
 ## Puesta en marcha
 
@@ -203,22 +213,158 @@ abre una issue `[buscar] ...` que dispara `custom-search.yml`. En local:
 python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
 ```
 
-## Dos temas
+## Lo que cuesta hacer funcionar esto
 
-La web va **en oscuro por defecto**: el panel de salidas de siempre, negro cálido y
-ámbar. Con el botón de la esquina se pasa al papel de billete impreso —fondo manila
-con la trama de seguridad, tinta azul, sello de goma y los datos en monoespaciada—.
-La elección se guarda en el navegador y se aplica en un `<script>` del `<head>`,
-antes de pintar, para que no pegue el fogonazo al entrar de noche.
+Actions es gratis e ilimitado en repositorios públicos, y este lo es, así que ninguno de estos
+runs se factura. Aun así conviene saber dónde está el gasto, por si algún día deja de serlo:
+
+| Workflow | Cuándo | Duración | A la semana |
+| --- | --- | ---: | ---: |
+| `scan-flights` | cron, 2 al día | ~37 min | **~520 min** |
+| `scan-nocturno` | cron, 1 a la semana (madrugada del miércoles) | ~45-60 min | ~50 min |
+| `custom-search` | cada búsqueda que se lanza | ~1-8 min | según uso |
+| `stay-request` | cada búsqueda de alojamiento | ~2 min | según uso |
+| `watch` | apuntar, quitar o borrar | ~30 s | según uso |
+| `pages` | tras cada cambio de datos | ~30 s | — |
+
+El barrido diario es el **90 %** del total, y no se puede acelerar sin más: el scraper va en
+serie a propósito, con un `throttle` por proveedor, porque paralelizarlo es la forma rápida de
+acabar baneado. Si algún día hay que recortar, la palanca es la **frecuencia del cron**, que es
+una decisión de producto: cada pasada menos son ~37 minutos menos y una oportunidad menos de
+pillar un chollo antes de que suba.
+
+Todos los workflows llevan `timeout-minutes`: sin él, uno colgado se queda hasta el límite de
+6 horas de GitHub.
+
+
+## El atlas: dos cartas de la misma hoja
+
+TripFinder no se dibuja como un panel de salidas: se dibuja como un **atlas**. Quien
+lo usa no está mirando un tablero de aeropuerto, está eligiendo un sitio al que ir, y
+el índice de topónimos del final de una carta es exactamente eso: nombres de lugar y
+una referencia al lado. De ahí sale todo lo demás.
+
+**Los dos temas son la misma carta a dos horas.** De casa se entra en la **carta de
+noche** (fondo de tinta azul muy oscura, `#0b1720`, y texto marfil); con el botón de
+la esquina se pasa a **la plancha**, el papel impreso (marfil `#f2efe6` y tinta de
+grabado). El acento **no cambia entre temas**: el rojo de carta es la marca. La
+elección se guarda en el navegador y se aplica en un `<script>` del `<head>`, antes
+de pintar, para que no pegue el fogonazo al entrar de noche.
 
 Por eso el claro es un estado con nombre (`data-tema="claro"`) y no la ausencia de
 atributo: si "sin atributo" siguiera significando claro, la primera pintada sería
 blanca en todas las visitas.
 
-Todo el CSS usa tokens semanticos (`--paper`, `--card`, `--ink`, `--azul`, `--sello`),
-asi que el tema oscuro son los mismos tokens con valores de noche mas cuatro cosas
-estructurales: la trama del papel, los degradados del fondo, el troquelado y las filas
-del panel.
+Lo que hay que respetar al tocar `web/styles.css`, porque es lo que sostiene el
+sistema entero:
+
+- **Todos los radios valen 0.** La única excepción es `--r-punto` (50%), el punto del
+  testigo "en vivo".
+- **No hay sombras y no hay blur.** `--sombra` y `--relieve` existen y valen `none`;
+  el velo de las capas modales es tinta plana, como el papel de calco sobre una lámina.
+- **No hay tarjetas.** Un bloque se abre con una **regla mayor** de 2px en tinta, con
+  un cuadratín rojo de 46px a la izquierda, y se cierra con una hairline.
+- **Los puntos guía** (`.leader`) son el gesto que define el sistema: entre el topónimo
+  y su cifra corre una línea de puntos, como en el índice del final de un atlas, y al
+  pasar por encima se pone roja y el precio también. Es lo que sustituye a la tarjeta.
+- **No hay iconos ni emoji.** Cerrar, quitar y enterado se escriben con palabras en
+  versalitas mono; poner un viaje en observación es un cuadratín que se rellena de rojo.
+- **Tres tintas y un papel**: rojo de carta (`--azul`, lo que hay que mirar), azul de
+  sondeo (`--sello`, lo informativo) y verde de curva de nivel (`--verde`, lo que baja).
+  No hay una cuarta. Y un solo fondo: no existe `--card` ni `--paper-2`, porque el
+  atlas no tiene tarjetas y un token de superficie sin usar es como se vuelven a colar.
+- **Todo texto llega a 4.5:1** sobre el papel, en los dos temas. El más pequeño de la
+  web son las versalitas mono a 9.5px y ahí no es un adorno; `tools/contraste.py` lo
+  comprueba leyendo los tokens del CSS, y corre en CI.
+- **44 px de área táctil** en lo pequeño (el cuadratín de observación, quitar, cerrar).
+  Se agranda dónde se acierta con un pseudoelemento centrado, no el dibujo: el
+  cuadratín sigue midiendo 22 px, que es lo que pide el sistema.
+
+Detrás de todo van tres capas fijas en todas las pantallas: `.grain` es la fibra del
+papel, `.glow` es la **graticula** (paralelos y meridianos cada 32px, con línea de
+grado cada 160px) y `.registro` es el **neatline**, el marco graduado de la carta.
+
+Las tipografías son **Newsreader** para topónimos y titulares (peso 200 y tracking
+positivo: es un rótulo cartográfico, se abre en vez de cerrarse), **Sora** para prosa
+e interfaz y **Martian Mono** para todo dato. El mono es ancho a propósito, y por eso
+sus tamaños bajan: una cifra tiene que ocupar sitio, no gritar.
+
+El correo (`src/tripfinder/notify/render.py`) lleva la misma paleta y las mismas
+reglas. Lo único que no viaja son las fuentes —ningún cliente de correo carga
+tipografías externas—, así que ahí van Georgia y la monoespaciada del sistema.
+
+## Antes de mezclar nada
+
+`ci.yml` corre en cada push y en cada pull request, y es lo que decide si algo
+entra. En local es lo mismo, con dos órdenes:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+ruff check .                      # linter de Python
+python -m pytest -q               # los tests
+python tools/montar.py --check    # las partes de la web están montadas
+python tools/contraste.py         # contraste de la paleta, en los dos temas
+
+npm ci
+npm run lint                      # linter de JS (oxlint)
+npm run humo                      # humo de frontend (Playwright)
+```
+
+**El humo de frontend** son nueve pruebas sobre un Chromium sin red: que la
+portada pinta la plancha del día y una fila por oferta, que el esqueleto de
+carga se quita al llegar los datos y dice lo que pasa si no llegan, que sin
+sesión los formularios salen apagados con el motivo, que una dirección
+inventada da la 404 de la web con sus estilos, y que las tres zonas montan
+cabecera, nav y pie. Los datos salen de `tests/web/datos/`, no de `data/`: ese
+cambia dos veces al día y las pruebas dirían una cosa distinta cada vez.
+
+`npm` es **solo para estas herramientas**. La web publicada sigue siendo HTML
+plano sin build ni dependencias: `node_modules/` no llega a Pages.
+
+Las reglas de ruff están elegidas a mano en `pyproject.toml` en vez de heredar
+las de la versión, y la versión va clavada en `requirements-dev.txt`. Los
+valores por defecto cambian entre releases, y con CI eso significa que el repo
+puede amanecer en rojo un martes cualquiera sin que nadie haya tocado nada.
+Las dos reglas apagadas llevan su motivo escrito al lado.
+
+
+## Tocar la web
+
+La web sigue siendo HTML plano: sin build, sin dependencias, y se abre haciendo
+doble clic en `web/index.html`. Lo que cambió es que la cabecera, el nav, las
+hojas de alojamiento y el pie ya **no están copiados en los cuatro HTML**: viven
+una sola vez en `web/partes/` y `tools/montar.py` los escribe dentro de cada
+página, entre marcas:
+
+```html
+<!-- tf:parte zonas -->
+  ...lo que escribe el montador...
+<!-- /tf:parte -->
+```
+
+Escribe en el propio fichero, no en una copia: los HTML del repositorio siguen
+siendo los que se publican y los que se abren en local. No hay generador de
+sitios; esto solo sustituye texto entre dos comentarios.
+
+```bash
+python tools/montar.py            # monta y guarda
+python tools/montar.py --check    # no toca nada; falla si algo está sin montar
+```
+
+- **Para cambiar una entrada del nav**, el rótulo de la barra o el pie: se toca
+  la parte en `web/partes/` y se pasa el montador. Sale en las cuatro páginas.
+- **Lo que cambia de una página a otra** (título, descripción, favicon, zona
+  activa, qué scripts carga) está en la tabla `PAGINAS` de `tools/montar.py`.
+- **La versión de los assets no se toca a mano.** En el repo vale `dev`; al
+  publicar, `pages.yml` pasa `montar.py --version <hash corto del commit>` y sella
+  el `?v=` de los cuatro HTML y el `build` del pie de una sola pasada. Así publicar
+  un cambio de CSS no es acordarse de subir un número en doce sitios, y dos páginas
+  no pueden acabar enseñando builds distintos — que es exactamente lo que había
+  pasado: el panel se quedó en `build 27` mientras las otras tres iban por la 28.
+
+`pages.yml` pasa `--check` antes de publicar y `tests/test_montar.py` lo
+comprueba en la suite: si alguien edita una región a mano en vez de tocar la
+parte, se para ahí en lugar de publicar cuatro cabeceras distintas.
 
 ## Lo que no te da ningun comparador
 
@@ -231,6 +377,17 @@ domingo a las 21:30 — pero el primero te deja **15 h** en destino y el segundo
 TripFinder calcula las horas despierto en destino (de aterrizar a despegar, menos
 8 h de sueno por noche), las puntua en el score y te deja ordenar por **euros por
 hora de viaje**. Es la diferencia entre un finde y un aeropuerto.
+
+**3. La escapada completa, antes de buscar cama.** El vuelo es por persona y la
+cama es para el grupo: sumarlos bien da el único número que decide un viaje, y
+hasta ahora sólo salía **después** de pedir alojamiento —un workflow de varios
+minutos—, así que quien miraba el tablón no lo veía nunca. Ahora
+`data/camas.json` destila lo que costó dormir en cada sitio de las búsquedas
+que ya se hicieron, y el listado enseña `escapada ≈ X €` marcado como
+estimación. Donde no hay dato **no se estima**: un número igual para todos no
+informa y encima parece que sabe algo. La cobertura crece sola cada vez que
+alguien pide una cama. Al pedirla de verdad, el número real sustituye a la
+estimación y pierde el `≈`.
 
 **2. Cada precio dice a cuanta gente cubre.** Cada `FlightOffer` guarda su campo
 `adults`, porque "240 €" tanto puede ser lo que pagas tu como lo que pagais los

@@ -1,0 +1,101 @@
+name: Barrido nocturno (madrugada del miercoles)
+
+# El barrido de la noche del martes al miercoles, entre las 02:00 y las 03:00
+# peninsulares (#33). A esa hora nadie usa la web, el presupuesto de consultas a
+# Google se puede gastar entero y lo que salga esta en el correo al levantarse.
+#
+# Los cron de Actions van en UTC y no saben de horarios de verano, asi que la
+# ventana peninsular cae en dos sitios distintos segun la estacion:
+#
+#   verano  (CEST, UTC+2)  02:00-03:00 local  =  00:00-01:00 UTC, miercoles
+#   invierno (CET, UTC+1)  02:00-03:00 local  =  01:00-02:00 UTC, miercoles
+#
+# En las dos es miercoles en UTC, asi que el dia de la semana no cambia. La hora
+# si, y por eso van los dos cron: el guardian de abajo deja trabajar solo al que
+# cae dentro de la ventana, y en marzo y en octubre no hay que tocar nada.
+on:
+  schedule:
+    # El minuto NO es 0 a proposito: los cron en punto son los que mas cola
+    # cogen en el planificador de GitHub, que ya de por si no es puntual.
+    - cron: "17 0 * * 3" # 02:17 peninsular en verano
+    - cron: "17 1 * * 3" # 02:17 peninsular en invierno
+  workflow_dispatch:
+    inputs:
+      saltar_ventana:
+        description: "Correr aunque no sea la hora (para probar)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  actions: write # para lanzar el deploy de Pages
+
+# El mismo grupo que scan-flights.yml: dos scans a la vez se pisarian al
+# commitear en data/.
+concurrency:
+  group: tripfinder-data
+  cancel-in-progress: false
+
+jobs:
+  barrido:
+    # 110 consultas a 7 s son ~13 minutos solo de Google, mas el resto de
+    # proveedores. Se da mas margen que al diario, pero con techo.
+    timeout-minutes: 90
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Decide si este de los dos cron es el bueno y, si lo es, apunta la semana
+      # en data/state.json para que el otro no lo repita. La marca se pone antes
+      # de buscar: state.json solo se commitea si el job llega al final, asi que
+      # una tanda que se cae deja la semana libre para reintentarlo.
+      - name: Mirar si toca
+        id: guardian
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m tripfinder nocturno --marcar \
+            ${{ (github.event_name == 'workflow_dispatch' && inputs.saltar_ventana) && '--manual' || '' }}
+
+      - name: Buscar el mapa entero, sin avisar a nadie todavia
+        if: steps.guardian.outputs.toca == 'si'
+        env:
+          PYTHONPATH: src
+          GITHUB_TOKEN: ${{ github.token }}
+          AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
+          AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          REPO_SLUG: ${{ github.repository }}
+        # --diferir-avisos: lo que encuentre se aparca en state.json y lo manda
+        # el scan de las 08:00 con lo suyo. La gracia de buscar de noche es que
+        # el chollo espere a la manana, no que suene el movil a las tres (#36).
+        run: |
+          python -m tripfinder scan-flights \
+            --config config/watchlist-nocturno.yml \
+            --nocturno --diferir-avisos
+
+      - name: Publicar resultados
+        if: steps.guardian.outputs.toca == 'si'
+        run: |
+          git config user.name  "tripfinder-bot"
+          git config user.email "actions@github.com"
+          git add data
+          git diff --staged --quiet && echo "Sin cambios" && exit 0
+          git commit -m "data: barrido nocturno $(date -u +%Y-%m-%dT%H:%M)"
+          git pull --rebase --autostash
+          git push
+
+      - name: Redesplegar la web
+        # Un push hecho con GITHUB_TOKEN no dispara otros workflows (regla
+        # anti-bucle de GitHub): Pages hay que lanzarlo a mano.
+        if: steps.guardian.outputs.toca == 'si'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

@@ -1,0 +1,10 @@
+# Lo que hace falta para desarrollar y para CI. NO va en requirements.txt: los
+# workflows de produccion (scan, busquedas, alojamiento) no tienen por que
+# instalar un linter cada vez que corren.
+
+# Version clavada a proposito. Las reglas por defecto de ruff cambian entre
+# versiones, asi que sin fijarla el repo puede amanecer en rojo un martes
+# cualquiera sin que nadie haya tocado nada. Para subirla: se sube aqui, se
+# pasa `ruff check` y se arregla lo que salga, en su propio commit.
+ruff==0.16.5
+pytest>=8.0

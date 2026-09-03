@@ -36,6 +36,9 @@ concurrency:
 jobs:
   cuentas:
     runs-on: ubuntu-latest
+    # Esto solo escribe en un JSON: si tarda mas de un cuarto de hora, algo va
+    # mal y mejor cortarlo que dejarlo hasta el limite de 6 horas de GitHub.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

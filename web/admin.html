@@ -1,32 +1,50 @@
 <!doctype html>
 <html lang="es">
+<!-- tf:parte cabeza -->
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripFinder · panel</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0d0b0a">
+<meta name="theme-color" content="#0b1720">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600&family=Fraunces:opsz,wght@9..144,300;9..144,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=27">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap"></noscript>
+<link rel="stylesheet" href="styles.css?v=dev">
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
 </head>
+<!-- /tf:parte -->
 <body data-sin-cuenta>
+<!-- tf:parte capas -->
 <div class="grain" aria-hidden="true"></div>
+<div class="glow" aria-hidden="true"></div>
+<div class="registro" aria-hidden="true"></div>
+
+<noscript>
+  <p class="sin-js">
+    Esta web necesita JavaScript: los precios se leen de un fichero de datos y
+    se pintan en tu navegador, así que sin él no hay nada que enseñar. Los
+    chollos también llegan por correo, que sí funciona sin nada.
+  </p>
+</noscript>
+<!-- /tf:parte -->
 
 <header class="masthead">
+<!-- tf:parte barra -->
   <div class="topbar">
     <div class="board" aria-hidden="true">
       <span class="flap">A</span><span class="flap">D</span><span class="flap">M</span>
       <span class="board-label">panel · cuentas y registro de errores</span>
     </div>
-    <button id="tema" class="tema" type="button" aria-label="Cambiar entre tema claro y oscuro">
-      <b aria-hidden="true">◐</b><span class="tema-txt">tema</span>
+    <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
+      <b aria-hidden="true"></b><span class="tema-txt">noche</span>
     </button>
   </div>
+<!-- /tf:parte -->
   <h1>El <em>panel</em></h1>
   <p class="lede" id="lede">
     Desde aquí se dan de alta las cuentas que pueden entrar en la web y se ve
@@ -125,13 +143,15 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   </div>
 </main>
 
+<!-- tf:parte pie -->
 <footer class="foot">
   <span>Las contraseñas no se guardan: solo su PBKDF2 con sal, igual que en el backend.</span>
-  <span class="build">build 27</span>
+  <span class="build">build dev</span>
 </footer>
 
-<script src="log.js?v=27"></script>
-<script src="auth.js?v=27"></script>
+<script src="log.js?v=dev"></script>
+<script src="auth.js?v=dev"></script>
+<!-- /tf:parte -->
 <script>
 /* El panel: la contraseña abre la puerta, el token de GitHub es lo que de
    verdad deja escribir. Sin token no se puede crear ni borrar nada, porque
@@ -352,6 +372,12 @@ const FREQ_TXT = {
   nunca: "nunca",
 };
 
+/* Una cuenta sin sobre —o con uno viejo— entra en la web, la ve entera y no
+   puede lanzar ni una búsqueda. Es el caso de las cuentas creadas antes de que
+   se guardara el token, y hasta ahora se descubría pulsando un botón que no
+   respondía. Aquí se canta al cargar, sin desplegar la fila (#15). */
+const puedeLanzar = (u) => Boolean(u.sobre && u.sobre.data && !u.sobre.stale);
+
 function detalleHTML(u) {
   const watches = suyo(COSAS.watches, u.id);
   const searches = suyo(COSAS.searches, u.id);
@@ -363,7 +389,7 @@ function detalleHTML(u) {
         <div>
           <h4>Correos</h4>
           <ul class="lista-seca">
-            ${linea(`Van a <b>${esc(u.email || "ningún email")}</b>`)}
+            ${linea(`Van a <b>${u.tiene_email ? "su dirección" : "ningún email"}</b>`)}
             ${linea(`Chollos: <b>${esc(FREQ_TXT[p.chollos] || "en cuanto aparezca")}</b>${
               p.chollos_max_precio ? `, solo por debajo de ${Math.round(p.chollos_max_precio)} €` : ""
             }`)}
@@ -371,7 +397,7 @@ function detalleHTML(u) {
               p.seguimientos_solo_novedades ? ", solo si hay novedades" : ""
             }`)}
             ${linea(
-              u.sobre && u.sobre.data && !u.sobre.stale
+              puedeLanzar(u)
                 ? "Puede lanzar búsquedas y seguimientos"
                 : "<span class='ojo'>Sin acceso para lanzar nada: dale una contraseña nueva</span>"
             )}
@@ -386,6 +412,9 @@ function detalleHTML(u) {
                     .map((w) =>
                       linea(
                         `<b>${esc(w.label || w.destination || "Donde sea")}</b>` +
+                          // De dónde salió (#13): sirve para saber si el test
+                          // de destinos trae gente o si todos usan el formulario.
+                          (w.source ? ` · via ${esc(w.source)}` : "") +
                           (w.best_price ? ` · mejor visto ${Math.round(w.best_price)} €` : "") +
                           ((w.last_offers || []).length
                             ? ` · ${w.last_offers.length} resultados`
@@ -455,30 +484,47 @@ async function pintarCuentas(forzar = true) {
   $("#stats").innerHTML =
     `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
     `<div><dd>${cuentas.filter((u) => u.active !== false).length}</dd><dt>activas</dt></div>` +
-    `<div><dd class="hot">${tfLeerLog().length}</dd><dt>errores apuntados</dt></div>`;
+    `<div><dd class="hot">${tfLeerLog().length}</dd><dt>errores apuntados</dt></div>` +
+    ((n) =>
+      n
+        ? `<div><dd class="hot">${n}</dd><dt>sin acceso para lanzar</dt></div>`
+        : "")(cuentas.filter((u) => u.active !== false && !puedeLanzar(u)).length);
 
   $("#cuentas").innerHTML = cuentas.length
     ? cuentas
         .map((u) => {
           const cosas =
             suyo(COSAS.watches, u.id).length + suyo(COSAS.searches, u.id).length;
+          // Solo se le pide acceso a una cuenta que esté activa: a una apagada
+          // le da igual, y el rojo se gastaría en algo que no hay que arreglar.
+          const sinAcceso = u.active !== false && !puedeLanzar(u);
           return `
-      <div class="brow cuenta-row${u.active === false ? " apagada" : ""}" data-abrir="${esc(u.id)}">
+      <div class="brow cuenta-row${u.active === false ? " apagada" : ""}${
+        sinAcceso ? " sin-acceso" : ""
+      }" data-abrir="${esc(u.id)}">
         <span class="iata">${esc((u.name || u.user).slice(0, 3).toUpperCase())}</span>
         <span class="dest-cell">
           <span class="city">${esc(u.name || u.user)}</span>
           <span class="country">${esc(u.user)}<span class="solo-ancho"> · ${esc(u.id)}</span>${
-            u.email ? ` · ${esc(u.email)}` : " · sin email"
+            u.tiene_email ? " · con email" : " · sin email"
           }<br>${u.active === false ? "desactivada" : "activa"} · ${
             cosas ? `${cosas} cosa${cosas > 1 ? "s" : ""} suya${cosas > 1 ? "s" : ""}` : "nada suyo todavía"
           }</span>
+          ${
+            sinAcceso
+              ? '<span class="ojo aviso-acceso">esta cuenta no puede lanzar búsquedas ni seguir viajes</span>'
+              : ""
+          }
         </span>
         <span class="favacc">
-          <button class="btn ghost small" data-clave="${esc(u.user)}">Contraseña</button>
+          <button class="btn ghost small${sinAcceso ? " urge" : ""}" data-clave="${esc(u.user)}">${
+            sinAcceso ? "Darle acceso" : "Contraseña"
+          }</button>
           <button class="btn ghost small" data-activar="${esc(u.user)}" data-a="${
             u.active === false ? "1" : "0"
           }">${u.active === false ? "Activar" : "Desactivar"}</button>
-          <button class="quitar" data-borrar="${esc(u.user)}" title="Borrar la cuenta">✕</button>
+          <button class="quitar" type="button" data-borrar="${esc(u.user)}"
+            aria-label="Borrar la cuenta">borrar</button>
         </span>
         <div class="detalle" hidden></div>
       </div>`;
@@ -514,7 +560,7 @@ async function pintarCuentas(forzar = true) {
     )
   );
   $("#cuentas").querySelectorAll("[data-clave]").forEach((b) =>
-    b.addEventListener("click", () => cambiarClave(b.dataset.clave))
+    b.addEventListener("click", () => cambiarClave(b.dataset.clave, b.classList.contains("urge")))
   );
 }
 
@@ -538,7 +584,7 @@ function pedir(titulo, campos, alAceptar) {
   const caja = tfModal(`
     <header class="modal-head">
       <h2>${esc(titulo)}</h2>
-      <button data-cerrar aria-label="Cerrar">✕</button>
+      <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
     <form id="formModal" class="modal-form">
       ${campos
@@ -629,11 +675,24 @@ function nuevaCuenta() {
   );
 }
 
-function cambiarClave(user) {
-  pedir("Nueva contraseña de " + user, [{ id: "nPass", label: "Contraseña", type: "password" }],
+function cambiarClave(user, sinAcceso = false) {
+  // Es el mismo gesto en los dos casos —contraseña nueva y sobre nuevo—, pero
+  // no la misma pregunta: una es "quiero cambiarla" y la otra "esta cuenta no
+  // funciona". El título lo dice para que se sepa qué se está arreglando.
+  pedir(
+    sinAcceso ? `Darle acceso a ${user}` : "Nueva contraseña de " + user,
+    [{ id: "nPass", label: "Contraseña", type: "password" }],
     async (v, msg) => {
       if (v.nPass.length < 8) {
         msg.textContent = "De 8 caracteres o más.";
+        return;
+      }
+      // Sin la clave maestra abierta no hay sobre que fabricar, y esto acabaría
+      // cambiándole la contraseña a una cuenta que seguiría sin poder lanzar
+      // nada: el mismo problema, más una contraseña nueva que nadie sabe.
+      if (sinAcceso && !MAESTRA) {
+        msg.textContent =
+          "El panel no tiene abierta la clave maestra: entra otra vez con la contraseña del panel y vuelve a intentarlo.";
         return;
       }
       msg.textContent = "Guardando…";

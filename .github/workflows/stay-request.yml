@@ -9,8 +9,11 @@ on:
   # issue se queda como plan B por si algun dia no hay token en el navegador.
   repository_dispatch:
     types: [stay]
+  # Solo al abrirla: con `labeled` cada etiqueta que se pone a cualquier issue
+  # del repositorio —las de aviso de chollo se abren ya etiquetadas— arrancaba
+  # un run mas solo para descartarlo en el `if` de abajo.
   issues:
-    types: [opened, labeled]
+    types: [opened]
 
 permissions:
   contents: write
@@ -23,6 +26,9 @@ concurrency:
 
 jobs:
   stays:
+    # Buscar cama son un par de minutos; de ahi en adelante es que se ha
+    # colgado, y sin esto se queda hasta el limite de 6 horas de GitHub.
+    timeout-minutes: 20
     if: >
       github.event_name == 'repository_dispatch' ||
       (github.event.issue.user.login == github.repository_owner &&
