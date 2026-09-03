@@ -406,6 +406,9 @@ function detalleHTML(u) {
                     .map((w) =>
                       linea(
                         `<b>${esc(w.label || w.destination || "Donde sea")}</b>` +
+                          // De dónde salió (#13): sirve para saber si el test
+                          // de destinos trae gente o si todos usan el formulario.
+                          (w.source ? ` · via ${esc(w.source)}` : "") +
                           (w.best_price ? ` · mejor visto ${Math.round(w.best_price)} €` : "") +
                           ((w.last_offers || []).length
                             ? ` · ${w.last_offers.length} resultados`

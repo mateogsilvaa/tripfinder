@@ -182,6 +182,8 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 De la auditoría salieron 31 tareas (issues #6 a #36). Lo cerrado hasta ahora,
 todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
 
+- [x] **#13 · Marcar de dónde viene cada seguimiento** `core` `email`
+  - Campo `source` en `Watch`, propagado desde el `client_payload`.
 - [x] **#14 · Dejar de publicar los emails de las cuentas** `seguridad`
 - [x] **#16 · CI: ruff + pytest en cada PR** `infra`
 - [x] **#17 · Poner al día README, ARCHITECTURE y ROADMAP** `documentation`
@@ -216,7 +218,7 @@ todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
 Y el sistema de diseño nuevo —el atlas— por encima de todo eso.
 
 Lo que queda: el test de destinos (#6-#12, que es una funcionalidad entera y no
-un arreglo), y #13, #15 y #22.
+un arreglo), y #15 y #22.
 
 
 ## M5 · Robustez y calidad

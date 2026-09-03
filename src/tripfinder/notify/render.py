@@ -12,6 +12,8 @@ estan en todas partes. Los colores si son los mismos.
 
 from __future__ import annotations
 
+import html
+
 from ..config import site_url
 from ..models import FlightOffer
 
@@ -226,10 +228,18 @@ def render_watch_digest(estado: list[tuple]) -> str:
             detalle = f'<span style="color:{MUTED}">sin novedad &middot; mejor visto {w.best_price:.0f}&euro;</span>'
         else:
             detalle = f'<span style="color:{FAINT}">todavia sin resultados</span>'
+        # De donde salio el seguimiento, cuando se sabe. Va pequeño y al lado
+        # del titulo: en el parte importa el precio, no la procedencia (#13).
+        origen = (
+            f'<span style="font:400 11px {MONO};color:{FAINT};'
+            f'letter-spacing:.08em"> &middot; via {html.escape(w.source)}</span>'
+            if getattr(w, "source", "")
+            else ""
+        )
         filas.append(
             f"""<tr>
               <td style="padding:12px 0;border-bottom:1px solid {LINE}">
-                <div style="font:400 17px {SERIF};color:{INK}">{w.label or w.destination or "Donde sea"}</div>
+                <div style="font:400 17px {SERIF};color:{INK}">{w.label or w.destination or "Donde sea"}{origen}</div>
                 <div style="font:400 13px {MONO};padding-top:4px">{detalle}</div>
               </td></tr>"""
         )

@@ -804,6 +804,17 @@ def cmd_reindex(args: argparse.Namespace) -> int:
 # --------------------------------------------------------------------------- #
 # watch
 # --------------------------------------------------------------------------- #
+def _origen(valor: str | None) -> str:
+    """Normaliza el `--source` de un seguimiento.
+
+    Llega desde un `client_payload`, o sea de fuera: se queda en minusculas, sin
+    nada que no sea letra, digito, guion o barra baja, y con 24 caracteres como
+    mucho. No es una etiqueta que el usuario escriba, es una de las tres o
+    cuatro puertas de entrada que tiene el sistema."""
+    limpio = "".join(c for c in (valor or "").strip().lower() if c.isalnum() or c in "-_")
+    return limpio[:24]
+
+
 def cmd_watch(args: argparse.Namespace) -> int:
     from . import watch as W
 
@@ -819,7 +830,15 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 f"{w.depart or f'proximos {w.months} meses'} "
                 f"{'<= ' + str(int(w.max_price)) + ' EUR' if w.max_price else ''} "
                 f"{'(mejor visto ' + str(int(w.best_price)) + ')' if w.best_price else ''}"
+                f"{' · via ' + w.source if w.source else ''}"
             )
+        # Para lo que existe el campo: saber si el test de destinos trae gente
+        # o si todo el mundo acaba usando el formulario (#13).
+        from collections import Counter
+
+        origenes = Counter(w.source or "sin marcar" for w in seguimientos)
+        if len(origenes) > 1 or "sin marcar" not in origenes:
+            print("  de donde vienen: " + ", ".join(f"{n} {k}" for k, n in origenes.most_common()))
         return 0
 
     if args.accion == "add":
@@ -841,6 +860,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 weekend_only=not args.any_day,
                 adults=args.adults or cfg.party_size,
                 max_price=args.max_price,
+                source=_origen(args.source),
                 owner=args.owner or "",
                 owner_name=args.owner_name or "",
             )
@@ -1315,6 +1335,11 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--adults", type=int)
     v.add_argument("--max-price", type=float, dest="max_price")
     v.add_argument("--any-day", action="store_true")
+    v.add_argument(
+        "--source",
+        default="",
+        help="De donde sale el seguimiento: 'formulario', 'test'... (queda guardado)",
+    )
     v.add_argument("--owner", default="", help="Id de la cuenta a la que pertenece")
     v.add_argument("--owner-name", dest="owner_name", default="")
     v.add_argument("--no-email", action="store_true")

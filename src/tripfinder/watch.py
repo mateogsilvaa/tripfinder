@@ -39,6 +39,10 @@ class Watch:
     weekend_only: bool = True
     adults: int = 2
     max_price: float | None = None
+    # De donde salio: "formulario", "test"… Vacio = de antes de que se apuntara
+    # esto, o de un sitio que no lo dice. Sirve para saber si el test de destinos
+    # sirve de algo o si todo el mundo acaba usando el formulario (#13).
+    source: str = ""
     # De quien es. Vacio = de antes de que hubiera cuentas, lo ve todo el mundo.
     owner: str = ""
     owner_name: str = ""

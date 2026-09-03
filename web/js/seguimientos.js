@@ -71,6 +71,9 @@ on("#watchForm", "submit", async (e) => {
     months: $("#wMonths").value || "6",
     adults: $("#wAdults").value || "2",
     weekend: cuando === "weekend" ? "si" : "no",
+    // De donde sale este seguimiento. El test de destinos manda "test" cuando
+    // lo haya; asi se puede ver si trae gente o si todos acaban aqui (#13).
+    source: "formulario",
   });
   if (r.ok) {
     $("#watches").insertAdjacentHTML(

@@ -49,6 +49,8 @@ jobs:
           MONTHS: ${{ github.event.client_payload.months }}
           ADULTS: ${{ github.event.client_payload.adults }}
           WEEKEND: ${{ github.event.client_payload.weekend }}
+          # De donde sale: la web manda "formulario" o "test" (#13).
+          SOURCE: ${{ github.event.client_payload.source }}
           OWNER: ${{ github.event.client_payload.owner }}
           OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
@@ -86,6 +88,7 @@ jobs:
               if [ -n "$MONTHS" ];      then args+=(--months "$MONTHS"); fi
               if [ -n "$ADULTS" ];      then args+=(--adults "$ADULTS"); fi
               if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
+              if [ -n "$SOURCE" ];      then args+=(--source "$SOURCE"); fi
               # De quien es el seguimiento: sin esto todos serian de todos.
               if [ -n "$OWNER" ];      then args+=(--owner "$OWNER"); fi
               if [ -n "$OWNER_NAME" ]; then args+=(--owner-name "$OWNER_NAME"); fi
