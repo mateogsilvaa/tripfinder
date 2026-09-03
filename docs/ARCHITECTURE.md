@@ -13,7 +13,20 @@
 | `tripfinder.notify` | `src/tripfinder/notify/` | Resend / SMTP / issue de GitHub + plantillas. Si el metodo elegido falla, prueba los demas. |
 | `web/` | GitHub Pages | Lee `data/offers.json`, `data/continentes.json` (el mapa código → continente que necesita el filtro, derivado de `airports_world.json` en cada scan) y `data/stays/*.json`. Cero build: las partes comunes (`web/partes/`) las escribe `tools/montar.py` dentro de los HTML, que siguen abriéndose a doble clic. |
 | `web/auth.js` | GitHub Pages | Quién está delante: sesión, login contra `data/users.json` y el espacio de nombres de `localStorage` por cuenta. |
-| `.github/workflows/` | GitHub Actions | Cron de vuelos, cola de alojamiento vía issues, deploy de Pages. |
+| `tools/` | — | Utilidades que no se publican: `montar.py` (las partes comunes de la web), `contraste.py` (auditoría de la paleta). |
+| `.github/workflows/` | GitHub Actions | Los siete, en la tabla de abajo. |
+
+## Los workflows
+
+| Workflow | Se dispara | Qué hace |
+| --- | --- | --- |
+| `scan-flights.yml` | cron cada 12 h, o a mano | El barrido: busca vuelos, puntúa contra el histórico, avisa por correo y publica `data/`. Después revisa los seguimientos. |
+| `custom-search.yml` | `repository_dispatch: search` | Una búsqueda concreta pedida desde la web: destino, fechas y tope. Escribe `data/searches/<slug>.json`. |
+| `stay-request.yml` | `repository_dispatch: stay`, o una issue `[stay] …` | Busca cama para unas fechas exactas. Escribe `data/stays/<offer_id>.json`. |
+| `watch.yml` | `repository_dispatch: watch / unwatch / delete_search` | Apunta, quita o borra: sólo toca `data/watch.json` y `data/searches/`. Acepta lotes. |
+| `users.yml` | `repository_dispatch: user_* / admin_* / site_token / claim` | Las cuentas: altas, contraseñas, preferencias y el token del sitio cifrado. |
+| `pages.yml` | push a `main` sobre `web/`, `data/` o `tools/montar.py` | Monta el sitio: comprueba las partes, sella la versión, quita lo que no es página y publica sin los emails. |
+| `ci.yml` | cada push y cada pull request | Lo que decide si algo entra: ruff, pytest, montaje, contraste, oxlint y humo de frontend. |
 
 ## La hora de los cron
 

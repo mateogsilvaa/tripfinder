@@ -177,10 +177,46 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
   - Hoy, si alguien la olvida, se la cambias tú desde el panel (y eso le rehace el sobre).
     No hay email de reseteo porque no hay servidor que lo mande de forma fiable.
 
+## M10-M16 · Auditoría de la web  🚧 en curso
+
+De la auditoría salieron 31 tareas (issues #6 a #36). Lo cerrado hasta ahora,
+todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
+
+- [x] **#14 · Dejar de publicar los emails de las cuentas** `seguridad`
+- [x] **#16 · CI: ruff + pytest en cada PR** `infra`
+- [x] **#17 · Poner al día README, ARCHITECTURE y ROADMAP** `documentation`
+- [x] **#18 · `esc()` valida el esquema en las URL** `seguridad`
+- [x] **#19 · No cargar 270 KB de aeropuertos en la portada** `perf`
+  - De ~450 KB a 190 KB de JSON en la portada.
+- [x] **#20 · Fuentes que no bloquean** `perf`
+- [x] **#21 · Versión de assets automática** `infra`
+  - La sella `pages.yml` con el hash del commit; en el repo vale `dev`.
+- [x] **#23 · Diálogos accesibles en toda la web** `accessibility`
+- [x] **#24 · Anunciar lo que está pasando** `accessibility`
+- [x] **#25 · Contraste y tamaño táctil** `accessibility`
+  - `tools/contraste.py` audita la paleta en CI; 44 px de área táctil.
+- [x] **#26 · La portada dice qué es esto** `ux`
+- [x] **#27 · Cada página con su texto** `ux`
+- [x] **#28 · 404 y estados vacíos** `ux`
+- [x] **#29 · Coste total de la escapada en el listado** `core` `ux`
+- [x] **#31 · Una sola cabecera** `infra`
+  - Las partes comunes en `web/partes/`, montadas por `tools/montar.py`.
+- [x] **#32 · Humo de frontend en CI** `infra`
+- [x] **#34 · Horas peninsulares de verdad en todos los crons** `infra`
+
+Y el sistema de diseño nuevo —el atlas— por encima de todo eso.
+
+Lo que queda: el test de destinos (#6-#12, que es una funcionalidad entera y no
+un arreglo), partir `app.js` (#30), el barrido nocturno (#33, #35, #36), y
+#13, #15 y #22.
+
+
 ## M5 · Robustez y calidad
 
 - [x] **#25 · Tests de scoring y de parseo de providers** `infra`
-  - 10 tests en `tests/`, `python -m pytest` en verde.
+  - Suite en `tests/`, con `ruff` y `pytest` en cada push y cada PR (`ci.yml`).
+    Sin número aquí a propósito: cualquiera que se escriba se queda viejo a la
+    semana. Lo que hay es lo que salga de `python -m pytest`.
 - [x] **#26 · CI: ruff + pytest en cada PR** `infra`
   - `ci.yml` en cada push y cada PR, con dos trabajos: **backend** (ruff, pytest y
     `montar --check`) y **web** (oxlint y humo de frontend con Playwright).
