@@ -61,12 +61,45 @@ def test_una_sola_edicion_cambia_el_nav_de_las_tres_zonas():
 
 
 def test_la_version_de_los_assets_sale_de_un_solo_sitio():
-    """El `?v=` y el `build N` del pie no pueden desincronizarse nunca mas."""
+    """El `?v=` y el `build` del pie no pueden desincronizarse nunca mas."""
     for fichero in montar.PAGINAS:
         html = (WEB / fichero).read_text(encoding="utf-8")
-        versiones = set(re.findall(r"\.(?:css|js)\?v=(\d+)", html))
+        versiones = set(re.findall(r"\.(?:css|js)\?v=([A-Za-z0-9.]+)", html))
         assert versiones == {str(montar.BUILD)}, f"{fichero}: {versiones}"
         assert f"build {montar.BUILD}" in html, f"{fichero}: el pie va por otra version"
+
+
+def test_en_el_repo_la_version_es_dev():
+    """La de verdad la sella `pages.yml` al publicar. Si alguien commitea un
+    hash, el siguiente despliegue lo pisa y el repo queda mintiendo."""
+    assert montar.BUILD == "dev"
+
+
+def test_sellar_una_version_la_pone_en_las_cinco_paginas():
+    """El criterio de la #21: publicar un cambio de CSS no es tocar doce
+    sitios, y dos paginas nunca enseñan builds distintos."""
+    sellada = "a1b2c3d"
+    vistas = set()
+    for fichero, datos in montar.PAGINAS.items():
+        html = (WEB / fichero).read_text(encoding="utf-8")
+        salida = montar.montar_texto(html, datos, sellada)
+        vistas |= set(re.findall(r"\.(?:css|js)\?v=([A-Za-z0-9.]+)", salida))
+        assert f"build {sellada}" in salida, f"{fichero}: el pie no se sello"
+        assert "?v=dev" not in salida, f"{fichero}: quedo algun ?v=dev"
+    assert vistas == {sellada}, f"builds distintos entre paginas: {vistas}"
+
+
+def test_check_no_admite_una_version_sellada():
+    """`--check` compara con lo que hay en el repo, que va con 'dev'. Dejarlo
+    correr con otra version daria un rojo que no significa nada."""
+    import subprocess
+
+    r = subprocess.run(
+        ["python3", str(RAIZ / "tools" / "montar.py"), "--check", "--version", "x"],
+        capture_output=True, text=True,
+    )
+    assert r.returncode != 0
+    assert "dev" in r.stderr
 
 
 # Que lleva cada pagina. El panel no es una zona publica; la 404 si enseña el

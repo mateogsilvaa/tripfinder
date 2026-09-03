@@ -354,11 +354,12 @@ python tools/montar.py --check    # no toca nada; falla si algo está sin montar
   la parte en `web/partes/` y se pasa el montador. Sale en las cuatro páginas.
 - **Lo que cambia de una página a otra** (título, descripción, favicon, zona
   activa, qué scripts carga) está en la tabla `PAGINAS` de `tools/montar.py`.
-- **Para romper la caché del navegador** tras tocar `styles.css`, `app.js`,
-  `auth.js` o `log.js`: se sube `BUILD` en `tools/montar.py` y se monta. El `?v=`
-  de los cuatro HTML y el `build N` del pie salen de ahí, así que ya no pueden
-  desincronizarse — que es exactamente lo que había pasado: el panel se quedó en
-  `build 27` mientras las otras tres iban por la 28.
+- **La versión de los assets no se toca a mano.** En el repo vale `dev`; al
+  publicar, `pages.yml` pasa `montar.py --version <hash corto del commit>` y sella
+  el `?v=` de los cuatro HTML y el `build` del pie de una sola pasada. Así publicar
+  un cambio de CSS no es acordarse de subir un número en doce sitios, y dos páginas
+  no pueden acabar enseñando builds distintos — que es exactamente lo que había
+  pasado: el panel se quedó en `build 27` mientras las otras tres iban por la 28.
 
 `pages.yml` pasa `--check` antes de publicar y `tests/test_montar.py` lo
 comprueba en la suite: si alguien edita una región a mano en vez de tocar la

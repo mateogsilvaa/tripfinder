@@ -26,8 +26,13 @@ No hay generador de sitios ni paso de compilacion; esto solo sustituye texto.
 tocar la parte, el despliegue se para en vez de publicar cuatro cabeceras
 distintas.
 
-Para cambiar el numero de version de los assets (el `?v=` y el `build N` del
-pie) se toca BUILD y se vuelve a montar: sale a la vez en los cuatro ficheros.
+La version de los assets (el `?v=` y el `build N` del pie) sale de un solo
+sitio. En el repo vale "dev"; la de verdad la pone `pages.yml` al publicar:
+
+    python tools/montar.py --version a1b2c3d
+
+Asi no hay que acordarse de subir un numero a mano en doce sitios, y dos
+paginas no pueden acabar enseñando builds distintos.
 """
 
 from __future__ import annotations
@@ -41,9 +46,17 @@ RAIZ = Path(__file__).resolve().parent.parent
 WEB = RAIZ / "web"
 PARTES = WEB / "partes"
 
-# El unico sitio donde vive el numero de version. Sube uno al cambiar
-# styles.css, app.js, auth.js o log.js: es lo que rompe la cache del navegador.
-BUILD = 28
+# La version de los assets: el `?v=` de los cuatro HTML y el `build N` del pie.
+#
+# En el repo vale "dev" a proposito. La de verdad la pone `pages.yml` al montar
+# el sitio, con el hash corto del commit que se esta publicando —`montar.py
+# --version <sha>`—, asi que publicar un cambio de CSS ya no es acordarse de
+# subir un numero a mano en doce sitios. Y como sale de un unico sustituto,
+# dos paginas no pueden acabar enseñando builds distintos.
+#
+# "dev" es un valor valido en una query string, asi que abrir los HTML a doble
+# clic sigue funcionando igual.
+BUILD = "dev"
 
 # Donde se publica el sitio. Solo lo usa la 404: Pages la sirve para CUALQUIER
 # ruta que no exista, asi que desde `/tripfinder/lo/que/sea` los enlaces
@@ -197,11 +210,11 @@ def _zonas(activa: str | None) -> dict[str, str]:
     return salida
 
 
-def render(nombre_parte: str, datos: dict) -> str:
+def render(nombre_parte: str, datos: dict, version: str = BUILD) -> str:
     """Una parte con sus huecos rellenos. Los huecos son `{{nombre}}`."""
     texto = (PARTES / f"{nombre_parte}.html").read_text(encoding="utf-8").rstrip("\n")
-    huecos = {**datos, "v": str(BUILD), **_zonas(datos.get("zona"))}
-    huecos["guiones"] = str(huecos.get("guiones", "")).format(v=BUILD)
+    huecos = {**datos, "v": str(version), **_zonas(datos.get("zona"))}
+    huecos["guiones"] = str(huecos.get("guiones", "")).format(v=version)
 
     def sustituir(m: re.Match) -> str:
         clave = m.group(1)
@@ -214,9 +227,9 @@ def render(nombre_parte: str, datos: dict) -> str:
     return re.sub(r"\{\{(\w+)\}\}", sustituir, texto).rstrip("\n")
 
 
-def montar_texto(html: str, datos: dict) -> str:
+def montar_texto(html: str, datos: dict, version: str = BUILD) -> str:
     def sustituir(m: re.Match) -> str:
-        cuerpo = render(m.group("nombre"), datos)
+        cuerpo = render(m.group("nombre"), datos, version)
         return m.group("abre") + cuerpo + m.group("cierra")
 
     return MARCA.sub(sustituir, html)
@@ -229,13 +242,20 @@ def main() -> int:
         action="store_true",
         help="no escribe; devuelve 1 si algun HTML no esta montado",
     )
+    ap.add_argument(
+        "--version",
+        default=BUILD,
+        help=f"la version de los assets (por defecto {BUILD!r}); la pone pages.yml al publicar",
+    )
     args = ap.parse_args()
+    if args.check and args.version != BUILD:
+        ap.error("--check comprueba lo que hay en el repo, que va con la version 'dev'")
 
     sucios = []
     for fichero, datos in PAGINAS.items():
         ruta = WEB / fichero
         antes = ruta.read_text(encoding="utf-8")
-        despues = montar_texto(antes, datos)
+        despues = montar_texto(antes, datos, args.version)
         if antes == despues:
             continue
         sucios.append(fichero)
@@ -247,7 +267,8 @@ def main() -> int:
         print("Pasa `python tools/montar.py` y vuelve a commitear.", file=sys.stderr)
         return 1
     if sucios:
-        print("Montado: " + ", ".join(sucios))
+        marca = "" if args.version == BUILD else f" (version {args.version})"
+        print("Montado: " + ", ".join(sucios) + marca)
     else:
         print("Ya estaba todo montado.")
     return 0

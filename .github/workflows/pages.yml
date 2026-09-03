@@ -33,6 +33,14 @@ jobs:
       - name: Comprobar que las partes estan montadas
         run: python tools/montar.py --check
 
+      # La version de los assets sale de aqui, no de un numero a mano en doce
+      # sitios. El hash corto del commit que se publica: cambia cuando cambia
+      # el contenido, que es exactamente lo que tiene que romper la cache. Va
+      # al `?v=` de los cuatro HTML y al `build` del pie, de una sola pasada,
+      # asi que dos paginas no pueden acabar enseñando builds distintos.
+      - name: Sellar la version en los HTML
+        run: python tools/montar.py --version "$(git rev-parse --short HEAD)"
+
       - name: Montar el sitio
         run: |
           mkdir -p _site
