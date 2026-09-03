@@ -372,6 +372,12 @@ const FREQ_TXT = {
   nunca: "nunca",
 };
 
+/* Una cuenta sin sobre —o con uno viejo— entra en la web, la ve entera y no
+   puede lanzar ni una búsqueda. Es el caso de las cuentas creadas antes de que
+   se guardara el token, y hasta ahora se descubría pulsando un botón que no
+   respondía. Aquí se canta al cargar, sin desplegar la fila (#15). */
+const puedeLanzar = (u) => Boolean(u.sobre && u.sobre.data && !u.sobre.stale);
+
 function detalleHTML(u) {
   const watches = suyo(COSAS.watches, u.id);
   const searches = suyo(COSAS.searches, u.id);
@@ -391,7 +397,7 @@ function detalleHTML(u) {
               p.seguimientos_solo_novedades ? ", solo si hay novedades" : ""
             }`)}
             ${linea(
-              u.sobre && u.sobre.data && !u.sobre.stale
+              puedeLanzar(u)
                 ? "Puede lanzar búsquedas y seguimientos"
                 : "<span class='ojo'>Sin acceso para lanzar nada: dale una contraseña nueva</span>"
             )}
@@ -478,15 +484,24 @@ async function pintarCuentas(forzar = true) {
   $("#stats").innerHTML =
     `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
     `<div><dd>${cuentas.filter((u) => u.active !== false).length}</dd><dt>activas</dt></div>` +
-    `<div><dd class="hot">${tfLeerLog().length}</dd><dt>errores apuntados</dt></div>`;
+    `<div><dd class="hot">${tfLeerLog().length}</dd><dt>errores apuntados</dt></div>` +
+    ((n) =>
+      n
+        ? `<div><dd class="hot">${n}</dd><dt>sin acceso para lanzar</dt></div>`
+        : "")(cuentas.filter((u) => u.active !== false && !puedeLanzar(u)).length);
 
   $("#cuentas").innerHTML = cuentas.length
     ? cuentas
         .map((u) => {
           const cosas =
             suyo(COSAS.watches, u.id).length + suyo(COSAS.searches, u.id).length;
+          // Solo se le pide acceso a una cuenta que esté activa: a una apagada
+          // le da igual, y el rojo se gastaría en algo que no hay que arreglar.
+          const sinAcceso = u.active !== false && !puedeLanzar(u);
           return `
-      <div class="brow cuenta-row${u.active === false ? " apagada" : ""}" data-abrir="${esc(u.id)}">
+      <div class="brow cuenta-row${u.active === false ? " apagada" : ""}${
+        sinAcceso ? " sin-acceso" : ""
+      }" data-abrir="${esc(u.id)}">
         <span class="iata">${esc((u.name || u.user).slice(0, 3).toUpperCase())}</span>
         <span class="dest-cell">
           <span class="city">${esc(u.name || u.user)}</span>
@@ -495,9 +510,16 @@ async function pintarCuentas(forzar = true) {
           }<br>${u.active === false ? "desactivada" : "activa"} · ${
             cosas ? `${cosas} cosa${cosas > 1 ? "s" : ""} suya${cosas > 1 ? "s" : ""}` : "nada suyo todavía"
           }</span>
+          ${
+            sinAcceso
+              ? '<span class="ojo aviso-acceso">esta cuenta no puede lanzar búsquedas ni seguir viajes</span>'
+              : ""
+          }
         </span>
         <span class="favacc">
-          <button class="btn ghost small" data-clave="${esc(u.user)}">Contraseña</button>
+          <button class="btn ghost small${sinAcceso ? " urge" : ""}" data-clave="${esc(u.user)}">${
+            sinAcceso ? "Darle acceso" : "Contraseña"
+          }</button>
           <button class="btn ghost small" data-activar="${esc(u.user)}" data-a="${
             u.active === false ? "1" : "0"
           }">${u.active === false ? "Activar" : "Desactivar"}</button>
@@ -538,7 +560,7 @@ async function pintarCuentas(forzar = true) {
     )
   );
   $("#cuentas").querySelectorAll("[data-clave]").forEach((b) =>
-    b.addEventListener("click", () => cambiarClave(b.dataset.clave))
+    b.addEventListener("click", () => cambiarClave(b.dataset.clave, b.classList.contains("urge")))
   );
 }
 
@@ -653,11 +675,24 @@ function nuevaCuenta() {
   );
 }
 
-function cambiarClave(user) {
-  pedir("Nueva contraseña de " + user, [{ id: "nPass", label: "Contraseña", type: "password" }],
+function cambiarClave(user, sinAcceso = false) {
+  // Es el mismo gesto en los dos casos —contraseña nueva y sobre nuevo—, pero
+  // no la misma pregunta: una es "quiero cambiarla" y la otra "esta cuenta no
+  // funciona". El título lo dice para que se sepa qué se está arreglando.
+  pedir(
+    sinAcceso ? `Darle acceso a ${user}` : "Nueva contraseña de " + user,
+    [{ id: "nPass", label: "Contraseña", type: "password" }],
     async (v, msg) => {
       if (v.nPass.length < 8) {
         msg.textContent = "De 8 caracteres o más.";
+        return;
+      }
+      // Sin la clave maestra abierta no hay sobre que fabricar, y esto acabaría
+      // cambiándole la contraseña a una cuenta que seguiría sin poder lanzar
+      // nada: el mismo problema, más una contraseña nueva que nadie sabe.
+      if (sinAcceso && !MAESTRA) {
+        msg.textContent =
+          "El panel no tiene abierta la clave maestra: entra otra vez con la contraseña del panel y vuelve a intentarlo.";
         return;
       }
       msg.textContent = "Guardando…";

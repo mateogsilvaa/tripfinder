@@ -1214,6 +1214,17 @@ input[type="range"]::-moz-range-thumb {
 .lista-seca .apagado { color: var(--faint); }
 .ojo { color: var(--azul); }
 
+/* Una cuenta sin sobre no puede lanzar nada, y hasta ahora eso se descubría
+   pulsando un botón que no respondía. En el atlas no hay tarjetas ni sombras
+   con las que llamar la atención: lo que hay es una regla al margen, que es
+   como se marca una anotación en una carta (#15). */
+.cuenta-row.sin-acceso { border-left: 2px solid var(--azul); padding-left: 12px; }
+.aviso-acceso {
+  display: block; padding-top: 4px;
+  font: 400 var(--fs-meta)/1.6 var(--font-mono);
+}
+.btn.urge { color: var(--azul); border-color: var(--azul); }
+
 .token-box { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
 .token-box input { width: 100%; }
 .token-box a { color: var(--azul); }

@@ -802,3 +802,75 @@ test.describe("en observación", () => {
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */
+
+test.describe("una cuenta sin sobre", () => {
+  /* La #15: `sobre: {}` es la cuenta creada antes de que se guardara el token
+     del sitio. Entra, ve la web entera y no puede lanzar nada; hasta ahora eso
+     se descubría pulsando un botón que no respondía. */
+
+  // Un PBKDF2-SHA256 de verdad, 210.000 vueltas, para "contrasena-de-prueba":
+  // el login lo comprueba de verdad y con un hash inventado no pasaría de ahí.
+  const CLAVE = "contrasena-de-prueba";
+  const CRED = {
+    salt: "c2FsdHNhbHRzYWx0c2FsdA==",
+    hash: "+dTM2oibHvvE3dv2WBRYGo12oDapcDgbAGG17J66+58=",
+    iterations: 210000,
+  };
+
+  const usuarios = (sobre) => ({
+    updated: "2026-09-03T10:00:00+00:00",
+    admin: { ...CRED, sobre: {} },
+    site: { token: { iv: "aXY=", data: "ZGF0YQ==" } },
+    users: [
+      {
+        id: "u-sinsobre", user: "mateo", name: "Mateo", ...CRED,
+        active: true, sobre, prefs: {}, tiene_email: true,
+      },
+    ],
+  });
+
+  async function entrar(page, sobre) {
+    await page.route("**/users.json*", (r) =>
+      r.fulfill({
+        status: 200, contentType: "application/json", body: JSON.stringify(usuarios(sobre)),
+      })
+    );
+    await page.goto("/index.html");
+    await page.locator("#tfCuenta, .cuenta").first().click();
+    await page.fill("#tfLoginUser", "mateo");
+    await page.fill("#tfLoginPass", CLAVE);
+    await page.click("#tfLoginForm button[type=submit]");
+  }
+
+  test("la web lo dice al entrar, no al fallar el primer botón", async ({ page }) => {
+    await entrar(page, {});
+    const msg = page.locator("#tfLoginMsg");
+    await expect(msg).toContainText(/no tiene sobre/i);
+    await expect(msg).toContainText(/no lanzar búsquedas ni seguir viajes|no puedes/i);
+    // Y dice dónde se arregla, que es la mitad del aviso.
+    await expect(msg).toContainText(/panel/i);
+  });
+
+  test("un sobre viejo se distingue de no tener sobre", async ({ page }) => {
+    await entrar(page, { iv: "aXY=", data: "ZGF0YQ==", stale: true });
+    await expect(page.locator("#tfLoginMsg")).toContainText(/de un token anterior/i);
+  });
+
+  test("avisar no impide entrar: el botón lo dice y entra", async ({ page }) => {
+    await entrar(page, {});
+    const boton = page.locator("#tfLoginForm button[type=submit]");
+    await expect(boton).toHaveText(/entendido, entrar/i);
+    await boton.click();
+    await expect(page.locator("#tfLoginForm")).toBeHidden();
+    await expect(page.locator("#tfCuenta, .cuenta").first()).toContainText(/mateo/i);
+  });
+
+  test("con su sobre en regla no se avisa de nada", async ({ page }) => {
+    await entrar(page, { iv: "aXY=", data: "ZGF0YQ==" });
+    // El token no llega a abrirse (los datos son de mentira), pero el aviso es
+    // otro: el problema es el token del sitio, no la cuenta.
+    const msg = page.locator("#tfLoginMsg");
+    await expect(msg).toContainText(/token del sitio/i);
+    await expect(msg).not.toContainText(/no tiene sobre/i);
+  });
+});

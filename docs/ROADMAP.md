@@ -185,6 +185,8 @@ todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
 - [x] **#13 · Marcar de dónde viene cada seguimiento** `core` `email`
   - Campo `source` en `Watch`, propagado desde el `client_payload`.
 - [x] **#14 · Dejar de publicar los emails de las cuentas** `seguridad`
+- [x] **#15 · El panel avisa (y arregla) los sobres que faltan** `web` `infra`
+  - Se canta en la fila plegada y en el login, con «Darle acceso» al lado.
 - [x] **#16 · CI: ruff + pytest en cada PR** `infra`
 - [x] **#17 · Poner al día README, ARCHITECTURE y ROADMAP** `documentation`
 - [x] **#18 · `esc()` valida el esquema en las URL** `seguridad`
@@ -218,7 +220,7 @@ todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
 Y el sistema de diseño nuevo —el atlas— por encima de todo eso.
 
 Lo que queda: el test de destinos (#6-#12, que es una funcionalidad entera y no
-un arreglo), y #15 y #22.
+un arreglo) y la PWA (#22).
 
 
 ## M5 · Robustez y calidad
