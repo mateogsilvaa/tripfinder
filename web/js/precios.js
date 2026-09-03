@@ -146,14 +146,20 @@ export function conGrupo(ofertas, cuantos) {
 }
 
 /* Version de una linea, para las filas del panel de salidas. */
-export function precioCorto(o) {
+/* El precio de una fila del feed. La cifra y el descuento van en la MISMA
+   linea —`.cifra-fila` los agrupa— y debajo, pequeño, a cuanta gente cubre.
+
+   Estaban en lineas separadas y con 120 ofertas reales eso hacia filas de 94px:
+   cifra, "por persona", descuento y escapada, cuatro renglones por viaje. La
+   tabla medida 5.500px y el resto de la pagina no existia. */
+export function precioCorto(o, descuento = "", extra = "") {
   const { gente, unidad, estimado } = reparto(o);
-  if (gente <= 1) {
-    return `<span class="cifra">${fmtEUR(unidad)}</span><small>por persona</small>`;
-  }
-  return `<span class="cifra">${estimado ? "≈" : ""}${fmtEUR(
-    unidad * gente
-  )}</span><small>${Math.round(unidad)} €/persona</small>`;
+  const cifra = gente <= 1 ? fmtEUR(unidad) : `${estimado ? "≈" : ""}${fmtEUR(unidad * gente)}`;
+  const nota = gente <= 1 ? "por persona" : `${Math.round(unidad)} €/persona`;
+  // La cifra en una linea y TODAS las notas en la siguiente: asi todas las filas
+  // del panel miden lo mismo, tengan o no escapada estimada.
+  return `<span class="cifra-fila"><span class="cifra">${cifra}</span>${descuento}</span>
+    <span class="nota-fila"><small>${nota}</small>${extra}</span>`;
 }
 
 /* Comparadores que valen la pena abrir con la ruta ya puesta. eDreams va

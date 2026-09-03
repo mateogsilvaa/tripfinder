@@ -32,6 +32,17 @@ export let OFFERS = [];
    vuelo: es la de la tanda, que es lo que dice si esto es de hoy. */
 let DIA_DEL_SCAN = "";
 
+/* Cuantas filas se enseñan de entrada. Con 120 ofertas y "una por destino"
+   puesto salen unas 60, que en pantalla son 5.500px de tabla: la portada se
+   convertia en un rollo de papel y los dos paneles y lo que llevas apuntado
+   quedaban donde no llega nadie.
+
+   Doce es lo que cabe de un vistazo sin hacer scroll infinito, y el resto está
+   a un clic. No es paginacion: no se pierde nada, solo deja de estar todo
+   desplegado a la vez. */
+const DE_ENTRADA = 12;
+let ampliado = false;
+
 /* ------------------------------------------------------------------ ofertas */
 
 /* El esqueleto de carga se quita pase lo que pase: si se queda puesto porque
@@ -118,7 +129,15 @@ export async function init() {
   }
 
   $(".controls").hidden = false;
-  ["#q", "#sort", "#price", "#unique", "#onlyWeekend", "#cont"].forEach((s) => $(s).addEventListener("input", render));
+  // Tocar un filtro vuelve a empezar por arriba: si no, una búsqueda que deja
+  // tres resultados seguiría "ampliada" y el botón de ver más no tendría nada
+  // que enseñar.
+  ["#q", "#sort", "#price", "#unique", "#onlyWeekend", "#cont"].forEach((s) =>
+    $(s).addEventListener("input", () => {
+      ampliado = false;
+      render();
+    })
+  );
 
   // El scan diario guarda el precio de UNA persona (asi el historico es
   // comparable de un dia para otro). Este selector no vuelve a buscar: solo
@@ -381,9 +400,11 @@ export function boardRow(o, i) {
       <span class="airline">${esc(o.airline || o.provider)}<small>${escalas(o)}${
         o.useful_hours ? ` · ${Math.round(o.useful_hours)} h de viaje` : ""
       }${o.long_haul ? " · larga distancia" : ""}</small></span>
-      <span class="price">${precioCorto(o)}${
-        o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : ""
-      }${deltaHTML(o)}${escapadaHTML(o)}</span>
+      <span class="price">${precioCorto(
+        o,
+        o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : "",
+        deltaHTML(o) + escapadaHTML(o)
+      )}</span>
       <div class="brow-detail" hidden></div>
     </div>`;
 }
@@ -497,16 +518,38 @@ export function render() {
 
   $("#hero").innerHTML = list.length ? heroTicket(list[0]) : "";
   $("#hero").hidden = !list.length;
-  $("#offers").innerHTML = list.slice(1).map(boardRow).join("");
+  // La primera va arriba, en la lámina: el resto es el feed.
+  const resto = list.slice(1);
+  const visibles = ampliado ? resto : resto.slice(0, DE_ENTRADA);
+  $("#offers").innerHTML = visibles.map(boardRow).join("");
   $("#boardHead").hidden = list.length < 2;
   $("#empty").hidden = list.length > 0;
   renderCuenta(list.length);
+  pintarVerMas(resto.length - visibles.length);
 
   document.querySelectorAll(".hero [data-stay]").forEach((el) =>
     el.addEventListener("click", () => openStays(el.dataset.stay))
   );
   wireFavs($("#hero"));
   wireRows();
+}
+
+/* El botón de "ver el resto". Se pinta solo cuando queda algo por enseñar, y
+   al pulsarlo desaparece: no vuelve a plegarse, porque plegar una lista que
+   acabas de abrir es quitarle a alguien lo que estaba mirando. */
+function pintarVerMas(quedan) {
+  const caja = document.getElementById("verMas");
+  if (!caja) return;
+  caja.hidden = quedan <= 0;
+  if (quedan <= 0) return;
+  caja.innerHTML = `<button class="btn ghost" type="button">Ver ${quedan} viaje${
+    quedan === 1 ? "" : "s"
+  } más</button>`;
+  caja.querySelector("button").addEventListener("click", () => {
+    ampliado = true;
+    render();
+    if (typeof tfAnunciar === "function") tfAnunciar(`${quedan} viajes más en la lista.`);
+  });
 }
 
 function focusOffer(id) {
@@ -523,6 +566,8 @@ function ensureVisible(id) {
   if (document.getElementById(`offer-${id}`)) return;
   const o = OFFERS.find((x) => x.id === id);
   if (!o) return;
+  // Puede estar más allá de las doce primeras: se despliega el resto.
+  ampliado = true;
   if (o.price > Number($("#price").value)) $("#price").value = $("#price").max;
   $("#unique").checked = false;
   $("#q").value = "";
