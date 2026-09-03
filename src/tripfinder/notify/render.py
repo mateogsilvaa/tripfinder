@@ -5,8 +5,9 @@ la marca para el precio y todo dato en monoespaciada. Sin radios y sin sombras, 
 bloque de otro es una regla, no una tarjeta.
 
 Todo va con tablas y estilos en linea porque los clientes de correo ignoran
-hojas de estilo, clases y tipografias externas. Newsreader, Sora y Martian Mono
-no llegan aqui: en su sitio van las de sistema, que estan en todas partes. Los colores si son los mismos.
+hojas de estilo, clases y tipografias externas. Switzer e IBM Plex Mono no llegan
+aqui: en su sitio van las de sistema, que estan en todas partes. Los colores si
+son los mismos.
 """
 
 from __future__ import annotations

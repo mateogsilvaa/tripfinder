@@ -173,8 +173,9 @@ NOTA_PANEL = (
 )
 
 # Lo unico que cambia de una pagina a otra. Todo lo demas es comun y vive en
-# `web/partes/`. Cambiar una entrada del nav se hace en `partes/zonas.html` y
-# aparece en las tres paginas publicas de golpe.
+# `web/partes/`. El nav ya no es una parte suya —va dentro de la barra— asi que
+# cambiar una entrada se hace en la constante `NAV` de aqui arriba, y aparece
+# de golpe en las cuatro paginas que lo llevan.
 PAGINAS = {
     "index.html": {
         "base": "",
