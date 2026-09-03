@@ -237,61 +237,66 @@ Todos los workflows llevan `timeout-minutes`: sin él, uno colgado se queda hast
 6 horas de GitHub.
 
 
-## El atlas: dos cartas de la misma hoja
+## El panel de salidas: una sola página que se amplía
 
-TripFinder no se dibuja como un panel de salidas: se dibuja como un **atlas**. Quien
-lo usa no está mirando un tablero de aeropuerto, está eligiendo un sitio al que ir, y
-el índice de topónimos del final de una carta es exactamente eso: nombres de lugar y
-una referencia al lado. De ahí sale todo lo demás.
+TripFinder se dibuja como el **panel de salidas** de un aeropuerto: una lista de
+sitios, una hora y un precio, ordenados para poder recorrerlos con la vista. Quien
+entra no viene a buscar, viene a ver qué hay; buscar es lo que hace después, si algo
+le ha llamado la atención.
 
-**Los dos temas son la misma carta a dos horas.** De casa se entra en la **carta de
-noche** (fondo de tinta azul muy oscura, `#0b1720`, y texto marfil); con el botón de
-la esquina se pasa a **la plancha**, el papel impreso (marfil `#f2efe6` y tinta de
-grabado). El acento **no cambia entre temas**: el rojo de carta es la marca. La
-elección se guarda en el navegador y se aplica en un `<script>` del `<head>`, antes
-de pintar, para que no pegue el fogonazo al entrar de noche.
+De ahí sale la estructura. **Es una sola página**: el feed arriba, y debajo las dos
+herramientas —buscar y seguir— en compacto, junto al bloque de lo que llevas en
+observación. Cuando de verdad usas una de las dos, **la ventana se amplía**: lo que
+has escrito viaja en la URL y se abre `buscar.html` o `seguimientos.html`, que es la
+herramienta entera con su calendario, sus resultados y su historial.
 
-Por eso el claro es un estado con nombre (`data-tema="claro"`) y no la ausencia de
-atributo: si "sin atributo" siguiera significando claro, la primera pintada sería
-blanca en todas las visitas.
+No se lanza desde la portada porque el resultado no cabe: una búsqueda escribe una
+lista de búsquedas guardadas, un calendario, avisos de cuenta y el panel de
+alojamiento. Meter todo eso debajo del feed convierte la portada en un cajón. Y así
+la URL de una búsqueda se puede compartir y volver a abrir.
 
-Lo que hay que respetar al tocar `web/styles.css`, porque es lo que sostiene el
-sistema entero:
+**Los dos temas.** De casa se entra en oscuro (`#100f0e` con tinta marfil); con el
+botón de la esquina se pasa al claro (`#f3f0e9`). La elección se guarda en el
+navegador y se aplica en un `<script>` del `<head>`, antes de pintar, para que no
+pegue el fogonazo al entrar de noche. Por eso el claro es un estado con nombre
+(`data-tema="claro"`) y no la ausencia de atributo: si "sin atributo" siguiera
+significando claro, la primera pintada sería blanca en todas las visitas.
 
-- **Todos los radios valen 0.** La única excepción es `--r-punto` (50%), el punto del
-  testigo "en vivo".
-- **No hay sombras y no hay blur.** `--sombra` y `--relieve` existen y valen `none`;
-  el velo de las capas modales es tinta plana, como el papel de calco sobre una lámina.
-- **No hay tarjetas.** Un bloque se abre con una **regla mayor** de 2px en tinta, con
-  un cuadratín rojo de 46px a la izquierda, y se cierra con una hairline.
-- **Los puntos guía** (`.leader`) son el gesto que define el sistema: entre el topónimo
-  y su cifra corre una línea de puntos, como en el índice del final de un atlas, y al
-  pasar por encima se pone roja y el precio también. Es lo que sustituye a la tarjeta.
-- **No hay iconos ni emoji.** Cerrar, quitar y enterado se escriben con palabras en
-  versalitas mono; poner un viaje en observación es un cuadratín que se rellena de rojo.
-- **Tres tintas y un papel**: rojo de carta (`--azul`, lo que hay que mirar), azul de
-  sondeo (`--sello`, lo informativo) y verde de curva de nivel (`--verde`, lo que baja).
-  No hay una cuarta. Y un solo fondo: no existe `--card` ni `--paper-2`, porque el
-  atlas no tiene tarjetas y un token de superficie sin usar es como se vuelven a colar.
-- **Todo texto llega a 4.5:1** sobre el papel, en los dos temas. El más pequeño de la
-  web son las versalitas mono a 9.5px y ahí no es un adorno; `tools/contraste.py` lo
-  comprueba leyendo los tokens del CSS, y corre en CI.
+Lo que hay que respetar al tocar `web/styles.css`:
+
+- **El naranja es el precio.** `--accent` dice "esto ha bajado", y nada más. Si además
+  pintara la ciudad o la compañía dejaría de querer decir nada. El verde (`--deep`) es
+  lo otro: lo que se queda apuntado y se vigila solo.
+- **`--accent` y `--accent-txt` son dos tokens a propósito.** El naranja del diseño pasa
+  de sobra como **relleno** (con tinta oscura encima) pero como **texto** sobre papel
+  claro se queda en 3,6:1. Oscurecerlo hasta 4,5 arreglaba el texto y rompía el botón:
+  un solo token no puede hacer los dos trabajos.
+- **Tres voces tipográficas.** **Switzer** para todo lo que se lee, **IBM Plex Mono**
+  para todo lo que es un **dato** (precios, códigos IATA, horas, rótulos) y **Pinyon
+  Script** como acento manuscrito. La manuscrita aparece cinco veces contadas en toda
+  la web —el logo, dos titulares y el rótulo del chollo— y por eso significa algo;
+  `tests/test_fuentes.py` falla si se dispara.
+- **La lámina invertida.** El chollo del día y la cabecera del feed van con el fondo al
+  revés. Es lo único que los separa del resto, y por eso tienen sus propios tokens
+  (`--hero-*`, `--code-*`), que se auditan aparte.
+- **Todo texto llega a 4.5:1** sobre las **cuatro** superficies donde cae (`--paper`,
+  `--surface`, `--surface2`, `--field`), en los dos temas. Comprobar solo contra el
+  fondo de la página dejaría pasar un gris que se pierde encima de un panel;
+  `tools/contraste.py` lo comprueba leyendo los tokens del CSS, y corre en CI.
 - **44 px de área táctil** en lo pequeño (el cuadratín de observación, quitar, cerrar).
-  Se agranda dónde se acierta con un pseudoelemento centrado, no el dibujo: el
-  cuadratín sigue midiendo 22 px, que es lo que pide el sistema.
-
-Detrás de todo van tres capas fijas en todas las pantallas: `.grain` es la fibra del
-papel, `.glow` es la **graticula** (paralelos y meridianos cada 32px, con línea de
-grado cada 160px) y `.registro` es el **neatline**, el marco graduado de la carta.
-
-Las tipografías son **Newsreader** para topónimos y titulares (peso 200 y tracking
-positivo: es un rótulo cartográfico, se abre en vez de cerrarse), **Sora** para prosa
-e interfaz y **Martian Mono** para todo dato. El mono es ancho a propósito, y por eso
-sus tamaños bajan: una cifra tiene que ocupar sitio, no gritar.
+  Se agranda dónde se acierta con un pseudoelemento centrado, no el dibujo.
+- **`[hidden]` gana siempre.** Media hoja pone `display:flex` o `display:grid` en un
+  selector de clase, y eso pisa el `display:none` que el navegador da a `[hidden]`. Sin
+  la regla `!important` del principio, el panel de alojamiento y el calendario se
+  quedan abiertos desde que carga la página.
 
 El correo (`src/tripfinder/notify/render.py`) lleva la misma paleta y las mismas
 reglas. Lo único que no viaja son las fuentes —ningún cliente de correo carga
-tipografías externas—, así que ahí van Georgia y la monoespaciada del sistema.
+tipografías externas—, así que ahí van las del sistema.
+
+Los iconos de la aplicación instalable salen de esta misma paleta:
+`tools/iconos.py` los genera con `zlib` y `struct`, sin dependencias, y `--check`
+falla en CI si alguien cambia un color y no los regenera.
 
 ## Antes de mezclar nada
 

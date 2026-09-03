@@ -13,6 +13,7 @@ import {
   on,
 } from "./base.js";
 import { conGrupo } from "./precios.js";
+import { CAMPOS_BUSCAR, ampliar, recogerAmpliado } from "./ampliar.js";
 import {
   BORRANDO_KEY,
   sincronizarFavs,
@@ -124,8 +125,19 @@ function syncFinder() {
 ["#fWhere", "#fWhen"].forEach((s) => on(s, "change", syncFinder));
 if (existe("#finderForm")) syncFinder();
 
+/* Y al revés: si se llega desde la portada, se rellena y se lanza. Va después
+   de `syncFinder` para que los campos condicionales ya estén enganchados. */
+export function recogerBusqueda() {
+  if (!existe("#finderForm") || $("#finderForm").dataset.ampliar) return;
+  recogerAmpliado(CAMPOS_BUSCAR, $("#finderForm"));
+}
+
 on("#finderForm", "submit", async (e) => {
   e.preventDefault();
+  // En la portada este formulario es el compacto: se lleva lo escrito a
+  // `buscar.html` y allí se lanza. En `buscar.html` no hay `data-ampliar` y
+  // esto no hace nada.
+  if (ampliar(e.currentTarget, CAMPOS_BUSCAR)) return;
   const donde = $("#fWhere").value;
   const cuando = $("#fWhen").value;
   const dest = donde === "one" ? $("#fDest").value.trim() : "";

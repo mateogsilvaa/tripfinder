@@ -31,9 +31,14 @@ test.describe("la hoja del día", () => {
     // Y el resto, una entrada de indice cada una.
     await expect(page.locator(".brow")).toHaveCount(OFERTAS.offers.length - 1);
 
-    // La cabecera de columnas y los puntos guia, que son el gesto del sistema.
+    // La cabecera de columnas, y el cuadratín de "poner en observación" el
+    // primero de la fila: es lo que convierte el feed en un parte que se marca.
     await expect(page.locator("#boardHead")).toBeVisible();
-    await expect(page.locator(".brow .leader").first()).toBeAttached();
+    await expect(page.locator(".brow > .fav").first()).toBeAttached();
+    const orden = await page.locator(".brow").first().evaluate((f) =>
+      [...f.children].slice(0, 2).map((c) => c.className.split(" ")[0])
+    );
+    expect(orden).toEqual(["fav", "dest-cell"]);
   });
 
   test("el esqueleto de carga se quita cuando llegan los datos", async ({ page }) => {
@@ -53,12 +58,19 @@ test.describe("las cuentas", () => {
   test("sin sesión los formularios salen apagados y con el motivo", async ({ page }) => {
     await page.goto("/buscar.html");
     const form = page.locator("#finderForm");
+    const caja = page.locator(".herramienta").first();
     await expect(form).toHaveClass(/candado/);
-    await expect(form.locator(".candado-nota")).toContainText(/hace falta una cuenta/i);
-    // Apagados de verdad, no solo con pinta de apagados.
-    for (const sel of ["#fWhere", "#fMax", 'button[type="submit"]']) {
+    // La nota va al final de la herramienta, no dentro del formulario: el
+    // formulario es una rejilla de campos y una frase ahí dentro se lee como
+    // un campo más. Y así queda junto al botón que explica.
+    await expect(caja.locator(".candado-nota")).toContainText(/hace falta una cuenta/i);
+    // Apagados de verdad, no solo con pinta de apagados. El botón de enviar
+    // vive FUERA del formulario (lo enlaza `form=`), así que se comprueba
+    // aparte: es justo el que un `disabled` mal puesto dejaría vivo.
+    for (const sel of ["#fWhere", "#fMax"]) {
       await expect(form.locator(sel)).toBeDisabled();
     }
+    await expect(page.locator('button[form="finderForm"]')).toBeDisabled();
   });
 });
 
@@ -78,13 +90,13 @@ test.describe("la 404", () => {
 
 test.describe("el armazón que comparten las páginas", () => {
   for (const [pagina, activa] of [
-    ["/index.html", "hoja del día"],
-    ["/buscar.html", "trazar un viaje"],
-    ["/seguimientos.html", "en observación"],
+    ["/index.html", "Feed"],
+    ["/buscar.html", "Buscar"],
+    ["/seguimientos.html", "En observación"],
   ]) {
     test(`${pagina} monta cabecera, zonas y pie`, async ({ page }) => {
       await page.goto(pagina);
-      await expect(page.locator(".zona")).toHaveCount(3);
+      await expect(page.locator(".zona")).toHaveCount(4);
       await expect(page.locator(".zona.activa")).toHaveText(activa);
       await expect(page.locator("#tema")).toBeVisible();
       await expect(page.locator(".foot .build")).toBeVisible();
@@ -668,7 +680,7 @@ test.describe("la escapada completa", () => {
 });
 
 /* Las zonas que hasta ahora no tocaba ninguna prueba: el calendario, el
-   selector de destinos y "en observación". Se escriben ANTES de partir
+   selector de destinos y "En observación". Se escriben ANTES de partir
    `app.js` en módulos (#30): un refactor mecánico de 2.100 líneas necesita
    algo debajo que diga si se cayó algo por el camino. */
 
@@ -748,7 +760,7 @@ test.describe("el selector de destinos", () => {
   });
 });
 
-test.describe("en observación", () => {
+test.describe("En observación", () => {
   const conSesion = async (page) => {
     await page.addInitScript(() => {
       try {

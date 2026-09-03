@@ -53,8 +53,18 @@ export function candarFormularios() {
     if (!form) return;
     form.querySelectorAll("input, select, button, textarea").forEach((c) => (c.disabled = true));
     form.classList.add("candado");
-    form.insertAdjacentHTML(
-      "beforeend",
+    // El botón de enviar vive fuera del formulario (lo enlaza `form=`), así
+    // que hay que apagarlo aparte o se queda vivo encima de un formulario
+    // muerto.
+    document.querySelectorAll(`[form="${form.id}"]`).forEach((c) => (c.disabled = true));
+    // Si la página ya lo dice con sus palabras —la portada lo hace, debajo de
+    // cada panel— no se le pone otra nota encima diciendo lo mismo.
+    const caja = form.closest(".herramienta") || form.parentElement;
+    if (caja && caja.querySelector(".candado-nota")) return;
+    // Al final de la herramienta, junto al botón apagado: puesto justo debajo
+    // del formulario quedaba por encima del propio botón que explica.
+    (caja || form).insertAdjacentHTML(
+      caja ? "beforeend" : "afterend",
       `<p class="candado-nota">Para ${que} hace falta una cuenta.
         <button class="btn primary small" type="button" data-entrar>Entrar</button></p>`
     );
@@ -62,14 +72,22 @@ export function candarFormularios() {
   wireEntrar(document);
 }
 
-/* Un solo sitio donde enganchar el boton de entrar que sale en esos avisos. */
+/* Un solo sitio donde enganchar el boton de entrar que sale en esos avisos.
+
+   Se llama desde dos sitios —al candar los formularios y al arrancar— porque
+   unos botones los pone el JS y otros vienen en el HTML de la portada. La
+   marca `data-atado` es lo que evita que el que sale en las dos pasadas acabe
+   con dos oyentes: dos `tfAbrirLogin()` seguidos montan el dialogo, lo vuelven
+   a montar encima y el segundo se queda sin caja. */
 export function wireEntrar(raiz = document) {
-  raiz.querySelectorAll("[data-entrar]").forEach((b) =>
+  raiz.querySelectorAll("[data-entrar]:not([data-atado])").forEach((b) => {
+    b.dataset.atado = "1";
     b.addEventListener("click", (ev) => {
+      ev.preventDefault();
       ev.stopPropagation();
       tfAbrirLogin();
-    })
-  );
+    });
+  });
 }
 
 /* Lo que se enseña cuando algo no se puede lanzar. Ya no se pide el token a

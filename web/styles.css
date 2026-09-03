@@ -1,191 +1,148 @@
-/* TripFinder — el atlas.
+/* ==========================================================================
+   TripFinder — la hoja de estilos entera.
 
-   El producto no es un e-commerce de viajes: es un atlas. Una carta con su
-   graticula, sus reglas y su indice de toponimos al final, donde cada destino
-   es una entrada y cada precio la referencia que va al lado, unidos por una
-   linea de puntos.
+   Es un panel de salidas, no un atlas. Lo que manda:
 
-   Tema oscuro por defecto: la carta de noche (tinta azul muy oscura y marfil).
-   Tema claro: la plancha impresa (marfil y tinta de grabado). El acento —el
-   rojo de carta— NO cambia de papel entre temas: es la marca.
+     · UNA SOLA PÁGINA. El feed, buscar y seguir viven juntos en la portada.
+       Cuando de verdad usas una de las dos herramientas, la ventana se amplía
+       a su página completa. Las secciones se enlazan con anclas.
+     · TIPOGRAFÍA DE TRES VOCES. Switzer para todo lo que se lee, IBM Plex Mono
+       para todo lo que es un DATO (precios, códigos, horas, rótulos), y Pinyon
+       Script como acento manuscrito: aparece cinco veces contadas en toda la
+       web y por eso significa algo.
+     · EL NARANJA ES EL PRECIO. `--accent` no decora: marca lo que ha bajado.
+       Si se usa para otra cosa deja de querer decir nada.
+     · CONTRASTE 4.5:1 EN LOS DOS TEMAS. Lo audita `tools/contraste.py` en CI.
 
-   Reglas duras del sistema, que no se negocian al tocar este fichero:
-     · Todos los radios valen 0. La unica excepcion es --r-punto (50%).
-     · No hay sombras. --sombra y --relieve existen y valen `none`.
-     · No hay blur en ninguna parte; el velo de las capas es tinta plana.
-     · No hay tarjetas: un bloque se abre con una regla mayor de 2px y se
-       cierra con una hairline.
-     · No hay iconos ni emoji: cerrar, enterado y las demas acciones se
-       escriben con palabras en versalitas mono. */
+   Los colores viven todos aquí arriba. Ninguna regla de más abajo escribe un
+   hex a mano: si hay que cambiar la paleta, se cambia en un sitio.
+   ========================================================================== */
 
-/* ======================================================================== */
-/* TOKENS                                                                    */
-/* ======================================================================== */
-
-/* --- tipografias --------------------------------------------------------- */
-/* Newsreader para toponimos y titulares, Sora para prosa e interfaz, Martian
-   Mono para TODO dato. El serif se pone grande y ligero (peso 200, tracking
-   positivo): es un rotulo cartografico, y por eso se abre en vez de cerrarse. */
 :root {
-  --font-display: "Newsreader", "Times New Roman", Georgia, serif;
-  --font-sans: "Sora", "Helvetica Neue", system-ui, sans-serif;
-  --font-mono: "Martian Mono", ui-monospace, "SFMono-Regular", monospace;
-}
+  /* ---- superficies -------------------------------------------------- */
+  --paper: #100f0e;      /* el fondo de todo */
+  --surface: #191817;    /* paneles y el feed */
+  --surface2: #201f1c;   /* el panel de al lado, y la fila al pasar por encima */
+  --field: #1c1b18;      /* dentro de un formulario */
 
-/* --- color: la plancha (tema claro) -------------------------------------- */
-:root {
-  /* Un solo papel. No hay `--card` ni `--paper-2`: el atlas no tiene tarjetas,
-     y un token de superficie que no usa nadie es como se vuelven a colar. */
-  --paper: #f2efe6;          /* marfil de plancha */
+  /* ---- tinta -------------------------------------------------------- */
+  --ink: #f4f1e8;
+  --muted: #8c8880;      /* texto secundario; 5.4:1 sobre --paper */
+  --line: #34332e;       /* el borde de un contenedor */
+  --hair: #282721;       /* la raya entre dos filas */
 
-  --ink: #10202b;            /* tinta de grabado */
-  --muted: #4a5c68;
-  /* 4.72:1 sobre el papel. Va aqui porque es el color del texto MAS pequeño
-     que tiene la web —las versalitas mono a 9.5px— y ahi 4.5:1 no es un
-     adorno. Lo comprueba `tools/contraste.py` en cada CI. */
-  --faint: #5c6c77;
+  /* ---- los dos colores que significan algo --------------------------- */
+  --accent: #ff5a22;     /* el precio que ha bajado. RELLENOS */
+  --accent-txt: #ff5a22; /* el mismo, cuando es TEXTO sobre papel */
+  --deep: #4fd6b0;       /* lo que se queda apuntado y vigila solo */
 
-  --line: rgba(16, 32, 43, 0.22);      /* meridiano: borde y regla mayor */
-  --line-2: rgba(16, 32, 43, 0.1);     /* paralelo: regla menor, entre filas */
+  /* ---- la lámina invertida: el chollo del día y la cabecera del feed -- */
+  --hero-bg: #f4f1e8;
+  --hero-ink: #12110f;
+  --hero-hair: #d9d4c7;
+  --hero-muted: #6e6a5e;
+  --btn-bg: #f4f1e8;
+  --btn-ink: #12110f;
+  --code-bg: #f4f1e8;
+  --code-ink: #12110f;
+  --sobre-acento: #12110f; /* lo que se lee ENCIMA del naranja */
 
-  /* acento: el rojo de carta. Marca lo que hay que mirar. */
-  --azul: #c3392b;
-  --azul-2: #a52d21;
-  --azul-soft: rgba(195, 57, 43, 0.08);
+  /* ---- forma -------------------------------------------------------- */
+  --r: 4px;              /* paneles, campos, el feed */
+  --r-pill: 999px;       /* botones y chips */
+  --r-tag: 3px;          /* el código IATA */
+  --tap-min: 44px;       /* área táctil mínima, aunque se vea más pequeño */
+  --pad-page: 24px;
+  --ancho: 1200px;
 
-  /* segunda tinta: azul de sondeo, para lo informativo */
-  --sello: #1f4f6b;
-  --sello-soft: rgba(31, 79, 107, 0.08);
+  /* ---- tipografía ---------------------------------------------------- */
+  --font-sans: "Switzer", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Switzer", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-script: "Pinyon Script", "Snell Roundhand", cursive;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 
-  /* verde de curva de nivel: lo que baja de precio */
-  --verde: #2f6b4f;
-  --verde-soft: rgba(47, 107, 79, 0.08);
-
-  --sobre-acento: #f7f5ef;
-  --velo: rgba(16, 32, 43, 0.5);
-  color-scheme: light;
-}
-
-/* --- color: la carta de noche (tema por defecto) ------------------------- */
-:root[data-tema="oscuro"] {
-  --paper: #0b1720;
-  --ink: #eae5d8;
-  --muted: #8fa3ae;
-  --faint: #7a8e99;          /* 5.32:1 sobre la tinta de noche */
-  --line: rgba(234, 229, 216, 0.2);
-  --line-2: rgba(234, 229, 216, 0.09);
-  --azul: #e8574a;
-  --azul-2: #f2776b;
-  --azul-soft: rgba(232, 87, 74, 0.11);
-  --sello: #7bb0cf;
-  --sello-soft: rgba(123, 176, 207, 0.1);
-  --verde: #6fae8a;
-  --verde-soft: rgba(111, 174, 138, 0.09);
-  --sobre-acento: #0b1720;
-  --velo: rgba(4, 10, 14, 0.72);
-  color-scheme: dark;
-}
-
-/* --- tipografia: tamaños ------------------------------------------------- */
-/* Martian Mono es ancho: los tamaños de dato BAJAN respecto a un mono normal.
-   Una cifra tiene que ocupar sitio, no gritar. */
-:root {
-  --fs-display: clamp(52px, 9.5vw, 122px);
-  --fs-title: clamp(40px, 6vw, 68px);
-  --fs-heading: 30px;
-  --fs-subhead: 22px;
-  --fs-city-s: 20px;
-  --fs-name-s: 17px;
-
-  --fs-lede: 16px;
-  --fs-body: 15.5px;
-  --fs-body-s: 14px;
+  --fs-display: clamp(40px, 7.6vw, 70px);
+  --fs-title: clamp(38px, 6.6vw, 56px);
+  --fs-heading: 26px;
+  --fs-subhead: 24px;
+  --fs-city: 19px;
+  --fs-city-s: 15px;
+  --fs-lede: 15px;
+  --fs-body: 14px;
+  --fs-body-s: 13px;
   --fs-ui: 13px;
-  --fs-ui-s: 12.5px;
+  --fs-ui-s: 12px;
   --fs-input: 15px;
-
-  --fs-amount: clamp(34px, 4vw, 44px);
-  --fs-figure: 27px;
-  --fs-cifra: 17px;
-  --fs-stat: 19px;
-  --fs-data: 13px;
+  --fs-amount: 50px;
+  --fs-figure: 26px;
+  --fs-cifra: 19px;
+  --fs-data: 12.5px;
   --fs-data-s: 11.5px;
-  --fs-meta: 10.5px;
+  --fs-meta: 11px;
   --fs-caps: 9.5px;
-  --fs-caps-l: 10.5px;
+  --fs-caps-l: 10px;
 
-  --lh-display: 0.9;
-  --lh-title: 0.95;
-  --lh-tight: 1.15;
-  --lh-body: 1.65;
-  --lh-data: 1.5;
+  --ls-title: -0.045em;
+  --ls-caps: 0.14em;
+  --ls-code: 0.1em;
+  --lh-body: 1.55;
 
-  --ls-display: 0.005em;
-  --ls-title: 0.01em;
-  --ls-amount: -0.04em;
-  --ls-cifra: -0.03em;
-  --ls-caps: 0.2em;
-  --ls-caps-wide: 0.26em;
-  --ls-code: 0.14em;
-}
-
-/* --- espacio y medida ---------------------------------------------------- */
-:root {
-  --gap-inline: 10px;
-  --gap-form: 12px;
-  --gap-stack: 16px;
-  --gap-section: 34px;
-
-  --w-page: 1140px;
-  --pad-page: clamp(20px, 5vw, 44px);
-  --w-panel: min(500px, 100%);
-  --w-modal: min(680px, 100%);
-  --measure-lede: 46ch;
-  --measure-prose: 64ch;
-  --tap-min: 44px;                    /* nada pulsable por debajo de esto */
-}
-
-/* --- forma: todos los radios valen 0, no hay sombras --------------------- */
-:root {
-  --radius: 0;
-  --r-punto: 50%;
-  --bw: 1px;
-  --border: 1px solid var(--line);
-  --border-hair: 1px solid var(--line-2);
-  --regla: 2px solid var(--ink);
-  --sombra: none;
-  --relieve: none;
-}
-
-/* --- movimiento ---------------------------------------------------------- */
-/* Un atlas no se mueve. Una sola curva, de 0.14 a 0.34 s, y solo translacion
-   y opacidad: sin rebote, sin giro, sin escala. */
-:root {
+  /* ---- movimiento ---------------------------------------------------- */
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --t-micro: 0.14s;
+  --t-micro: 0.12s;
   --t: 0.18s;
   --t-med: 0.26s;
   --t-panel: 0.34s;
+  --velo: rgba(4, 4, 3, 0.72);
 }
 
-@keyframes tf-flap { from { opacity: 0; transform: translateY(-4px); } }
-@keyframes tf-rise { from { opacity: 0; transform: translateY(10px); } }
-@keyframes tf-stamp { from { opacity: 0; transform: translateY(-4px); } }
-@keyframes fade { from { opacity: 0; } }
-@keyframes fade-in { from { opacity: 0; } }
-@keyframes tf-fade { from { opacity: 0; } }
-@keyframes tf-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-@keyframes tf-slide { from { transform: translateX(100%); } }
-@keyframes tf-sube { from { transform: translateY(16px); opacity: 0; } }
-@keyframes spin { to { transform: rotate(360deg); } }
+/* La carta de día. El `--line` pasa a ser tinta plena a propósito: en claro un
+   gris no separa nada, y el diseño se apoya en el filo negro. */
+:root[data-tema="claro"] {
+  --paper: #f3f0e9;
+  --surface: #fffdf8;
+  --surface2: #f1ece1;
+  --field: #fffdf8;
 
-/* ======================================================================== */
-/* BASE                                                                      */
-/* ======================================================================== */
+  --ink: #16150f;
+  --muted: #6e6a5f;        /* 4.6:1 sobre --surface, el más claro de los tres */
+  --line: #16150f;
+  --hair: #e8e3d7;
+
+  --accent: #e8410d;       /* relleno: #12110f encima da 4.7:1 */
+  --accent-txt: #c5370b;   /* texto sobre papel: 4.5:1 */
+  --deep: #0f5f52;
+
+  --hero-bg: #16150f;
+  --hero-ink: #f3f0e9;
+  --hero-hair: #2e2c24;
+  --hero-muted: #a9a497;
+  --btn-bg: #16150f;
+  --btn-ink: #f3f0e9;
+  --code-bg: #16150f;
+  --code-ink: #fffdf8;
+  --sobre-acento: #12110f;
+  --velo: rgba(22, 21, 15, 0.5);
+}
+
+/* ==========================================================================
+   BASE
+   ========================================================================== */
 
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+
+/* Esto no es una manía: media hoja pone `display:flex` o `display:grid` en un
+   selector de clase, y eso PISA el `display:none` que el navegador le da a
+   `[hidden]`, que es un selector de atributo con la misma especificidad y va
+   antes en la cascada. Sin esta línea, el panel de alojamiento, el calendario
+   y el selector de destinos se quedan abiertos desde que carga la página. */
 [hidden] { display: none !important; }
+
+html {
+  scroll-behavior: smooth;
+  /* La cabecera es pegajosa: sin esto, un ancla deja el título debajo. */
+  scroll-padding-top: 76px;
+}
 
 body {
   margin: 0;
@@ -193,1286 +150,1426 @@ body {
   color: var(--ink);
   font: 400 var(--fs-body) / var(--lh-body) var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-a { color: var(--azul); text-decoration: none; border-bottom: 1px solid var(--line); }
-a:hover { color: var(--sello); border-color: currentColor; }
+a { color: inherit; text-decoration: none; }
+a:hover { color: var(--accent-txt); }
 
-/* Un solo foco visible en toda la web. */
-:is(input, select, button, a, summary, [tabindex]):focus-visible {
-  outline: 2px solid var(--azul); outline-offset: 2px;
+img, svg { max-width: 100%; }
+input, select, button, textarea { font: inherit; color: inherit; }
+::placeholder { color: var(--muted); opacity: 1; }
+select option { color: #16150f; background: #fffdf8; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+input:focus-visible, select:focus-visible {
+  outline-offset: 1px;
 }
 
-::selection { background: var(--azul-soft); }
+h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: var(--ls-title); }
 
-/* ======================================================================== */
-/* LAS TRES CAPAS DE ATMOSFERA                                               */
-/* ======================================================================== */
-
-/* Fibra del papel: lo unico que sobrevive del sistema anterior. */
-.grain {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  opacity: 0.42; mix-blend-mode: multiply;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.32'/%3E%3C/svg%3E");
-}
-:root[data-tema="oscuro"] .grain { opacity: 0.26; mix-blend-mode: soft-light; }
-
-/* La GRATICULA: paralelos y meridianos cada 32px, con una linea de grado mas
-   marcada cada 160px. Es la firma del sistema y va en todas las pantallas. */
-.glow {
-  position: fixed; inset: 0; z-index: 0; pointer-events: none;
-  background:
-    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 160px),
-    repeating-linear-gradient(180deg, var(--line) 0 1px, transparent 1px 160px),
-    repeating-linear-gradient(90deg, var(--line-2) 0 1px, transparent 1px 32px),
-    repeating-linear-gradient(180deg, var(--line-2) 0 1px, transparent 1px 32px);
-  opacity: 0.55;
-}
-:root[data-tema="oscuro"] .glow { opacity: 0.4; }
-
-/* El NEATLINE: el marco graduado de la carta, con sus ticks cada 40px. */
-.registro {
-  position: fixed; inset: 14px; z-index: 0; pointer-events: none;
-  border: 1px solid var(--line);
-  background:
-    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 40px) top / 100% 6px no-repeat,
-    repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 40px) bottom / 100% 6px no-repeat,
-    repeating-linear-gradient(180deg, var(--line) 0 1px, transparent 1px 40px) left / 6px 100% no-repeat,
-    repeating-linear-gradient(180deg, var(--line) 0 1px, transparent 1px 40px) right / 6px 100% no-repeat;
-}
-@media (max-width: 620px) { .registro { display: none; } }
-
-/* ======================================================================== */
-/* PUNTOS GUIA Y REGLAS                                                      */
-/* ======================================================================== */
-
-/* EL GESTO DEL SISTEMA. Entre el toponimo y su cifra corre una linea de
-   puntos, como en el indice del final de un atlas; al pasar por encima se pone
-   roja y el precio tambien. Es lo que sustituye a la tarjeta: no hace falta
-   una caja para agrupar un nombre con su numero si hay una linea que los une. */
-.leader {
-  min-width: 24px; align-self: flex-end; height: 1em;
-  background: radial-gradient(circle at 2px 100%, var(--line) 1px, transparent 1.2px) 0 -3px / 7px 7px repeat-x;
-}
-.leader.on { background-image: radial-gradient(circle at 2px 100%, var(--azul) 1.3px, transparent 1.5px); }
-
-/* La regla mayor que abre una seccion, con su cuadratin rojo de 46px. */
-.regla { display: block; height: 2px; background: var(--ink); position: relative; }
-.regla::before {
-  content: ""; position: absolute; left: 0; top: 0; width: 46px; height: 2px;
-  background: var(--azul);
+/* El acento manuscrito. No es decoración: separa lo que se dice de lo que se
+   promete. Va con su propio interlineado porque Pinyon tiene ascendentes muy
+   largas y sin esto empuja la línea entera. */
+em, .script {
+  font-family: var(--font-script);
+  font-style: normal;
+  font-weight: 400;
+  letter-spacing: 0;
+  font-size: 1.12em;
+  line-height: 0.9;
+  color: var(--accent-txt);
 }
 
-/* Versalitas mono: la etiqueta de todo lo que no es prosa ni dato. Cada sitio
-   pone su tamaño; esto solo fija la familia y el registro. */
-.kicker-tag, .board-label, .board-live {
-  font-family: var(--font-mono);
-  text-transform: lowercase;
+/* Todo lo que es un dato va en monoespaciada: precios, horas, códigos y
+   rótulos. Es lo que deja comparar dos filas de un vistazo. */
+.mono, .cifra, .amount, .iata, .build { font-family: var(--font-mono); }
+
+.rotulo {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
   letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
-/* ======================================================================== */
-/* ARMAZON DE PAGINA                                                         */
-/* ======================================================================== */
+@keyframes tf-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.2; } }
+@keyframes tf-rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes tf-fade { from { opacity: 0; } }
+@keyframes tf-spin { to { transform: rotate(360deg); } }
 
-main, .masthead, .foot { position: relative; z-index: 1; }
-.masthead, main, .foot {
-  max-width: var(--w-page); margin-inline: auto; padding-inline: var(--pad-page);
+/* En el atlas había tres capas de fondo. Aquí no hay ninguna: el fondo es
+   plano y lo que separa es el filo. Se dejan los nodos vacíos por si algún
+   HTML viejo sigue en caché. */
+.grain, .glow, .registro { display: none; }
+
+/* La región donde se anuncia lo que está pasando. Fuera de la vista, pero NO
+   fuera del árbol: `display:none` o `visibility:hidden` la esconderían también
+   del lector de pantalla, que es justo para quien existe. Un píxel recortado
+   es la forma que sí lee todo el mundo. */
+.solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
-.masthead { padding-top: clamp(34px, 5vw, 62px); }
-main { margin-top: 30px; }
 
-/* --- la cabecera de la carta --------------------------------------------- */
-.topbar { display: flex; align-items: center; gap: 16px; }
-.topbar .board { flex: 1; min-width: 0; }
-
-.board {
-  display: flex; align-items: center; gap: 4px;
-  font: 400 var(--fs-caps-l)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+.sin-js {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 18px var(--pad-page);
+  color: var(--accent-txt);
+  font-size: var(--fs-body-s);
 }
 
-/* Las iniciales del origen: ya no son un troquel de panel de salidas, son las
-   iniciales grabadas de una plancha, cada una en su casilla reglada. */
-.flap {
-  display: inline-grid; place-items: center; min-width: 26px;
-  padding: 6px 5px 5px; border: 1px solid var(--line); background: none;
-  color: var(--ink); font: 400 var(--fs-data-s)/1 var(--font-mono);
-  letter-spacing: 0.06em; border-radius: 0;
-  animation: tf-flap 0.5s var(--ease) backwards;
+/* ==========================================================================
+   LA CABECERA
+   ========================================================================== */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
 }
+
+.topbar-in {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 12px var(--pad-page);
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+/* La marca: un avión de papel, "Trip" manuscrito y "finder" en negrita muy
+   apretada. El margen negativo es lo que las hace una sola palabra. */
+.marca { display: flex; align-items: baseline; gap: 9px; flex: none; }
+.marca svg { align-self: center; }
+.marca-trip {
+  font-family: var(--font-script);
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+.marca-finder {
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: -0.035em;
+  margin-left: -6px;
+}
+
+.zonas {
+  display: flex;
+  gap: 20px;
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  color: var(--muted);
+}
+.zona { white-space: nowrap; }
+.zona:hover { color: var(--accent-txt); }
+.zona.activa { color: var(--ink); }
+
+.topbar-hueco { flex: 1; }
+
+.board-live {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  font: 400 var(--fs-meta) / 1 var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.board-live i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: tf-pulse 2s infinite;
+}
+
+.tema {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-body);
+  cursor: pointer;
+  transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.tema:hover { color: var(--ink); border-color: var(--ink); }
+.tema-txt {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+/* El botón de cuenta y el de entrar: la píldora rellena de la cabecera. */
+.cuenta, #tfCuenta {
+  flex: none;
+  padding: 10px 18px;
+  border: 1px solid var(--btn-bg);
+  background: var(--btn-bg);
+  color: var(--btn-ink);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              color var(--t) var(--ease);
+}
+.cuenta:hover, #tfCuenta:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--sobre-acento);
+}
+.cuenta b { font-weight: 700; }
+.cuenta-txt { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* El cuarto flap: el test de destinos. Discreto por diseño —no es la acción
+   principal— pero un botón de verdad, con su área táctil y su giro. */
 .flaps { display: inline-flex; gap: 4px; }
-.flap:nth-child(2) { animation-delay: 0.07s; }
-.flap:nth-child(3) { animation-delay: 0.14s; }
-
-/* El cuarto flap, el del test (#7). En reposo es un flap más —discreto a
-   propósito, no es la acción principal de la web—; al pasar por encima gira
-   sobre su eje horizontal y enseña la otra cara, que es lo único que un panel
-   de salidas hace y esta plancha no hacía. El giro es la excepción a "sin
-   animaciones": aquí ES el significado del objeto. */
+.flap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  padding: 6px 5px 5px;
+  border: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  border-radius: var(--r-tag);
+  font: 500 var(--fs-data-s) / 1 var(--font-mono);
+  letter-spacing: 0.06em;
+}
 .flap-boton {
-  margin-left: 4px; cursor: pointer; position: relative;
-  color: var(--faint); perspective: 200px;
+  position: relative;
+  margin-left: 4px;
+  cursor: pointer;
+  color: var(--muted);
+  perspective: 200px;
+  transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
 }
 .flap-boton .flap-cara {
-  display: block; transition: transform var(--t-med) var(--ease);
-  transform-origin: center;
+  display: block;
+  transition: transform var(--t-med) var(--ease);
 }
-.flap-boton:hover, .flap-boton:focus-visible { color: var(--azul); border-color: var(--azul); }
+.flap-boton:hover, .flap-boton:focus-visible { color: var(--accent-txt); border-color: var(--accent); }
 .flap-boton:hover .flap-cara { transform: rotateX(360deg); }
-/* Área táctil de 44 px sin cambiar lo que se ve, igual que el resto (#25). */
+.flap-boton.con-memoria { color: var(--accent-txt); border-color: var(--accent); }
 .flap-boton::after {
-  content: ""; position: absolute; top: 50%; left: 50%;
-  width: max(100%, var(--tap-min)); height: max(100%, var(--tap-min));
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
   transform: translate(-50%, -50%);
 }
-/* Un punto cuando hay un test guardado: se entra a verlo, no a rehacerlo. */
-.flap-boton.con-memoria { color: var(--azul); border-color: var(--azul); }
-/* ------------------------------------------------------------------ el test
-   Mismo lenguaje que el resto: reglas en vez de tarjetas, nada de sombras y el
-   dato en monoespaciada. Lo único propio son las casillas del progreso, que son
-   el troquel de la cabecera puesto a contar preguntas. */
-.quiz-caja { width: min(560px, 100%); }
-.quiz-head h2 { font-size: 26px; }
-
-.quiz-progreso { display: flex; gap: 4px; margin-top: -8px; }
-.quiz-paso {
-  flex: 1; height: 3px; background: var(--line);
-  transition: background var(--t-med) var(--ease);
-}
-.quiz-paso.hecho { background: var(--ink); }
-.quiz-paso.ahora { background: var(--azul); }
-
-.quiz-cuerpo { overflow-y: auto; }
-.quiz-cuenta {
-  margin: 0 0 6px; font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-}
-.quiz-pregunta {
-  margin: 0 0 6px; font: 300 var(--fs-subhead)/1.15 var(--font-display);
-  letter-spacing: var(--ls-title); color: var(--ink);
-}
-.quiz-pie, .quiz-aviso {
-  margin: 0 0 16px; font: 300 var(--fs-body-s)/1.6 var(--font-sans); color: var(--muted);
-}
-.quiz-aviso { color: var(--azul); }
-
-.quiz-opciones { display: grid; gap: 0; }
-.quiz-opcion {
-  display: flex; align-items: baseline; gap: 12px; width: 100%; cursor: pointer;
-  padding: 14px 2px; min-height: var(--tap-min); text-align: left;
-  background: none; border: 0; border-top: 1px solid var(--line-2); border-radius: 0;
-  color: var(--ink); font: inherit;
-  transition: color var(--t) var(--ease);
-}
-.quiz-opciones .quiz-opcion:last-child { border-bottom: 1px solid var(--line-2); }
-.quiz-opcion:hover, .quiz-opcion:focus-visible { color: var(--azul); }
-.quiz-opcion:hover .quiz-tecla, .quiz-opcion:focus-visible .quiz-tecla {
-  border-color: var(--azul); color: var(--azul);
-}
-.quiz-tecla {
-  flex: none; display: inline-grid; place-items: center; min-width: 22px;
-  padding: 3px 5px; border: 1px solid var(--line); color: var(--faint);
-  font: 400 var(--fs-meta)/1 var(--font-mono);
-}
-.quiz-texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.quiz-texto b {
-  font: 400 var(--fs-name-s)/1.2 var(--font-display); letter-spacing: var(--ls-title);
-}
-.quiz-texto small { font: 300 var(--fs-body-s)/1.5 var(--font-sans); color: var(--muted); }
-
-.quiz-atras {
-  margin-top: 16px; padding: 8px 2px; min-height: var(--tap-min); cursor: pointer;
-  background: none; border: 0; color: var(--faint);
-  font: 400 var(--fs-ui-s)/1 var(--font-mono);
-}
-.quiz-atras:hover, .quiz-atras:focus-visible { color: var(--azul); }
-
-/* Los tres billetes. Uno debajo de otro y separados por una regla: en 320 px
-   tres columnas no caben, y en ancho tampoco aportan nada. */
-.quiz-billetes { display: grid; gap: 0; }
-.quiz-billete { border-top: 1px solid var(--line-2); padding: 18px 0; }
-.quiz-billetes .quiz-billete:last-child { border-bottom: 1px solid var(--line-2); }
-.quiz-billete-top {
-  display: grid; grid-template-columns: 54px minmax(0, 1fr) auto;
-  align-items: center; gap: 12px;
-}
-.quiz-billete .dest-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.quiz-billete .city {
-  font: 400 var(--fs-city-s)/1.1 var(--font-display); letter-spacing: var(--ls-title);
-}
-.quiz-billete .country {
-  font: 400 var(--fs-meta)/1.3 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-}
-.quiz-precio { text-align: right; display: flex; flex-direction: column; gap: 2px; }
-.quiz-cuando {
-  margin: 10px 0 0; font: 400 var(--fs-data-s)/1.5 var(--font-mono); color: var(--muted);
-}
-/* El porqué: es lo que hace que la propuesta no se lea como aleatoria, así que
-   va en la tipografía del texto y no en la de los datos. */
-.quiz-porque {
-  margin: 10px 0 0; font: 300 var(--fs-body-s)/1.6 var(--font-sans); color: var(--ink);
-}
-.quiz-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-.quiz-estado {
-  margin: 10px 0 0; font: 400 var(--fs-data-s)/1.5 var(--font-mono); color: var(--verde);
-}
-.quiz-estado:empty { display: none; }
-.quiz-estado a { color: var(--azul); }
-
-@media (max-width: 380px) {
-  .quiz-billete-top { grid-template-columns: 44px minmax(0, 1fr); }
-  .quiz-precio { grid-column: 2; text-align: left; }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .flap-boton:hover .flap-cara { transform: none; }
 }
 
-.board-label {
-  margin-left: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.board-live { margin-left: auto; display: flex; align-items: center; gap: 8px; flex: none; }
-.board-live i {
-  width: 5px; height: 5px; border-radius: var(--r-punto); background: var(--verde);
-  animation: tf-pulse 2.6s infinite;
+/* ==========================================================================
+   EL CUERPO
+   ========================================================================== */
+
+main {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 0 var(--pad-page) 96px;
 }
 
-/* Dia o noche de la carta. Rectangulo reglado y una palabra: sin glifo. */
-.tema {
-  flex: none; display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
-  background: none; border: 1px solid var(--line); border-radius: 0;
-  color: var(--muted); padding: 8px 12px 7px; min-height: 32px;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-  transition: color var(--t), border-color var(--t);
-}
-.tema:hover { color: var(--ink); border-color: var(--azul); }
-/* El cuadro de 9px mitad tinta: la unica "icono" del cambio de tema. */
-.tema b {
-  width: 9px; height: 9px; flex: none; border: 1px solid var(--azul);
-  background: linear-gradient(90deg, var(--azul) 0 50%, transparent 50% 100%);
-  font-size: 0; line-height: 0;
+.masthead {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 46px var(--pad-page) 30px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 48px;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
 }
 
-/* --- titular: el rotulo de la plancha ------------------------------------ */
 h1 {
-  margin: 30px 0 0;
-  font: 200 var(--fs-display)/var(--lh-display) var(--font-display);
-  letter-spacing: var(--ls-display);
+  font-size: var(--fs-display);
+  line-height: 0.98;
+  margin: 0 0 18px;
+  text-wrap: balance;
 }
-h1 em { display: block; font-style: italic; font-weight: 300; color: var(--azul); }
+h1 em { font-size: 1.12em; }
 
 .lede {
-  max-width: var(--measure-lede); color: var(--muted); margin: 22px 0 0;
-  font: 300 var(--fs-lede)/var(--lh-body) var(--font-sans);
+  margin: 0;
+  max-width: 48ch;
+  color: var(--muted);
+  font-size: var(--fs-lede);
+  line-height: var(--lh-body);
+  text-wrap: pretty;
 }
-
-/* Lo que la web hace POR TI, que no es lo mismo que el tipo de viaje que
-   busca. Va colgando de una hairline, no en un banner: el trato se cuenta, no
-   se anuncia. En movil no añade ningun elemento a la cabecera —es la misma
-   columna de texto, una linea mas abajo. */
 .trato {
-  max-width: var(--measure-prose); margin: 18px 0 0; padding-top: 16px;
-  border-top: 1px solid var(--line-2);
-  font: 300 var(--fs-body-s)/1.75 var(--font-sans); color: var(--muted);
+  margin: 14px 0 0;
+  max-width: 52ch;
+  color: var(--muted);
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body);
 }
-.trato a {
-  color: var(--azul); border-bottom: 1px solid var(--line); white-space: nowrap;
-}
-.trato a:hover { border-color: currentColor; }
+.trato a { color: var(--accent-txt); border-bottom: 1px solid currentColor; }
 
-/* --- las cifras de la hoja, en celdas regladas --------------------------- */
+/* Los cuatro números. Rejilla de un píxel: el fondo es la línea y cada celda
+   se pinta encima, que es como se hace una tabla sin dibujar bordes. */
 .stats {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0; margin: var(--gap-section) 0 0; padding: 0;
-  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  margin: 0;
+  background: var(--line);
+  border: 1px solid var(--line);
 }
-.stats div {
-  display: flex; flex-direction: column; gap: 9px; padding: 16px 20px 15px 0;
+.stats > div {
+  background: var(--paper);
+  padding: 12px 14px;
+  margin: 0;
 }
-.stats div + div { border-left: 1px solid var(--line-2); padding-left: 20px; }
 .stats dt {
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  font: 400 var(--fs-caps-l) / 1.2 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 .stats dd {
-  margin: 0; font: 400 var(--fs-stat)/1 var(--font-mono);
-  letter-spacing: -0.03em; color: var(--ink); white-space: nowrap;
+  margin: 2px 0 0;
+  font: 600 var(--fs-figure) / 1.1 var(--font-mono);
+  letter-spacing: -0.03em;
 }
-.stats dd.hot { color: var(--azul); }
+.stats dd.hot { color: var(--accent-txt); }
+.stats .stats-pie {
+  grid-column: 1 / -1;
+  padding: 10px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.stats .stats-pie b { color: var(--ink); font-weight: 400; }
 
-/* --- las zonas: entradas de indice colgando de una regla ----------------- */
-.zonas {
-  display: flex; flex-wrap: wrap; gap: 0; margin-top: 30px;
-  border-bottom: 1px solid var(--line); align-items: flex-end;
-}
-.zona {
-  position: relative; bottom: -1px; padding: 0 26px 14px 0; margin-right: 4px;
-  border-bottom: 0; white-space: nowrap; color: var(--faint);
-  font: 400 var(--fs-caps-l)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-  transition: color var(--t);
-}
-.zona::after {
-  content: ""; position: absolute; left: 0; right: 26px; bottom: -1px; height: 2px;
-  background: transparent;
-}
-.zona:hover { color: var(--ink); }
-.zona:hover::after { background: var(--line); }
-.zona.activa { color: var(--ink); }
-.zona.activa::after { background: var(--azul); }
+/* ==========================================================================
+   EL CHOLLO DEL DÍA
+   Lámina invertida: el único bloque de la página con el fondo al revés, que es
+   lo que lo separa del feed sin necesidad de gritar.
+   ========================================================================== */
 
-/* --- el pie -------------------------------------------------------------- */
-/* La regla del pie se alinea con la columna de contenido, no con la caja: un
-   borde normal se comeria el padding lateral y saldria mas ancho que las demas
-   reglas de la pagina. */
-.foot {
-  display: flex; flex-wrap: wrap; gap: 8px 26px; align-items: center;
-  margin-top: 66px; padding-block: 22px 54px;
-  background: linear-gradient(var(--ink), var(--ink)) no-repeat;
-  background-size: calc(100% - 2 * var(--pad-page)) 2px;
-  background-position: var(--pad-page) 0;
-  font: 400 var(--fs-ui-s) var(--font-mono); color: var(--faint);
+.ticket {
+  margin: 30px 0 0;
+  border: 1px solid var(--line);
+  background: var(--hero-bg);
+  color: var(--hero-ink);
+  border-radius: var(--r);
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  animation: tf-rise var(--t-med) var(--ease);
 }
-.foot a { color: var(--azul); }
-.build { margin-left: auto; opacity: 0.6; }
-/* Sin partir, para que "hace 12 h" no acabe en dos renglones... pero solo si
-   cabe: a 320 px la frase mide 360 y sacaba una barra horizontal en toda la
-   pagina. El movil estrecho parte la linea, que es mucho menos feo que
-   arrastrar el pie de lado. */
-#frescura { white-space: normal; }
-@media (min-width: 420px) {
-  #frescura { white-space: nowrap; }
+.ticket-izq {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
 }
-#frescura.viejo { color: var(--azul); }
-
-/* ======================================================================== */
-/* LA PLANCHA: el destino del dia                                            */
-/* ======================================================================== */
-
-/* No es una tarjeta: es la lamina de un atlas. Regla mayor arriba con su
-   cuadratin rojo, el toponimo enorme en serif ligero, la cifra en rojo a la
-   derecha y una tabla reglada de tramos debajo. Sin fondo, sin marco, sin
-   talon, sin troquel. */
-.hero { margin: 40px 0 34px; }
-.ticket { position: relative; display: block; }
-
-.ticket-top {
-  display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap;
-  padding: 12px 0 0;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps-wide); color: var(--faint);
+.ticket-top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.kicker {
+  font-family: var(--font-script);
+  font-size: 24px;
+  line-height: 1;
+  color: var(--accent-txt);
 }
-.codes { letter-spacing: var(--ls-code); white-space: nowrap; }
-
-.ticket-cab {
-  display: grid; gap: 8px 40px; align-items: end; padding: 26px 0 30px;
-  grid-template-columns: minmax(240px, 1fr) auto;
+.kicker-tag {
+  font: 400 var(--fs-meta) / 1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hero-muted);
 }
 .dest {
-  margin: 0; font: 300 var(--fs-title)/var(--lh-title) var(--font-display);
+  margin: 0;
+  font-size: var(--fs-title);
+  line-height: 1;
   letter-spacing: var(--ls-title);
 }
 .dest small {
-  display: block; margin-top: 14px;
-  font: 400 var(--fs-caps-l)/1.6 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--muted);
-}
-.ticket-precio { text-align: right; }
-.amount {
-  display: block; font: 400 var(--fs-amount)/1 var(--font-mono);
-  letter-spacing: var(--ls-amount); color: var(--azul);
-}
-.amount span { font-size: 0.44em; margin-left: 4px; letter-spacing: 0; }
-.ticket-notas {
-  display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap;
-  margin-top: 10px; font: 400 var(--fs-data-s)/1.4 var(--font-mono); color: var(--faint);
-}
-.was { text-decoration: line-through; }
-.per-person { color: var(--faint); }
-.pax-nota { font: 400 var(--fs-meta)/1.5 var(--font-mono); color: var(--faint); }
-
-/* El CARTUCHO: la cajita reglada donde una carta pone su escala o su leyenda.
-   Ya no hay sello de goma girado, ni nada que se solape con la cifra: el
-   cartucho va encima del precio, en la misma columna. */
-.stamp {
-  display: inline-flex; align-items: baseline; gap: 10px; margin-bottom: 14px;
-  border: 1px solid var(--azul); border-radius: 0; padding: 7px 11px 6px;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-  animation: tf-stamp 0.5s var(--ease) 0.25s backwards;
-}
-.stamp b {
-  font: 500 var(--fs-cifra)/1 var(--font-mono);
-  letter-spacing: var(--ls-cifra); color: var(--azul);
+  display: block;
+  margin-top: 10px;
+  font: 400 var(--fs-body-s) / 1.4 var(--font-sans);
+  letter-spacing: 0;
+  color: var(--hero-muted);
 }
 
-/* La referencia de cuadricula y la marca de observacion, juntas a la derecha
-   de la regla que abre la plancha. */
-.ticket-ref { display: inline-flex; align-items: center; gap: 14px; flex: none; }
-.hero-extra { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
-
-/* --- los tramos: tabla reglada ------------------------------------------- */
+/* Los cuatro tramos, con la misma rejilla de un píxel que las estadísticas. */
 .legs {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 0; margin: 0;
-  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  margin: 0;
+  background: var(--hero-hair);
+  border: 1px solid var(--hero-hair);
 }
-.legs div {
-  display: flex; flex-direction: column; gap: 7px; padding: 16px 20px 15px 0;
-}
-.legs div + div { border-left: 1px solid var(--line-2); padding-left: 20px; }
+.legs > div { background: var(--hero-bg); padding: 11px 12px; min-width: 0; }
 .legs dt {
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--hero-muted);
 }
 .legs dd {
-  margin: 0; font: 400 var(--fs-data)/1.4 var(--font-mono); color: var(--ink);
+  margin: 3px 0 0;
+  font-size: var(--fs-body-s);
 }
-.legs .weekend { color: var(--ink); }
-.legs .useful { color: var(--verde); }
-.legs .hhmm { display: block; margin-top: 5px; color: var(--muted); font-size: var(--fs-data-s); }
+.legs .hhmm { display: block; margin-top: 1px; font: 400 var(--fs-body-s) var(--font-mono); }
+.legs .dias { font: 400 20px/1 var(--font-mono); }
+.legs .useful { font: 400 var(--fs-body-s) var(--font-mono); }
+.legs .useful small { display: block; font-size: var(--fs-ui-s); color: var(--hero-muted); }
 
-.alts { font: 400 var(--fs-meta)/1.9 var(--font-mono); color: var(--muted); }
-.alts a { color: var(--azul); border-bottom: 1px solid var(--line); }
-.alts a:hover { color: var(--sello); border-color: currentColor; }
+.ticket-der {
+  border-left: 1px solid var(--hero-hair);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+}
+.ticket-precio { min-width: 0; }
+.amount {
+  font-weight: 700;
+  font-size: var(--fs-amount);
+  letter-spacing: -0.05em;
+  line-height: 1;
+  font-family: var(--font-sans);
+}
+.amount span { font-size: 0.6em; }
+.ticket-cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.stamp {
+  font: 600 var(--fs-ui-s) / 1 var(--font-mono);
+  color: var(--accent-txt);
+}
+.pax-nota, .per-person {
+  display: block;
+  margin-top: 2px;
+  font-size: var(--fs-ui-s);
+  color: var(--hero-muted);
+}
+.ticket-notas {
+  display: block;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hero-hair);
+  font-size: var(--fs-data);
+  color: var(--hero-muted);
+}
+.ticket-notas > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 0;
+}
+.ticket-notas b { font: 400 var(--fs-data) var(--font-mono); color: var(--hero-ink); font-weight: 400; }
+.was { color: var(--hero-muted); }
+.escapada { font-family: var(--font-mono); }
+.escapada.real { color: var(--deep); }
 
-/* ======================================================================== */
-/* BOTONES                                                                   */
-/* ======================================================================== */
+.actions { display: grid; gap: 8px; }
+.hero-extra { font-size: var(--fs-ui-s); color: var(--hero-muted); }
+.hidden-warn { color: var(--accent-txt); }
+.alts summary { cursor: pointer; }
 
-/* Rectangulo exacto, sin radio y sin sombra. Al pulsar no se encoge: se
-   oscurece, como una plancha que recibe mas presion. */
-.actions { display: flex; gap: var(--gap-inline); flex-wrap: wrap; margin-top: 22px; }
+/* ==========================================================================
+   BOTONES
+   ========================================================================== */
+
 .btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  white-space: nowrap; cursor: pointer; padding: 13px 22px;
-  border: 1px solid var(--azul); border-radius: 0; text-decoration: none;
-  font: 500 var(--fs-ui)/1 var(--font-sans); letter-spacing: 0.04em;
-  transition: background var(--t), color var(--t), border-color var(--t);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 13px 24px;
+  min-height: var(--tap-min);
+  border: 1px solid transparent;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--sobre-acento);
+  font-size: var(--fs-ui);
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: filter var(--t) var(--ease), background var(--t) var(--ease),
+              color var(--t) var(--ease), border-color var(--t) var(--ease);
 }
-.btn.primary { background: var(--azul); color: var(--sobre-acento); }
-.btn.primary:hover { background: var(--azul-2); border-color: var(--azul-2); }
-.btn.ghost { background: none; border-color: var(--line); color: var(--ink); }
-.btn.ghost:hover { background: var(--azul-soft); color: var(--azul); border-color: var(--azul); }
-.btn.small { padding: 8px 14px; font-size: var(--fs-ui-s); }
-.btn[disabled], .btn.apagado { opacity: 0.4; cursor: default; }
-
-/* "Cerrar", "enterado", "quitar": palabras en versalitas, no glifos. */
-.quitar, #panelClose, #destClose, .modal-head button, [data-cerrar] {
-  background: none; border: 1px solid var(--line); border-radius: 0;
-  color: var(--muted); cursor: pointer; padding: 7px 10px 6px;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-  transition: color var(--t), border-color var(--t);
+.btn:hover { filter: brightness(1.1); color: var(--sobre-acento); }
+.btn.primary { background: var(--accent); color: var(--sobre-acento); }
+.btn.ghost {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--ink);
+  font-weight: 500;
 }
-.quitar:hover, #panelClose:hover, #destClose:hover,
-.modal-head button:hover, [data-cerrar]:hover { color: var(--azul); border-color: var(--azul); }
-.quitar[disabled] { opacity: 0.4; cursor: default; }
+.btn.ghost:hover { border-color: var(--ink); color: var(--ink); filter: none; }
+.btn.small { padding: 9px 16px; font-size: var(--fs-ui-s); }
+.btn.deep { background: var(--deep); border-color: var(--deep); color: #0e1614; }
+.btn.deep:hover { background: transparent; color: var(--deep); filter: none; }
+.btn[disabled], .btn.apagado { opacity: 0.4; cursor: default; filter: none; }
+/* Dentro de la lámina invertida los botones fantasma cambian de tinta. */
+.ticket .btn.ghost { border-color: var(--hero-hair); color: var(--hero-ink); }
+.ticket .btn.ghost:hover { border-color: var(--hero-ink); }
 
-/* Anotacion al margen del indice: un cuadratin que se rellena de rojo. No es
-   una estrella de favorito. */
-.fav {
-  display: grid; place-items: center; width: 22px; height: 22px; padding: 0;
-  border: 1px solid var(--line); border-radius: 0; background: none; cursor: pointer;
-  transition: border-color var(--t);
+/* ==========================================================================
+   EL FEED
+   ========================================================================== */
+
+.feed { margin-top: 44px; scroll-margin-top: 76px; }
+
+.feed-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
 }
-.fav span {
-  width: 10px; height: 10px; background: transparent; font-size: 0; line-height: 0;
-  transition: background var(--t);
+.feed-head h2 { font-size: var(--fs-heading); }
+.feed-cuenta {
+  font: 400 var(--fs-meta) var(--font-mono);
+  letter-spacing: 0.06em;
+  color: var(--muted);
 }
-.fav:hover { border-color: var(--azul); }
-.fav:hover span { background: var(--azul-soft); }
-.fav.on { border-color: var(--azul); }
-.fav.on span { background: var(--azul); }
 
-/* ======================================================================== */
-/* FORMULARIO: las casillas de un impreso                                    */
-/* ======================================================================== */
-
-/* Las casillas no son controles con fondo: son las casillas de un impreso.
-   Laterales hairline y base de tinta; al pasar por encima la base se pone roja. */
+/* La barra de filtros: campos sin caja, solo una raya debajo. */
 .controls {
-  display: flex; flex-wrap: wrap; gap: var(--gap-form) 20px; align-items: flex-end;
-  margin-bottom: 30px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r);
 }
-.field { display: flex; flex-direction: column; gap: 8px; }
-.field.grow { flex: 1 1 220px; }
-.field label {
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 0 1 130px;
+  min-width: 0;
 }
-.field output { color: var(--azul); }
+.field.grow { flex: 1 1 190px; }
+.field label, .field > span {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.field input, .field select {
+  border: none;
+  border-bottom: 1px solid var(--hair);
+  background: transparent;
+  padding: 6px 0;
+  font-size: var(--fs-input);
+  font-weight: 500;
+  width: 100%;
+  min-width: 0;
+  border-radius: 0;
+  transition: border-color var(--t) var(--ease);
+}
+.field input[type="number"], .field .cifra { font-family: var(--font-mono); font-weight: 400; }
+.field input:hover, .field select:hover { border-color: var(--muted); }
+.field input[type="range"] { border: none; padding: 0; accent-color: var(--accent); }
 
-.field input[type="search"], .field select,
-.finder-form input, .finder-form select, .date-btn, .modal-form input,
-#destSearch, .token-box input, .party input {
-  background: none; color: var(--ink); border-radius: 0;
-  border: 1px solid var(--line-2); border-bottom: 1px solid var(--ink);
-  padding: 11px 12px 10px;
-  font: 300 var(--fs-input) var(--font-sans);
-  transition: border-color var(--t);
-}
-.field input[type="search"]:hover, .field select:hover,
-.finder-form input:hover, .finder-form select:hover, .date-btn:hover,
-.modal-form input:hover, #destSearch:hover, .token-box input:hover {
-  border-bottom-color: var(--azul);
-}
-.finder-form input[type="number"], .party input, .token-box input {
-  font: 400 var(--fs-data) var(--font-mono);
-}
-.finder-form input[type="number"] { width: 96px; }
-.finder-form .field.grow input { width: 100%; }
-:root[data-tema="oscuro"] .finder-form input[type="date"] { color-scheme: dark; }
-
-.date-btn { text-align: left; width: 100%; cursor: pointer; color: var(--muted); }
-.date-btn.puesto { color: var(--ink); font: 400 var(--fs-data) var(--font-mono); }
-
-/* Casilla de verificacion: un cuadratin que se rellena. */
+/* Los interruptores son chips, no casillas: se pulsan con el pulgar. */
 .switch {
-  display: flex; align-items: center; gap: 10px; cursor: pointer; white-space: nowrap;
-  padding: 11px 0 10px; border: 0; background: none;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-  transition: color var(--t);
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 14px;
+  min-height: var(--tap-min);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--t) var(--ease);
 }
-.switch:hover { color: var(--muted); }
-.switch:has(input:checked) { color: var(--ink); }
-.switch input {
-  appearance: none; -webkit-appearance: none; margin: 0; flex: none;
-  width: 16px; height: 16px; border: 1px solid var(--line); border-radius: 0;
-  background: none; cursor: pointer; display: grid; place-items: center;
-  transition: border-color var(--t);
+.switch:hover { border-color: var(--muted); color: var(--ink); }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch:has(input:checked) {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
 }
-.switch input::after {
-  content: ""; width: 8px; height: 8px; background: transparent;
-  transition: background var(--t);
-}
-.switch:hover input, .switch input:checked { border-color: var(--azul); }
-.switch input:checked::after { background: var(--azul); }
-.switch.suelto { margin-top: 10px; }
+.switch:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* El tope de precio: una regla graduada de 2px, sin pista con fondo. */
-input[type="range"] {
-  appearance: none; -webkit-appearance: none; width: 100%; min-width: 160px;
-  height: 26px; background: none; cursor: pointer; border-radius: 0;
-  background-image: linear-gradient(90deg, var(--azul) 0 var(--pct, 100%), var(--line) var(--pct, 100%) 100%);
-  background-size: 100% 2px; background-position: 0 50%; background-repeat: no-repeat;
-}
-input[type="range"]::-webkit-slider-runnable-track { height: 2px; background: none; }
-input[type="range"]::-webkit-slider-thumb {
-  -webkit-appearance: none; appearance: none; margin-top: -6px;
-  width: 4px; height: 14px; border-radius: 0; background: var(--azul); border: 0;
-}
-input[type="range"]::-moz-range-track { height: 2px; background: none; }
-input[type="range"]::-moz-range-thumb {
-  width: 4px; height: 14px; border-radius: 0; background: var(--azul); border: 0;
+/* --- la tabla ------------------------------------------------------------
+   Una rejilla de cinco columnas compartida por la cabecera y por cada fila:
+   si se cambia aquí, se cambia en las dos a la vez. */
+.rows, .board-head, .saved-rows, .watch-rows {
+  --cols: 34px minmax(0, 1.3fr) minmax(0, 1.4fr) minmax(0, 1fr) 168px;
 }
 
-/* ======================================================================== */
-/* EL INDICE: cabecera de columnas y entradas                                */
-/* ======================================================================== */
-
-/* La rejilla la comparten cabecera y entradas. La quinta columna es la de los
-   puntos guia y no lleva etiqueta. Si cambias una, cambia la otra. */
-.board-head, .brow {
-  display: grid; align-items: center; gap: 16px;
-  grid-template-columns:
-    54px minmax(150px, 1.1fr) minmax(160px, 1fr) minmax(96px, auto)
-    minmax(30px, 1fr) auto 34px;
+.tabla {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  overflow: hidden;
+  background: var(--surface);
 }
+
 .board-head {
-  align-items: end; padding: 0 0 9px; border-bottom: 2px solid var(--ink);
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+  display: grid;
+  grid-template-columns: var(--cols);
+  gap: 16px;
+  padding: 8px 14px;
+  background: var(--code-bg);
+  color: var(--code-ink);
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
 }
-.board-head span:first-child { grid-column: span 2; }
 .board-head span:last-child { text-align: right; }
 
 .brow {
-  position: relative; width: 100%; text-align: left; background: none;
-  border: 0; border-bottom: 1px solid var(--line-2);
-  color: inherit; padding: 16px 0; cursor: pointer; font: inherit;
-  transition: background var(--t) var(--ease);
-  animation: fade-in 0.45s var(--ease) backwards;
+  display: grid;
+  grid-template-columns: var(--cols);
+  gap: 16px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--hair);
+  align-items: center;
+  cursor: pointer;
+  animation: tf-fade var(--t-med) var(--ease) backwards;
+  transition: background var(--t-micro) var(--ease);
 }
-.brow:hover, .brow:focus-visible, .brow.open { background: var(--azul-soft); }
-.brow:hover .leader, .brow:focus-visible .leader, .brow.open .leader {
-  background-image: radial-gradient(circle at 2px 100%, var(--azul) 1.3px, transparent 1.5px);
-}
-.brow:hover .price .cifra, .brow:focus-visible .price .cifra,
-.brow.open .price .cifra { color: var(--azul); }
-/* La entrada que llega marcada desde el correo: filete rojo al margen. */
-.brow.target { background: var(--azul-soft); box-shadow: inset 2px 0 0 var(--azul); }
-.brow-detail {
-  grid-column: 1 / -1; padding: 6px 0 14px;
-  display: flex; flex-direction: column; gap: 16px;
-  animation: fade var(--t-med) var(--ease);
-}
-.brow .btn { font-size: var(--fs-ui-s); padding: 10px 16px; }
+.rows .brow:first-child { border-top: none; }
+.brow:hover, .brow:focus-visible { background: var(--surface2); }
 
-/* La casilla del codigo: una referencia de cuadricula, sin fondo ni radio. */
-.iata {
-  justify-self: start; display: inline-grid; place-items: center; min-width: 54px;
-  padding: 7px 6px 6px; background: none; border: 1px solid var(--line);
-  border-radius: 0; color: var(--muted);
-  font: 400 var(--fs-data-s)/1 var(--font-mono); letter-spacing: var(--ls-code);
-}
-/* Ciudad oculta: se aterriza lejos del centro y hay que decirlo. */
-.iata.hidden { border-color: var(--azul); color: var(--azul); }
-
-.brow .dest-cell, .favrow .dest-cell {
-  display: flex; flex-direction: column; gap: 3px; min-width: 0;
-}
-.brow .city {
-  font: 400 var(--fs-subhead)/1.1 var(--font-display); letter-spacing: var(--ls-title);
-}
-.brow .country, .favrow .country {
-  font: 400 var(--fs-caps)/1.4 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-}
-.brow .when, .favrow .when {
-  font: 400 var(--fs-data-s)/1.6 var(--font-mono); color: var(--ink); text-wrap: balance;
-}
-.brow .when b, .favrow .when b { color: var(--ink); font-weight: 500; }
-.brow .when small, .favrow .when small {
-  display: block; margin-top: 3px; color: var(--faint);
-}
-.brow .airline { font: 300 var(--fs-body-s)/1.5 var(--font-sans); color: var(--muted); }
-.brow .airline small { display: block; color: var(--faint); font-size: var(--fs-meta); }
-
-.brow .price, .favrow .price { text-align: right; white-space: nowrap; }
-.brow .price .cifra, .favrow .price .cifra {
-  font: 500 var(--fs-cifra)/1 var(--font-mono); letter-spacing: var(--ls-cifra);
-  transition: color var(--t);
-}
-.brow .price .cifra span { font-size: 0.5em; color: var(--muted); margin-left: 2px; }
-.brow .price small, .favrow .price small {
-  display: block; margin-top: 6px; font: 400 var(--fs-meta) var(--font-mono);
-  color: var(--faint);
-}
-.brow .price small.off { color: var(--verde); }
-.brow .fav { justify-self: end; align-self: center; }
-
-/* La escapada completa: vuelos de todos mas una cama para todos. Va con el
-   filete azul de sondeo —la tinta de lo informativo— y con el `≈` delante,
-   porque es una cuenta nuestra y no un precio consultado. Al pedir alojamiento
-   de verdad, el numero real la sustituye. */
-.escapada {
-  display: inline-block; margin-top: 6px; padding-left: 7px;
-  border-left: 2px solid var(--sello);
-  font: 400 var(--fs-meta) var(--font-mono); color: var(--sello);
-  white-space: nowrap; cursor: help;
-}
-.brow .price .escapada, .favrow .price .escapada { color: var(--sello); }
-.ticket-precio .escapada { margin-top: 12px; }
-/* Cuando ya no es una cuenta nuestra sino un precio consultado: verde, la
-   tinta de lo que se sabe de verdad, y sin el `≈`. */
-.escapada.real { border-left-color: var(--verde); color: var(--verde); }
-.brow .price .escapada.real, .favrow .price .escapada.real { color: var(--verde); }
-
-/* Lo que se ha movido desde tu ultima visita. Va calificado con la columna
-   porque ".price small" es mas especifico y si no se comeria el color. */
-.delta { font: 400 var(--fs-meta) var(--font-mono); }
-.delta.baja, .brow .price small.delta.baja, .favrow .price small.delta.baja { color: var(--verde); }
-.delta.sube, .brow .price small.delta.sube, .favrow .price small.delta.sube { color: var(--azul); }
-.delta.igual, .brow .price small.delta.igual, .favrow .price small.delta.igual { color: var(--faint); }
-
-/* ======================================================================== */
-/* NOTAS AL MARGEN Y ESTADOS                                                 */
-/* ======================================================================== */
-
-/* Nota al margen: un filete de color a la izquierda y texto. Ni caja de color
-   ni icono. */
-.hidden-warn {
-  border-left: 2px solid var(--azul); padding-left: 14px;
-  font: 300 var(--fs-body-s)/1.7 var(--font-sans); color: var(--muted);
-}
-.hidden-warn strong { color: var(--azul); font-weight: 500; }
-
-.empty, .errors {
-  color: var(--muted); font: 300 var(--fs-body)/var(--lh-body) var(--font-sans);
-  margin-top: 30px;
-}
-.empty, .vacio { border-left: 2px solid var(--line); padding-left: 14px; }
-/* Un vacio dice que hacer, y para eso tiene que leerse: prosa, no versalitas. */
-.vacio {
-  margin: 16px 0 0; max-width: var(--measure-prose);
-  font: 300 var(--fs-body-s)/1.75 var(--font-sans); color: var(--muted);
-}
-.errors summary {
-  cursor: pointer; color: var(--faint);
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-}
-.errors ul { margin: 12px 0 0; padding-left: 18px; }
-.errors li { font: 400 var(--fs-meta)/1.8 var(--font-mono); color: var(--faint); }
-
-/* El numero que no da ningun comparador: lo que cuesta el finde entero. */
-.total {
-  border-top: 2px solid var(--ink); padding: 14px 0 0;
-  display: flex; flex-direction: column; gap: 9px;
-}
-.total-head {
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-}
-.total-figure { font: 400 var(--fs-figure)/1 var(--font-mono); letter-spacing: -0.035em; }
-.total-figure span { font-size: 0.5em; color: var(--muted); margin-left: 3px; }
-.total-break { font: 400 var(--fs-meta)/1.7 var(--font-mono); color: var(--muted); }
-
-.party { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.party input { width: 70px; }
-.rescan { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
-
-/* La lectura del historico de una ruta, al abrir la entrada. */
-.historia {
-  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  border-left: 2px solid var(--line); padding-left: 14px;
-}
-.historia > div { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.historia b { font: 500 var(--fs-data) var(--font-mono); color: var(--ink); }
-.historia span { font: 300 var(--fs-body-s)/1.5 var(--font-sans); color: var(--muted); }
-.historia.chollo, .historia.bien { border-left-color: var(--verde); }
-.historia.chollo span, .historia.bien span { color: var(--verde); }
-.historia.mal { border-left-color: var(--azul); }
-.historia.mal span { color: var(--azul); }
-
-/* La curva de precio: un perfil de altimetria. Linea fina, sin relleno. */
-.spark { display: block; overflow: visible; }
-.spark.baja { color: var(--verde); }
-.spark.sube { color: var(--azul); }
-
-/* Etiqueta de una linea: rectangulo reglado con versalitas. */
-.insignia {
-  display: inline-flex; align-items: center; padding: 6px 9px 5px;
-  border: 1px solid var(--verde); border-radius: 0; color: var(--verde);
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-}
-
-/* Lo que se dice pero no se ve: la region donde se anuncian las esperas. No
-   vale `display:none` ni `visibility:hidden` —eso lo esconde tambien del
-   lector, que es justo a quien va dirigido. */
-.solo-lector {
-  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
-  overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
-  border: 0;
-}
-
-/* ======================================================================== */
-/* MIENTRAS LLEGAN LOS DATOS, Y CUANDO NO HAY                                */
-/* ======================================================================== */
-
-/* El hueco no puede estar vacio entre que se pide offers.json y se pinta: con
-   la red lenta la pagina parece rota. Se enseñan las reglas del indice sin
-   datos, que es justo lo que va a aparecer encima. Un atlas no se mueve, asi
-   que la espera se dice con opacidad —nunca con un barrido de luz. */
-.cargando { display: block; padding-top: 2px; }
-.cargando-nota {
-  margin: 0 0 4px; font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-  animation: tf-respira 2.4s var(--ease) infinite;
-}
-.cargando-fila {
-  display: block; height: 53px; border-bottom: 1px solid var(--line-2);
-}
-@keyframes tf-respira { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-
-/* Sin JavaScript no hay absolutamente nada que enseñar, y callarse es peor que
-   decirlo: al menos que se sepa por que la pagina esta en blanco. */
-.sin-js {
-  position: relative; z-index: 1;
-  max-width: var(--w-page); margin: 26px auto 0; padding-inline: var(--pad-page);
-  border-left: 2px solid var(--azul);
-  font: 300 var(--fs-body-s)/1.7 var(--font-sans); color: var(--muted);
-}
-
-/* La direccion que no existe. Mismo bloque que cualquier otro: regla mayor
-   arriba con su cuadratin, y la referencia que no estaba en el indice. */
-.perdido { position: relative; padding-top: 14px; }
-.perdido .regla { position: absolute; top: 0; left: 0; right: 0; }
-.perdido-ref {
-  margin: 0 0 4px; font: 400 var(--fs-data-s)/1.6 var(--font-mono);
-  color: var(--faint); word-break: break-all;
-}
-.perdido .vacio { margin-top: 12px; }
-.perdido .actions { margin-top: 26px; }
-
-/* ======================================================================== */
-/* LA HOJA DE ALOJAMIENTO                                                    */
-/* ======================================================================== */
-
-/* Entra desde la derecha. Aqui no hay velo borroso: la pagina de detras se
-   cubre con tinta plana, como el papel de calco sobre una lamina. */
-.backdrop { position: fixed; inset: 0; z-index: 8; background: var(--velo); animation: fade 0.22s var(--ease); }
-.panel {
-  position: fixed; top: 0; right: 0; bottom: 0; z-index: 9; width: var(--w-panel);
-  display: flex; flex-direction: column; background: var(--paper);
-  border-left: 1px solid var(--ink); border-radius: 0;
-  animation: tf-slide var(--t-panel) var(--ease);
-}
-.panel-head {
-  display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
-  padding: 26px 26px 20px; border-bottom: 2px solid var(--ink);
-}
-.kicker {
-  margin: 0; font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps-wide); color: var(--faint);
-}
-.panel-head h2 {
-  margin: 12px 0 0; font: 300 var(--fs-heading)/1.05 var(--font-display);
-  letter-spacing: var(--ls-title);
-}
-.panel-dates { margin: 10px 0 0; font: 400 var(--fs-data-s) var(--font-mono); color: var(--muted); }
-.panel-body {
-  overflow-y: auto; padding: 22px 26px 40px;
-  display: flex; flex-direction: column; gap: 20px;
-}
-.panel-body h3 {
-  margin: 0; font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-  padding-bottom: 9px; border-bottom: 2px solid var(--ink);
-}
-
-.stay {
-  display: grid; grid-template-columns: 74px 1fr auto; gap: 14px; align-items: center;
-  padding: 14px 0; border-bottom: 1px solid var(--line-2);
-  text-decoration: none; color: inherit;
-}
-.stay:last-child { border-bottom: 0; }
-.stay img { width: 74px; height: 56px; object-fit: cover; border-radius: 0; filter: grayscale(1) contrast(1.05); }
-.stay .name { font: 300 var(--fs-body-s)/1.4 var(--font-sans); }
-.stay .name a { color: var(--ink); border-bottom: 0; }
-.stay:hover .name, .stay .name a:hover { color: var(--azul); }
-.stay .meta { font: 400 var(--fs-meta)/1.6 var(--font-mono); color: var(--faint); margin-top: 3px; }
-.stay .amount-s {
-  text-align: right; white-space: nowrap;
-  font: 500 var(--fs-cifra)/1 var(--font-mono); letter-spacing: var(--ls-cifra);
-}
-.stay .amount-s small {
-  display: block; margin-top: 5px; font: 400 var(--fs-meta) var(--font-mono);
-  color: var(--faint); letter-spacing: 0;
-}
-.link-tag { font: 400 var(--fs-data-s) var(--font-mono); color: var(--muted); }
-
-.status { border-left: 2px solid var(--sello); padding-left: 14px; color: var(--muted); }
-.status.wait { border-left-color: var(--azul); }
-.status p { margin: 0 0 12px; color: var(--muted); }
-.spin {
-  display: inline-block; width: 11px; height: 11px; margin-right: 8px;
-  border: 1px solid currentColor; border-right-color: transparent; border-radius: 50%;
-  animation: spin 0.8s linear infinite; vertical-align: -1px;
-}
-
-/* ======================================================================== */
-/* LA LAMINA DE DESTINOS Y EL CALENDARIO                                     */
-/* ======================================================================== */
-
-/* No sube desde abajo como una hoja de movil: se centra, como una lamina que
-   se pone sobre la mesa. */
-.modal {
-  position: fixed; inset: 0; z-index: 12; display: grid; place-items: center;
-  padding: 20px; background: var(--velo); animation: fade 0.22s var(--ease);
-}
-.modal-caja {
-  width: var(--w-modal); max-height: 84vh; display: flex; flex-direction: column; gap: 20px;
-  background: var(--paper); border: 1px solid var(--ink); border-radius: 0;
-  padding: 24px 26px 28px; animation: tf-rise var(--t-med) var(--ease);
-}
-.modal-caja.estrecha { width: min(440px, 100%); }
-.modal-head {
-  display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
-  border-bottom: 2px solid var(--ink); padding-bottom: 14px;
-}
-.modal-head h2 {
-  margin: 0; font: 300 26px/1 var(--font-display); letter-spacing: var(--ls-title);
-}
-
-#destSearch { width: 100%; }
-.dest-list { overflow-y: auto; padding-bottom: 4px; }
-.pais { border-top: 1px solid var(--line-2); padding: 12px 0; }
-.pais-todo {
-  display: flex; align-items: baseline; gap: 12px; width: 100%; text-align: left;
-  background: none; border: 0; border-radius: 0; cursor: pointer;
-  padding: 8px 4px; color: var(--ink); transition: background var(--t);
-}
-.pais-todo:hover { background: var(--azul-soft); }
-.pais-todo span { font: 400 var(--fs-name-s) var(--font-display); letter-spacing: var(--ls-title); }
-.pais-todo em {
-  font: 400 var(--fs-meta) var(--font-mono); font-style: normal; color: var(--faint);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-}
-.ciudades { display: flex; flex-wrap: wrap; gap: 7px; padding: 8px 4px 0; }
-.ciudad {
-  display: inline-flex; gap: 10px; align-items: baseline; cursor: pointer;
-  background: none; border: 1px solid var(--line-2); border-radius: 0;
-  color: var(--muted); padding: 8px 12px 7px;
-  font: 300 var(--fs-body-s) var(--font-sans); transition: all var(--t);
-}
-.ciudad:hover { background: var(--azul-soft); border-color: var(--azul); color: var(--ink); }
-.ciudad i {
-  font-style: normal; font-family: var(--font-mono); color: var(--faint);
-  font-size: var(--fs-meta); letter-spacing: var(--ls-code);
-}
-
-/* El calendario es una tabla de efemerides: meses en columnas regladas, dias
-   en mono, sin fondos redondeados. */
-.cal {
-  border: 1px solid var(--line); border-radius: 0; padding: 20px 18px;
-  background: none; max-height: 340px; overflow-y: auto; margin-top: 14px;
-}
-.meses { display: grid; gap: 24px; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); }
-.mes h4 {
-  margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--ink);
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--ink);
-}
-.semana, .dias { display: grid; grid-template-columns: repeat(7, 1fr); }
-.semana i {
-  font: 400 var(--fs-caps)/1 var(--font-mono); font-style: normal; color: var(--faint);
-  text-align: center; padding: 0 0 8px; letter-spacing: 0; text-transform: lowercase;
-}
-.dias .dia, .dias span {
-  aspect-ratio: 1; display: grid; place-items: center; border-radius: 0;
-  border: 1px solid transparent; background: none; cursor: pointer;
-  color: var(--muted); font: 400 var(--fs-data-s) var(--font-mono);
-}
-.dias .dia:hover:not([disabled]) { background: var(--azul-soft); }
-.dias .dia[disabled] { color: var(--faint); opacity: 0.4; cursor: default; }
-.dias .dia.extremo { background: var(--azul); border-color: var(--azul); color: var(--sobre-acento); }
-.dias .dia.dentro { background: var(--azul-soft); }
-
-/* ======================================================================== */
-/* TRAZAR UN VIAJE Y LO QUE SIGUES                                           */
-/* ======================================================================== */
-
-/* Un bloque se abre con una regla mayor y se cierra con una hairline. */
-.finder {
-  border: 0; border-top: 2px solid var(--ink); border-radius: 0;
-  background: none; margin-bottom: 30px; position: relative;
-}
-.finder::before {
-  content: ""; position: absolute; left: 0; top: -2px; width: 46px; height: 2px;
-  background: var(--azul);
-}
-.finder > summary {
-  list-style: none; cursor: pointer; padding: 14px 0 12px;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps-wide); color: var(--faint);
-}
-.finder > summary::-webkit-details-marker { display: none; }
-.finder > summary::after { content: " · desplegar"; color: var(--azul); }
-.finder[open] > summary::after { content: " · plegar"; }
-.finder-body { padding: 0 0 26px; border-bottom: 1px solid var(--line-2); }
-.finder-lede {
-  margin: 0 0 22px; color: var(--muted); max-width: var(--measure-prose);
-  font: 300 var(--fs-body-s)/1.75 var(--font-sans);
-}
-.finder-lede strong { color: var(--ink); font-weight: 500; }
-.finder-form { display: flex; flex-wrap: wrap; gap: var(--gap-form) 20px; align-items: flex-end; }
-.hint { margin: 14px 0 0; font: 400 var(--fs-meta)/1.7 var(--font-mono); color: var(--faint); }
-.finder.abierta { margin-bottom: 22px; }
-
-.searches, .watches { margin-top: 26px; }
-.watch-head, .favoritos h3 {
-  margin: 0 0 4px; padding-bottom: 9px; border-bottom: 2px solid var(--ink);
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-}
-.saved, .watch {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-  padding: 15px 0; border-bottom: 1px solid var(--line-2); cursor: pointer;
-}
-.saved b, .watch b {
-  font: 400 var(--fs-name-s) var(--font-display); letter-spacing: var(--ls-title);
-}
-.saved .meta, .watch .meta, .favoritos .meta {
-  font: 400 var(--fs-meta)/1.7 var(--font-mono); color: var(--faint);
-  text-transform: none; letter-spacing: 0;
-}
-.saved .best {
-  margin-left: auto; font: 500 var(--fs-cifra) var(--font-mono);
-  letter-spacing: var(--ls-cifra); color: var(--azul);
-}
-.saved-rows, .watch-rows { width: 100%; padding-top: 6px; }
-
-/* Una busqueda que ya estaba hecha: se ofrece en vez de volver a barrer. El
-   filete azul de sondeo dice "esto es informacion", no "esto es un chollo". */
-.saved.ya-hecha { border-left: 2px solid var(--sello); padding-left: 14px; }
-.saved.ya-hecha .btn { margin-left: auto; }
-
-/* ======================================================================== */
-/* EL AVISO DE CAMBIO DE PRECIO                                              */
-/* ======================================================================== */
-
-/* Vive en las tres paginas: es lo que hace que "la web te avise". Se abre con
-   la regla mayor, como cualquier otra seccion. */
-.fav-aviso {
-  border-top: 2px solid var(--ink); padding: 16px 0 24px; margin-bottom: 30px;
-  position: relative; animation: fade var(--t-med) var(--ease);
-}
-.fav-aviso::before {
-  content: ""; position: absolute; left: 0; top: -2px; width: 46px; height: 2px;
-  background: var(--azul);
-}
-.aviso-head { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
-.aviso-head .kicker { margin: 0; }
-.aviso-head h3 {
-  margin: 0; font: 300 var(--fs-heading)/1.1 var(--font-display);
-  letter-spacing: var(--ls-title);
-}
-.aviso-head h3 small {
-  display: block; margin-top: 8px;
-  font: 400 var(--fs-meta)/1.6 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-}
-.aviso-head .btn { margin-left: auto; }
-.cambios {
-  display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
-  margin-top: 22px; border-top: 1px solid var(--line);
-}
-.cambio {
-  display: flex; flex-direction: column; gap: 12px;
-  padding: 18px 20px 18px 14px; border-bottom: 1px solid var(--line-2);
-  border-left: 2px solid var(--line);
-}
-.cambio.baja { border-left-color: var(--verde); }
-.cambio.sube { border-left-color: var(--azul); }
-.cambio header { display: grid; gap: 4px; }
-.cambio h4 {
-  margin: 0; font: 400 var(--fs-city-s)/1.1 var(--font-display);
-  letter-spacing: var(--ls-title); color: var(--ink);
-}
-.cambio header p { margin: 0; font: 400 var(--fs-meta)/1.6 var(--font-mono); color: var(--faint); }
-.cambio-precio { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-.cambio-precio s { font: 400 var(--fs-data-s) var(--font-mono); color: var(--faint); }
-.cambio-precio b {
-  font: 400 var(--fs-figure)/1 var(--font-mono); letter-spacing: -0.035em; color: var(--ink);
-}
-.cambio-precio b span { font-size: 0.45em; color: var(--muted); margin-left: 3px; }
-.sello-dif {
-  font-style: normal; border: 1px solid currentColor; padding: 6px 9px 5px;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-}
-.cambio.baja .sello-dif { color: var(--verde); }
-.cambio.sube .sello-dif { color: var(--azul); }
-.cambio-nota { font: 400 var(--fs-meta) var(--font-mono); color: var(--faint); }
-.cambio-curva { min-height: 34px; }
-.cambio.baja .cambio-curva { color: var(--verde); }
-.cambio.sube .cambio-curva { color: var(--azul); }
-.cambio footer { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.aviso-pie { margin-top: 16px; font: 400 var(--fs-meta) var(--font-mono); }
-.aviso-pie a { color: var(--azul); border-bottom: 1px solid var(--line); }
-.aviso-pie a:hover { color: var(--sello); border-color: currentColor; }
-
-/* ======================================================================== */
-/* LA LISTA DE SEGUIDOS                                                      */
-/* ======================================================================== */
-
-.favoritos { margin-top: 34px; }
-.favrow {
-  display: grid; align-items: center; gap: 10px 18px;
-  grid-template-columns:
-    54px minmax(130px, 1.1fr) minmax(150px, 1fr) auto minmax(24px, 1fr) auto auto;
-  padding: 16px 0; border-bottom: 1px solid var(--line-2);
-  background: none; transition: background var(--t);
-}
-.favrow:hover { background: var(--azul-soft); }
-.favrow:hover .leader {
-  background-image: radial-gradient(circle at 2px 100%, var(--azul) 1.3px, transparent 1.5px);
-}
-/* Lo que se ha movido desde tu ultima visita: filete rojo, no fondo de color. */
-.favrow.nuevo { border-left: 2px solid var(--azul); padding-left: 14px; }
-.favrow .city {
-  font: 400 var(--fs-city-s)/1.1 var(--font-display); letter-spacing: var(--ls-title);
-}
-.favrow .spark-cell { display: flex; align-items: center; }
-.favrow .favacc { display: flex; align-items: center; gap: 10px; }
-
-/* ======================================================================== */
-/* CUENTAS Y PANEL                                                           */
-/* ======================================================================== */
-
-.cuenta {
-  display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
-  background: none; border: 1px solid var(--line); border-radius: 0;
-  color: var(--muted); padding: 8px 12px 7px; min-height: 32px;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-  transition: color var(--t), border-color var(--t);
-}
-.cuenta:hover { color: var(--ink); border-color: var(--azul); }
-.cuenta b {
-  display: grid; place-items: center; width: 18px; height: 18px;
-  border: 1px solid var(--line); font-size: var(--fs-caps); font-weight: 400;
-}
-.cuenta.dentro { color: var(--ink); border-color: var(--azul); }
-.cuenta.dentro b { background: var(--azul); color: var(--sobre-acento); border-color: var(--azul); }
-.cuenta-txt { white-space: nowrap; }
-
-.modal-form { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
-.modal-form label {
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-  margin-top: 8px;
-}
-.modal-form .meta { margin: 0 0 4px; }
-.modal-form .btn { margin-top: 14px; }
-.estrecha-form { max-width: 420px; }
-.solo-ancho { display: inline; }
-
-.cuenta-nota {
-  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-  border-top: 1px solid var(--line-2); padding-top: 12px; margin-top: 12px;
-  font: 300 var(--fs-body-s)/1.7 var(--font-sans); color: var(--muted);
-}
-.cuenta-row { grid-template-columns: 92px 1fr auto; align-items: center; }
-.cuenta-row.apagada { opacity: 0.5; }
-.cuenta-row .favacc { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.cuenta-row .detalle { grid-column: 1 / -1; }
-.cuenta-detalle { border-top: 1px solid var(--line-2); margin-top: 12px; padding-top: 14px; }
-.detalle-cols { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
-.detalle-cols h4 {
-  margin: 0 0 8px; font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
-}
-.lista-seca { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.lista-seca li { font: 400 var(--fs-data-s)/1.6 var(--font-mono); color: var(--muted); }
-.lista-seca b { color: var(--ink); font-weight: 500; }
-.lista-seca .apagado { color: var(--faint); }
-.ojo { color: var(--azul); }
-
-/* Una cuenta sin sobre no puede lanzar nada, y hasta ahora eso se descubría
-   pulsando un botón que no respondía. En el atlas no hay tarjetas ni sombras
-   con las que llamar la atención: lo que hay es una regla al margen, que es
-   como se marca una anotación en una carta (#15). */
-.cuenta-row.sin-acceso { border-left: 2px solid var(--azul); padding-left: 12px; }
-.aviso-acceso {
-  display: block; padding-top: 4px;
-  font: 400 var(--fs-meta)/1.6 var(--font-mono);
-}
-.btn.urge { color: var(--azul); border-color: var(--azul); }
-
-.token-box { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
-.token-box input { width: 100%; }
-.token-box a { color: var(--azul); }
-.token-status { margin: 12px 0 0; font: 400 var(--fs-data-s)/1.6 var(--font-mono); color: var(--sello); }
-.finder-form.candado > .btn { opacity: 0.45; }
-.candado-nota { font: 400 var(--fs-meta)/1.7 var(--font-mono); color: var(--faint); }
-.campo-clave { position: relative; display: flex; }
-.campo-clave input { width: 100%; padding-right: 84px; }
-.ver-clave {
-  position: absolute; right: 0; top: 0; bottom: 0;
-  background: none; border: 0; border-left: 1px solid var(--line-2);
-  color: var(--faint); cursor: pointer; padding: 0 12px;
-  font: 400 var(--fs-caps)/1 var(--font-mono);
-  text-transform: lowercase; letter-spacing: var(--ls-caps);
-}
-.ver-clave:hover, .ver-clave:focus-visible { color: var(--azul); }
-
-.rows { display: block; }
-
-/* ======================================================================== */
-/* RESPONSIVE                                                                */
-/* ======================================================================== */
-
-@media (max-width: 860px) {
-  .board-head { display: none; }
-  .brow {
-    grid-template-columns: 54px 1fr auto; gap: 8px 14px;
-    grid-template-areas: "iata city price" ". when when" ". airline airline" ". fav fav";
-  }
-  .brow .iata { grid-area: iata; }
-  .brow .dest-cell { grid-area: city; }
-  .brow .when { grid-area: when; }
-  .brow .airline { grid-area: airline; }
-  .brow .price { grid-area: price; }
-  .brow .fav { grid-area: fav; justify-self: start; }
-  .brow .leader { display: none; }
-
-  .favrow { grid-template-columns: 54px 1fr auto; gap: 8px 14px; }
-  .favrow .leader, .favrow .spark-cell { display: none; }
-  .favrow .when { grid-column: 2 / -1; }
-  .favrow .favacc { grid-column: 2 / -1; }
-
-  .cuenta-row { grid-template-columns: 58px 1fr; }
-  .cuenta-row .favacc { grid-column: 1 / -1; }
-}
-
-@media (max-width: 680px) {
-  .ticket-cab { grid-template-columns: 1fr; }
-  .ticket-precio { text-align: left; }
-  .ticket-notas { justify-content: flex-start; }
-
-  /* En dos columnas fijas se sabe cual empieza fila: sin esto una celda que
-     baja de linea se lleva un filete a la izquierda que no separa nada. */
-  .legs { grid-template-columns: repeat(2, 1fr); }
-  .legs div + div { border-left: 0; padding-left: 0; }
-  .legs div:nth-child(even) { border-left: 1px solid var(--line-2); padding-left: 20px; }
-  .legs div:nth-child(n + 3) { border-top: 1px solid var(--line-2); }
-}
-
-@media (max-width: 620px) {
-  .finder-form { gap: 10px; }
-  .finder-form .field, .finder-form .switch, .finder-form .btn { width: 100%; }
-  .finder-form input, .finder-form select, .date-btn {
-    width: 100%; font-size: 16px;  /* menos de 16px hace que iOS haga zoom solo */
-  }
-  .finder-form input[type="number"] { width: 100%; }
-  .controls { gap: 10px; }
-  .controls .field, .controls .switch { width: 100%; }
-  .controls input[type="range"] { width: 100%; }
-  .modal { padding: 0; place-items: end center; }
-  .modal-caja { max-height: 92vh; padding: 18px 18px 22px; }
-  .meses { grid-template-columns: 1fr; }
-  .cal { max-height: 60vh; }
-  .dias .dia { font-size: 14px; }
-  .panel { width: 100%; border-left: 0; }
-  .stats { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
-  .stats div + div { border-left: 0; border-top: 1px solid var(--line-2); padding-left: 0; }
-  .foot { flex-direction: column; align-items: flex-start; gap: 6px; }
-  .build { margin-left: 0; }
-  .zonas { gap: 0; }
-  .zona { padding-right: 18px; font-size: 10px; }
-  .zona::after { right: 18px; }
-}
-
-/* --- area tactil -------------------------------------------------------- */
-
-/* El cuadratin de observacion mide 22px porque asi lo pide el sistema: es una
-   anotacion al margen, no un boton. Lo que se agranda es donde SE ACIERTA, no
-   lo que se ve — un pseudoelemento centrado de 44x44 que no ocupa sitio en la
-   rejilla ni mueve nada de su sitio. Misma idea para "quitar" y "cerrar", que
-   son palabras pequeñas en versalitas.
-
-   44px es el minimo de WCAG 2.5.5 y lo que hace que se acierten a la primera
-   en un movil de 320px. */
-.fav, .quitar, #panelClose, #destClose, .modal-head button, [data-cerrar] {
+/* El cuadratín de "poner en observación". Va el primero, como en un parte. */
+.fav {
   position: relative;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tag);
+  background: transparent;
+  color: transparent;
+  font: 400 var(--fs-ui-s) / 1 var(--font-mono);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: all var(--t) var(--ease);
 }
-.fav::after,
-.quitar::after,
-#panelClose::after,
-#destClose::after,
-.modal-head button::after,
-[data-cerrar]::after {
+.fav::before { content: "·"; color: var(--muted); }
+.fav:hover { border-color: var(--deep); }
+.fav.on {
+  border-color: var(--deep);
+  background: var(--deep);
+  color: #0e1614;
+}
+.fav.on::before { content: "✓"; color: #0e1614; }
+.fav::after {
   content: "";
   position: absolute;
-  top: 50%;
-  left: 50%;
+  top: 50%; left: 50%;
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
   transform: translate(-50%, -50%);
 }
 
-/* Lo que ya es una caja con texto solo necesita no quedarse corto de alto. */
-@media (pointer: coarse) {
-  .btn, .zona, .tema, .cuenta, .date-btn { min-height: var(--tap-min); }
+/* Dentro de la lámina invertida el cuadratín va con SUS tintas: el `--muted`
+   del tema es el del fondo de fuera y ahí dentro no se ve. */
+.ticket .fav { border-color: var(--hero-hair); }
+.ticket .fav::before { color: var(--hero-muted); }
+.ticket .fav:hover { border-color: var(--deep); }
+
+.dest-cell { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.iata {
+  flex: none;
+  font: 500 var(--fs-meta) / 1 var(--font-mono);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 3px 6px;
+  border-radius: var(--r-tag);
+  letter-spacing: var(--ls-code);
+  font-variant-numeric: tabular-nums;
+}
+.iata.hidden { border-color: var(--accent); color: var(--accent-txt); }
+.city {
+  font-weight: 600;
+  font-size: var(--fs-city-s);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.country {
+  font-size: var(--fs-ui-s);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.when { min-width: 0; }
+/* Toda la fecha en una línea: "vie 8 ene 16:10 → dom 10 19:10". Los `<b>` van
+   en línea a propósito —en bloque partían la fila en tres renglones— y lo que
+   sobra se corta con puntos suspensivos en vez de doblarse. */
+.when {
+  font: 400 var(--fs-data) var(--font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.when b { font-weight: 500; }
+.when i { font-style: normal; color: var(--muted); }
+.when small {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--fs-data-s);
+  color: var(--muted);
+}
+.when.weekend b { color: var(--ink); }
+
+.airline { min-width: 0; }
+.airline small {
+  display: block;
+  font-size: var(--fs-data-s);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Los puntos guía eran del atlas: aquí las columnas ya alinean solas. */
+.leader { display: none; }
+
+.price { text-align: right; min-width: 0; }
+.price .cifra {
+  font: 600 var(--fs-cifra) / 1.1 var(--font-mono);
+  letter-spacing: -0.02em;
+}
+.price small { display: block; font-size: var(--fs-meta); color: var(--muted); }
+.price .off {
+  display: inline;
+  margin-left: 7px;
+  font: 600 var(--fs-ui-s) var(--font-mono);
+  color: var(--accent-txt);
+}
+.price .escapada { display: block; font-size: var(--fs-meta); color: var(--muted); }
+
+/* La diferencia contra el precio al que lo apuntaste. */
+.delta { display: block; font: 500 var(--fs-meta) var(--font-mono); }
+.delta.baja, .price .delta.baja { color: var(--deep); }
+.delta.sube, .price .delta.sube { color: var(--accent-txt); }
+.delta.igual, .price .delta.igual { color: var(--muted); }
+
+.brow-detail {
+  grid-column: 1 / -1;
+  border-top: 1px solid var(--hair);
+  margin-top: 11px;
+  padding-top: 14px;
+}
+
+.empty, .vacio {
+  margin-top: 8px;
+  font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--muted);
+}
+
+/* Lo que se enseña mientras llegan los datos. */
+.cargando { padding: 8px 0; }
+.cargando-fila {
+  height: 44px;
+  border-top: 1px solid var(--hair);
+  background: linear-gradient(90deg, transparent, var(--surface2), transparent);
+  background-size: 200% 100%;
+  animation: tf-barrer 1.4s infinite linear;
+}
+@keyframes tf-barrer { to { background-position: -200% 0; } }
+.cargando-nota { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); padding-top: 10px; }
+.spin {
+  display: inline-block;
+  width: 12px; height: 12px;
+  border: 1.5px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: tf-spin 0.8s linear infinite;
+}
+
+.errors {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 12px 14px;
+  font-size: var(--fs-body-s);
+  color: var(--muted);
+}
+.errors summary { cursor: pointer; color: var(--accent-txt); }
+
+/* ==========================================================================
+   LOS DOS PANELES: buscar y seguir
+   ========================================================================== */
+
+.panels {
+  margin-top: 52px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.herramienta {
+  scroll-margin-top: 76px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.herramienta.segunda { background: var(--surface2); }
+.herramienta > .finder-body { display: contents; }
+
+.kicker-num {
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--accent-txt);
+}
+.herramienta.segunda .kicker-num { color: var(--deep); }
+.herramienta h3 { font-size: var(--fs-subhead); margin: 8px 0 0; }
+.herramienta h3 em { font-size: 1.15em; color: inherit; }
+.finder-lede, .herramienta p {
+  margin: 10px 0 0;
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body);
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* Los campos: rejilla de un píxel, cada celda con su fondo de formulario. */
+.finder-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+}
+.finder-form label, .finder-form .celda {
+  background: var(--field);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.finder-form label > span {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.finder-form input, .finder-form select, .finder-form .date-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: var(--fs-input);
+  font-weight: 600;
+  width: 100%;
+  min-width: 0;
+  border-radius: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.finder-form input[type="number"], .finder-form .cifra { font-family: var(--font-mono); font-weight: 400; }
+.finder-form .party {
+  grid-column: 1 / -1;
+  background: var(--field);
+  padding: 10px 12px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.finder-form .party > label { background: none; padding: 0; }
+.hint { font-size: var(--fs-ui-s); color: var(--muted); line-height: 1.45; }
+.finder-form + .candado-nota { margin-top: 0; }
+.candado-nota, .cuenta-nota {
+  font-size: var(--fs-ui-s);
+  color: var(--muted);
+  border-top: 1px solid var(--hair);
+  padding-top: 12px;
+}
+.candado-nota a, .cuenta-nota a { color: var(--accent-txt); text-decoration: underline; text-underline-offset: 2px; }
+.finder-form.candado > .btn { opacity: 0.45; }
+
+/* La página completa de una herramienta: la misma caja, sin borde ni fondo,
+   porque ahí ya no compite con nada. */
+.herramienta.completa {
+  border: none;
+  background: none;
+  padding: 0;
+}
+.finder { border: none; background: none; }
+.finder summary { display: none; }
+
+/* ==========================================================================
+   EN OBSERVACIÓN
+   ========================================================================== */
+
+.observacion {
+  margin-top: 20px;
+  scroll-margin-top: 76px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r);
+  padding: 22px;
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.observacion-num { min-width: 140px; }
+.observacion-num b {
+  display: block;
+  font-weight: 700;
+  font-size: 36px;
+  letter-spacing: var(--ls-title);
+  line-height: 1.15;
+}
+.observacion p { margin: 0; flex: 1; min-width: 260px; }
+
+.favoritos, .watches, .searches { margin-top: 28px; }
+.watch-head, .aviso-head {
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.favrow, .watch, .ya-hecha, .saved {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px 16px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  margin-bottom: 8px;
+}
+.favrow .dest-cell, .watch .dest-cell { grid-column: 2; }
+.favrow .meta, .watch .meta, .saved .meta, .ya-hecha .meta {
+  font-size: var(--fs-ui-s);
+  color: var(--muted);
+}
+.favacc { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.best { font: 600 var(--fs-data) var(--font-mono); color: var(--deep); }
+
+.quitar {
+  position: relative;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: 400 var(--fs-ui-s) var(--font-mono);
+  cursor: pointer;
+  transition: all var(--t) var(--ease);
+}
+.quitar:hover { border-color: var(--accent); color: var(--accent-txt); }
+.quitar::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
+  transform: translate(-50%, -50%);
+}
+
+.fav-aviso {
+  margin: 20px 0 0;
+  border: 1px solid var(--accent);
+  border-radius: var(--r);
+  padding: 14px 16px;
+  font-size: var(--fs-body-s);
+  color: var(--ink);
+}
+.fav-aviso b { color: var(--accent-txt); }
+
+/* La curva de precio. */
+.historia { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+.historia b { font: 600 var(--fs-data) var(--font-mono); }
+.historia span { display: block; font-size: var(--fs-ui-s); color: var(--muted); }
+.historia.barato span { color: var(--deep); }
+.historia.caro span { color: var(--accent-txt); }
+.spark-cell svg, .historia svg { display: block; }
+.cambios { display: grid; gap: 6px; }
+.cambio-precio { font: 600 var(--fs-data) var(--font-mono); }
+.cambio-nota { font-size: var(--fs-ui-s); color: var(--muted); }
+.sello-dif { font: 500 var(--fs-meta) var(--font-mono); color: var(--accent-txt); }
+
+/* ==========================================================================
+   EL PIE
+   ========================================================================== */
+
+.foot {
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+}
+.foot-in {
+  max-width: var(--ancho);
+  margin: 0 auto;
+  padding: 20px var(--pad-page);
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  font: 400 var(--fs-meta) var(--font-mono);
+  letter-spacing: 0.04em;
+}
+.foot a { color: var(--accent-txt); }
+.build { opacity: 0.6; }
+#frescura { white-space: normal; }
+@media (min-width: 460px) { #frescura { white-space: nowrap; } }
+#frescura.viejo { color: var(--accent-txt); }
+.aviso-pie { color: var(--accent-txt); }
+
+/* ==========================================================================
+   DIÁLOGOS
+   ========================================================================== */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: var(--velo);
+  animation: tf-fade var(--t) var(--ease);
+}
+.modal-caja {
+  width: min(560px, 100%);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 24px 26px 28px;
+  animation: tf-rise var(--t-med) var(--ease);
+}
+.modal-caja.estrecha { width: min(440px, 100%); }
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+.modal-head h2 { font-size: var(--fs-subhead); }
+.modal-head button, [data-cerrar] {
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: 400 var(--fs-ui-s) var(--font-mono);
+  cursor: pointer;
+  transition: all var(--t) var(--ease);
+}
+.modal-head button:hover, [data-cerrar]:hover { color: var(--accent-txt); border-color: var(--accent); }
+
+.modal-form { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+.modal-form label {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.modal-form input, .token-box input, #destSearch {
+  border: 1px solid var(--hair);
+  background: var(--field);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  font-size: var(--fs-input);
+  width: 100%;
+}
+.modal-form input:hover, .token-box input:hover, #destSearch:hover { border-color: var(--muted); }
+.modal-form .meta { margin: 0 0 4px; font-size: var(--fs-ui-s); color: var(--muted); }
+.modal-form .btn { margin-top: 14px; }
+.estrecha-form { display: grid; gap: 8px; }
+.campo-clave { position: relative; display: flex; }
+.campo-clave input { padding-right: 84px; }
+.ver-clave {
+  position: absolute;
+  right: 6px; top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: 400 var(--fs-ui-s) var(--font-mono);
+  cursor: pointer;
+}
+.ver-clave:hover { color: var(--ink); border-color: var(--ink); }
+
+.dest-list { overflow-y: auto; padding-bottom: 4px; }
+.pais { border-top: 1px solid var(--hair); padding: 12px 0; }
+.pais-todo {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 0;
+  min-height: var(--tap-min);
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: 400 var(--fs-caps-l) var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.pais-todo:hover { color: var(--accent-txt); }
+.ciudades { display: flex; flex-wrap: wrap; gap: 6px; }
+.ciudad {
+  padding: 8px 12px;
+  min-height: var(--tap-min);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: transparent;
+  font-size: var(--fs-ui);
+  cursor: pointer;
+  transition: all var(--t) var(--ease);
+}
+.ciudad:hover { border-color: var(--accent); color: var(--accent-txt); }
+.ciudad .codigo { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); margin-left: 6px; }
+
+/* ==========================================================================
+   EL PANEL DE ALOJAMIENTO
+   ========================================================================== */
+
+.panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(520px, 100%);
+  z-index: 45;
+  background: var(--surface);
+  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  animation: tf-entrar var(--t-panel) var(--ease);
+}
+@keyframes tf-entrar { from { transform: translateX(100%); } }
+.panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-head h2 { font-size: var(--fs-subhead); }
+.panel-dates { margin: 4px 0 0; font: 400 var(--fs-data) var(--font-mono); color: var(--muted); }
+#panelClose {
+  position: relative;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: 400 var(--fs-ui-s) var(--font-mono);
+  cursor: pointer;
+}
+#panelClose:hover { color: var(--accent-txt); border-color: var(--accent); }
+#panelClose::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
+  transform: translate(-50%, -50%);
+}
+.panel-body { overflow-y: auto; padding: 20px 22px 40px; display: grid; gap: 14px; }
+.backdrop { position: fixed; inset: 0; z-index: 44; background: var(--velo); }
+
+.stay {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 14px;
+  background: var(--surface2);
+  display: grid;
+  gap: 6px;
+}
+.stay .name { font-weight: 600; font-size: var(--fs-city-s); }
+.stay .meta { font-size: var(--fs-ui-s); color: var(--muted); }
+.stay .cifra { font: 600 var(--fs-cifra) var(--font-mono); }
+.stay .insignia {
+  justify-self: start;
+  font: 400 var(--fs-meta) var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--deep);
+  border: 1px solid var(--deep);
+  border-radius: var(--r-tag);
+  padding: 2px 6px;
+}
+.total {
+  border: 1px solid var(--accent);
+  border-radius: var(--r);
+  padding: 16px;
+  display: grid;
+  gap: 6px;
+}
+.total-head { font: 400 var(--fs-caps-l) var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.total-figure { font: 600 var(--fs-figure) var(--font-mono); letter-spacing: -0.03em; }
+.total-break { font-size: var(--fs-ui-s); color: var(--muted); }
+.wait, .status { font: 400 var(--fs-data) var(--font-mono); color: var(--muted); }
+.link-tag { font-size: var(--fs-ui-s); color: var(--accent-txt); }
+.rescan { justify-self: start; }
+.perdido { color: var(--muted); font-size: var(--fs-body-s); }
+.perdido-ref { font-family: var(--font-mono); }
+
+/* ==========================================================================
+   EL CALENDARIO
+   ========================================================================== */
+
+.cal {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  padding: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 18px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.mes { min-width: 0; }
+.mes h4 {
+  font: 400 var(--fs-caps-l) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.semana button, .semana span {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font: 400 var(--fs-ui-s) var(--font-mono);
+  border-radius: var(--r-tag);
+  cursor: pointer;
+}
+.semana button:hover { background: var(--surface2); }
+.semana button.activa { background: var(--accent); color: var(--sobre-acento); }
+.semana button.dentro { background: var(--hair); }
+.semana button[disabled] { color: var(--hair); cursor: default; }
+
+/* ==========================================================================
+   EL TEST DE DESTINOS
+   ========================================================================== */
+
+.quiz-caja { width: min(560px, 100%); }
+.quiz-head h2 { font-size: var(--fs-subhead); }
+.quiz-progreso { display: flex; gap: 4px; margin-top: -8px; }
+.quiz-paso { flex: 1; height: 3px; background: var(--hair); transition: background var(--t-med) var(--ease); }
+.quiz-paso.hecho { background: var(--ink); }
+.quiz-paso.ahora { background: var(--accent); }
+
+.quiz-cuerpo { overflow-y: auto; }
+.quiz-cuenta {
+  margin: 0 0 6px;
+  font: 400 var(--fs-caps) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.quiz-pregunta { margin: 0 0 6px; font-size: var(--fs-subhead); }
+.quiz-pie, .quiz-aviso { margin: 0 0 16px; font-size: var(--fs-body-s); line-height: var(--lh-body); color: var(--muted); }
+.quiz-aviso { color: var(--accent-txt); }
+
+.quiz-opciones { display: grid; }
+.quiz-opcion {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 2px;
+  min-height: var(--tap-min);
+  text-align: left;
+  background: none;
+  border: 0;
+  border-top: 1px solid var(--hair);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: color var(--t) var(--ease);
+}
+.quiz-opciones .quiz-opcion:last-child { border-bottom: 1px solid var(--hair); }
+.quiz-opcion:hover, .quiz-opcion:focus-visible { color: var(--accent-txt); }
+.quiz-opcion:hover .quiz-tecla, .quiz-opcion:focus-visible .quiz-tecla { border-color: var(--accent); color: var(--accent-txt); }
+.quiz-tecla {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  padding: 3px 5px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tag);
+  color: var(--muted);
+  font: 400 var(--fs-meta) / 1 var(--font-mono);
+}
+.quiz-texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.quiz-texto b { font-weight: 600; font-size: var(--fs-city-s); letter-spacing: -0.02em; }
+.quiz-texto small { font-size: var(--fs-body-s); color: var(--muted); }
+.quiz-atras {
+  margin-top: 16px;
+  padding: 8px 2px;
+  min-height: var(--tap-min);
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font: 400 var(--fs-ui-s) var(--font-mono);
+  cursor: pointer;
+}
+.quiz-atras:hover, .quiz-atras:focus-visible { color: var(--accent-txt); }
+
+.quiz-billetes { display: grid; }
+.quiz-billete { border-top: 1px solid var(--hair); padding: 18px 0; }
+.quiz-billetes .quiz-billete:last-child { border-bottom: 1px solid var(--hair); }
+.quiz-billete-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.quiz-billete .dest-cell { display: flex; flex-direction: column; gap: 3px; align-items: flex-start; }
+.quiz-billete .city { font-size: var(--fs-city); font-weight: 700; letter-spacing: var(--ls-title); }
+.quiz-billete .country { font: 400 var(--fs-meta) var(--font-mono); text-transform: lowercase; letter-spacing: 0.06em; }
+.quiz-precio { text-align: right; display: flex; flex-direction: column; gap: 2px; }
+.quiz-precio .cifra, .quiz-precio .amount { font: 600 var(--fs-cifra) var(--font-mono); letter-spacing: -0.02em; }
+.quiz-precio .pax-nota { color: var(--muted); }
+.quiz-cuando { margin: 10px 0 0; font: 400 var(--fs-data) var(--font-mono); color: var(--muted); }
+.quiz-porque { margin: 10px 0 0; font-size: var(--fs-body-s); line-height: var(--lh-body); color: var(--ink); }
+.quiz-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.quiz-estado { margin: 10px 0 0; font: 400 var(--fs-data) var(--font-mono); color: var(--deep); }
+.quiz-estado:empty { display: none; }
+.quiz-estado a { color: var(--accent-txt); }
+
+/* ==========================================================================
+   EL PANEL DE ADMINISTRACIÓN
+   ========================================================================== */
+
+.cuenta-row { grid-template-columns: 92px 1fr auto; align-items: center; }
+.cuenta-row.apagada { opacity: 0.5; }
+.cuenta-row.sin-acceso { border-left: 2px solid var(--accent); }
+.aviso-acceso { display: block; padding-top: 4px; font: 400 var(--fs-meta) var(--font-mono); }
+.btn.urge { color: var(--accent-txt); border-color: var(--accent); }
+.cuenta-row .favacc { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cuenta-row .detalle { grid-column: 1 / -1; }
+.cuenta-detalle { border-top: 1px solid var(--hair); margin-top: 12px; padding-top: 14px; }
+.detalle-cols { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+.detalle-cols h4 {
+  margin: 0 0 8px;
+  font: 400 var(--fs-caps) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.lista-seca { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.lista-seca li { font: 400 var(--fs-data-s) / 1.6 var(--font-mono); color: var(--muted); }
+.lista-seca b { color: var(--ink); font-weight: 500; }
+.lista-seca .apagado { color: var(--muted); opacity: 0.6; }
+.ojo { color: var(--accent-txt); }
+.token-box { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+.token-box a { color: var(--accent-txt); }
+.token-status { margin: 12px 0 0; font: 400 var(--fs-data-s) var(--font-mono); color: var(--deep); }
+
+/* ==========================================================================
+   RESPONSIVE
+   Los mismos cortes que el prototipo: 940 para las dos columnas, 760 para la
+   tabla, que es donde una fila de cinco columnas deja de caber.
+   ========================================================================== */
+
+@media (max-width: 940px) {
+  .masthead { grid-template-columns: 1fr; gap: 30px; }
+  .ticket { grid-template-columns: 1fr; }
+  .ticket-der { border-left: none; border-top: 1px solid var(--hero-hair); }
+  .panels { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 760px) {
+  :root { --pad-page: 16px; }
+  .zonas, .board-live { display: none; }
+  .board-head { display: none; }
+
+  /* La barra en un móvil estrecho. Se cae por este orden: primero el nav y el
+     punto de "en vivo" (arriba), luego las iniciales MAD —que son decoración,
+     mientras que el `?` de al lado es un botón— y por último el nombre de la
+     cuenta, que deja la inicial. Lo que queda cabe en 320 px, que es el ancho
+     del móvil más estrecho que sigue en la calle. */
+  .topbar-in { gap: 10px; }
+  .flaps { display: none; }
+  .flap-boton { margin-left: 0; }
+  .cuenta, #tfCuenta { padding: 10px 12px; }
+  .cuenta-txt { display: none; }
+
+  /* La fila se dobla: destino y precio arriba, fechas y compañía debajo. */
+  .brow {
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 6px 12px;
+    padding: 14px;
+  }
+  /* El nombre del sitio es lo que se busca con la vista: el país baja debajo
+     en vez de robarle sitio y dejar "Berg…" y "It…". */
+  .dest-cell { flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+  .brow > .dest-cell .country { flex-basis: 100%; }
+  .brow > .fav { grid-area: 1 / 1 / 2 / 2; }
+  .brow > .dest-cell { grid-area: 1 / 2 / 2 / 3; }
+  .brow > .price { grid-area: 1 / 3 / 2 / 4; }
+  .brow > .when { grid-area: 2 / 2 / 3 / 4; }
+  .brow > .airline { grid-area: 3 / 2 / 4 / 4; }
+  .brow > .brow-detail { grid-area: 4 / 1 / 5 / 4; }
+
+  .legs, .finder-form .party { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .stats { grid-template-columns: 1fr 1fr; }
+  .modal-caja { padding: 18px; }
+  .panel { width: 100%; border-left: none; }
+}
+
+@media (max-width: 420px) {
+  .finder-form { grid-template-columns: 1fr; }
+  .quiz-billete-top { grid-template-columns: auto minmax(0, 1fr); }
+  .quiz-precio { grid-column: 2; text-align: left; }
 }
 
 @media (prefers-reduced-motion: reduce) {

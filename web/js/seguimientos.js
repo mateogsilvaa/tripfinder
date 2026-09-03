@@ -15,6 +15,7 @@ import {
 import { boardRow, wireRows } from "./ofertas.js";
 import { esperarCambios } from "./busqueda.js";
 import { abrirDestinos } from "./destinos.js";
+import { CAMPOS_SEGUIR, ampliar, recogerAmpliado } from "./ampliar.js";
 import { desde } from "./alojamiento.js";
 
 /* ------------------------------------------------------------ seguimientos
@@ -47,6 +48,8 @@ if (existe("#watchForm")) syncWatch();
 
 on("#watchForm", "submit", async (e) => {
   e.preventDefault();
+  // El compacto de la portada se amplía a `seguimientos.html`; aquí no.
+  if (ampliar(e.currentTarget, CAMPOS_SEGUIR)) return;
   const donde = $("#wWhere").value;
   const cuando = $("#wWhen").value;
   const dest = donde === "one" ? $("#wDest").value.trim() : "";
@@ -182,3 +185,11 @@ export async function cargarWatches() {
     );
 }
 
+
+
+/* Lo que llega desde la portada: rellenar y apuntar sin pedir otro clic. */
+export function recogerSeguimiento() {
+  const form = $("#watchForm");
+  if (!form || form.dataset.ampliar) return;
+  recogerAmpliado(CAMPOS_SEGUIR, form);
+}

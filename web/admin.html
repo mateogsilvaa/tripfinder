@@ -6,13 +6,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripFinder · panel</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#0b1720">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛠️</text></svg>">
+<meta name="theme-color" content="#100f0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
+<link rel="icon" href="iconos/marca.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://api.fontshare.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
-<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap"></noscript>
+<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<noscript>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+</noscript>
 <link rel="stylesheet" href="styles.css?v=dev">
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
@@ -20,10 +27,6 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <!-- /tf:parte -->
 <body data-sin-cuenta>
 <!-- tf:parte capas -->
-<div class="grain" aria-hidden="true"></div>
-<div class="glow" aria-hidden="true"></div>
-<div class="registro" aria-hidden="true"></div>
-
 <noscript>
   <p class="sin-js">
     Esta web necesita JavaScript: los precios se leen de un fichero de datos y
@@ -33,18 +36,26 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 </noscript>
 <!-- /tf:parte -->
 
-<header class="masthead">
 <!-- tf:parte barra -->
   <div class="topbar">
-    <div class="board">
-      <span class="flaps" aria-hidden="true"><span class="flap">A</span><span class="flap">D</span><span class="flap">M</span></span>
-      <span class="board-label" aria-hidden="true">panel · cuentas y registro de errores</span>
+    <div class="topbar-in">
+      <a class="marca" href="./" aria-label="TripFinder, a la portada">
+        <svg width="23" height="23" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <rect width="32" height="32" rx="8" fill="var(--code-bg)"></rect>
+          <path d="M7 18.5 25 7l-5.2 18-4.1-6.1-2.9 4.6-.6-5.2z" fill="var(--accent)"></path>
+        </svg>
+        <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
+      </a>
+      <div class="topbar-hueco"></div>
+      
+      <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
+        <b aria-hidden="true">☀</b><span class="tema-txt">noche</span>
+      </button>
     </div>
-    <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
-      <b aria-hidden="true"></b><span class="tema-txt">noche</span>
-    </button>
   </div>
 <!-- /tf:parte -->
+
+<header class="masthead">
   <h1>El <em>panel</em></h1>
   <p class="lede" id="lede">
     Desde aquí se dan de alta las cuentas que pueden entrar en la web y se ve
@@ -145,8 +156,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 <!-- tf:parte pie -->
 <footer class="foot">
+  <div class="foot-in">
   <span>Las contraseñas no se guardan: solo su PBKDF2 con sal, igual que en el backend.</span>
-  <span class="build">build dev</span>
+    <span class="build">build dev</span>
+  </div>
 </footer>
 
 <script src="log.js?v=dev"></script>
