@@ -874,3 +874,96 @@ test.describe("una cuenta sin sobre", () => {
     await expect(msg).not.toContainText(/no tiene sobre/i);
   });
 });
+
+test.describe("la aplicación instalable", () => {
+  /* La #22. Lo que se comprueba no es que funcione sin red: es que no MIENTA
+     cuando funciona sin red. Enseñar la tanda de anteayer con el aspecto de la
+     de esta mañana es peor que no abrir. */
+
+  // El único sitio donde el worker está encendido (ver playwright.config.js).
+  test.use({ serviceWorkers: "allow" });
+
+  const registrado = (page) =>
+    page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, {
+      timeout: 15000,
+    });
+
+  test("se registra en la portada y no en el panel", async ({ page }) => {
+    await page.goto("/index.html");
+    await registrado(page);
+    const alcance = await page.evaluate(async () => {
+      const r = await navigator.serviceWorker.getRegistration();
+      return r ? r.scope : "";
+    });
+    expect(alcance).toContain("/");
+
+    // El panel escribe en el repo con un token: ahí no se instala nada.
+    await page.goto("/admin.html");
+    expect(await page.locator('link[rel="manifest"]').count()).toBe(0);
+  });
+
+  test("el manifiesto se sirve y se lee", async ({ page }) => {
+    await page.goto("/index.html");
+    const href = await page.locator('link[rel="manifest"]').getAttribute("href");
+    const r = await page.request.get(new URL(href, page.url()).toString());
+    expect(r.ok()).toBe(true);
+    const m = await r.json();
+    expect(m.display).toBe("standalone");
+    expect(m.icons.length).toBeGreaterThan(1);
+  });
+
+  /* `context.setOffline` no vale aquí: corta la red de la PÁGINA, y las
+     peticiones de datos las hace el service worker, que se queda con línea. La
+     cobertura se corta en el servidor de pruebas, que es donde de verdad se
+     nota. */
+  const cobertura = (page, si) => page.request.get(`/__corte?on=${si ? 0 : 1}`);
+
+  test("sin cobertura, abre con la última tanda y lo dice", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await registrado(page);
+    // Una vuelta más para que el worker, ya controlando, guarde los datos.
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".brow").first()).toBeVisible();
+
+    await cobertura(page, false);
+    try {
+      await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+      // Los datos siguen ahí…
+      await expect(page.locator(".brow").first()).toBeVisible();
+      // …y el pie no disimula de dónde salen.
+      await expect(page.locator("#frescura")).toContainText(/sin conexión/i);
+      await expect(page.locator("#frescura")).toHaveClass(/viejo/);
+    } finally {
+      await cobertura(page, true);
+    }
+  });
+
+  test("con cobertura gana la red, no la caja", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await registrado(page);
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#frescura")).toContainText(/levantamiento/);
+    // Con línea nunca se etiqueta como guardado, aunque la copia esté ahí.
+    await expect(page.locator("#frescura")).not.toContainText(/sin conexión/i);
+    const marca = await page.evaluate(async () => {
+      const r = await fetch(`data/offers.json?t=${Date.now()}`, { cache: "no-store" });
+      return r.headers.get("X-TF-Cache");
+    });
+    expect(marca).toBeNull();
+  });
+
+  test("y en cuanto vuelve la línea, se deja de avisar", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await registrado(page);
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator(".brow").first()).toBeVisible();
+
+    await cobertura(page, false);
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#frescura")).toContainText(/sin conexión/i);
+
+    await cobertura(page, true);
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("#frescura")).toContainText(/levantamiento/);
+  });
+});

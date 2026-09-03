@@ -18,6 +18,9 @@ const TIPOS = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".svg": "image/svg+xml",
+  ".png": "image/png",
+  // Sin esto el navegador rechaza el manifiesto y no hay nada que instalar.
+  ".webmanifest": "application/manifest+json; charset=utf-8",
 };
 
 function resolver(url) {
@@ -29,7 +32,28 @@ function resolver(url) {
   return path.join(WEB, limpio);
 }
 
+/* El interruptor de la cobertura. `context.setOffline` de Playwright no llega a
+   las peticiones que hace un service worker —las hace el worker, no la pagina—,
+   asi que para probar que la web abre sin red hay que cortarla de verdad, aqui.
+
+   `GET /__corte?on=1` y a partir de ahi todo lo de /data/ muere con la conexion
+   cerrada de golpe, que es lo que ve un movil al meterse en el metro. */
+let cortado = false;
+
 const servidor = http.createServer((req, res) => {
+  if (req.url.startsWith("/__corte")) {
+    cortado = new URL(req.url, "http://x").searchParams.get("on") === "1";
+    res.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
+    res.end(cortado ? "sin cobertura" : "con cobertura");
+    return;
+  }
+  if (cortado && req.url.startsWith("/data/")) {
+    // `destroy` sin responder: el navegador lo ve como ERR_CONNECTION_RESET,
+    // no como un 500. Un 500 lo serviria el worker igual, y no es el caso.
+    req.socket.destroy();
+    return;
+  }
+
   const fichero = resolver(req.url);
   fs.readFile(fichero, (err, cuerpo) => {
     if (err) {
