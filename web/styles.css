@@ -624,7 +624,12 @@ h1 em { font-size: 1.12em; }
 .escapada { font-family: var(--font-mono); }
 .escapada.real { color: var(--deep); }
 
+/* En la lámina del chollo los botones van uno debajo de otro (la columna es
+   estrecha); donde hay sitio, en fila. */
 .actions { display: grid; gap: 8px; }
+.acciones-fila { display: flex; flex-wrap: wrap; gap: 10px; }
+.perdido { padding: 24px 0; display: grid; gap: 12px; justify-items: start; }
+.perdido .vacio { max-width: 60ch; font-family: var(--font-sans); font-size: var(--fs-body-s); }
 .hero-extra { font-size: var(--fs-ui-s); color: var(--hero-muted); }
 .hidden-warn { color: var(--accent-txt); }
 .alts summary { cursor: pointer; }
@@ -1253,7 +1258,49 @@ h1 em { font-size: 1.12em; }
 .modal-form input:hover, .token-box input:hover, #destSearch:hover { border-color: var(--muted); }
 .modal-form .meta { margin: 0 0 4px; font-size: var(--fs-ui-s); color: var(--muted); }
 .modal-form .btn { margin-top: 14px; }
-.estrecha-form { display: grid; gap: 8px; }
+/* La puerta del panel lleva `.finder-form` y `.estrecha-form` a la vez, y son
+   dos maquetaciones distintas: la primera es la rejilla de un píxel de las
+   herramientas y la segunda una columna de campos normales. Aquí manda la
+   segunda, y hay que deshacer la primera entera —el fondo, el borde y las
+   celdas— o los campos salen como bandas sin caja donde escribir. */
+.finder-form.estrecha-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  background: none;
+  border: none;
+}
+.estrecha-form { display: grid; gap: 10px; }
+.estrecha-form .field,
+.estrecha-form label {
+  background: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.estrecha-form .field label,
+.estrecha-form > label > span {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.estrecha-form input {
+  border: 1px solid var(--hair);
+  background: var(--field);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  font-size: var(--fs-input);
+  font-weight: 400;
+  width: 100%;
+}
+.estrecha-form input:hover { border-color: var(--muted); }
+.estrecha-form .finder-lede { margin: 0 0 4px; }
+.estrecha-form .btn { justify-self: start; margin-top: 4px; }
+/* Una contraseña no necesita mil píxeles de campo: un renglón de lectura basta
+   y así el foco cae donde tiene que caer. */
+#puerta .finder-body { max-width: 460px; }
 .campo-clave { position: relative; display: flex; }
 .campo-clave input { padding-right: 84px; }
 .ver-clave {

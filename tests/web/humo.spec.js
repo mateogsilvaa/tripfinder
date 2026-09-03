@@ -84,7 +84,8 @@ test.describe("la 404", () => {
     const fondo = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
     expect(fondo).not.toBe("rgba(0, 0, 0, 0)");
     // Y una salida.
-    await expect(page.locator('main a[href="./"]')).toBeVisible();
+    // El camino de vuelta: al feed, que es la portada.
+    await expect(page.locator('main a[href="./#feed"]')).toBeVisible();
   });
 });
 
