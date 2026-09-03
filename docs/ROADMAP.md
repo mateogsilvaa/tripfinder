@@ -227,6 +227,26 @@ Y el sistema de diseño nuevo —el atlas— por encima de todo eso.
 Con esto se cierran las 31 tareas de la auditoría.
 
 
+## M17 · El panel de salidas  ✅
+
+El rediseño que llegó de Claude Design, ya en `main`. Sustituye al atlas entero:
+
+- **Una sola página que se amplía.** El feed, buscar y seguir viven juntos en la
+  portada; al usar una de las dos herramientas se abre su página completa con lo
+  escrito ya puesto (`web/js/ampliar.js`).
+- **Paleta y tipografías nuevas**: `#100f0e` con naranja `#ff5a22` y verde
+  `#4fd6b0`; Switzer, IBM Plex Mono y Pinyon Script como acento.
+- **Dos tokens de acento** (`--accent` para rellenos, `--accent-txt` para texto),
+  porque el naranja del diseño no llegaba a 4,5:1 como texto en el tema claro.
+- El auditor de contraste comprueba ahora las **cuatro** superficies, no solo el
+  fondo de la página.
+
+Tres fallos que el rediseño destapó, los tres anteriores: `[hidden]` perdía contra
+las reglas de `display`, el botón de cuenta se insertaba en un nodo que no era su
+padre, y `step="10"` en el tope de precio hacía que escribir 95 € bloqueara el envío
+del formulario sin decir por qué.
+
+
 ## M5 · Robustez y calidad
 
 - [x] **#25 · Tests de scoring y de parseo de providers** `infra`

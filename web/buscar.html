@@ -6,16 +6,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripFinder · trazar un viaje</title>
 <meta name="description" content="Dile a donde quieres ir y se recorre finde a finde hasta el año que viene, preguntando a todas las companias y no solo a las low cost.">
-<meta name="theme-color" content="#0b1720">
+<meta name="theme-color" content="#100f0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
 <link rel="manifest" href="manifest.webmanifest?v=dev">
 <link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="TripFinder">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+<link rel="icon" href="iconos/marca.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://api.fontshare.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
-<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap"></noscript>
+<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<noscript>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+</noscript>
 <link rel="stylesheet" href="styles.css?v=dev">
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
@@ -23,10 +30,6 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <!-- /tf:parte -->
 <body>
 <!-- tf:parte capas -->
-<div class="grain" aria-hidden="true"></div>
-<div class="glow" aria-hidden="true"></div>
-<div class="registro" aria-hidden="true"></div>
-
 <noscript>
   <p class="sin-js">
     Esta web necesita JavaScript: los precios se leen de un fichero de datos y
@@ -36,99 +39,99 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 </noscript>
 <!-- /tf:parte -->
 
-<header class="masthead">
 <!-- tf:parte barra -->
   <div class="topbar">
-    <div class="board">
+    <div class="topbar-in">
+      <a class="marca" href="./" aria-label="TripFinder, a la portada">
+        <svg width="23" height="23" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <rect width="32" height="32" rx="8" fill="var(--code-bg)"></rect>
+          <path d="M7 18.5 25 7l-5.2 18-4.1-6.1-2.9 4.6-.6-5.2z" fill="var(--accent)"></path>
+        </svg>
+        <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
+      </a>
+      <nav class="zonas" aria-label="Zonas">
+        <a href="./#feed" class="zona" data-zona="promos">Feed</a>
+        <a href="./#buscar" class="zona activa" data-zona="buscar" aria-current="page">Buscar</a>
+        <a href="./#seguir" class="zona" data-zona="seguir">Seguir</a>
+        <a href="seguimientos.html" class="zona" data-zona="follows">En observación</a>
+      </nav>
+      <div class="topbar-hueco"></div>
+      <span class="board-live"><i aria-hidden="true"></i>en vivo</span>
       <span class="flaps" aria-hidden="true"><span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span><button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-cara" aria-hidden="true">?</span></button>
-      <span class="board-label" aria-hidden="true">índice de escapadas · origen Madrid</span>
-      <span class="board-live"><i></i>en vivo</span>
+      <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
+        <b aria-hidden="true">☀</b><span class="tema-txt">noche</span>
+      </button>
     </div>
-    <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
-      <b aria-hidden="true"></b><span class="tema-txt">noche</span>
-    </button>
   </div>
 <!-- /tf:parte -->
 
-  <h1>Trazar <em>un viaje</em></h1>
-  <p class="lede">
-    Aquí dices tú a dónde. Se recorre finde a finde hasta el año que viene, o para
-    las fechas exactas que le pongas, preguntando a todas las compañías.
-  </p>
-
+<header class="masthead">
+  <div>
+    <h1>Dime <em>a dónde</em><br>quieres ir.</h1>
+    <p class="lede">Se recorre finde a finde hasta el año que viene, o para las fechas exactas que le pongas, preguntando a <strong>todas las compañías</strong>: Ryanair, Wizz, Iberia, Vueling, easyJet, ITA, Lufthansa… no solo a las low cost.</p>
+  </div>
   <dl class="stats" id="stats"></dl>
-
-<!-- tf:parte zonas -->
-  <nav class="zonas" aria-label="Zonas">
-    <a href="./" class="zona" data-zona="promos">hoja del día</a>
-    <a href="buscar.html" class="zona activa" data-zona="buscar" aria-current="page">trazar un viaje</a>
-    <a href="seguimientos.html" class="zona" data-zona="follows">en observación</a>
-  </nav>
-<!-- /tf:parte -->
 </header>
 
 <main>
 
 <section id="favAviso" class="fav-aviso" hidden aria-live="polite"></section>
-  <details class="finder" open>
-    <summary>trazar un viaje concreto</summary>
+  <section class="herramienta completa">
     <div class="finder-body">
-      <p class="finder-lede">
-        Arriba está lo que hay barato hoy. Aquí dices tú a dónde quieres ir: se recorre
-        fin de semana a fin de semana hasta el año que viene, o para las fechas exactas
-        que le pongas. Se pregunta a <strong>todas las compañías</strong> (Ryanair, Wizz,
-        Iberia, Vueling, easyJet, ITA, Lufthansa…), no solo a las low cost.
-      </p>
+      <div class="kicker-num">01 · buscar ahora</div>
+      <h3 class="solo-lector">El formulario</h3>
       <form id="finderForm" class="finder-form">
-        <div class="field">
-          <label for="fWhere">¿A dónde?</label>
+        <label for="fWhere">
+          <span>¿A dónde?</span>
           <select id="fWhere">
             <option value="any">Donde sea</option>
             <option value="one">Un sitio concreto</option>
           </select>
-        </div>
-        <div class="field grow" id="destWrap" hidden>
-          <label for="destBtn">Destino</label>
-          <button type="button" id="destBtn" class="date-btn">Elegir destino</button>
-          <input id="fDest" type="hidden">
-        </div>
-        <div class="field">
-          <label for="fWhen">¿Cuándo?</label>
+        </label>
+        <label for="fWhen">
+          <span>¿Cuándo?</span>
           <select id="fWhen">
             <option value="weekend">Un finde cualquiera</option>
             <option value="exact">Fechas exactas</option>
             <option value="anytime">Cualquier fecha</option>
           </select>
-        </div>
-        <div class="field grow" id="departWrap" hidden>
-          <label>Fechas</label>
+        </label>
+        <label class="celda" id="destWrap" hidden>
+          <span>Destino</span>
+          <button type="button" id="destBtn" class="date-btn">Elegir destino</button>
+          <input id="fDest" type="hidden">
+        </label>
+        <label class="celda" id="departWrap" hidden>
+          <span>Fechas</span>
           <button type="button" id="dateBtn" class="date-btn">Elegir en el calendario</button>
           <input id="fDepart" type="hidden">
           <input id="fReturn" type="hidden">
+        </label>
+        <div class="party">
+          <label for="fNights" id="nightsWrap">
+            <span>Noches</span>
+            <input id="fNights" class="cifra" value="2-3" size="5">
+          </label>
+          <label for="fMonths" id="monthsWrap">
+            <span>Meses vista</span>
+            <input id="fMonths" class="cifra" type="number" min="1" max="12" value="12">
+          </label>
+          <label for="fMax">
+            <span>Tope €</span>
+            <input id="fMax" class="cifra" type="number" min="20" max="3000" step="1" value="150">
+          </label>
+          <label for="fAdults">
+            <span>Personas</span>
+            <input id="fAdults" class="cifra" type="number" min="1" max="8" value="2">
+          </label>
         </div>
-        <div class="field" id="nightsWrap">
-          <label for="fNights">Noches</label>
-          <input id="fNights" value="2-3" size="5">
-        </div>
-        <div class="field" id="monthsWrap">
-          <label for="fMonths">Meses vista</label>
-          <input id="fMonths" type="number" min="1" max="12" value="12">
-        </div>
-        <div class="field">
-          <label for="fMax">Tope €</label>
-          <input id="fMax" type="number" min="20" max="3000" step="10" value="150">
-        </div>
-        <div class="field">
-          <label for="fAdults">Personas</label>
-          <input id="fAdults" type="number" min="1" max="8" value="2">
-        </div>
-        <button class="btn primary" type="submit">Buscar</button>
       </form>
       <div id="cal" class="cal" hidden></div>
       <p class="hint" id="finderHint"></p>
+      <div><button class="btn primary" type="submit" form="finderForm">Buscar</button></div>
       <div id="searches" class="searches"></div>
     </div>
-  </details>
+  </section>
 
 </main>
 
@@ -160,9 +163,11 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 <!-- tf:parte pie -->
 <footer class="foot">
+  <div class="foot-in">
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
-  <span class="build">build dev</span>
+    <span class="build">build dev</span>
+  </div>
 </footer>
 
 <script src="log.js?v=dev"></script>

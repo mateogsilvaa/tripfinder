@@ -88,6 +88,7 @@ function alternar(o) {
   pintarFavs();
   refrescarAvisoFavs();
   pintarListaFavs();
+  refrescarObservacion();
 }
 
 const hoyISO = () => new Date().toISOString().slice(0, 10);
@@ -417,3 +418,22 @@ export async function refrescarFavsDeTodo() {
 
 
 
+
+
+/* El contador de la portada. No es la lista —esa vive en `seguimientos.html`—:
+   es la línea que dice cuántos hay y qué se hace con ellos, para que el
+   cuadratín de cada fila signifique algo desde la primera vez que se pulsa. */
+export function refrescarObservacion() {
+  const num = document.getElementById("obsCuenta");
+  const txt = document.getElementById("obsTexto");
+  if (!num || !txt) return;
+  const n = Object.keys(favLeer()).length;
+  num.textContent = n === 0 ? "—" : String(n);
+  txt.textContent =
+    n === 0
+      ? "Todavía no has apuntado ningún viaje. Marca el cuadratín de cualquier " +
+        "entrada y aquí verás si sube o baja de precio cada vez que se actualicen los datos."
+      : n === 1
+        ? "1 viaje apuntado. Se revisa cada 12 h y te avisamos si sube o baja de precio."
+        : `${n} viajes apuntados. Se revisan cada 12 h y te avisamos si suben o bajan de precio.`;
+}

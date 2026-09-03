@@ -20,14 +20,17 @@ import {
   pax,
   ponerCamas,
   ponerGrupo,
+  porPersona,
   precioCorto,
-  precioHTML,
 } from "./precios.js";
 import { deltaHTML, favBtn, sincronizarFavs, wireFavs } from "./favoritos.js";
 import { HISTORIA, cargarHistoria, historiaHTML } from "./historia.js";
 import { openStays } from "./alojamiento.js";
 
 export let OFFERS = [];
+/* El día del levantamiento, para el rótulo del chollo. No es la fecha del
+   vuelo: es la de la tanda, que es lo que dice si esto es de hoy. */
+let DIA_DEL_SCAN = "";
 
 /* ------------------------------------------------------------------ ofertas */
 
@@ -57,6 +60,7 @@ export async function init() {
     return;
   }
   dejarDeCargar();
+  DIA_DEL_SCAN = fmtDate(payload.generated_at);
   frescura(payload.generated_at);
 
   OFFERS = payload.offers || [];
@@ -171,7 +175,22 @@ function renderStats(payload) {
     (best ? statBlock("mejor descuento", `−${Math.round(best.discount_pct)}%`, true) : "") +
     (best ? statBlock("desde", fmtEUR(Math.min(...OFFERS.map((o) => o.price)))) : "") +
     statBlock("escapadas de finde", findes) +
-    statBlock("actualizado", fmtDate(payload.generated_at) || "hoy");
+    // La fecha va en su propia banda, a lo ancho: no es una cifra, es el pie
+    // de la tabla, y ponerla como una más obligaba a leerla dos veces.
+    `<div class="stats-pie"><span>actualizado</span><b>${esc(
+      fmtDate(payload.generated_at) || "hoy"
+    )}</b></div>`;
+}
+
+/* "3 de 120 ofertas · tope 200 € · 2 personas". Es lo que dice si lo que se
+   está viendo es todo lo que hay o el resultado de haber filtrado de más. */
+function renderCuenta(cuantas) {
+  const el = document.getElementById("feedCuenta");
+  if (!el) return;
+  const gente = grupo();
+  el.textContent =
+    `${cuantas} de ${OFFERS.length} ofertas · tope ${$("#price").value} € · ` +
+    `${gente} ${gente === 1 ? "persona" : "personas"}`;
 }
 
 function currentList() {
@@ -254,64 +273,78 @@ function altsHTML(o) {
   return `<div class="alts">también ${links}</div>`;
 }
 
-/* LA PLANCHA. El destino del dia no es una tarjeta: es la lamina de un atlas.
-   Regla mayor arriba con su cuadratin rojo, el toponimo grande en serif ligero,
-   la referencia de cuadricula y la cifra en rojo a la derecha, y debajo la
-   tabla reglada con los tramos. Sin fondo, sin marco, sin talon, sin troquel:
-   lo que la delimita es la regla, igual que en una plancha impresa. */
+/* EL CHOLLO DEL DÍA. La única lámina invertida de la página: fondo claro sobre
+   fondo oscuro (y al revés en el tema claro). Es lo que la separa del feed sin
+   necesidad de un borde grueso ni de una sombra.
+
+   Dos columnas: a la izquierda el sitio y los cuatro tramos del viaje; a la
+   derecha el precio grande y los dos botones. El precio va aparte a propósito
+   —es lo que se mira primero y lo único que decide— y el desglose de debajo es
+   lo que nadie más te da: lo que sale de verdad para los que vais. */
 function heroTicket(o) {
   const sub = [o.destination_country, o.airline, escalas(o), o.weekend ? "escapada de finde" : ""]
     .filter(Boolean)
     .join(" · ");
   const extra = [o.hidden_city ? AVISO_HIDDEN : "", altsHTML(o)].filter(Boolean).join("");
+  const gente = Math.max(1, pax(o) > 1 ? pax(o) : grupo());
+  const esc_ = escapadaHTML(o);
   return `
     <article class="ticket" id="offer-${esc(o.id)}">
-      <span class="regla" aria-hidden="true"></span>
-      <div class="ticket-top">
-        <span class="kicker-tag">hoja del día · ${o.return_date ? "ida y vuelta" : "solo ida"}</span>
-        <span class="ticket-ref">
-          <span class="codes">${esc(o.origin)} — ${esc(o.destination)}</span>
+      <div class="ticket-izq">
+        <div class="ticket-top">
+          <span class="kicker">chollo</span>
+          <span class="kicker-tag">del día · ${esc(DIA_DEL_SCAN || "hoy")}</span>
           ${favBtn(o)}
-        </span>
-      </div>
-      <div class="ticket-cab">
+        </div>
         <h2 class="dest">${esc(o.destination_name || o.destination)}<small>${esc(sub)}</small></h2>
-        <div class="ticket-precio">
+        <dl class="legs">
+          ${leg("Ida", o.depart_date, o.depart_time, o.arrive_time, o.weekend)}
+          ${leg("Vuelta", o.return_date, o.return_time, o.return_arrive_time, o.weekend)}
+          <div><dt>Noches</dt><dd class="dias">${o.nights || "—"}</dd></div>
           ${
-            o.discount_pct >= 5
-              ? `<span class="stamp">chollo<b>−${Math.round(o.discount_pct)}%</b></span>`
+            o.useful_hours
+              ? `<div><dt>Viaje real</dt><dd class="useful">${Math.round(o.useful_hours)} h
+                   <small>${o.price_per_hour} €/h</small></dd></div>`
+              : "<div><dt>Viaje real</dt><dd class=\"useful\">—</dd></div>"
+          }
+        </dl>
+        ${extra ? `<div class="hero-extra">${extra}</div>` : ""}
+      </div>
+      <div class="ticket-der">
+        <div class="ticket-precio">
+          <div class="ticket-cab">
+            <span class="amount">${Math.round(porPersona(o))}<span>€</span></span>
+            ${
+              o.discount_pct >= 5
+                ? `<span class="stamp">−${Math.round(o.discount_pct)}%</span>`
+                : ""
+            }
+          </div>
+          <span class="per-person">por persona${o.return_date ? ", ida y vuelta" : ""}</span>
+          <span class="ticket-notas">
+            ${
+              gente > 1
+                ? `<span><span>${gente} personas</span><b>${fmtEUR(porPersona(o) * gente)}</b></span>`
+                : ""
+            }
+            ${
+              o.baseline > o.price
+                ? `<span><span>lo habitual</span><b class="was">${fmtEUR(o.baseline)}</b></span>`
+                : ""
+            }
+            ${esc_ ? `<span><span>+ cama</span><b>${esc_}</b></span>` : ""}
+          </span>
+        </div>
+        <div class="actions">
+          <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
+          <a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+          ${
+            o.airline_link
+              ? `<a class="btn ghost" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
+                   Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
               : ""
           }
-          ${precioHTML(o, { grande: true })}
-          <span class="ticket-notas">
-            ${o.baseline > o.price ? `<s class="was">${fmtEUR(o.baseline)}</s>` : ""}
-            <span class="per-person">vuelo completo${o.return_date ? ", ida y vuelta" : ""}</span>
-          </span>
-          ${escapadaHTML(o)}
         </div>
-      </div>
-      <dl class="legs">
-        ${leg("Ida", o.depart_date, o.depart_time, o.arrive_time, o.weekend)}
-        ${leg("Vuelta", o.return_date, o.return_time, o.return_arrive_time, o.weekend)}
-        ${o.nights ? `<div><dt>Noches</dt><dd>${o.nights}</dd></div>` : ""}
-        ${
-          o.useful_hours
-            ? `<div><dt>Viaje real</dt><dd class="useful">${Math.round(
-                o.useful_hours
-              )} h · ${o.price_per_hour} €/h</dd></div>`
-            : ""
-        }
-      </dl>
-      ${extra ? `<div class="hero-extra">${extra}</div>` : ""}
-      <div class="actions">
-        <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
-        <a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
-        ${
-          o.airline_link
-            ? `<a class="btn ghost" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
-                 Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
-            : ""
-        }
       </div>
     </article>`;
 }
@@ -333,8 +366,9 @@ export function boardRow(o, i) {
   return `
     <div class="brow" id="offer-${esc(o.id)}" data-open="${esc(o.id)}" role="button" tabindex="0"
          style="animation-delay:${Math.min(i, 14) * 35}ms">
-      <span class="iata ${o.hidden_city ? "hidden" : ""}">${esc(o.destination)}</span>
+      ${favBtn(o)}
       <span class="dest-cell">
+        <span class="iata ${o.hidden_city ? "hidden" : ""}">${esc(o.destination)}</span>
         <span class="city">${esc(o.destination_name || o.destination)}</span>
         <span class="country">${esc(o.destination_country || "")}</span>
       </span>
@@ -347,11 +381,9 @@ export function boardRow(o, i) {
       <span class="airline">${esc(o.airline || o.provider)}<small>${escalas(o)}${
         o.useful_hours ? ` · ${Math.round(o.useful_hours)} h de viaje` : ""
       }${o.long_haul ? " · larga distancia" : ""}</small></span>
-      <span class="leader" aria-hidden="true"></span>
       <span class="price">${precioCorto(o)}${
         o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : ""
       }${deltaHTML(o)}${escapadaHTML(o)}</span>
-      ${favBtn(o)}
       <div class="brow-detail" hidden></div>
     </div>`;
 }
@@ -468,6 +500,7 @@ export function render() {
   $("#offers").innerHTML = list.slice(1).map(boardRow).join("");
   $("#boardHead").hidden = list.length < 2;
   $("#empty").hidden = list.length > 0;
+  renderCuenta(list.length);
 
   document.querySelectorAll(".hero [data-stay]").forEach((el) =>
     el.addEventListener("click", () => openStays(el.dataset.stay))

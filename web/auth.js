@@ -411,7 +411,10 @@ function tfAdoptarAnonimos(uid) {
    El boton vive en la barra de arriba de las cuatro paginas, asi que se pinta
    desde aqui en vez de repetirlo en cuatro HTML que se desincronizan solos. */
 function tfPintarBarra() {
-  const barra = document.querySelector(".topbar");
+  // `.topbar-in` es la fila de dentro: el botón es hermano del de tema, no
+  // hijo del contenedor pegajoso. Con `.topbar` a secas, el `insertBefore` de
+  // más abajo apuntaba a un nodo que no es hijo suyo y lanzaba.
+  const barra = document.querySelector(".topbar-in") || document.querySelector(".topbar");
   // El panel tiene su propia puerta: un "entrar" al lado solo confundiria.
   if (!barra || document.body.dataset.sinCuenta !== undefined) return;
   if (document.getElementById("tfCuenta")) return;
@@ -426,8 +429,12 @@ function tfPintarBarra() {
     : `<b aria-hidden="true">○</b><span class="cuenta-txt">entrar</span>`;
   boton.title = s ? "Tu cuenta" : "Entrar con tu cuenta";
   boton.addEventListener("click", () => (tfSesion() ? tfAbrirCuenta() : tfAbrirLogin()));
+  // Detrás del de tema: en la barra el orden es marca · zonas · en vivo ·
+  // tema · entrar, y el de entrar es el único que cambia de color.
   const tema = barra.querySelector("#tema");
-  barra.insertBefore(boton, tema || null);
+  if (tema) tema.insertAdjacentElement("afterend", boton);
+  else barra.appendChild(boton);
+
 }
 
 const tfEsc = (s) =>

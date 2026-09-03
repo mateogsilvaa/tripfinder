@@ -42,23 +42,19 @@ def test_las_marcas_cierran(fichero):
     assert abre > 0, f"{fichero} no tiene ninguna parte montada"
 
 
-def test_una_sola_edicion_cambia_el_nav_de_las_tres_zonas():
-    """El criterio de aceptacion, comprobado: se toca la parte, no las paginas."""
-    zonas = (WEB / "partes" / "zonas.html").read_text(encoding="utf-8")
-    tocada = zonas.replace("en observación", "lo que sigues")
+def test_una_sola_edicion_cambia_el_nav_de_las_cuatro_zonas():
+    """El nav vive DENTRO de la barra, no en una parte suya: en el diseño nuevo
+    es una fila de la cabecera pegajosa, no un bloque debajo del título. Sigue
+    escribiéndose una vez y apareciendo en las cuatro páginas que lo llevan."""
+    barra = (WEB / "partes" / "barra.html").read_text(encoding="utf-8")
+    assert "{{nav}}" in barra, "la barra deja el nav en un hueco"
+    for hueco in ("{promos}", "{buscar}", "{seguir}", "{follows}"):
+        assert hueco in montar.NAV, hueco
 
-    publicas = [f for f, d in montar.PAGINAS.items() if d["zona"]]
-    assert len(publicas) == 3
-
-    original = (WEB / "partes" / "zonas.html")
-    try:
-        original.write_text(tocada, encoding="utf-8")
-        for fichero in publicas:
-            html = (WEB / fichero).read_text(encoding="utf-8")
-            assert "lo que sigues" in montar.montar_texto(html, montar.PAGINAS[fichero])
-    finally:
-        original.write_text(zonas, encoding="utf-8")
-
+    # Y cada página marca la suya, sin marcar dos.
+    for fichero, datos in montar.PAGINAS.items():
+        html = (WEB / fichero).read_text(encoding="utf-8")
+        assert html.count('aria-current="page"') == (1 if datos["zona"] else 0), fichero
 
 def test_la_version_de_los_assets_sale_de_un_solo_sitio():
     """El `?v=` y el `build` del pie no pueden desincronizarse nunca mas."""
@@ -134,7 +130,7 @@ LLEVAN = {
 @pytest.mark.parametrize("fichero", sorted(LLEVAN))
 def test_cada_pagina_lleva_lo_suyo(fichero):
     html = (WEB / fichero).read_text(encoding="utf-8")
-    assert ("<!-- tf:parte zonas -->" in html) == LLEVAN[fichero]["nav"], fichero
+    assert ('<nav class="zonas"' in html) == LLEVAN[fichero]["nav"], fichero
     assert ("<!-- tf:parte hojas -->" in html) == LLEVAN[fichero]["hojas"], fichero
 
 

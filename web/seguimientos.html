@@ -6,16 +6,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TripFinder · en observación</title>
 <meta name="description" content="Los viajes que tienes apuntados, revisados cada manana. Te escribe cuando el precio se mueve o cae dentro de tu tope.">
-<meta name="theme-color" content="#0b1720">
+<meta name="theme-color" content="#100f0e" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
 <link rel="manifest" href="manifest.webmanifest?v=dev">
 <link rel="apple-touch-icon" href="iconos/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-title" content="TripFinder">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✈️</text></svg>">
+<link rel="icon" href="iconos/marca.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://api.fontshare.com">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
-<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap">
-<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Martian+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,200;0,6..72,300;0,6..72,400;1,6..72,300&family=Sora:wght@300;400;500&display=swap"></noscript>
+<link rel="preload" as="style" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" media="print" onload="this.media='all'" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<noscript>
+  <link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+</noscript>
 <link rel="stylesheet" href="styles.css?v=dev">
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
@@ -23,10 +30,6 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <!-- /tf:parte -->
 <body>
 <!-- tf:parte capas -->
-<div class="grain" aria-hidden="true"></div>
-<div class="glow" aria-hidden="true"></div>
-<div class="registro" aria-hidden="true"></div>
-
 <noscript>
   <p class="sin-js">
     Esta web necesita JavaScript: los precios se leen de un fichero de datos y
@@ -36,94 +39,95 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 </noscript>
 <!-- /tf:parte -->
 
-<header class="masthead">
 <!-- tf:parte barra -->
   <div class="topbar">
-    <div class="board">
+    <div class="topbar-in">
+      <a class="marca" href="./" aria-label="TripFinder, a la portada">
+        <svg width="23" height="23" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <rect width="32" height="32" rx="8" fill="var(--code-bg)"></rect>
+          <path d="M7 18.5 25 7l-5.2 18-4.1-6.1-2.9 4.6-.6-5.2z" fill="var(--accent)"></path>
+        </svg>
+        <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
+      </a>
+      <nav class="zonas" aria-label="Zonas">
+        <a href="./#feed" class="zona" data-zona="promos">Feed</a>
+        <a href="./#buscar" class="zona" data-zona="buscar">Buscar</a>
+        <a href="./#seguir" class="zona" data-zona="seguir">Seguir</a>
+        <a href="seguimientos.html" class="zona activa" data-zona="follows" aria-current="page">En observación</a>
+      </nav>
+      <div class="topbar-hueco"></div>
+      <span class="board-live"><i aria-hidden="true"></i>en vivo</span>
       <span class="flaps" aria-hidden="true"><span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span><button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-cara" aria-hidden="true">?</span></button>
-      <span class="board-label" aria-hidden="true">índice de escapadas · origen Madrid</span>
-      <span class="board-live"><i></i>en vivo</span>
+      <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
+        <b aria-hidden="true">☀</b><span class="tema-txt">noche</span>
+      </button>
     </div>
-    <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
-      <b aria-hidden="true"></b><span class="tema-txt">noche</span>
-    </button>
   </div>
 <!-- /tf:parte -->
 
-  <h1>En <em>observación</em></h1>
-  <p class="lede">
-    Lo que has apuntado se revisa cada mañana. Te escribe solo cuando el precio se
-    mueve o cae dentro de tu tope; no busca nada mientras tanto.
-  </p>
-
+<header class="masthead">
+  <div>
+    <h1>Que te avise <em>cuando baje</em>.</h1>
+    <p class="lede">Esto no busca ahora: se queda apuntado y lo revisa cada día. Te escribe solo cuando aparece algo dentro de tu tope, o cuando baja de lo más barato que se haya visto hasta ahora.</p>
+  </div>
   <dl class="stats" id="stats"></dl>
-
-<!-- tf:parte zonas -->
-  <nav class="zonas" aria-label="Zonas">
-    <a href="./" class="zona" data-zona="promos">hoja del día</a>
-    <a href="buscar.html" class="zona" data-zona="buscar">trazar un viaje</a>
-    <a href="seguimientos.html" class="zona activa" data-zona="follows" aria-current="page">en observación</a>
-  </nav>
-<!-- /tf:parte -->
 </header>
 
 <main>
 
 <section id="favAviso" class="fav-aviso" hidden aria-live="polite"></section>
-  <details class="finder" id="watchBox" open>
-    <summary>poner un viaje en observación</summary>
+  <section class="herramienta completa" id="watchBox">
     <div class="finder-body">
-      <p class="finder-lede">
-        Esto no busca ahora: se queda apuntado y lo revisa <strong>cada día</strong>.
-        Te escribe solo cuando aparece algo dentro de tu tope, o cuando baja de lo
-        más barato que se haya visto hasta ahora.
-      </p>
+      <div class="kicker-num">02 · seguir un viaje</div>
+      <h3 class="solo-lector">El encargo</h3>
       <form id="watchForm" class="finder-form">
-        <div class="field">
-          <label for="wWhere">¿A dónde?</label>
+        <label for="wWhere">
+          <span>¿A dónde?</span>
           <select id="wWhere">
             <option value="any">Donde sea</option>
             <option value="one">Un sitio concreto</option>
           </select>
-        </div>
-        <div class="field grow" id="wDestWrap" hidden>
-          <label for="wDestBtn">Destino</label>
-          <button type="button" id="wDestBtn" class="date-btn">Elegir destino</button>
-          <input id="wDest" type="hidden">
-        </div>
-        <div class="field">
-          <label for="wWhen">¿Cuándo?</label>
+        </label>
+        <label for="wWhen">
+          <span>¿Cuándo?</span>
           <select id="wWhen">
             <option value="weekend">Cualquier finde</option>
             <option value="exact">Una fecha concreta</option>
             <option value="anytime">Cualquier fecha</option>
           </select>
-        </div>
-        <div class="field grow" id="wDateWrap" hidden>
-          <label>Fechas</label>
+        </label>
+        <label class="celda" id="wDestWrap" hidden>
+          <span>Destino</span>
+          <button type="button" id="wDestBtn" class="date-btn">Elegir destino</button>
+          <input id="wDest" type="hidden">
+        </label>
+        <label class="celda" id="wDateWrap" hidden>
+          <span>Fechas</span>
           <button type="button" id="wDateBtn" class="date-btn">Elegir en el calendario</button>
           <input id="wDepart" type="hidden">
           <input id="wReturn" type="hidden">
+        </label>
+        <div class="party">
+          <label for="wMonths" id="wMonthsWrap">
+            <span>Meses vista</span>
+            <input id="wMonths" class="cifra" type="number" min="1" max="12" value="6">
+          </label>
+          <label for="wMax">
+            <span>Avísame si baja de €</span>
+            <input id="wMax" class="cifra" type="number" min="20" max="3000" step="1" value="120">
+          </label>
+          <label for="wAdults">
+            <span>Personas</span>
+            <input id="wAdults" class="cifra" type="number" min="1" max="8" value="2">
+          </label>
         </div>
-        <div class="field" id="wMonthsWrap">
-          <label for="wMonths">Meses vista</label>
-          <input id="wMonths" type="number" min="1" max="12" value="6">
-        </div>
-        <div class="field">
-          <label for="wMax">Avísame si baja de €</label>
-          <input id="wMax" type="number" min="20" max="3000" step="10" value="120">
-        </div>
-        <div class="field">
-          <label for="wAdults">Personas</label>
-          <input id="wAdults" type="number" min="1" max="8" value="2">
-        </div>
-        <button class="btn primary" type="submit">Seguir</button>
       </form>
       <div id="wCal" class="cal" hidden></div>
       <p class="hint" id="watchHint"></p>
+      <div><button class="btn deep" type="submit" form="watchForm">Seguir</button></div>
       <div id="watches" class="watches"></div>
     </div>
-  </details>
+  </section>
 
   <a id="favoritos-ancla"></a>
   <section id="favoritos" class="favoritos" aria-label="Viajes apuntados"></section>
@@ -158,9 +162,11 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 <!-- tf:parte pie -->
 <footer class="foot">
+  <div class="foot-in">
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
-  <span class="build">build dev</span>
+    <span class="build">build dev</span>
+  </div>
 </footer>
 
 <script src="log.js?v=dev"></script>

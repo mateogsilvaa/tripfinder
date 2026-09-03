@@ -116,16 +116,36 @@ MANIFIESTO = (
     '<meta name="apple-mobile-web-app-title" content="TripFinder">\n'
 )
 
-# El cuarto flap: el test de destinos (#7). Va DENTRO del troquel y detras de
-# las iniciales, pero fuera del `aria-hidden` de la plancha: es un boton de
-# verdad, no un adorno, y tiene que poder alcanzarse con el tabulador (#12).
+# El punto que late: solo en las paginas publicas, porque es lo que dice que
+# los datos son de hoy. En el panel y en la 404 no hay nada que este "en vivo".
+# El nav de zonas. Va DENTRO de la barra —en el diseño nuevo es una fila de la
+# cabecera pegajosa, no un bloque debajo del titulo— pero no lo llevan todas:
+# el panel es una herramienta privada y un "Feed" al lado solo confunde.
+#
+# Los `{promos}`/`{buscar}`... los rellena `render()` con los atributos que
+# devuelve `_zonas`, igual que hace con los guiones y el manifiesto.
+# El origen y el cuarto flap: el test de destinos. Las iniciales son
+# decoracion —van con `aria-hidden`— y el `?` de al lado es un boton de verdad,
+# alcanzable con el tabulador. Solo en las paginas publicas: en el panel y en
+# la 404 no hay nada que descubrir.
 DESCUBRIR = (
+    '<span class="flaps" aria-hidden="true">'
+    '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span>'
     '<button id="tfDescubrir" class="flap flap-boton" type="button"'
     ' aria-label="Descubrir tu destino ideal">'
     '<span class="flap-cara" aria-hidden="true">?</span></button>'
 )
 
-VIVO = '      <span class="board-live"><i></i>en vivo</span>\n'
+NAV = (
+    '      <nav class="zonas" aria-label="Zonas">\n'
+    '        <a href="./#feed"{promos}>Feed</a>\n'
+    '        <a href="./#buscar"{buscar}>Buscar</a>\n'
+    '        <a href="./#seguir"{seguir}>Seguir</a>\n'
+    '        <a href="seguimientos.html"{follows}>En observación</a>\n'
+    '      </nav>\n'
+)
+
+VIVO = '      <span class="board-live"><i aria-hidden="true"></i>en vivo</span>\n'
 
 GUIONES_WEB = (
     '<script src="log.js?v={v}"></script>\n'
@@ -159,12 +179,10 @@ PAGINAS = {
     "index.html": {
         "base": "",
         "manifiesto": MANIFIESTO,
+        "nav": NAV,
         "descubrir": DESCUBRIR,
         "titulo": "TripFinder · escapadas desde Madrid",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["index.html"]}">',
-        "favicon": "✈️",
-        "flaps": '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>',
-        "rotulo": "índice de escapadas · origen Madrid",
         "vivo": VIVO,
         "zona": "promos",
         "nota": NOTA_WEB,
@@ -173,12 +191,10 @@ PAGINAS = {
     "buscar.html": {
         "base": "",
         "manifiesto": MANIFIESTO,
+        "nav": NAV,
         "descubrir": DESCUBRIR,
         "titulo": "TripFinder · trazar un viaje",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["buscar.html"]}">',
-        "favicon": "✈️",
-        "flaps": '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>',
-        "rotulo": "índice de escapadas · origen Madrid",
         "vivo": VIVO,
         "zona": "buscar",
         "nota": NOTA_WEB,
@@ -187,12 +203,10 @@ PAGINAS = {
     "seguimientos.html": {
         "base": "",
         "manifiesto": MANIFIESTO,
+        "nav": NAV,
         "descubrir": DESCUBRIR,
         "titulo": "TripFinder · en observación",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["seguimientos.html"]}">',
-        "favicon": "✈️",
-        "flaps": '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>',
-        "rotulo": "índice de escapadas · origen Madrid",
         "vivo": VIVO,
         "zona": "follows",
         "nota": NOTA_WEB,
@@ -203,13 +217,11 @@ PAGINAS = {
     # alojamiento, y no se indexa.
     "404.html": {
         "manifiesto": "",
+        "nav": NAV,
         "descubrir": "",
         "base": ARREGLO_BASE,
         "titulo": "TripFinder · fuera de la carta",
         "meta": '<meta name="robots" content="noindex">',
-        "favicon": "✈️",
-        "flaps": '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>',
-        "rotulo": "índice de escapadas · origen Madrid",
         "vivo": "",
         "zona": None,
         "nota": NOTA_404,
@@ -219,13 +231,11 @@ PAGINAS = {
     # alojamiento, ni se indexa.
     "admin.html": {
         "manifiesto": "",
+        "nav": "",
         "descubrir": "",
         "base": "",
         "titulo": "TripFinder · panel",
         "meta": '<meta name="robots" content="noindex">',
-        "favicon": "🛠️",
-        "flaps": '<span class="flap">A</span><span class="flap">D</span><span class="flap">M</span>',
-        "rotulo": "panel · cuentas y registro de errores",
         "vivo": "",
         "zona": None,
         "nota": NOTA_PANEL,
@@ -242,9 +252,13 @@ MARCA = re.compile(
 
 
 def _zonas(activa: str | None) -> dict[str, str]:
-    """El nav marca la zona en la que estas, y solo esa."""
-    salida = {}
-    for z in ("promos", "buscar", "follows"):
+    """Los atributos de cada enlace del nav, con el activo marcado.
+
+    Son cuatro y no tres: en la portada, "buscar" y "seguir" son dos anclas de
+    la misma pagina, y cada una se ilumina cuando toca. `follows` es la unica
+    que sigue siendo una pagina aparte desde el nav."""
+    salida: dict[str, str] = {}
+    for z in ("promos", "buscar", "seguir", "follows"):
         if z == activa:
             salida[z] = f' class="zona activa" data-zona="{z}" aria-current="page"'
         else:
@@ -260,6 +274,7 @@ def render(nombre_parte: str, datos: dict, version: str = BUILD) -> str:
     # son valores, no partes, y `sustituir` solo mira los huecos de la plantilla.
     for clave in ("guiones", "manifiesto"):
         huecos[clave] = str(huecos.get(clave, "")).format(v=version)
+    huecos["nav"] = str(huecos.get("nav", "")).format(**_zonas(datos.get("zona")))
 
     def sustituir(m: re.Match) -> str:
         clave = m.group(1)

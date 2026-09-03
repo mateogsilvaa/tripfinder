@@ -1,13 +1,12 @@
 """Plantillas del aviso, con la misma estetica que la web.
 
-La carta de noche: tinta azul muy oscura, marfil, rojo de carta y todo dato en
-monoespaciada. Sin radios y sin sombras, igual que la web; lo que separa un
+El mismo panel de salidas que la web: fondo casi negro, marfil, el naranja de
+la marca para el precio y todo dato en monoespaciada. Sin radios y sin sombras, igual que la web; lo que separa un
 bloque de otro es una regla, no una tarjeta.
 
 Todo va con tablas y estilos en linea porque los clientes de correo ignoran
 hojas de estilo, clases y tipografias externas. Newsreader, Sora y Martian Mono
-no llegan aqui: en su sitio van Georgia y las monoespaciadas del sistema, que
-estan en todas partes. Los colores si son los mismos.
+no llegan aqui: en su sitio van las de sistema, que estan en todas partes. Los colores si son los mismos.
 """
 
 from __future__ import annotations
@@ -17,18 +16,18 @@ import html
 from ..config import site_url
 from ..models import FlightOffer
 
-BG = "#0b1720"      # tinta de la carta de noche
+BG = "#100f0e"      # --paper del tema oscuro
 CARD = "#0f1d27"    # zona reglada
-INK = "#eae5d8"     # marfil
-MUTED = "#8fa3ae"
-FAINT = "#6e828d"
-ROJO = "#e8574a"    # el rojo de carta: la marca, y lo que hay que mirar
-VERDE = "#6fae8a"   # curva de nivel: lo que baja
-LINE = "#263a47"    # el correo no lleva bien rgba: la hairline va opaca
-REGLA = "#eae5d8"   # la regla mayor, en tinta
+INK = "#f4f1e8"     # --ink
+MUTED = "#8c8880"
+FAINT = "#8c8880"
+ROJO = "#ff5a22"    # el naranja de la marca: el precio que ha bajado
+VERDE = "#4fd6b0"   # lo que se queda apuntado y vigila solo
+LINE = "#34332e"    # el correo no lleva bien rgba: la hairline va opaca
+REGLA = "#f4f1e8"   # la regla mayor, en tinta
 
-MONO = "'DM Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace"
-SERIF = "Georgia,'Times New Roman',serif"
+MONO = "'IBM Plex Mono','SFMono-Regular',Consolas,'Liberation Mono',monospace"
+SERIF = "-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
 SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif"
 
 DIAS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]

@@ -1,9 +1,16 @@
   <div class="topbar">
-    <div class="board">
-      <span class="flaps" aria-hidden="true">{{flaps}}</span>{{descubrir}}
-      <span class="board-label" aria-hidden="true">{{rotulo}}</span>
-{{vivo}}    </div>
-    <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
-      <b aria-hidden="true"></b><span class="tema-txt">noche</span>
-    </button>
+    <div class="topbar-in">
+      <a class="marca" href="./" aria-label="TripFinder, a la portada">
+        <svg width="23" height="23" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <rect width="32" height="32" rx="8" fill="var(--code-bg)"></rect>
+          <path d="M7 18.5 25 7l-5.2 18-4.1-6.1-2.9 4.6-.6-5.2z" fill="var(--accent)"></path>
+        </svg>
+        <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
+      </a>
+{{nav}}      <div class="topbar-hueco"></div>
+{{vivo}}      {{descubrir}}
+      <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
+        <b aria-hidden="true">☀</b><span class="tema-txt">noche</span>
+      </button>
+    </div>
   </div>

@@ -48,11 +48,13 @@ const PIEZAS = [
   "./js/seguimientos.js",
   "./js/calendario.js",
   "./js/quiz.js",
+  "./js/ampliar.js",
   "./js/motor.js",
   "./perfiles.json",
   "./manifest.webmanifest",
   "./iconos/icono-192.png",
   "./iconos/icono-512.png",
+  "./iconos/marca.svg",
 ];
 
 self.addEventListener("install", (ev) => {

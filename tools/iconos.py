@@ -3,7 +3,7 @@
 
 Un icono es lo unico del atlas que no puede ser tipografia y reglas: en el
 lanzador de un movil no hay sitio para un toponimo. Lo que queda es la carta
-misma —tinta de noche, graticula de marfil y el punto rojo de Madrid—, que es
+misma —tinta de noche, graticula de marfil y el punto naranja de Madrid—, que es
 exactamente de lo que esta hecho el fondo de la web.
 
 Se generan aqui, y no a mano en un editor, por tres motivos: salen de los
@@ -26,12 +26,12 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parents[1]
 DESTINO = RAIZ / "web" / "iconos"
 
-# Los mismos de la carta de noche en styles.css. El icono no cambia con el tema
-# —el lanzador del movil no sabe de temas—, asi que se queda con el de noche,
-# que es el que la web abre por defecto.
-TINTA = (0x0B, 0x17, 0x20)
-MARFIL = (0xEA, 0xE5, 0xD8)
-ROJO = (0xE8, 0x57, 0x4A)
+# Los mismos que `styles.css` en el tema oscuro. El icono no cambia con el
+# tema —el lanzador del movil no sabe de temas—, asi que se queda con el
+# oscuro, que es el que la web abre por defecto.
+TINTA = (0x10, 0x0F, 0x0E)   # --paper
+MARFIL = (0xF4, 0xF1, 0xE8)  # --ink
+NARANJA = (0xFF, 0x5A, 0x22)  # --accent
 
 # El icono "maskable" lo recorta el sistema con la forma que quiera (circulo,
 # cuadrado redondeado, gota). La zona segura es el 80 % central, asi que el
@@ -82,16 +82,16 @@ def dibujar(lado: int, maskable: bool = False) -> list[list[tuple[int, int, int]
                 if 0 <= y < lado and 0 <= x < lado:
                     pix[y][x] = _mezcla(TINTA, MARFIL, 0.55)
 
-    # Madrid, en el centro: el unico punto rojo de todo el sistema.
+    # Madrid, en el centro: el unico punto naranja de todo el sistema.
     cx = cy = a_px(0.5)
     r = a_px(0.5) - a_px(0.5 - 0.11)
     for y in range(lado):
         for x in range(lado):
             d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
             if d <= r - 1:
-                pix[y][x] = ROJO
+                pix[y][x] = NARANJA
             elif d <= r:  # un pixel de transicion: sin esto el punto sale dentado
-                pix[y][x] = _mezcla(pix[y][x], ROJO, r - d)
+                pix[y][x] = _mezcla(pix[y][x], NARANJA, r - d)
     return pix
 
 

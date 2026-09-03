@@ -25,15 +25,27 @@ CSS = RAIZ / "web" / "styles.css"
 
 AA_NORMAL = 4.5
 
-# Los tokens que llevan TEXTO. El fondo es uno solo: el atlas no tiene
-# tarjetas, todo cae sobre el papel —la hoja de alojamiento y la lamina de
-# destinos incluidas, que tambien van con `background: var(--paper)`.
-TINTAS = ["ink", "muted", "faint", "azul", "sello", "verde"]
-FONDOS = ["paper"]
+# Los tokens que llevan TEXTO, y las CUATRO superficies sobre las que caen.
+# Aqui si hay tarjetas: el feed y los dos paneles tienen su propio fondo, y el
+# mas claro de los cuatro es el que decide. Comprobar solo contra `--paper`
+# dejaria pasar un gris que se pierde encima de `--surface`.
+TINTAS = ["ink", "muted", "accent-txt", "deep"]
+FONDOS = ["paper", "surface", "surface2", "field"]
 
-# El texto que va ENCIMA del acento: el boton primario y el dia elegido del
-# calendario. Ahi el fondo es el acento y la tinta es `sobre-acento`.
-SOBRE_ACENTO = [("sobre-acento", "azul")]
+# La lamina invertida —el chollo del dia y la cabecera del feed— va al reves:
+# fondo claro en el tema oscuro y al reves. Tiene sus propios tokens y se
+# audita aparte, o no se auditaria nunca.
+TINTAS_HERO = ["hero-ink", "hero-muted"]
+FONDOS_HERO = ["hero-bg"]
+
+# El texto que va ENCIMA de un relleno de color: el boton primario sobre el
+# acento, y el rotulo de la cabecera del feed sobre la banda invertida.
+#
+# `--accent` y `--accent-txt` son dos a proposito. El naranja del diseño pasa
+# de sobra como RELLENO (con tinta oscura encima), pero como TEXTO sobre papel
+# claro se queda en 3.6:1. Oscurecerlo hasta 4.5 arreglaba el texto y rompia el
+# boton, que es lo que pasa cuando un solo token hace los dos trabajos.
+SOBRE_RELLENO = [("sobre-acento", "accent"), ("code-ink", "code-bg"), ("btn-ink", "btn-bg")]
 
 
 def _luminancia(hexa: str) -> float:
@@ -70,32 +82,33 @@ def _tokens(css: str, selector: str) -> dict[str, str]:
 def paletas() -> dict[str, dict[str, str]]:
     """Los tokens de color de cada tema, sacados del CSS.
 
-    El oscuro solo redefine lo que cambia, asi que se parte del claro y se
-    machaca encima: igual que hace la cascada en el navegador.
+    El `:root` a secas es el tema OSCURO: es el que la web abre por defecto y
+    el que el diseño trae como base. El claro solo redefine lo que cambia, asi
+    que se parte del oscuro y se machaca encima, igual que hace la cascada.
     """
     css = CSS.read_text(encoding="utf-8")
-    claro = _tokens(css, ":root")
-    oscuro = dict(claro)
-    oscuro.update(_tokens(css, ':root[data-tema="oscuro"]'))
-    return {"claro": claro, "oscuro": oscuro}
+    oscuro = _tokens(css, ":root")
+    claro = dict(oscuro)
+    claro.update(_tokens(css, ':root[data-tema="claro"]'))
+    return {"oscuro": oscuro, "claro": claro}
+
+
+def _pares(p: dict[str, str]) -> list[tuple[str, str]]:
+    """Todas las combinaciones tinta/fondo que de verdad se dan en la web."""
+    salida = [(t, f) for t in TINTAS for f in FONDOS]
+    salida += [(t, f) for t in TINTAS_HERO for f in FONDOS_HERO]
+    salida += SOBRE_RELLENO
+    return [(t, f) for t, f in salida if t in p and f in p]
 
 
 def revisar() -> list[tuple[str, str, str, float]]:
     """Todo lo que no llega al minimo, como (tema, tinta, fondo, ratio)."""
     fallos = []
     for tema, p in paletas().items():
-        for tinta in TINTAS:
-            for fondo in FONDOS:
-                if tinta not in p or fondo not in p:
-                    continue
-                r = contraste(p[tinta], p[fondo])
-                if r < AA_NORMAL:
-                    fallos.append((tema, tinta, fondo, r))
-        for tinta, fondo in SOBRE_ACENTO:
-            if tinta in p and fondo in p:
-                r = contraste(p[tinta], p[fondo])
-                if r < AA_NORMAL:
-                    fallos.append((tema, tinta, fondo, r))
+        for tinta, fondo in _pares(p):
+            r = contraste(p[tinta], p[fondo])
+            if r < AA_NORMAL:
+                fallos.append((tema, tinta, fondo, r))
     return fallos
 
 
@@ -109,19 +122,10 @@ def main() -> int:
     if not args.check:
         for tema, p in paletas().items():
             print(f"--- {tema} ---")
-            for fondo in FONDOS:
-                if fondo not in p:
-                    continue
-                print(f"  sobre --{fondo} ({p[fondo]})")
-                for tinta in TINTAS:
-                    if tinta not in p:
-                        continue
-                    r = contraste(p[tinta], p[fondo])
-                    print(f"    --{tinta:12} {p[tinta]}  {r:5.2f}:1  {'ok' if r >= AA_NORMAL else 'FALLA'}")
-            for tinta, fondo in SOBRE_ACENTO:
-                if tinta in p and fondo in p:
-                    r = contraste(p[tinta], p[fondo])
-                    print(f"  --{tinta} sobre --{fondo}: {r:5.2f}:1  {'ok' if r >= AA_NORMAL else 'FALLA'}")
+            for tinta, fondo in _pares(p):
+                r = contraste(p[tinta], p[fondo])
+                marca = "ok" if r >= AA_NORMAL else "FALLA"
+                print(f"  --{tinta:12} sobre --{fondo:10} {p[tinta]}  {r:5.2f}:1  {marca}")
 
     if fallos:
         print(f"\n{len(fallos)} por debajo de {AA_NORMAL}:1", file=sys.stderr)
