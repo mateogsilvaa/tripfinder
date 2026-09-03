@@ -667,6 +667,138 @@ test.describe("la escapada completa", () => {
   });
 });
 
+/* Las zonas que hasta ahora no tocaba ninguna prueba: el calendario, el
+   selector de destinos y "en observación". Se escriben ANTES de partir
+   `app.js` en módulos (#30): un refactor mecánico de 2.100 líneas necesita
+   algo debajo que diga si se cayó algo por el camino. */
+
+test.describe("el calendario", () => {
+  const abrir = async (page) => {
+    await page.goto("/buscar.html");
+    await page.evaluate(() =>
+      document.querySelectorAll("#finderForm [disabled]").forEach((e) => (e.disabled = false))
+    );
+    await page.selectOption("#fWhen", "exact");
+    await page.click("#dateBtn");
+    await expect(page.locator("#cal")).toBeVisible();
+  };
+
+  test("pinta meses con sus días", async ({ page }) => {
+    await abrir(page);
+    await expect(page.locator("#cal .mes").first()).toBeVisible();
+    const meses = await page.locator("#cal .mes").count();
+    expect(meses).toBeGreaterThanOrEqual(3);
+    // Lunes a domingo, en cada mes.
+    await expect(page.locator("#cal .mes").first().locator(".semana i")).toHaveCount(7);
+    expect(await page.locator("#cal .dia").count()).toBeGreaterThan(80);
+  });
+
+  test("elegir dos días deja un rango marcado y lo escribe en el campo", async ({ page }) => {
+    await abrir(page);
+    const dias = page.locator("#cal .dia:not([disabled])");
+    await dias.nth(0).click();
+    await dias.nth(6).click();
+    await expect(page.locator("#cal .dia.extremo")).toHaveCount(2);
+    expect(await page.locator("#cal .dia.dentro").count()).toBeGreaterThan(0);
+    await expect(page.locator("#fDepart")).not.toHaveValue("");
+    await expect(page.locator("#fReturn")).not.toHaveValue("");
+  });
+
+  test("se esconde cuando dejas de pedir fechas exactas", async ({ page }) => {
+    await abrir(page);
+    await page.selectOption("#fWhen", "weekend");
+    await expect(page.locator("#cal")).toBeHidden();
+  });
+});
+
+test.describe("el selector de destinos", () => {
+  const abrir = async (page) => {
+    await page.goto("/buscar.html");
+    await page.evaluate(() =>
+      document.querySelectorAll("#finderForm [disabled]").forEach((e) => (e.disabled = false))
+    );
+    await page.selectOption("#fWhere", "one");
+    await page.click("#destBtn");
+    await expect(page.locator("#destList .ciudad").first()).toBeVisible();
+  };
+
+  test("agrupa por país y deja elegir el país entero", async ({ page }) => {
+    await abrir(page);
+    expect(await page.locator("#destList .pais").count()).toBeGreaterThan(1);
+    await expect(page.locator("#destList .pais-todo").first()).toBeVisible();
+  });
+
+  test("filtra según escribes", async ({ page }) => {
+    await abrir(page);
+    const antes = await page.locator("#destList .ciudad").count();
+    await page.fill("#destSearch", "Bergamo");
+    await expect
+      .poll(() => page.locator("#destList .ciudad").count())
+      .toBeLessThan(antes);
+    await expect(page.locator("#destList .ciudad").first()).toContainText(/bergamo/i);
+  });
+
+  test("elegir una ciudad la pone en el formulario y cierra", async ({ page }) => {
+    await abrir(page);
+    await page.fill("#destSearch", "Bergamo");
+    await page.locator("#destList .ciudad").first().click();
+    await expect(page.locator("#destModal")).toBeHidden();
+    await expect(page.locator("#fDest")).toHaveValue(/BGY|Bergamo/i);
+    await expect(page.locator("#destBtn")).toContainText(/bergamo/i);
+  });
+});
+
+test.describe("en observación", () => {
+  const conSesion = async (page) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-p", user: "p", name: "P" }));
+        localStorage.setItem("tf_token", "ghp_de_mentira");
+        localStorage.setItem(
+          "tf_favoritos:u-p",
+          JSON.stringify({
+            "ryanair-MAD-BGY-20270108": {
+              id: "ryanair-MAD-BGY-20270108", origin: "MAD", destination: "BGY",
+              destination_name: "Bergamo", destination_country: "Italia",
+              depart_date: "2027-01-08", return_date: "2027-01-10", nights: 2,
+              airline: "Ryanair", adults: 1, deep_link: "https://example.com",
+              desde: 1, precio_inicial: 80, precio_visto: 60, visto_en: "2026-09-02",
+              historia: [{ d: "2026-08-28", p: 80 }, { d: "2026-09-02", p: 60 }],
+              cambio: null,
+            },
+          })
+        );
+      } catch (e) { /* nada */ }
+    });
+    await page.route("https://api.github.com/**", (r) => r.fulfill({ status: 204, body: "" }));
+  };
+
+  test("la lista enseña lo apuntado, con su curva y su diferencia", async ({ page }) => {
+    await conSesion(page);
+    await page.goto("/seguimientos.html");
+    const fila = page.locator(".favrow").first();
+    await expect(fila).toBeVisible();
+    await expect(fila.locator(".city")).toHaveText("Bergamo");
+    await expect(fila.locator(".spark")).toBeVisible();
+    await expect(fila.locator(".delta")).toContainText(/−20 €/);
+    await expect(page.locator(".watch-head")).toContainText(/en observación/i);
+  });
+
+  test("quitar uno lo saca de la lista", async ({ page }) => {
+    await conSesion(page);
+    await page.goto("/seguimientos.html");
+    await expect(page.locator(".favrow")).toHaveCount(1);
+    await page.locator(".favrow [data-desfav]").click();
+    await expect(page.locator(".favrow")).toHaveCount(0);
+    await expect(page.locator(".vacio")).toContainText(/todavía no has apuntado/i);
+  });
+
+  test("sin nada apuntado, dice qué hacer en vez de quedarse en blanco", async ({ page }) => {
+    await page.goto("/seguimientos.html");
+    await expect(page.locator("#favoritos")).toContainText(/todavía no has apuntado|cuenta/i);
+  });
+});
+
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */
