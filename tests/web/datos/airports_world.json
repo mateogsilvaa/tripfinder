@@ -1,0 +1,74 @@
+[
+ {
+  "code": "MAD",
+  "ciudad": "Madrid",
+  "pais": "España",
+  "cont": "Europa"
+ },
+ {
+  "code": "MAN",
+  "ciudad": "Manchester",
+  "pais": "Reino Unido",
+  "cont": "Europa"
+ },
+ {
+  "code": "BGY",
+  "ciudad": "Bergamo",
+  "pais": "Italia",
+  "cont": "Europa"
+ },
+ {
+  "code": "ACE",
+  "ciudad": "Lanzarote",
+  "pais": "España",
+  "cont": "Europa"
+ },
+ {
+  "code": "FCO",
+  "ciudad": "Roma",
+  "pais": "Italia",
+  "cont": "Europa"
+ },
+ {
+  "code": "CDG",
+  "ciudad": "Paris (Roissy-en-France, Val-d'Oise)",
+  "pais": "Francia",
+  "cont": "Europa"
+ },
+ {
+  "code": "LHR",
+  "ciudad": "London",
+  "pais": "Reino Unido",
+  "cont": "Europa"
+ },
+ {
+  "code": "NRT",
+  "ciudad": "Narita",
+  "pais": "Japón",
+  "cont": "Asia"
+ },
+ {
+  "code": "JFK",
+  "ciudad": "New York",
+  "pais": "Estados Unidos",
+  "cont": "América del Norte"
+ },
+ {
+  "code": "SYD",
+  "ciudad": "Sydney (Mascot)",
+  "pais": "Australia",
+  "cont": "Oceanía"
+ },
+ {
+  "code": "CPT",
+  "ciudad": "Cape Town",
+  "pais": "South Africa",
+  "cont": "África"
+ },
+ {
+  "code": "LIS",
+  "ciudad": "Lisboa",
+  "pais": "Portugal",
+  "cont": "Europa"
+ }
+]

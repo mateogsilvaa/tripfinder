@@ -338,6 +338,10 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
 
     store.record_prices(found)
     store.save_offers(_publicables(found, args.limit), errors=errors)
+    # El mapa de continentes que usa el filtro de la portada. Sale del listado
+    # mundial, que es estatico, asi que casi siempre escribe lo mismo y no
+    # genera commit; esta aqui para que no se pueda quedar viejo.
+    store.save_continents()
 
     if args.no_email:
         print(f"{len(to_notify)} ofertas notificables, pero --no-email esta activo.")

@@ -52,6 +52,45 @@ class Store:
             },
         )
 
+    # -- continentes -----------------------------------------------------
+    def save_continents(self) -> dict[str, str] | None:
+        """El mapa codigo -> continente que necesita la portada, y nada mas.
+
+        La portada solo usa `airports_world.json` para saber en que continente
+        cae cada destino y poder pintar el filtro. Cargar 270 KB para eso —mas
+        los 180 de `offers.json`— era casi medio mega de JSON para pintar 120
+        filas, en un movil y antes de ver nada.
+
+        Se guarda AGRUPADO POR CONTINENTE y con los codigos pegados en una sola
+        cadena, no como `{"MAD": "Europa", ...}`. Suena raro y es a proposito:
+        el mapa plano son 61 KB porque repite el nombre del continente 3.270
+        veces; asi son 10 KB. El nombre del continente se escribe seis veces en
+        total y los codigos IATA siempre miden tres letras, asi que partir la
+        cadena de tres en tres es todo lo que hay que hacer para leerlo.
+
+        Devuelve el mapa plano (util para los tests), o None si no esta el
+        listado mundial: es un fichero estatico del repo, no algo que el scan
+        genere, y sin el no hay nada que derivar.
+        """
+        mundial = self.root / "airports_world.json"
+        if not mundial.exists():
+            return None
+        try:
+            crudo = json.loads(mundial.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return None
+
+        plano = {a["code"]: a["cont"] for a in crudo if a.get("code") and a.get("cont")}
+        agrupado: dict[str, list[str]] = {}
+        for codigo, continente in plano.items():
+            agrupado.setdefault(continente, []).append(codigo)
+
+        self._write(
+            "continentes.json",
+            {c: "".join(sorted(codigos)) for c, codigos in sorted(agrupado.items())},
+        )
+        return plano
+
     # -- historico de precios -------------------------------------------
     def load_history(self) -> dict[str, list[dict]]:
         return self._read("history.json", {})

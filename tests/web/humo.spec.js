@@ -458,6 +458,61 @@ test.describe("se acierta con el dedo", () => {
   });
 });
 
+test.describe("lo que pide la portada", () => {
+  /* La #19: cargar `airports_world.json` entero (270 KB) para sacar el
+     continente de cada destino era casi medio mega de JSON, con `offers.json`
+     al lado, para pintar 120 filas. */
+
+  test("no pide el listado mundial de aeropuertos", async ({ page }) => {
+    const pedidos = [];
+    page.on("request", (r) => {
+      const u = new URL(r.url());
+      if (u.pathname.endsWith(".json")) pedidos.push(u.pathname.split("/").pop());
+    });
+    await page.goto("/index.html");
+    await expect(page.locator(".ticket")).toBeVisible();
+    await expect(page.locator("#cont option")).not.toHaveCount(1); // ya se pintó el filtro
+
+    expect(pedidos).not.toContain("airports_world.json");
+    expect(pedidos).toContain("continentes.json");
+  });
+
+  test("el filtro de continente sigue igual, con lo de largo radio incluido", async ({ page }) => {
+    await page.goto("/index.html");
+    await expect(page.locator(".ticket")).toBeVisible();
+
+    // Los continentes que hay entre los destinos, y nada más.
+    const opciones = await page.locator("#cont option").allTextContents();
+    expect(opciones).toContain("Todos");
+    expect(opciones).toContain("Europa");
+    // Ningún destino del fixture es de Asia, así que no debe salir.
+    expect(opciones).not.toContain("Asia");
+
+    // Y filtra de verdad.
+    const antes = await page.locator(".brow").count();
+    await page.selectOption("#cont", "Europa");
+    await expect(page.locator(".brow")).toHaveCount(antes);
+    await expect(page.locator(".ticket")).toBeVisible();
+  });
+
+  test("el selector de destinos sí carga el listado entero, al abrirlo", async ({ page }) => {
+    const pedidos = [];
+    page.on("request", (r) => pedidos.push(new URL(r.url()).pathname));
+    await page.goto("/buscar.html");
+    await page.evaluate(() =>
+      document.querySelectorAll("#finderForm [disabled]").forEach((e) => (e.disabled = false))
+    );
+    // Antes de abrirlo, no.
+    expect(pedidos.some((p) => p.endsWith("airports_world.json"))).toBe(false);
+
+    await page.selectOption("#fWhere", "one");
+    await page.click("#destBtn");
+    await expect(page.locator("#destList .ciudad").first()).toBeVisible();
+    // Al abrirlo, sí: ahí hacen falta ciudad y país.
+    expect(pedidos.some((p) => p.endsWith("airports_world.json"))).toBe(true);
+  });
+});
+
 /* Pendiente: el test de destinos ("de seis respuestas a tres propuestas") que
    pedia la issue #32. Todavia no existe —es el trabajo de #6 a #12—, asi que
    no hay nada que comprobar. Cuando se construya, aqui va su prueba. */

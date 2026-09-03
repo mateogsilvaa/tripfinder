@@ -797,10 +797,24 @@ async function init() {
   $("#priceOut").textContent = priceInput.value;
   pintarRegla(priceInput);
 
-  // El continente no viene en la oferta: se cruza con el listado de aeropuertos.
+  // El continente no viene en la oferta: se cruza con un mapa aparte.
+  //
+  // Antes se cargaba `airports_world.json` entero —270 KB— y de todo eso solo
+  // se usaba el continente de cada codigo. Con `offers.json` al lado eran casi
+  // 450 KB de JSON para pintar 120 filas, en un movil y antes de ver nada. El
+  // listado completo se sigue cargando, pero solo al abrir el selector de
+  // destinos, que es donde de verdad hacen falta ciudad y pais.
+  //
+  // El fichero viene agrupado por continente y con los codigos pegados en una
+  // sola cadena, que es lo que lo deja en 10 KB en vez de 61: los codigos IATA
+  // miden siempre tres letras, asi que se parte de tres en tres.
   try {
-    const aer = await fetchJSON("data/airports_world.json");
-    aer.forEach((a) => (CONTINENTES[a.code] = a.cont));
+    const mapa = await fetchJSON("data/continentes.json");
+    for (const [continente, codigos] of Object.entries(mapa)) {
+      for (let i = 0; i < codigos.length; i += 3) {
+        CONTINENTES[codigos.slice(i, i + 3)] = continente;
+      }
+    }
     const presentes = [...new Set(OFFERS.map((o) => CONTINENTES[o.destination]).filter(Boolean))].sort();
     const hayLejos = OFFERS.some((o) => o.long_haul);
     $("#cont").insertAdjacentHTML(
