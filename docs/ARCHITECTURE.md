@@ -12,6 +12,7 @@
 | `tripfinder.users` | `src/tripfinder/` | Las cuentas: `data/users.json` con un PBKDF2-SHA256 por contraseña. Lo que se publica en Pages va sin las direcciones de correo (`users publish`): la web solo necesita saber **si** hay una, no cuál. El mismo algoritmo que calcula el navegador en `web/auth.js`. |
 | `tripfinder.notify` | `src/tripfinder/notify/` | Resend / SMTP / issue de GitHub + plantillas. Si el metodo elegido falla, prueba los demas. |
 | `web/` | GitHub Pages | Lee `data/offers.json`, `data/continentes.json` (el mapa código → continente que necesita el filtro, derivado de `airports_world.json` en cada scan) y `data/stays/*.json`. Cero build: las partes comunes (`web/partes/`) las escribe `tools/montar.py` dentro de los HTML, que siguen abriéndose a doble clic. |
+| `web/js/` | GitHub Pages | Once módulos ES, uno por asunto (`ofertas`, `busqueda`, `seguimientos`, `favoritos`, `alojamiento`, `precios`, `historia`, `destinos`, `calendario`, `disparador` y `base`, que es lo compartido). `arranque.js` es lo único que *hace* algo al cargar; `tripfinder.js` es la puerta que abren las páginas. Sin bundler: el navegador resuelve los `import`. |
 | `web/auth.js` | GitHub Pages | Quién está delante: sesión, login contra `data/users.json` y el espacio de nombres de `localStorage` por cuenta. |
 | `tools/` | — | Utilidades que no se publican: `montar.py` (las partes comunes de la web), `contraste.py` (auditoría de la paleta). |
 | `.github/workflows/` | GitHub Actions | Los siete, en la tabla de abajo. |

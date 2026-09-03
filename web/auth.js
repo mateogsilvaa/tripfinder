@@ -191,7 +191,7 @@ async function tfLeerUsuarios(forzar = false) {
 /* -------------------------------------------------------------- disparador
    Escribir en el repo (una cuenta nueva, un seguimiento) no lo puede hacer la
    web sola: llama a la API de GitHub con el token que vive SOLO en este
-   navegador y un workflow aplica el cambio. Esta aqui, y no en app.js, porque
+   navegador y un workflow aplica el cambio. Esta aqui, y no en los modulos de js/, porque
    el panel de administracion tambien lo necesita y dos copias se desincronizan.
 
    Dicho de otra forma: la contrasena del panel es la puerta de la casa, pero

@@ -167,3 +167,62 @@ def test_la_404_no_se_rompe_fuera_de_su_raiz():
     # Y los enlaces del documento siguen siendo relativos, no absolutos.
     assert 'href="styles.css' in html
     assert f'href="{montar.SITIO}styles.css' not in html
+
+
+# ------------------------------------------------------------------ modulos
+JS = WEB / "js"
+
+
+def _modulos():
+    return sorted(p.name for p in JS.glob("*.js"))
+
+
+def test_todos_los_modulos_cuelgan_de_la_puerta():
+    """`calendario.js` no exporta nada: solo se engancha a sus botones. Por eso
+    nadie lo importaba, nadie lo cargaba y el calendario dejo de abrirse sin
+    que fallara ni una linea. Un modulo que nadie importa es codigo muerto o
+    una pagina rota, y las dos cosas merecen enterarse aqui."""
+    importados = set()
+    for ruta in JS.glob("*.js"):
+        texto = ruta.read_text(encoding="utf-8")
+        importados |= {m.group(1) for m in re.finditer(r'from "\./([\w-]+\.js)"', texto)}
+        importados |= {m.group(1) for m in re.finditer(r'^import "\./([\w-]+\.js)"', texto, re.MULTILINE)}
+    huerfanos = set(_modulos()) - importados - {"tripfinder.js"}
+    assert not huerfanos, f"nadie importa: {sorted(huerfanos)}"
+
+
+def test_la_puerta_es_la_que_cargan_las_paginas():
+    """Si el HTML apunta a un modulo y el modulo no existe, la pagina se queda
+    muda: ni error visible ni nada pintado."""
+    for fichero in montar.PAGINAS:
+        html = (WEB / fichero).read_text(encoding="utf-8")
+        for m in re.finditer(r'src="js/([\w-]+\.js)\?', html):
+            assert (JS / m.group(1)).exists(), f"{fichero} pide {m.group(1)}"
+
+
+def test_solo_arranque_hace_algo_al_cargar():
+    """El resto define y se calla. Es lo que deja que un import no tenga
+    efectos por sorpresa y que el orden de carga no importe."""
+    llamadas = re.compile(r"^[a-z][\w.]*\(", re.MULTILINE)
+    for ruta in JS.glob("*.js"):
+        if ruta.name in {"arranque.js", "tripfinder.js"}:
+            continue
+        sueltas = llamadas.findall(ruta.read_text(encoding="utf-8"))
+        # `on(...)` es enganchar un boton, no ejecutar: eso si vale.
+        assert not [c for c in sueltas if not c.startswith("on(")], f"{ruta.name}: {sueltas}"
+
+
+def test_al_publicar_se_sella_cada_import(tmp_path, monkeypatch):
+    """El `?v=` del HTML solo tapa la puerta. Sin sellar los import de dentro,
+    el navegador puede mezclar un modulo de ayer con otro de hoy."""
+    falso = tmp_path / "js"
+    falso.mkdir()
+    (falso / "uno.js").write_text('import { a } from "./dos.js";\nimport "./tres.js";\n')
+    monkeypatch.setattr(montar, "WEB", tmp_path)
+    tocados = montar.sellar_modulos("abc1234")
+    assert tocados == ["uno.js"]
+    texto = (falso / "uno.js").read_text()
+    assert 'from "./dos.js?v=abc1234"' in texto
+    assert 'import "./tres.js?v=abc1234"' in texto
+    # Y no se sella dos veces si se pasa otra vez.
+    assert montar.sellar_modulos("abc1234") == []

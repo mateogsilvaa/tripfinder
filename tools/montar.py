@@ -112,7 +112,7 @@ VIVO = '      <span class="board-live"><i></i>en vivo</span>\n'
 GUIONES_WEB = (
     '<script src="log.js?v={v}"></script>\n'
     '<script src="auth.js?v={v}"></script>\n'
-    '<script src="app.js?v={v}"></script>\n'
+    '<script type="module" src="js/tripfinder.js?v={v}"></script>\n'
 )
 GUIONES_PANEL = (
     '<script src="log.js?v={v}"></script>\n'
@@ -249,6 +249,26 @@ def montar_texto(html: str, datos: dict, version: str = BUILD) -> str:
     return MARCA.sub(sustituir, html)
 
 
+# El `?v=` del HTML solo tapa la puerta de entrada: los `import` de dentro de
+# `web/js/` van sin sello, y el navegador puede quedarse con un modulo viejo y
+# otro nuevo del mismo despliegue (Pages sirve los assets con max-age=600). Al
+# publicar se le pega la misma version a cada import relativo, que es lo que
+# antes hacia solo el `app.js?v=`.
+IMPORT_RELATIVO = re.compile(r'(from |import )("\./[\w-]+\.js)(")')
+
+
+def sellar_modulos(version: str) -> list[str]:
+    """Pone `?v=version` en los import relativos de web/js/. Devuelve los tocados."""
+    tocados = []
+    for ruta in sorted((WEB / "js").glob("*.js")):
+        antes = ruta.read_text(encoding="utf-8")
+        despues = IMPORT_RELATIVO.sub(rf"\1\2?v={version}\3", antes)
+        if antes != despues:
+            ruta.write_text(despues, encoding="utf-8")
+            tocados.append(ruta.name)
+    return tocados
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
@@ -280,6 +300,10 @@ def main() -> int:
         print("Sin montar: " + ", ".join(sucios), file=sys.stderr)
         print("Pasa `python tools/montar.py` y vuelve a commitear.", file=sys.stderr)
         return 1
+    modulos = [] if args.check or args.version == BUILD else sellar_modulos(args.version)
+    if modulos:
+        print(f"Sellados {len(modulos)} modulos con la version {args.version}")
+
     if sucios:
         marca = "" if args.version == BUILD else f" (version {args.version})"
         print("Montado: " + ", ".join(sucios) + marca)
