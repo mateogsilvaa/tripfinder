@@ -392,7 +392,9 @@ const tfPuedeEscribir = () => !!tfToken() && (!!tfSesion() || !!localStorage.get
    borrado: seguian ahi, pero en el cajon de nadie. Solo la primera vez y solo
    si su cajon esta vacio: entrar dos personas distintas no se mezcla. */
 function tfAdoptarAnonimos(uid) {
-  ["tf_favoritos", "tf_grupo"].forEach((base) => {
+  // "tf_quiz": un test hecho sin cuenta se adopta al entrar, igual que los
+  // favoritos. Sin esto habria que rehacerlo, y nadie rehace un test (#11).
+  ["tf_favoritos", "tf_grupo", "tf_quiz"].forEach((base) => {
     try {
       const anonimo = localStorage.getItem(base);
       if (anonimo === null) return;

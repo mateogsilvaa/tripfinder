@@ -14,6 +14,7 @@ import {
 import { init } from "./ofertas.js";
 import { loadSearches } from "./busqueda.js";
 import { cargarWatches } from "./seguimientos.js";
+import { marcarFlap } from "./quiz.js";
 
 init();
 loadSearches();
@@ -24,3 +25,6 @@ refrescarAvisoFavs();
 // Un favorito puede venir de una búsqueda que no está abierta: se repasan
 // todas las fuentes al cargar, que es lo que permite avisar sin abrir nada.
 refrescarFavsDeTodo();
+// El punto en el flap cuando hay un test guardado: es lo unico que el test
+// hace al cargar, todo lo demas espera a que lo abras (#11).
+marcarFlap();

@@ -23,7 +23,13 @@ export const pendientes = () => {
     return [];
   }
 };
-export const guardarPendientes = (lista) => localStorage.setItem(PEND_KEY, JSON.stringify(lista));
+export const guardarPendientes = (lista) => {
+  try {
+    localStorage.setItem(PEND_KEY, JSON.stringify(lista));
+  } catch {
+    /* navegacion privada: lo pendiente dura lo que la pestaña */
+  }
+};
 
 export function anadirPendiente(label) {
   const lista = pendientes().filter((p) => p.label !== label);

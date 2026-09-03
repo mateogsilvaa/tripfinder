@@ -39,9 +39,9 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <header class="masthead">
 <!-- tf:parte barra -->
   <div class="topbar">
-    <div class="board" aria-hidden="true">
-      <span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>
-      <span class="board-label">índice de escapadas · origen Madrid</span>
+    <div class="board">
+      <span class="flaps" aria-hidden="true"><span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span><button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-cara" aria-hidden="true">?</span></button>
+      <span class="board-label" aria-hidden="true">índice de escapadas · origen Madrid</span>
       <span class="board-live"><i></i>en vivo</span>
     </div>
     <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
