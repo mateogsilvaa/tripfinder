@@ -302,8 +302,134 @@ main { margin-top: 30px; }
   letter-spacing: 0.06em; border-radius: 0;
   animation: tf-flap 0.5s var(--ease) backwards;
 }
+.flaps { display: inline-flex; gap: 4px; }
 .flap:nth-child(2) { animation-delay: 0.07s; }
 .flap:nth-child(3) { animation-delay: 0.14s; }
+
+/* El cuarto flap, el del test (#7). En reposo es un flap más —discreto a
+   propósito, no es la acción principal de la web—; al pasar por encima gira
+   sobre su eje horizontal y enseña la otra cara, que es lo único que un panel
+   de salidas hace y esta plancha no hacía. El giro es la excepción a "sin
+   animaciones": aquí ES el significado del objeto. */
+.flap-boton {
+  margin-left: 4px; cursor: pointer; position: relative;
+  color: var(--faint); perspective: 200px;
+}
+.flap-boton .flap-cara {
+  display: block; transition: transform var(--t-med) var(--ease);
+  transform-origin: center;
+}
+.flap-boton:hover, .flap-boton:focus-visible { color: var(--azul); border-color: var(--azul); }
+.flap-boton:hover .flap-cara { transform: rotateX(360deg); }
+/* Área táctil de 44 px sin cambiar lo que se ve, igual que el resto (#25). */
+.flap-boton::after {
+  content: ""; position: absolute; top: 50%; left: 50%;
+  width: max(100%, var(--tap-min)); height: max(100%, var(--tap-min));
+  transform: translate(-50%, -50%);
+}
+/* Un punto cuando hay un test guardado: se entra a verlo, no a rehacerlo. */
+.flap-boton.con-memoria { color: var(--azul); border-color: var(--azul); }
+/* ------------------------------------------------------------------ el test
+   Mismo lenguaje que el resto: reglas en vez de tarjetas, nada de sombras y el
+   dato en monoespaciada. Lo único propio son las casillas del progreso, que son
+   el troquel de la cabecera puesto a contar preguntas. */
+.quiz-caja { width: min(560px, 100%); }
+.quiz-head h2 { font-size: 26px; }
+
+.quiz-progreso { display: flex; gap: 4px; margin-top: -8px; }
+.quiz-paso {
+  flex: 1; height: 3px; background: var(--line);
+  transition: background var(--t-med) var(--ease);
+}
+.quiz-paso.hecho { background: var(--ink); }
+.quiz-paso.ahora { background: var(--azul); }
+
+.quiz-cuerpo { overflow-y: auto; }
+.quiz-cuenta {
+  margin: 0 0 6px; font: 400 var(--fs-caps)/1 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+}
+.quiz-pregunta {
+  margin: 0 0 6px; font: 300 var(--fs-subhead)/1.15 var(--font-display);
+  letter-spacing: var(--ls-title); color: var(--ink);
+}
+.quiz-pie, .quiz-aviso {
+  margin: 0 0 16px; font: 300 var(--fs-body-s)/1.6 var(--font-sans); color: var(--muted);
+}
+.quiz-aviso { color: var(--azul); }
+
+.quiz-opciones { display: grid; gap: 0; }
+.quiz-opcion {
+  display: flex; align-items: baseline; gap: 12px; width: 100%; cursor: pointer;
+  padding: 14px 2px; min-height: var(--tap-min); text-align: left;
+  background: none; border: 0; border-top: 1px solid var(--line-2); border-radius: 0;
+  color: var(--ink); font: inherit;
+  transition: color var(--t) var(--ease);
+}
+.quiz-opciones .quiz-opcion:last-child { border-bottom: 1px solid var(--line-2); }
+.quiz-opcion:hover, .quiz-opcion:focus-visible { color: var(--azul); }
+.quiz-opcion:hover .quiz-tecla, .quiz-opcion:focus-visible .quiz-tecla {
+  border-color: var(--azul); color: var(--azul);
+}
+.quiz-tecla {
+  flex: none; display: inline-grid; place-items: center; min-width: 22px;
+  padding: 3px 5px; border: 1px solid var(--line); color: var(--faint);
+  font: 400 var(--fs-meta)/1 var(--font-mono);
+}
+.quiz-texto { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.quiz-texto b {
+  font: 400 var(--fs-name-s)/1.2 var(--font-display); letter-spacing: var(--ls-title);
+}
+.quiz-texto small { font: 300 var(--fs-body-s)/1.5 var(--font-sans); color: var(--muted); }
+
+.quiz-atras {
+  margin-top: 16px; padding: 8px 2px; min-height: var(--tap-min); cursor: pointer;
+  background: none; border: 0; color: var(--faint);
+  font: 400 var(--fs-ui-s)/1 var(--font-mono);
+}
+.quiz-atras:hover, .quiz-atras:focus-visible { color: var(--azul); }
+
+/* Los tres billetes. Uno debajo de otro y separados por una regla: en 320 px
+   tres columnas no caben, y en ancho tampoco aportan nada. */
+.quiz-billetes { display: grid; gap: 0; }
+.quiz-billete { border-top: 1px solid var(--line-2); padding: 18px 0; }
+.quiz-billetes .quiz-billete:last-child { border-bottom: 1px solid var(--line-2); }
+.quiz-billete-top {
+  display: grid; grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center; gap: 12px;
+}
+.quiz-billete .dest-cell { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.quiz-billete .city {
+  font: 400 var(--fs-city-s)/1.1 var(--font-display); letter-spacing: var(--ls-title);
+}
+.quiz-billete .country {
+  font: 400 var(--fs-meta)/1.3 var(--font-mono);
+  text-transform: lowercase; letter-spacing: var(--ls-caps); color: var(--faint);
+}
+.quiz-precio { text-align: right; display: flex; flex-direction: column; gap: 2px; }
+.quiz-cuando {
+  margin: 10px 0 0; font: 400 var(--fs-data-s)/1.5 var(--font-mono); color: var(--muted);
+}
+/* El porqué: es lo que hace que la propuesta no se lea como aleatoria, así que
+   va en la tipografía del texto y no en la de los datos. */
+.quiz-porque {
+  margin: 10px 0 0; font: 300 var(--fs-body-s)/1.6 var(--font-sans); color: var(--ink);
+}
+.quiz-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.quiz-estado {
+  margin: 10px 0 0; font: 400 var(--fs-data-s)/1.5 var(--font-mono); color: var(--verde);
+}
+.quiz-estado:empty { display: none; }
+.quiz-estado a { color: var(--azul); }
+
+@media (max-width: 380px) {
+  .quiz-billete-top { grid-template-columns: 44px minmax(0, 1fr); }
+  .quiz-precio { grid-column: 2; text-align: left; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flap-boton:hover .flap-cara { transform: none; }
+}
 
 .board-label {
   margin-left: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -413,7 +539,14 @@ h1 em { display: block; font-style: italic; font-weight: 300; color: var(--azul)
 }
 .foot a { color: var(--azul); }
 .build { margin-left: auto; opacity: 0.6; }
-#frescura { white-space: nowrap; }
+/* Sin partir, para que "hace 12 h" no acabe en dos renglones... pero solo si
+   cabe: a 320 px la frase mide 360 y sacaba una barra horizontal en toda la
+   pagina. El movil estrecho parte la linea, que es mucho menos feo que
+   arrastrar el pie de lado. */
+#frescura { white-space: normal; }
+@media (min-width: 420px) {
+  #frescura { white-space: nowrap; }
+}
 #frescura.viejo { color: var(--azul); }
 
 /* ======================================================================== */

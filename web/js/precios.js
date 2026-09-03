@@ -24,7 +24,21 @@ export const porPersona = (o) =>
 /* Cada cuenta tiene su cajon en este navegador: "tf_grupo:u-1a2b". Sin sesion
    se usa la clave de siempre, que es donde ya estaba lo tuyo. */
 const GRUPO_KEY = tfClave("tf_grupo");
-export let GRUPO = Math.min(8, Math.max(1, Number(localStorage.getItem(GRUPO_KEY)) || 1));
+
+/* Con try/catch, y no por manía: esto se ejecuta AL IMPORTAR el módulo, y un
+   navegador con el almacenamiento de sitio bloqueado hace que `getItem` lance.
+   Sin el guardia, la excepción se lleva por delante el módulo entero y con él
+   todo lo que lo importa, que es casi toda la web: pantalla en blanco y ni un
+   error visible. El resto de accesos ya iban protegidos; este se había quedado
+   fuera por estar en una sola línea. */
+function grupoGuardado() {
+  try {
+    return Number(localStorage.getItem(GRUPO_KEY));
+  } catch {
+    return 0;
+  }
+}
+export let GRUPO = Math.min(8, Math.max(1, grupoGuardado() || 1));
 
 /* Un modulo no puede asignar a lo que importa de otro, asi que quien cambia el
    grupo o carga las camas pasa por aqui. Es la unica puerta: el dia que haya

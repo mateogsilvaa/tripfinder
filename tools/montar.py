@@ -116,6 +116,15 @@ MANIFIESTO = (
     '<meta name="apple-mobile-web-app-title" content="TripFinder">\n'
 )
 
+# El cuarto flap: el test de destinos (#7). Va DENTRO del troquel y detras de
+# las iniciales, pero fuera del `aria-hidden` de la plancha: es un boton de
+# verdad, no un adorno, y tiene que poder alcanzarse con el tabulador (#12).
+DESCUBRIR = (
+    '<button id="tfDescubrir" class="flap flap-boton" type="button"'
+    ' aria-label="Descubrir tu destino ideal">'
+    '<span class="flap-cara" aria-hidden="true">?</span></button>'
+)
+
 VIVO = '      <span class="board-live"><i></i>en vivo</span>\n'
 
 GUIONES_WEB = (
@@ -150,6 +159,7 @@ PAGINAS = {
     "index.html": {
         "base": "",
         "manifiesto": MANIFIESTO,
+        "descubrir": DESCUBRIR,
         "titulo": "TripFinder · escapadas desde Madrid",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["index.html"]}">',
         "favicon": "✈️",
@@ -163,6 +173,7 @@ PAGINAS = {
     "buscar.html": {
         "base": "",
         "manifiesto": MANIFIESTO,
+        "descubrir": DESCUBRIR,
         "titulo": "TripFinder · trazar un viaje",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["buscar.html"]}">',
         "favicon": "✈️",
@@ -176,6 +187,7 @@ PAGINAS = {
     "seguimientos.html": {
         "base": "",
         "manifiesto": MANIFIESTO,
+        "descubrir": DESCUBRIR,
         "titulo": "TripFinder · en observación",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["seguimientos.html"]}">',
         "favicon": "✈️",
@@ -191,6 +203,7 @@ PAGINAS = {
     # alojamiento, y no se indexa.
     "404.html": {
         "manifiesto": "",
+        "descubrir": "",
         "base": ARREGLO_BASE,
         "titulo": "TripFinder · fuera de la carta",
         "meta": '<meta name="robots" content="noindex">',
@@ -206,6 +219,7 @@ PAGINAS = {
     # alojamiento, ni se indexa.
     "admin.html": {
         "manifiesto": "",
+        "descubrir": "",
         "base": "",
         "titulo": "TripFinder · panel",
         "meta": '<meta name="robots" content="noindex">',
