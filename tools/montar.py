@@ -88,10 +88,24 @@ ARREGLO_BASE = """<script>
 </script>
 """.replace("__RAIZ__", SITIO)  # el bloque lleva llaves de JS: nada de format
 
-DESCRIPCION = (
-    "Escapadas de fin de semana desde Madrid por debajo de su precio habitual, "
-    "con busqueda de alojamiento bajo demanda."
-)
+# Cada zona hace una cosa distinta y la descripcion tiene que decir CUAL. La
+# misma frase en las tres no ayuda a nadie: ni al que la lee en un resultado de
+# busqueda, ni al que comparte el enlace de "en observacion" —donde no se esta
+# mirando lo que ha caido hoy, sino lo que vigilas tu—.
+DESCRIPCIONES = {
+    "index.html": (
+        "Escapadas de fin de semana desde Madrid por debajo de lo que cuesta "
+        "habitualmente ese mismo viaje. Se revisa cada doce horas."
+    ),
+    "buscar.html": (
+        "Dile a donde quieres ir y se recorre finde a finde hasta el año que viene, "
+        "preguntando a todas las companias y no solo a las low cost."
+    ),
+    "seguimientos.html": (
+        "Los viajes que tienes apuntados, revisados cada manana. Te escribe cuando "
+        "el precio se mueve o cae dentro de tu tope."
+    ),
+}
 
 VIVO = '      <span class="board-live"><i></i>en vivo</span>\n'
 
@@ -127,7 +141,7 @@ PAGINAS = {
     "index.html": {
         "base": "",
         "titulo": "TripFinder · escapadas desde Madrid",
-        "meta": f'<meta name="description" content="{DESCRIPCION}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["index.html"]}">',
         "favicon": "✈️",
         "flaps": '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>',
         "rotulo": "índice de escapadas · origen Madrid",
@@ -139,7 +153,7 @@ PAGINAS = {
     "buscar.html": {
         "base": "",
         "titulo": "TripFinder · trazar un viaje",
-        "meta": f'<meta name="description" content="{DESCRIPCION}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["buscar.html"]}">',
         "favicon": "✈️",
         "flaps": '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>',
         "rotulo": "índice de escapadas · origen Madrid",
@@ -151,7 +165,7 @@ PAGINAS = {
     "seguimientos.html": {
         "base": "",
         "titulo": "TripFinder · en observación",
-        "meta": f'<meta name="description" content="{DESCRIPCION}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["seguimientos.html"]}">',
         "favicon": "✈️",
         "flaps": '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span>',
         "rotulo": "índice de escapadas · origen Madrid",

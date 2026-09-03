@@ -69,6 +69,24 @@ def test_la_version_de_los_assets_sale_de_un_solo_sitio():
         assert f"build {montar.BUILD}" in html, f"{fichero}: el pie va por otra version"
 
 
+def test_cada_pagina_publica_dice_lo_suyo():
+    """Tres zonas que hacen cosas distintas no pueden compartir descripción:
+    ni ayuda a quien la lee en un buscador, ni a quien comparte el enlace de
+    "en observación", donde no se mira lo que ha caído hoy."""
+    publicas = ["index.html", "buscar.html", "seguimientos.html"]
+    textos, titulos, ledes = [], [], []
+    for f in publicas:
+        html = (WEB / f).read_text(encoding="utf-8")
+        m = re.search(r'name="description" content="([^"]+)"', html)
+        assert m, f"{f} no tiene descripción"
+        textos.append(m.group(1))
+        titulos.append(re.search(r"<title>([^<]+)</title>", html).group(1))
+        ledes.append(re.search(r'<p class="lede">(.*?)</p>', html, re.DOTALL).group(1).strip())
+
+    for nombre, valores in (("descripciones", textos), ("títulos", titulos), ("ledes", ledes)):
+        assert len(set(valores)) == len(publicas), f"hay {nombre} repetidos: {valores}"
+
+
 def test_en_el_repo_la_version_es_dev():
     """La de verdad la sella `pages.yml` al publicar. Si alguien commitea un
     hash, el siguiente despliegue lo pisa y el repo queda mintiendo."""
