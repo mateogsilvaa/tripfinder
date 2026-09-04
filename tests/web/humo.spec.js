@@ -992,6 +992,52 @@ test.describe("el panel de administración en un móvil", () => {
     expect(enviados[0].client_payload.sobre.data).toBeTruthy();
   });
 
+  /* EL FALLO QUE NO SE VE. `mandar()` escribe el resultado en `#avisoCuentas`,
+     que está arriba del panel y por tanto DEBAJO del velo del modal. Si el
+     dispatch falla —sin token, token caducado, 403— el modal se queda con
+     «Guardando…» para siempre y la explicación, con su caja para pegar un
+     token nuevo, se pinta donde no se ve ni se alcanza. Desde dentro se lee
+     como «el botón no hace nada». */
+  test("un dispatch fallido se cuenta DENTRO del modal, no detrás", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await panelAbierto(page, []);
+    // Sin token no se puede escribir: es el caso más común de los tres.
+    await page.evaluate(() => {
+      try { localStorage.removeItem("tf_token"); } catch (e) { /* nada */ }
+    });
+    await page.click("#cambiarAdmin");
+    await page.fill("#aPass", "otraclavelarga2");
+    await page.click("#formModal button[type=submit]");
+    const msg = page.locator("#modalMsg");
+    await expect(msg).not.toHaveText(/guardando/i, { timeout: 25000 });
+    await expect(msg).toContainText(/token/i);
+    // Y la caja para pegar el token está donde se puede usar: dentro.
+    await expect(page.locator("#formModal #tokenInput")).toBeVisible();
+    await expect(page.locator("#formModal button[type=submit]")).toBeEnabled();
+  });
+
+  /* Y la caja tiene que SERVIR: pegar el token ahí y volver a darle sin salir
+     del modal. Antes ni se veía; verla y que no funcione sería lo mismo. */
+  test("con el token pegado ahí mismo, el segundo intento sale", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const enviados = [];
+    await panelAbierto(page, enviados);
+    await page.evaluate(() => {
+      try { localStorage.removeItem("tf_token"); } catch (e) { /* nada */ }
+    });
+    await page.click("#cambiarAdmin");
+    await page.fill("#aPass", "otraclavelarga2");
+    await page.click("#formModal button[type=submit]");
+    await expect(page.locator("#formModal #tokenInput")).toBeVisible({ timeout: 25000 });
+    expect(enviados).toHaveLength(0);
+
+    await page.fill("#formModal #tokenInput", "ghp_pegado_a_mano");
+    await page.click("#formModal #tokenSave");
+    await page.click("#formModal button[type=submit]");
+    await expect(page.locator("#modalMsg")).toHaveCount(0, { timeout: 25000 });
+    expect(enviados.map((e) => e.event_type)).toEqual(["admin_password"]);
+  });
+
   /* Un fallo dentro del formulario tiene que decirse. Antes cualquier
      excepción dejaba "Guardando…" en pantalla para siempre, que se lee como
      "el botón no hace nada". */
