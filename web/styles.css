@@ -749,6 +749,56 @@ h1 em { font-size: 1.3em; }
 }
 
 /* La barra de filtros: campos sin caja, solo una raya debajo. */
+/* La barra de filtros de móvil y la cabecera/pie de la hoja no existen por
+   encima de 760 px: allí `.controls` es la fila de siempre. */
+.filtros-movil, .hoja-solo { display: none; }
+.filtros-movil > input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+.filtros-movil > input:hover, .filtros-movil > input:focus { border-color: var(--muted); }
+.filtros-btn {
+  flex: none;
+  min-height: var(--tap-min);
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: 600 15px var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--t) var(--ease);
+}
+.filtros-btn.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--sobre-acento);
+}
+.hoja-cab {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font: 700 19px var(--font-sans);
+  letter-spacing: -0.03em;
+}
+.hoja-pie {
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--hair);
+  padding-top: 14px;
+}
+.hoja-pie > .btn { flex: none; }
+.hoja-pie > #filtrosVer { flex: 1; }
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -813,7 +863,10 @@ h1 em { font-size: 1.3em; }
 }
 .switch:hover { border-color: var(--muted); color: var(--ink); }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.switch:has(input:checked) {
+/* Los chips de la hoja de filtros son `.switch` sin casilla dentro: marcan su
+   estado con `aria-pressed`, así que el encendido va por las dos vías. */
+.switch:has(input:checked),
+.switch[aria-pressed="true"] {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--paper);
@@ -824,7 +877,7 @@ h1 em { font-size: 1.3em; }
    Una rejilla de cinco columnas compartida por la cabecera y por cada fila:
    si se cambia aquí, se cambia en las dos a la vez. */
 .rows, .board-head, .saved-rows, .watch-rows {
-  --cols: 34px minmax(0, 1.05fr) minmax(0, 1.6fr) minmax(0, 0.85fr) 208px;
+  --cols: 40px minmax(0, 1.05fr) minmax(0, 1.58fr) minmax(0, 0.83fr) 208px;
 }
 
 .tabla {
@@ -862,30 +915,36 @@ h1 em { font-size: 1.3em; }
 .rows .brow:first-child { border-top: none; }
 .brow:hover, .brow:focus-visible { background: var(--surface2); }
 
-/* El cuadratín de "poner en observación". Va el primero, como en un parte. */
+/* El botón de seguir un viaje. Va el primero, como en un parte de salidas.
+   Antes era un cuadratín de 20 px con un glifo puesto por CSS y el `color` del
+   botón en transparente: no decía qué hacía y cualquier texto de dentro salía
+   invisible. Ahora es una píldora con campana; la palabra sale donde cabe. */
 .fav {
   position: relative;
-  width: 20px;
-  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: var(--r-tag);
+  border-radius: var(--r-pill);
   background: transparent;
-  color: transparent;
-  font: 400 var(--fs-ui-s) / 1 var(--font-mono);
+  color: var(--muted);
+  font: 600 var(--fs-ui) / 1 var(--font-sans);
   cursor: pointer;
-  display: grid;
-  place-items: center;
   transition: all var(--t) var(--ease);
 }
-.fav::before { content: "+"; color: var(--muted); line-height: 0; }
-.fav:hover { border-color: var(--deep); }
+/* En escritorio manda el icono: la columna del parte es estrecha. */
+.fav .fav-txt { display: none; }
+.fav:hover, .fav:focus-visible { border-color: var(--deep); color: var(--ink); }
 .fav.on {
   border-color: var(--deep);
   background: var(--deep);
   color: #0e1614;
 }
-.fav.on::before { content: "✓"; color: #0e1614; line-height: 0; }
+.fav.on:hover { color: #0e1614; }
 .fav::after {
   content: "";
   position: absolute;
@@ -895,11 +954,15 @@ h1 em { font-size: 1.3em; }
   transform: translate(-50%, -50%);
 }
 
-/* Dentro de la lámina invertida el cuadratín va con SUS tintas: el `--muted`
-   del tema es el del fondo de fuera y ahí dentro no se ve. */
-.ticket .fav { border-color: var(--hero-hair); }
-.ticket .fav::before { color: var(--hero-muted); }
-.ticket .fav:hover { border-color: var(--deep); }
+/* Dentro de la lámina invertida todo va con SUS tintas: `--muted`, `--line` y
+   `--ink` son las del fondo de fuera y ahí dentro no se ven —en tema claro son
+   negro sobre negro—. Cualquier regla nueva que entre en `.ticket` va igual. */
+.ticket .fav { border-color: var(--hero-hair); color: var(--hero-muted); }
+.ticket .fav:hover { border-color: var(--deep); color: var(--hero-ink); }
+/* Encendido manda el relleno, dentro y fuera de la lámina: si no, la regla de
+   arriba le devolvía el `--hero-muted` encima del verde y no se veía. */
+.ticket .fav.on, .ticket .fav.on:hover { color: #0e1614; border-color: var(--deep); }
+.ticket .iata { color: var(--hero-muted); border-color: var(--hero-hair); }
 
 .dest-cell { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .iata {
@@ -1842,12 +1905,46 @@ h1 em { font-size: 1.3em; }
   .topbar-in { gap: 10px; }
   .flaps { display: none; }
   .flap-boton { margin-left: 0; }
-  /* Los controles del feed en dos columnas: en fila libre el "ordenar" y un
-     interruptor acababan compartiendo renglón y el otro suelto debajo. */
-  .controls { display: grid; grid-template-columns: 1fr 1fr; align-items: end; }
-  .controls .field, .controls .switch { max-width: none; margin-left: 0; }
-  .controls .field.grow { grid-column: 1 / -1; }
+  /* LOS FILTROS EN MÓVIL. Antes se veían los nueve controles a la vez y el
+     primer vuelo quedaba fuera de pantalla. Ahora arriba solo hay dos cosas
+     —buscador y "Filtros · N"— y el resto vive en una hoja que sube desde
+     abajo. La hoja NO es otro bloque: es este mismo `.controls`, con los
+     mismos campos y los mismos oyentes, con otra maquetación. */
+  .filtros-movil { display: flex; gap: 8px; align-items: center; }
+  .hoja-solo { display: flex; }
+  #filtrosFondo { z-index: 40; }
+
+  .controls {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 41;
+    display: none;
+    /* Rejilla y no columna: los dos interruptores de abajo caben en un mismo
+       renglón, que es como se leen (dos ajustes, no dos secciones). */
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 18px 10px;
+    max-height: 88vh;
+    overflow: auto;
+    padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+    border: none;
+    border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    background: var(--surface);
+    animation: tf-rise var(--t-med) var(--ease);
+  }
+  .controls.abierta { display: grid; }
+  .controls > *:not(.switch) { grid-column: 1 / -1; }
+  .controls .field { flex: none; max-width: none; }
+  /* Por debajo de 16 px iOS hace zoom al enfocar un campo. */
+  .controls .field input, .controls .field select { font-size: 16px; }
+  /* El buscador ya está en la barra de arriba. */
+  .controls .field.grow { display: none; }
+  .controls .switch:first-of-type { margin-left: 0; }
   .controls .switch { justify-content: center; }
+  /* Continente y ordenar se pulsan como fichas; el `select` sigue mandando. */
+  .controls .field:has(.hoja-chips) select { display: none; }
+  .hoja-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 
   .cuenta, #tfCuenta { padding: 10px 12px; }
   /* Con sesión el botón se queda en la inicial; sin ella la palabra "entrar"
@@ -1855,22 +1952,40 @@ h1 em { font-size: 1.3em; }
   .cuenta.dentro .cuenta-txt { display: none; }
   .cuenta:not(.dentro) > b { display: none; }
 
-  /* La fila se dobla: destino y precio arriba, fechas y compañía debajo. */
+  /* DENSIDAD. A 375 px el clamp del titular deja 40 px, que es demasiado. */
+  .masthead { padding: 28px 0 22px; }
+  .masthead h1 { font-size: 36px; }
+  .stats dd { font-size: 21px; }
+  .ticket-izq, .ticket-der { padding: 18px; }
+
+  /* La fila pasa de tres columnas a dos: arriba destino y precio, debajo las
+     fechas a todo el ancho —ya no compiten con la compañía— y abajo la
+     compañía con el botón de seguir, que es donde tiene sitio para su
+     palabra y donde llega el pulgar. */
   .brow {
-    grid-template-columns: 30px minmax(0, 1fr) auto;
-    gap: 6px 12px;
-    padding: 14px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 12px;
+    padding: 14px 16px;
+    align-items: start;
   }
   /* El nombre del sitio es lo que se busca con la vista: el país baja debajo
      en vez de robarle sitio y dejar "Berg…" y "It…". */
   .dest-cell { flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
   .brow > .dest-cell .country { flex-basis: 100%; }
-  .brow > .fav { grid-area: 1 / 1 / 2 / 2; }
-  .brow > .dest-cell { grid-area: 1 / 2 / 2 / 3; }
-  .brow > .price { grid-area: 1 / 3 / 2 / 4; }
-  .brow > .when { grid-area: 2 / 2 / 3 / 4; }
-  .brow > .airline { grid-area: 3 / 2 / 4 / 4; }
-  .brow > .brow-detail { grid-area: 4 / 1 / 5 / 4; }
+  .brow > .dest-cell { grid-area: 1 / 1 / 2 / 2; }
+  .brow > .price { grid-area: 1 / 2 / 2 / 3; }
+  .brow > .when { grid-area: 2 / 1 / 3 / 3; white-space: normal; }
+  .brow > .airline { grid-area: 3 / 1 / 4 / 2; align-self: center; }
+  .brow > .fav {
+    grid-area: 3 / 2 / 4 / 3;
+    justify-self: end;
+    align-self: center;
+    width: auto;
+    height: auto;
+    padding: 9px 14px;
+  }
+  .brow > .fav .fav-txt { display: inline; }
+  .brow > .brow-detail { grid-area: 4 / 1 / 5 / 3; }
 
   .finder-form .party { grid-template-columns: 1fr 1fr; gap: 14px; }
   /* Los tramos se doblan a dos columnas pero SIN abrir el hueco: la separación

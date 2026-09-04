@@ -129,6 +129,8 @@ export async function init() {
   }
 
   $(".controls").hidden = false;
+  const barra = document.querySelector(".filtros-movil");
+  if (barra) barra.hidden = false;
   // Tocar un filtro vuelve a empezar por arriba: si no, una búsqueda que deja
   // tres resultados seguiría "ampliada" y el botón de ver más no tendría nada
   // que enseñar.
@@ -138,6 +140,7 @@ export async function init() {
       render();
     })
   );
+  montarHoja();
 
   // El scan diario guarda el precio de UNA persona (asi el historico es
   // comparable de un dia para otro). Este selector no vuelve a buscar: solo
@@ -210,6 +213,138 @@ function renderCuenta(cuantas) {
   el.textContent =
     `${cuantas} de ${OFFERS.length} ofertas · tope ${$("#price").value} € · ` +
     `${gente} ${gente === 1 ? "persona" : "personas"}`;
+  renderHoja(cuantas);
+}
+
+/* ------------------------------------------------------------- la hoja de
+   filtros (solo movil)
+
+   Nueve controles antes del primer vuelo era demasiado en una pantalla de
+   375 px. Arriba se quedan dos —el buscador y "Filtros · N"— y el resto se
+   guarda en una hoja que sube desde abajo. La hoja NO es otro formulario: es
+   el MISMO `.controls`, con los mismos campos y los mismos oyentes; lo unico
+   que cambia es donde se dibuja. Asi no hay dos estados que sincronizar. */
+
+/* Cuantos filtros estan tocados. Es lo que convierte "Filtros" en
+   "Filtros · 2" y enciende el boton: sin esto, desde la barra no se ve que
+   quede algo puesto dentro de la hoja. */
+function filtrosActivos() {
+  const tope = $("#price");
+  return (
+    ($("#cont").value ? 1 : 0) +
+    ($("#onlyWeekend").checked ? 1 : 0) +
+    (!$("#unique").checked ? 1 : 0) +
+    ($("#sort").value !== "score" ? 1 : 0) +
+    (Number(tope.value) < Number(tope.max) ? 1 : 0) +
+    (grupo() > 1 ? 1 : 0)
+  );
+}
+
+function renderHoja(cuantas) {
+  const boton = document.getElementById("filtrosBtn");
+  if (!boton) return;
+  const n = filtrosActivos();
+  boton.textContent = n ? `Filtros · ${n}` : "Filtros";
+  boton.classList.toggle("on", n > 0);
+  const ver = document.getElementById("filtrosVer");
+  if (ver) ver.textContent = `Ver ${cuantas} ${cuantas === 1 ? "oferta" : "ofertas"}`;
+}
+
+/* Un `<select>` es incomodo con el pulgar y esconde sus opciones. Dentro de la
+   hoja se pintan como fichas, pero el `<select>` sigue siendo la fuente de
+   verdad —lo rellena `data/continentes.json`— y es quien dispara el `input`
+   que ya escucha el render. */
+function chipsDe(sel) {
+  if (!sel || sel.parentElement.querySelector(".hoja-chips")) return;
+  const caja = document.createElement("div");
+  caja.className = "hoja-chips hoja-solo";
+  const pintar = () =>
+    caja.querySelectorAll("[data-val]").forEach((x) =>
+      x.setAttribute("aria-pressed", String(x.dataset.val === sel.value))
+    );
+  caja.innerHTML = [...sel.options]
+    .map(
+      (o) => `<button type="button" class="switch" data-val="${esc(o.value)}"
+        aria-pressed="false">${esc(o.textContent)}</button>`
+    )
+    .join("");
+  caja.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-val]");
+    if (!b) return;
+    sel.value = b.dataset.val;
+    sel.dispatchEvent(new Event("input", { bubbles: true }));
+    pintar();
+  });
+  sel.addEventListener("input", pintar);
+  pintar();
+  sel.parentElement.append(caja);
+}
+
+function montarHoja() {
+  const hoja = document.getElementById("filtrosHoja");
+  const boton = document.getElementById("filtrosBtn");
+  const fondo = document.getElementById("filtrosFondo");
+  const qm = document.getElementById("qm");
+  if (!hoja || !boton || !fondo || !qm) return;
+
+  chipsDe($("#cont"));
+  chipsDe($("#sort"));
+
+  // El buscador de la barra y el de la hoja son el mismo filtro escrito dos
+  // veces: se copian el valor y solo uno dispara el render.
+  qm.addEventListener("input", () => {
+    $("#q").value = qm.value;
+    $("#q").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  $("#q").addEventListener("input", () => {
+    if (document.activeElement !== qm) qm.value = $("#q").value;
+  });
+
+  const abrir = () => {
+    hoja.classList.add("abierta");
+    fondo.hidden = false;
+    boton.setAttribute("aria-expanded", "true");
+    document.body.style.overflow = "hidden";
+    const primero = hoja.querySelector("#filtrosCerrar");
+    if (primero) primero.focus();
+  };
+  const cerrar = () => {
+    hoja.classList.remove("abierta");
+    fondo.hidden = true;
+    boton.setAttribute("aria-expanded", "false");
+    document.body.style.overflow = "";
+  };
+
+  boton.addEventListener("click", abrir);
+  fondo.addEventListener("click", cerrar);
+  ["#filtrosCerrar", "#filtrosVer"].forEach((sel) => {
+    const b = document.querySelector(sel);
+    if (b) b.addEventListener("click", cerrar);
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && hoja.classList.contains("abierta")) cerrar();
+  });
+
+  const limpiar = document.getElementById("filtrosLimpiar");
+  if (limpiar) {
+    limpiar.addEventListener("click", () => {
+      $("#q").value = "";
+      qm.value = "";
+      $("#price").value = $("#price").max;
+      $("#cont").value = "";
+      $("#sort").value = "score";
+      $("#unique").checked = true;
+      $("#onlyWeekend").checked = false;
+      const gr = $("#grupo");
+      if (gr) {
+        gr.value = "1";
+        ponerGrupo("1");
+      }
+      // Uno solo basta: todos van al mismo `render()`.
+      $("#cont").dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+  renderHoja(0);
 }
 
 function currentList() {

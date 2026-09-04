@@ -51,7 +51,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <a href="./#feed" class="zona activa" data-zona="promos" aria-current="page">Feed</a>
         <a href="./#buscar" class="zona" data-zona="buscar">Buscar</a>
         <a href="./#seguir" class="zona" data-zona="seguir">Seguir</a>
-        <a href="seguimientos.html" class="zona" data-zona="follows">En observación</a>
+        <a href="seguimientos.html" class="zona" data-zona="follows">Vuelos que sigues</a>
       </nav>
       <div class="topbar-hueco"></div>
       <span class="board-live"><i aria-hidden="true"></i>en vivo</span>
@@ -93,7 +93,22 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     <span class="feed-cuenta" id="feedCuenta"></span>
   </div>
 
-  <div class="controls" hidden>
+  <!-- Solo por debajo de 760 px: dos controles en vez de nueve. El buscador va
+       a la vista y el resto se guarda en la hoja de abajo, que ES el mismo
+       `.controls` de escritorio con otra maquetación. -->
+  <div class="filtros-movil" hidden>
+    <input type="search" id="qm" placeholder="Destino, país, IATA…" autocomplete="off"
+      aria-label="Buscar destino">
+    <button id="filtrosBtn" class="filtros-btn" type="button"
+      aria-expanded="false" aria-controls="filtrosHoja">Filtros</button>
+  </div>
+  <div id="filtrosFondo" class="backdrop" hidden></div>
+
+  <div class="controls" id="filtrosHoja" hidden>
+    <div class="hoja-cab hoja-solo">
+      <span>Filtros</span>
+      <button type="button" id="filtrosCerrar" data-cerrar>cerrar</button>
+    </div>
     <div class="field grow">
       <label for="q">Destino</label>
       <input type="search" id="q" placeholder="Roma, Italia, FCO…" autocomplete="off">
@@ -133,11 +148,15 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <input type="checkbox" id="onlyWeekend">
       <span>Solo findes</span>
     </label>
+    <div class="hoja-pie hoja-solo">
+      <button type="button" id="filtrosLimpiar" class="btn ghost">Limpiar</button>
+      <button type="button" id="filtrosVer" class="btn primary">Ver las ofertas</button>
+    </div>
   </div>
 
   <div class="tabla">
     <div class="board-head" id="boardHead" hidden>
-      <span></span><span>destino</span><span>fechas</span><span>compañía</span><span>precio</span>
+      <span>seguir</span><span>destino</span><span>fechas</span><span>compañía</span><span>precio</span>
     </div>
 
     <section id="cargando" class="cargando" aria-live="polite" aria-busy="true">
@@ -301,13 +320,12 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 <section id="observacion" class="observacion" aria-labelledby="obsTitulo">
   <div class="observacion-num">
-    <div class="rotulo" id="obsTitulo">en observación</div>
+    <div class="rotulo" id="obsTitulo">vuelos que sigues</div>
     <b id="obsCuenta">—</b>
   </div>
   <p id="obsTexto">
-    Todavía no has apuntado ningún viaje. Marca el cuadratín de cualquier
-    entrada y aquí verás si sube o baja de precio cada vez que se actualicen
-    los datos.
+    Todavía no sigues ningún viaje. Dale a Seguir en cualquier entrada del feed
+    y aquí verás si sube o baja de precio cada vez que se actualicen los datos.
   </p>
 </section>
 
