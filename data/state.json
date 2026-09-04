@@ -235,13 +235,17 @@
     "ryanair-MAD-RAK-20261211": {
       "price": 114.46,
       "date": "2026-09-02"
+    },
+    "ryanair-MAD-MAN-20261211": {
+      "price": 76.18,
+      "date": "2026-09-04"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-02",
-    "tytus.zasowski@gmail.com": "2026-09-02"
+    "mateogonsilva@gmail.com": "2026-09-04",
+    "tytus.zasowski@gmail.com": "2026-09-04"
   },
   "watch_digest": {
-    "mateogonsilva@gmail.com": "2026-09-03"
+    "mateogonsilva@gmail.com": "2026-09-04"
   }
 }
