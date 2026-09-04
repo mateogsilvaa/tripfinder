@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-04T17:35:47+00:00",
+  "updated": "2026-09-04T17:36:13+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -18,8 +18,8 @@
       "user": "mateogsilvaa",
       "name": "mateo",
       "email": "mateogonsilva@gmail.com",
-      "salt": "ID/JAuRFxWglDljPXWBy2g==",
-      "hash": "qzvIVlW5GoXoSXC9SaKSOU7S48pjO56qHKJtUOjFHCA=",
+      "salt": "SlkN55uRLbwFV1Z//fLlFA==",
+      "hash": "YzRPHnL6OagG4FAX+mci4RjvNjkrUEdmTzLUEo3Rd8M=",
       "iterations": 210000,
       "created": "2026-08-23T22:46:48+00:00",
       "active": true,
@@ -30,10 +30,10 @@
         "seguimientos_solo_novedades": false
       },
       "sobre": {
-        "data": "OJUd0Z6SOmTBwGW7a8UadfTVIFXUkms2UVuIpkkKVVb5cp5kntJt4//WPb4dFX1TLiyOMd/5qwE/GXF0",
+        "data": "bb+oZL4bu8OTMXl/iVobTriHIybUjPf7TpRySDc7kzrLIOmkiuO81GxVjGmyLRoeEPVMr1e7YUO/XM0f",
         "iterations": 210000,
-        "iv": "uBM2ABxXp4NPdIfN",
-        "salt": "zInOoFEcKg3BYyCUsOOZhA=="
+        "iv": "dfxw+iKfpHudaflo",
+        "salt": "2faT0bW4SG8Eim83j3ZORA=="
       }
     },
     {
