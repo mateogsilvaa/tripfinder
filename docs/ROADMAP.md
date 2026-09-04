@@ -183,7 +183,7 @@ De la auditoría salieron 31 tareas (issues #6 a #36). Lo cerrado hasta ahora,
 todo en la rama `claude/tripfinder-nuevo-diseno-kbnsrk`:
 
 - [x] **#6-#12 · El test de destinos** `core` `web` `ux` `accessibility`
-  - Un cuarto flap con un `?`, seis preguntas y tres billetes con su porqué.
+  - Un cuarto flap con un `?`, diez preguntas y tres billetes con su porqué.
     Todo el cálculo en el navegador, con los datos que ya se publican.
 - [x] **#13 · Marcar de dónde viene cada seguimiento** `core` `email`
   - Campo `source` en `Watch`, propagado desde el `client_payload`.

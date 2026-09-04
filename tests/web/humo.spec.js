@@ -755,6 +755,140 @@ test.describe("la escapada completa", () => {
    `app.js` en módulos (#30): un refactor mecánico de 2.100 líneas necesita
    algo debajo que diga si se cayó algo por el camino. */
 
+/* Cambiarse la contraseña sin pedirle nada a nadie (antes solo se podía desde
+   el panel). Lo delicado no es el hash: es el SOBRE, que va cifrado con la
+   contraseña vieja y hay que rehacerlo con la nueva en el mismo gesto. Si se
+   mandara la credencial sin el sobre, la cuenta entraría en la web y luego no
+   podría lanzar nada — que es exactamente el fallo que esto tiene que impedir. */
+test.describe("cambiarse la contraseña desde la cuenta", () => {
+  const VIEJA = "laquetengo7";
+  const NUEVA = "laquequiero8";
+
+  /* La ficha se fabrica EN EL NAVEGADOR con las mismas funciones que usa la
+     web, así que el sobre se abre de verdad con `VIEJA`. Un sobre inventado a
+     mano no se abriría y la prueba pasaría por el camino equivocado. */
+  const montar = async (page, { conSobre = true } = {}) => {
+    await page.addInitScript(() => {
+      window.__enviados = [];
+      try {
+        localStorage.setItem(
+          "tf_sesion",
+          JSON.stringify({ uid: "u-1", user: "mateo", name: "Mateo" })
+        );
+        sessionStorage.setItem("tf_token_abierto", "ghp_de_mentira");
+      } catch (e) { /* nada */ }
+    });
+    await page.route("**/api.github.com/repos/**/dispatches", async (route) => {
+      const cuerpo = route.request().postData() || "{}";
+      await route.fulfill({ status: 204, body: "" });
+      await page.evaluate((c) => window.__enviados.push(JSON.parse(c)), cuerpo);
+    });
+
+    // Primero una página cualquiera, solo para tener `auth.js` cargado y poder
+    // fabricar la ficha con sus propias funciones.
+    await page.goto("/index.html");
+    const ficha = await page.evaluate(async ([clave, conSobre]) => {
+      const cred = await tfHash(clave);
+      const maestra = "bWFlc3RyYXMtZGUtbWVudGlyYS0zMi1ieXRlcy0h";
+      const sobre = conSobre ? await tfHacerSobre(clave, maestra) : null;
+      return { ...cred, sobre, maestra };
+    }, [VIEJA, conSobre]);
+
+    const usuarios = {
+      users: [
+        {
+          id: "u-1",
+          user: "mateo",
+          name: "Mateo",
+          active: true,
+          tiene_email: true,
+          prefs: {},
+          salt: ficha.salt,
+          hash: ficha.hash,
+          iterations: ficha.iterations,
+          ...(ficha.sobre ? { sobre: ficha.sobre } : {}),
+        },
+      ],
+      site: { token: { iv: "x", data: "y" } },
+    };
+    await page.route("**/users.json*", (r) =>
+      r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(usuarios) })
+    );
+    await page.goto("/index.html");
+    await page.locator("#tfCuenta, .cuenta").first().click();
+    await expect(page.locator("#tfPrefsForm")).toBeVisible();
+    return ficha;
+  };
+
+  test("manda credencial Y sobre nuevos, y el sobre se abre con la nueva", async ({ page }) => {
+    const ficha = await montar(page);
+    await page.fill("#tfClaveVieja", VIEJA);
+    await page.fill("#tfClaveNueva", NUEVA);
+    await page.fill("#tfClaveRepe", NUEVA);
+    await page.click("#tfClaveForm button[type=submit]");
+    await expect(page.locator("#tfClaveMsg")).toContainText(/cambiada/i, { timeout: 15000 });
+
+    const enviados = await page.evaluate(() => window.__enviados);
+    expect(enviados).toHaveLength(1);
+    expect(enviados[0].event_type).toBe("user_passwd");
+    const p = enviados[0].client_payload;
+    expect(p.user).toBe("mateo");
+    expect(p.salt).toBeTruthy();
+    expect(p.hash).toBeTruthy();
+    // El sobre viaja SIEMPRE con la credencial: es la mitad que se olvidaba.
+    expect(p.sobre && p.sobre.data).toBeTruthy();
+    expect(p.hash).not.toBe(ficha.hash);
+    expect(p.sobre.salt).not.toBe(ficha.sobre.salt);
+
+    // Y lo que llega abre la misma clave maestra, con la contraseña nueva.
+    const abierto = await page.evaluate(
+      ([clave, sobre]) => tfAbrirSobre(clave, sobre),
+      [NUEVA, p.sobre]
+    );
+    expect(abierto).toBe(ficha.maestra);
+    // Con la vieja ya no.
+    const conVieja = await page.evaluate(
+      ([clave, sobre]) => tfAbrirSobre(clave, sobre),
+      [VIEJA, p.sobre]
+    );
+    expect(conVieja).toBe("");
+  });
+
+  test("si la de ahora no es esa, no manda nada", async ({ page }) => {
+    await montar(page);
+    await page.fill("#tfClaveVieja", "meloinvento1");
+    await page.fill("#tfClaveNueva", NUEVA);
+    await page.fill("#tfClaveRepe", NUEVA);
+    await page.click("#tfClaveForm button[type=submit]");
+    await expect(page.locator("#tfClaveMsg")).toContainText(/no es esa/i, { timeout: 15000 });
+    expect(await page.evaluate(() => window.__enviados)).toHaveLength(0);
+  });
+
+  test("las dos nuevas tienen que coincidir, y medir ocho", async ({ page }) => {
+    await montar(page);
+    await page.fill("#tfClaveVieja", VIEJA);
+    await page.fill("#tfClaveNueva", "corta1");
+    await page.fill("#tfClaveRepe", "corta1");
+    await page.click("#tfClaveForm button[type=submit]");
+    await expect(page.locator("#tfClaveMsg")).toContainText(/8 caracteres/i);
+
+    await page.fill("#tfClaveNueva", NUEVA);
+    await page.fill("#tfClaveRepe", NUEVA + "x");
+    await page.click("#tfClaveForm button[type=submit]");
+    await expect(page.locator("#tfClaveMsg")).toContainText(/no coinciden/i);
+    expect(await page.evaluate(() => window.__enviados)).toHaveLength(0);
+  });
+
+  /* Sin sobre no hay clave maestra que volver a cerrar. Cambiar solo la
+     contraseña dejaría la cuenta entrando pero sin poder lanzar nada, así que
+     ni se ofrece: se manda al panel. */
+  test("sin sobre no se ofrece, y se dice por qué", async ({ page }) => {
+    await montar(page, { conSobre: false });
+    await expect(page.locator("#tfClaveForm")).toContainText(/tiene que hacerlo el administrador/i);
+    await expect(page.locator("#tfClaveVieja")).toHaveCount(0);
+  });
+});
+
 test.describe("el calendario", () => {
   const abrir = async (page) => {
     await page.goto("/buscar.html");

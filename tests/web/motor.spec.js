@@ -24,9 +24,12 @@ const OFERTAS = [
   o({ id: "9", destination: "AGP", pais: "España", price: 40, nights: 1, score: 95, useful: 14 }),
   // Otro continente.
   o({ id: "10", destination: "CUN", pais: "México", price: 420, nights: 8, score: 89, useful: 120, lejos: true }),
+  // Con escala: barata y bien puntuada a propósito, para que solo la deje
+  // fuera el filtro de "directo" y no el orden.
+  o({ id: "11", destination: "ALC", pais: "España", price: 35, nights: 3, score: 96, useful: 44, escalas: 1 }),
 ];
 
-function o({ id, destination, pais, price, nights, score, useful, llega = "12:30", lejos = false }) {
+function o({ id, destination, pais, price, nights, score, useful, llega = "12:30", lejos = false, escalas = 0 }) {
   const salida = new Date();
   salida.setDate(salida.getDate() + 60);
   const ida = salida.toISOString().slice(0, 10);
@@ -38,7 +41,8 @@ function o({ id, destination, pais, price, nights, score, useful, llega = "12:30
     depart_date: ida, return_date: vuelta.toISOString().slice(0, 10),
     price, price_per_person: price, currency: "EUR", adults: 1,
     nights, score, discount_pct: 40, useful_hours: useful, price_per_hour: price / useful,
-    weekend: true, long_haul: lejos, depart_time: "09:00", arrive_time: llega, return_time: "18:00",
+    weekend: true, long_haul: lejos, stops: escalas,
+    depart_time: "09:00", arrive_time: llega, return_time: "18:00",
   };
 }
 
@@ -161,6 +165,61 @@ test.describe("el motor de recomendación", () => {
     expect(r.nada).toBe(0);
     expect(r.sinPedirNada).toBe(0.5);
     expect(r.desconocido).toBe(1);
+  });
+
+  /* El segundo gusto: la mitad de la tabla de perfiles (`noche`, 31 destinos)
+     no se podía pedir por ningún sitio, y pedir dos cosas a la vez no existía.
+     Suma, nunca descarta: si descartara, pedir dos cosas devolvería casi nada. */
+  test("el segundo gusto suma sin descartar, y no pasa de uno", async ({ page }) => {
+    const r = await enElMotor(page, (m) => ({
+      // PMI es ["playa","noche"]: acierta con las dos.
+      lasDos: m.afinidadCon("PMI", { apetece: "playa", ademas: "noche" }),
+      // Solo con la principal: el segundo no resta.
+      soloLaPrimera: m.afinidadCon("PMI", { apetece: "playa", ademas: "gastronomia" }),
+      // Solo con el segundo: suma desde cero, no se queda en nada.
+      soloElSegundo: m.afinidadCon("NAP", { apetece: "playa", ademas: "gastronomia" }),
+      sinSegundo: m.afinidadCon("PMI", { apetece: "playa", ademas: null }),
+      // Repetido no cuenta dos veces.
+      repetido: m.afinidadCon("PMI", { apetece: "playa", ademas: "playa" }),
+    }));
+    expect(r.lasDos).toBe(1); // acotado a 1: los pesos suman uno
+    expect(r.soloLaPrimera).toBe(1);
+    expect(r.soloElSegundo).toBeCloseTo(0.7 * 0.35);
+    expect(r.sinSegundo).toBe(1);
+    expect(r.repetido).toBe(1);
+  });
+
+  test("pedir «y algo más» reordena, pero no deja a nadie fuera", async ({ page }) => {
+    const r = await enElMotor(page, (m, ofertas, perfil) => {
+      const cuantos = (ademas) =>
+        m.recomendar(ofertas, { ...perfil, ademas }, 3).destinos.length;
+      return { sin: cuantos(null), con: cuantos("noche") };
+    }, OFERTAS, PERFIL_PLAYA);
+    expect(r.sin).toBe(3);
+    expect(r.con).toBe(3);
+  });
+
+  test("«directo» deja fuera las escalas, y «me da igual» no", async ({ page }) => {
+    const r = await enElMotor(page, (m, ofertas, perfil) => {
+      const ids = (directo) =>
+        m.recomendar(ofertas, { ...perfil, apetece: null, tope: 200, directo }, 5)
+          .destinos.map((o) => o.id);
+      return { exigiendo: ids(true), dandoIgual: ids(false) };
+    }, OFERTAS, PERFIL_PLAYA);
+    // La 11 va con escala: solo sale cuando no se exige directo.
+    expect(r.exigiendo).not.toContain("11");
+    expect(r.dandoIgual).toContain("11");
+  });
+
+  /* Una oferta sin `stops` no es una oferta con escala: las que se guardaron
+     antes de que ese campo existiera no pueden caerse por no tenerlo. */
+  test("sin el dato de escalas, «directo» no descarta", async ({ page }) => {
+    const r = await enElMotor(page, (m, ofertas, perfil) => {
+      const vieja = { ...ofertas[0], id: "vieja" };
+      delete vieja.stops;
+      return m.pasaLosFiltros(vieja, { ...perfil, apetece: null, directo: true }, 200);
+    }, OFERTAS, PERFIL_PLAYA);
+    expect(r).toBe(true);
   });
 
   test("«que sea barato» y «que cunda» ordenan distinto", async ({ page }) => {

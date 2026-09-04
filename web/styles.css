@@ -1443,6 +1443,10 @@ h1 em { font-size: 1.3em; }
 .modal-caja {
   width: min(560px, 100%);
   max-height: 86vh;
+  /* Un modal más largo que la pantalla tiene que poder rodar: sin esto, lo que
+     cayera por debajo del 86 % del alto quedaba fuera y no había forma de
+     llegar —ni con el dedo ni con el tabulador— al último botón. */
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -1475,6 +1479,16 @@ h1 em { font-size: 1.3em; }
 .modal-head button:hover, [data-cerrar]:hover { color: var(--accent-txt); border-color: var(--accent); }
 
 .modal-form { display: flex; flex-direction: column; gap: 8px; padding: 4px 0; }
+/* Un segundo formulario dentro del mismo modal —las preferencias arriba y la
+   contraseña abajo— necesita su propia frontera: si no, los dos parecen uno y
+   el botón de "Guardar" del de arriba parece que también vale para el de
+   abajo. */
+.tf-bloque {
+  margin-top: 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.tf-bloque h3 { font-size: var(--fs-city); letter-spacing: -0.025em; }
 .modal-form label {
   font: 400 var(--fs-caps) / 1 var(--font-mono);
   letter-spacing: 0.12em;
@@ -1770,12 +1784,33 @@ h1 em { font-size: 1.3em; }
 
 .quiz-caja { width: min(560px, 100%); }
 .quiz-head h2 { font-size: var(--fs-subhead); }
-.quiz-progreso { display: flex; gap: 4px; margin-top: -8px; }
+/* La barra de pasos, con el capítulo delante. Diez casillas seguidas se leen
+   como una cuesta; "El viaje · 2 de 4" las parte en tres tramos cortos. */
+.quiz-progreso { display: grid; gap: 7px; margin-top: -8px; }
+.quiz-capitulo {
+  font: 400 var(--fs-caps) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.quiz-capitulo i { font-style: normal; opacity: 0.5; margin: 0 2px; }
+.quiz-casillas { display: flex; gap: 4px; }
 .quiz-paso { flex: 1; height: 3px; background: var(--hair); transition: background var(--t-med) var(--ease); }
 .quiz-paso.hecho { background: var(--ink); }
 .quiz-paso.ahora { background: var(--accent); }
 
-.quiz-cuerpo { overflow-y: auto; }
+/* Lo que has contestado, devuelto con tus palabras. Va en monoespaciado y en
+   una caja aparte porque es una CITA de lo que pediste, no texto nuestro. */
+.quiz-tuyo {
+  margin: 0 0 4px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent);
+  background: var(--surface2);
+  font: 400 var(--fs-data) / 1.5 var(--font-mono);
+  color: var(--ink);
+}
+
+.quiz-cuerpo { overflow-y: auto; min-height: 0; }
 .quiz-cuenta {
   margin: 0 0 6px;
   font: 400 var(--fs-caps) var(--font-mono);
