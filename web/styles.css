@@ -197,18 +197,34 @@ input:focus-visible, select:focus-visible {
   outline-offset: 1px;
 }
 
-h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: var(--ls-title); }
+/* El apretado del titular va por tamaño, no por etiqueta: -0.045em está pensado
+   para los 70px de la portada, y aplicado a un h2 de 26px pega las palabras
+   —"El feed" salía "Elfeed"—. Cuanto más pequeño, menos se aprieta. */
+h1, h2, h3, h4 { margin: 0; font-weight: 700; }
+h1 { letter-spacing: var(--ls-title); word-spacing: 0.12em; }
+h2 { letter-spacing: -0.03em; word-spacing: 0.1em; }
+h3, h4 { letter-spacing: -0.02em; word-spacing: 0.06em; }
+/* El respiro del espacio es para el titular; la línea pequeña de debajo va con
+   el espaciado normal del texto. */
+h1 small, h2 small, h3 small, h4 small { letter-spacing: 0; word-spacing: normal; }
 
 /* El acento manuscrito. No es decoración: separa lo que se dice de lo que se
    promete. Va con su propio interlineado porque Pinyon tiene ascendentes muy
    largas y sin esto empuja la línea entera. */
+/* El acento manuscrito. Pinyon Script tiene una altura de x mucho menor que
+   Switzer: a 1.12em, que es lo que decía el prototipo, se ve pequeño y
+   flotando al lado de un titular de 70px en negrita. A 1.35em las dos voces
+   pesan lo mismo, que es de lo que se trata.
+
+   El `line-height: 0.85` no es un capricho: Pinyon tiene ascendentes larguísimas
+   y con el interlineado normal empuja la línea entera y descuadra el titular. */
 em, .script {
   font-family: var(--font-script);
   font-style: normal;
   font-weight: 400;
   letter-spacing: 0;
-  font-size: 1.12em;
-  line-height: 0.9;
+  font-size: 1.35em;
+  line-height: 0.85;
   color: var(--accent-txt);
 }
 
@@ -292,7 +308,11 @@ em, .script {
   font-weight: 700;
   font-size: 19px;
   letter-spacing: -0.035em;
-  margin-left: -6px;
+  /* Con Pinyon Script de verdad la "p" de Trip lleva un rasgo largo que se
+     mete debajo de "finder": el -6px del prototipo estaba medido contra una
+     cursiva de sistema, que no lo tiene. Se deja en -1px, que junta las dos
+     mitades sin que se pisen. */
+  margin-left: -1px;
 }
 
 .zonas {
@@ -375,22 +395,23 @@ em, .script {
 
 /* El cuarto flap: el test de destinos. Discreto por diseño —no es la acción
    principal— pero un botón de verdad, con su área táctil y su giro. */
-.flaps { display: inline-flex; gap: 4px; }
+.flaps { display: inline-flex; gap: 3px; }
 .flap {
   display: inline-grid;
   place-items: center;
   min-width: 26px;
   padding: 6px 5px 5px;
-  border: 1px solid var(--line);
+  border: 1px solid var(--hair);
   background: none;
-  color: var(--ink);
+  color: var(--muted);
   border-radius: var(--r-tag);
   font: 500 var(--fs-data-s) / 1 var(--font-mono);
   letter-spacing: 0.06em;
 }
 .flap-boton {
   position: relative;
-  margin-left: 4px;
+  margin-left: 10px;
+  border-color: var(--line);
   cursor: pointer;
   color: var(--muted);
   perspective: 200px;
@@ -442,7 +463,12 @@ h1 {
   margin: 0 0 18px;
   text-wrap: balance;
 }
-h1 em { font-size: 1.12em; }
+h1 em { font-size: 1.3em; }
+
+/* La rejilla de estadísticas es un fondo con hilos de un píxel: vacía —el
+   panel la deja así hasta que entras— se quedaba pintando un filete suelto
+   debajo del titular. */
+.stats:empty { display: none; }
 
 .lede {
   margin: 0;
@@ -554,28 +580,46 @@ h1 em { font-size: 1.12em; }
 
 /* Los cuatro tramos, con la misma rejilla de un píxel que las estadísticas. */
 .legs {
+  /* La misma rejilla se usa en dos sitios con tintas OPUESTAS: dentro de la
+     lámina invertida del chollo y dentro del detalle de una fila, que va sobre
+     el papel de la página. Sin estas variables locales el detalle pintaba
+     marfil sobre marfil y los horarios no se veían. */
+  --legs-hilo: var(--hair);
+  --legs-fondo: var(--surface2);
+  --legs-ink: var(--ink);
+  --legs-muted: var(--muted);
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1px;
   margin: 0;
-  background: var(--hero-hair);
-  border: 1px solid var(--hero-hair);
+  background: var(--legs-hilo);
+  border: 1px solid var(--legs-hilo);
+  color: var(--legs-ink);
 }
-.legs > div { background: var(--hero-bg); padding: 11px 12px; min-width: 0; }
+.ticket .legs {
+  --legs-hilo: var(--hero-hair);
+  --legs-fondo: var(--hero-bg);
+  --legs-ink: var(--hero-ink);
+  --legs-muted: var(--hero-muted);
+}
+.ticket-izq .legs { margin-top: auto; }
+.legs > div { background: var(--legs-fondo); padding: 11px 12px; min-width: 0; }
 .legs dt {
   font: 400 var(--fs-caps-l) / 1 var(--font-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--hero-muted);
+  color: var(--legs-muted);
 }
 .legs dd {
   margin: 3px 0 0;
   font-size: var(--fs-body-s);
+  color: var(--legs-ink);
 }
+.legs dd i { color: var(--legs-muted); font-style: normal; }
 .legs .hhmm { display: block; margin-top: 1px; font: 400 var(--fs-body-s) var(--font-mono); }
 .legs .dias { font: 400 20px/1 var(--font-mono); }
 .legs .useful { font: 400 var(--fs-body-s) var(--font-mono); }
-.legs .useful small { display: block; font-size: var(--fs-ui-s); color: var(--hero-muted); }
+.legs .useful small { display: block; font-size: var(--fs-ui-s); color: var(--legs-muted); }
 
 .ticket-der {
   border-left: 1px solid var(--hero-hair);
@@ -593,7 +637,9 @@ h1 em { font-size: 1.12em; }
   line-height: 1;
   font-family: var(--font-sans);
 }
-.amount span { font-size: 0.6em; }
+/* El símbolo va más pequeño que la cifra, pero pegado se leía "60€" como una
+   sola palabra. Un pelo de aire y ya. */
+.amount span, .quiz-precio .cifra span { font-size: 0.6em; margin-left: 0.11em; }
 .ticket-cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .stamp {
   font: 600 var(--fs-ui-s) / 1 var(--font-mono);
@@ -668,7 +714,16 @@ h1 em { font-size: 1.12em; }
 .btn.small { padding: 9px 16px; font-size: var(--fs-ui-s); }
 .btn.deep { background: var(--deep); border-color: var(--deep); color: #0e1614; }
 .btn.deep:hover { background: transparent; color: var(--deep); filter: none; }
-.btn[disabled], .btn.apagado { opacity: 0.4; cursor: default; filter: none; }
+/* Un botón apagado no se difumina: sobre el relleno naranja, bajarle la
+   opacidad dejaba el rótulo casi ilegible. Se vacía y se queda con el hilo. */
+.btn[disabled], .btn.apagado {
+  background: transparent;
+  border-color: var(--hair);
+  color: var(--muted);
+  cursor: default;
+  filter: none;
+}
+.btn[disabled]:hover, .btn.apagado:hover { filter: none; color: var(--muted); }
 /* Dentro de la lámina invertida los botones fantasma cambian de tinta. */
 .ticket .btn.ghost { border-color: var(--hero-hair); color: var(--hero-ink); }
 .ticket .btn.ghost:hover { border-color: var(--hero-ink); }
@@ -694,6 +749,56 @@ h1 em { font-size: 1.12em; }
 }
 
 /* La barra de filtros: campos sin caja, solo una raya debajo. */
+/* La barra de filtros de móvil y la cabecera/pie de la hoja no existen por
+   encima de 760 px: allí `.controls` es la fila de siempre. */
+.filtros-movil, .hoja-solo { display: none; }
+.filtros-movil > input {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap-min);
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+.filtros-movil > input:hover, .filtros-movil > input:focus { border-color: var(--muted); }
+.filtros-btn {
+  flex: none;
+  min-height: var(--tap-min);
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: 600 15px var(--font-sans);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all var(--t) var(--ease);
+}
+.filtros-btn.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--sobre-acento);
+}
+.hoja-cab {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font: 700 19px var(--font-sans);
+  letter-spacing: -0.03em;
+}
+.hoja-pie {
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--hair);
+  padding-top: 14px;
+}
+.hoja-pie > .btn { flex: none; }
+.hoja-pie > #filtrosVer { flex: 1; }
+
 .controls {
   display: flex;
   flex-wrap: wrap;
@@ -711,7 +816,11 @@ h1 em { font-size: 1.12em; }
   flex: 0 1 130px;
   min-width: 0;
 }
-.field.grow { flex: 1 1 190px; }
+/* El campo de destino crece, pero con tope: sin él se comía todo el hueco
+   sobrante y quedaba un subrayado vacío de medio panel. */
+.field.grow { flex: 1 1 190px; max-width: 260px; }
+/* El hueco que sobre se va entre los campos y los interruptores. */
+.controls .switch:first-of-type { margin-left: auto; }
 .field label, .field > span {
   font: 400 var(--fs-caps) / 1 var(--font-mono);
   letter-spacing: 0.12em;
@@ -732,7 +841,9 @@ h1 em { font-size: 1.12em; }
 }
 .field input[type="number"], .field .cifra { font-family: var(--font-mono); font-weight: 400; }
 .field input:hover, .field select:hover { border-color: var(--muted); }
-.field input[type="range"] { border: none; padding: 0; accent-color: var(--accent); }
+/* El deslizador ocupa el mismo alto que un campo escrito para que la fila de
+   controles alinee por abajo. */
+.field input[type="range"] { border: none; padding: 10px 0 9px; accent-color: var(--accent); }
 
 /* Los interruptores son chips, no casillas: se pulsan con el pulgar. */
 .switch {
@@ -752,7 +863,10 @@ h1 em { font-size: 1.12em; }
 }
 .switch:hover { border-color: var(--muted); color: var(--ink); }
 .switch input { position: absolute; opacity: 0; width: 0; height: 0; }
-.switch:has(input:checked) {
+/* Los chips de la hoja de filtros son `.switch` sin casilla dentro: marcan su
+   estado con `aria-pressed`, así que el encendido va por las dos vías. */
+.switch:has(input:checked),
+.switch[aria-pressed="true"] {
   border-color: var(--ink);
   background: var(--ink);
   color: var(--paper);
@@ -763,7 +877,7 @@ h1 em { font-size: 1.12em; }
    Una rejilla de cinco columnas compartida por la cabecera y por cada fila:
    si se cambia aquí, se cambia en las dos a la vez. */
 .rows, .board-head, .saved-rows, .watch-rows {
-  --cols: 34px minmax(0, 1.3fr) minmax(0, 1.4fr) minmax(0, 1fr) 168px;
+  --cols: 40px minmax(0, 1.05fr) minmax(0, 1.58fr) minmax(0, 0.83fr) 208px;
 }
 
 .tabla {
@@ -801,30 +915,36 @@ h1 em { font-size: 1.12em; }
 .rows .brow:first-child { border-top: none; }
 .brow:hover, .brow:focus-visible { background: var(--surface2); }
 
-/* El cuadratín de "poner en observación". Va el primero, como en un parte. */
+/* El botón de seguir un viaje. Va el primero, como en un parte de salidas.
+   Antes era un cuadratín de 20 px con un glifo puesto por CSS y el `color` del
+   botón en transparente: no decía qué hacía y cualquier texto de dentro salía
+   invisible. Ahora es una píldora con campana; la palabra sale donde cabe. */
 .fav {
   position: relative;
-  width: 20px;
-  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 32px;
+  height: 32px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: var(--r-tag);
+  border-radius: var(--r-pill);
   background: transparent;
-  color: transparent;
-  font: 400 var(--fs-ui-s) / 1 var(--font-mono);
+  color: var(--muted);
+  font: 600 var(--fs-ui) / 1 var(--font-sans);
   cursor: pointer;
-  display: grid;
-  place-items: center;
   transition: all var(--t) var(--ease);
 }
-.fav::before { content: "·"; color: var(--muted); }
-.fav:hover { border-color: var(--deep); }
+/* En escritorio manda el icono: la columna del parte es estrecha. */
+.fav .fav-txt { display: none; }
+.fav:hover, .fav:focus-visible { border-color: var(--deep); color: var(--ink); }
 .fav.on {
   border-color: var(--deep);
   background: var(--deep);
   color: #0e1614;
 }
-.fav.on::before { content: "✓"; color: #0e1614; }
+.fav.on:hover { color: #0e1614; }
 .fav::after {
   content: "";
   position: absolute;
@@ -834,11 +954,15 @@ h1 em { font-size: 1.12em; }
   transform: translate(-50%, -50%);
 }
 
-/* Dentro de la lámina invertida el cuadratín va con SUS tintas: el `--muted`
-   del tema es el del fondo de fuera y ahí dentro no se ve. */
-.ticket .fav { border-color: var(--hero-hair); }
-.ticket .fav::before { color: var(--hero-muted); }
-.ticket .fav:hover { border-color: var(--deep); }
+/* Dentro de la lámina invertida todo va con SUS tintas: `--muted`, `--line` y
+   `--ink` son las del fondo de fuera y ahí dentro no se ven —en tema claro son
+   negro sobre negro—. Cualquier regla nueva que entre en `.ticket` va igual. */
+.ticket .fav { border-color: var(--hero-hair); color: var(--hero-muted); }
+.ticket .fav:hover { border-color: var(--deep); color: var(--hero-ink); }
+/* Encendido manda el relleno, dentro y fuera de la lámina: si no, la regla de
+   arriba le devolvía el `--hero-muted` encima del verde y no se veía. */
+.ticket .fav.on, .ticket .fav.on:hover { color: #0e1614; border-color: var(--deep); }
+.ticket .iata { color: var(--hero-muted); border-color: var(--hero-hair); }
 
 .dest-cell { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
 .iata {
@@ -902,6 +1026,13 @@ h1 em { font-size: 1.12em; }
 .leader { display: none; }
 
 .price { text-align: right; min-width: 0; }
+/* La cifra y su descuento, en la misma línea y alineados por la base. */
+.cifra-fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 7px;
+}
 .price .cifra {
   font: 600 var(--fs-cifra) / 1.1 var(--font-mono);
   letter-spacing: -0.02em;
@@ -909,10 +1040,29 @@ h1 em { font-size: 1.12em; }
 .price small { display: block; font-size: var(--fs-meta); color: var(--muted); }
 .price .off {
   display: inline;
-  margin-left: 7px;
   font: 600 var(--fs-ui-s) var(--font-mono);
   color: var(--accent-txt);
 }
+/* Todas las notas del precio caben en un solo renglón, separadas por un punto.
+   Es lo que mantiene el panel a una altura de fila constante. */
+.nota-fila {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  white-space: nowrap;
+  gap: 0 6px;
+  margin-top: 1px;
+}
+.nota-fila > * + *::before {
+  content: "·";
+  color: var(--muted);
+  opacity: 0.55;
+  margin-right: 6px;
+}
+.price .nota-fila small,
+.price .nota-fila .escapada,
+.price .nota-fila .delta { display: inline; font-size: var(--fs-meta); }
 .price .escapada { display: block; font-size: var(--fs-meta); color: var(--muted); }
 
 /* La diferencia contra el precio al que lo apuntaste. */
@@ -926,7 +1076,19 @@ h1 em { font-size: 1.12em; }
   border-top: 1px solid var(--hair);
   margin-top: 11px;
   padding-top: 14px;
+  display: grid;
+  gap: 14px;
 }
+/* En la lámina los botones van uno debajo de otro porque la columna es
+   estrecha; aquí hay toda la fila, así que van en línea y a su ancho. */
+.brow-detail .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.brow-detail .actions > .btn { flex: 0 0 auto; }
+
+.ver-mas { display: flex; justify-content: center; margin-top: 14px; }
 
 .empty, .vacio {
   margin-top: 8px;
@@ -1021,6 +1183,12 @@ h1 em { font-size: 1.12em; }
   gap: 2px;
   min-width: 0;
 }
+/* "Destino" y "Fechas" se encienden por separado según lo que se elija arriba.
+   El que se quede solo ocupa la fila entera: si no, el hueco de al lado deja
+   ver el fondo de la rejilla y parece una celda rota. */
+.finder-form:has(#destWrap[hidden]) #departWrap:not([hidden]),
+.finder-form:has(#departWrap[hidden]) #destWrap:not([hidden]) { grid-column: 1 / -1; }
+
 .finder-form label > span {
   font: 400 var(--fs-caps) / 1 var(--font-mono);
   letter-spacing: 0.12em;
@@ -1048,8 +1216,23 @@ h1 em { font-size: 1.12em; }
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
 }
-.finder-form .party > label { background: none; padding: 0; }
-.hint { font-size: var(--fs-ui-s); color: var(--muted); line-height: 1.45; }
+/* Los rótulos de esta fila no miden lo mismo ("Avísame si baja de €" se dobla)
+   y sin esto las cifras quedaban a alturas distintas. Se empujan al fondo. */
+.finder-form .party > label {
+  background: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 4px;
+}
+.hint { font-size: var(--fs-ui-s); color: var(--muted); line-height: 1.45; max-width: 70ch; }
+/* Un renglón de texto no se estira a lo ancho del panel: a más de setenta
+   caracteres el ojo pierde el salto de línea. Estas notas llevan su propio
+   filete arriba, así que se acorta el TEXTO —de ahí el `span`— y no la caja,
+   que si no el filete quedaba a media anchura. */
+.vacio { max-width: 74ch; }
+.nota-txt { display: inline-block; max-width: 74ch; vertical-align: middle; }
 .finder-form + .candado-nota { margin-top: 0; }
 .candado-nota, .cuenta-nota {
   font-size: var(--fs-ui-s);
@@ -1058,7 +1241,7 @@ h1 em { font-size: 1.12em; }
   padding-top: 12px;
 }
 .candado-nota a, .cuenta-nota a { color: var(--accent-txt); text-decoration: underline; text-underline-offset: 2px; }
-.finder-form.candado > .btn { opacity: 0.45; }
+.finder-form.candado > .btn { background: transparent; border-color: var(--hair); color: var(--muted); }
 
 /* La página completa de una herramienta: la misma caja, sin borde ni fondo,
    porque ahí ya no compite con nada. */
@@ -1114,7 +1297,43 @@ h1 em { font-size: 1.12em; }
   background: var(--surface);
   margin-bottom: 8px;
 }
-.favrow .dest-cell, .watch .dest-cell { grid-column: 2; }
+/* Una entrada en observación tiene lo mismo que una fila del panel de salidas
+   —sitio, fechas, curva, precio— así que se lee igual: en UNA línea y con las
+   columnas alineadas. Con la rejilla de tres se partía en dos renglones y el
+   precio quedaba flotando en mitad de la caja. */
+.favrow {
+  grid-template-columns: 34px minmax(0, 1.1fr) minmax(0, 1fr) 78px 132px auto;
+  gap: 8px 16px;
+}
+.favrow .spark-cell { display: grid; place-items: center; min-width: 0; }
+.favrow .spark-cell:empty { visibility: hidden; }
+.favrow .when { text-align: right; }
+.watch .dest-cell { grid-column: 2; }
+
+/* Un seguimiento y una búsqueda guardada NO empiezan por un código de tres
+   letras: su primera celda es el rótulo entero. Con la rejilla que arranca en
+   34 px el rótulo salía a palabra por renglón y el "quitar" se quedaba suelto
+   en mitad de la caja. */
+.watch, .saved, .ya-hecha {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 14px;
+}
+.watch > b, .saved > b, .ya-hecha > b {
+  grid-column: 1;
+  grid-row: 1;
+  font-weight: 600;
+  font-size: var(--fs-body-s);
+  min-width: 0;
+}
+.watch > .meta, .saved > .meta, .ya-hecha > .meta { grid-column: 1; grid-row: 2; }
+.saved > .best { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+.watch > .quitar, .saved > .quitar, .ya-hecha > .btn, .saved > .btn {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  justify-self: end;
+}
+/* Lo que un seguimiento o una búsqueda encontró se despliega debajo, entero. */
+.watch > .watch-rows, .saved > .saved-rows { grid-column: 1 / -1; grid-row: 3; }
 .favrow .meta, .watch .meta, .saved .meta, .ya-hecha .meta {
   font-size: var(--fs-ui-s);
   color: var(--muted);
@@ -1160,6 +1379,21 @@ h1 em { font-size: 1.12em; }
 .historia.barato span { color: var(--deep); }
 .historia.caro span { color: var(--accent-txt); }
 .spark-cell svg, .historia svg { display: block; }
+/* La curva se pintaba con la tinta del texto: un trazo blanco tan fuerte como
+   el titular de al lado. Va con el color de lo que cuenta —verde si ha bajado,
+   apagado si ha subido— y sobre una caja con su propio fondo, para que se lea
+   como un gráfico y no como un garabato. */
+.spark {
+  color: var(--muted);
+  background: var(--surface2);
+  border: 1px solid var(--hair);
+  border-radius: var(--r-tag);
+  padding: 2px 4px;
+  box-sizing: content-box;
+}
+.spark.baja { color: var(--deep); }
+.spark.sube { color: var(--accent-txt); }
+.ticket .spark { background: none; border-color: var(--hero-hair); }
 .cambios { display: grid; gap: 6px; }
 .cambio-precio { font: 600 var(--fs-data) var(--font-mono); }
 .cambio-nota { font-size: var(--fs-ui-s); color: var(--muted); }
@@ -1428,7 +1662,43 @@ h1 em { font-size: 1.12em; }
 .total-head { font: 400 var(--fs-caps-l) var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .total-figure { font: 600 var(--fs-figure) var(--font-mono); letter-spacing: -0.03em; }
 .total-break { font-size: var(--fs-ui-s); color: var(--muted); }
-.wait, .status { font: 400 var(--fs-data) var(--font-mono); color: var(--muted); }
+/* El monoespaciado va bien para una línea corta de estado ("Buscando…"), pero
+   un párrafo de tres renglones así se lee como un volcado de consola. El texto
+   corrido vuelve a la de leer. */
+.wait, .status {
+  font: 400 var(--fs-data) var(--font-mono);
+  color: var(--muted);
+  display: grid;
+  gap: 14px;
+  justify-items: start;
+  align-items: center;
+}
+.wait p, .status p {
+  margin: 0;
+  max-width: 62ch;
+  font: 400 var(--fs-body-s) / 1.55 var(--font-sans);
+}
+.wait strong, .status strong { color: var(--ink); font-weight: 600; }
+/* El "¿cuántos viajáis?" de la hoja de camas no vive dentro de un formulario
+   con rejilla, así que su caja hay que ponérsela aquí. */
+.panel .party {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 400 var(--fs-body-s) var(--font-sans);
+  color: var(--ink);
+}
+.panel .party input {
+  width: 66px;
+  padding: 9px 10px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  background: var(--field);
+  color: var(--ink);
+  font: 400 var(--fs-input) var(--font-mono);
+  text-align: center;
+}
+.panel .party input:hover, .panel .party input:focus { border-color: var(--muted); }
 .link-tag { font-size: var(--fs-ui-s); color: var(--accent-txt); }
 .rescan { justify-self: start; }
 .perdido { color: var(--muted); font-size: var(--fs-body-s); }
@@ -1438,16 +1708,22 @@ h1 em { font-size: 1.12em; }
    EL CALENDARIO
    ========================================================================== */
 
+/* Ojo con los selectores: `calendario.js` pinta `.meses > .mes > .semana` (las
+   iniciales de los días) y `.dias` (los botones). La hoja anterior buscaba los
+   botones dentro de `.semana`, no los encontraba nunca y los días salían con
+   el gris de fábrica del navegador, sin rejilla y sin número legible. */
 .cal {
   border: 1px solid var(--line);
   border-radius: var(--r);
   background: var(--surface);
   padding: 14px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 18px;
   max-height: 340px;
   overflow-y: auto;
+}
+.meses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(212px, 1fr));
+  gap: 20px 24px;
 }
 .mes { min-width: 0; }
 .mes h4 {
@@ -1457,22 +1733,36 @@ h1 em { font-size: 1.12em; }
   color: var(--muted);
   margin-bottom: 8px;
 }
-.semana { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-.semana button, .semana span {
+.semana, .dias { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.semana {
+  margin-bottom: 4px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--hair);
+}
+.semana i {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  font-style: normal;
+  letter-spacing: 0;
+  text-align: center;
+  color: var(--muted);
+}
+.dia {
   aspect-ratio: 1;
   display: grid;
   place-items: center;
+  padding: 0;
   border: none;
   background: transparent;
   color: var(--ink);
   font: 400 var(--fs-ui-s) var(--font-mono);
   border-radius: var(--r-tag);
   cursor: pointer;
+  transition: background var(--t) var(--ease), color var(--t) var(--ease);
 }
-.semana button:hover { background: var(--surface2); }
-.semana button.activa { background: var(--accent); color: var(--sobre-acento); }
-.semana button.dentro { background: var(--hair); }
-.semana button[disabled] { color: var(--hair); cursor: default; }
+.dia:hover:not([disabled]), .dia:focus-visible:not([disabled]) { background: var(--surface2); }
+.dia.extremo { background: var(--accent); color: var(--sobre-acento); }
+.dia.dentro { background: var(--hair); }
+.dia[disabled] { color: var(--hair); cursor: default; }
 
 /* ==========================================================================
    EL TEST DE DESTINOS
@@ -1615,27 +1905,92 @@ h1 em { font-size: 1.12em; }
   .topbar-in { gap: 10px; }
   .flaps { display: none; }
   .flap-boton { margin-left: 0; }
-  .cuenta, #tfCuenta { padding: 10px 12px; }
-  .cuenta-txt { display: none; }
+  /* LOS FILTROS EN MÓVIL. Antes se veían los nueve controles a la vez y el
+     primer vuelo quedaba fuera de pantalla. Ahora arriba solo hay dos cosas
+     —buscador y "Filtros · N"— y el resto vive en una hoja que sube desde
+     abajo. La hoja NO es otro bloque: es este mismo `.controls`, con los
+     mismos campos y los mismos oyentes, con otra maquetación. */
+  .filtros-movil { display: flex; gap: 8px; align-items: center; }
+  .hoja-solo { display: flex; }
+  #filtrosFondo { z-index: 40; }
 
-  /* La fila se dobla: destino y precio arriba, fechas y compañía debajo. */
+  .controls {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    z-index: 41;
+    display: none;
+    /* Rejilla y no columna: los dos interruptores de abajo caben en un mismo
+       renglón, que es como se leen (dos ajustes, no dos secciones). */
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+    gap: 18px 10px;
+    max-height: 88vh;
+    overflow: auto;
+    padding: 16px 16px calc(20px + env(safe-area-inset-bottom));
+    border: none;
+    border-top: 1px solid var(--line);
+    border-radius: 16px 16px 0 0;
+    background: var(--surface);
+    animation: tf-rise var(--t-med) var(--ease);
+  }
+  .controls.abierta { display: grid; }
+  .controls > *:not(.switch) { grid-column: 1 / -1; }
+  .controls .field { flex: none; max-width: none; }
+  /* Por debajo de 16 px iOS hace zoom al enfocar un campo. */
+  .controls .field input, .controls .field select { font-size: 16px; }
+  /* El buscador ya está en la barra de arriba. */
+  .controls .field.grow { display: none; }
+  .controls .switch:first-of-type { margin-left: 0; }
+  .controls .switch { justify-content: center; }
+  /* Continente y ordenar se pulsan como fichas; el `select` sigue mandando. */
+  .controls .field:has(.hoja-chips) select { display: none; }
+  .hoja-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+
+  .cuenta, #tfCuenta { padding: 10px 12px; }
+  /* Con sesión el botón se queda en la inicial; sin ella la palabra "entrar"
+     se queda, porque un círculo a secas no dice a dónde lleva. */
+  .cuenta.dentro .cuenta-txt { display: none; }
+  .cuenta:not(.dentro) > b { display: none; }
+
+  /* DENSIDAD. A 375 px el clamp del titular deja 40 px, que es demasiado. */
+  .masthead { padding: 28px 0 22px; }
+  .masthead h1 { font-size: 36px; }
+  .stats dd { font-size: 21px; }
+  .ticket-izq, .ticket-der { padding: 18px; }
+
+  /* La fila pasa de tres columnas a dos: arriba destino y precio, debajo las
+     fechas a todo el ancho —ya no compiten con la compañía— y abajo la
+     compañía con el botón de seguir, que es donde tiene sitio para su
+     palabra y donde llega el pulgar. */
   .brow {
-    grid-template-columns: 30px minmax(0, 1fr) auto;
-    gap: 6px 12px;
-    padding: 14px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 7px 12px;
+    padding: 14px 16px;
+    align-items: start;
   }
   /* El nombre del sitio es lo que se busca con la vista: el país baja debajo
      en vez de robarle sitio y dejar "Berg…" y "It…". */
   .dest-cell { flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
   .brow > .dest-cell .country { flex-basis: 100%; }
-  .brow > .fav { grid-area: 1 / 1 / 2 / 2; }
-  .brow > .dest-cell { grid-area: 1 / 2 / 2 / 3; }
-  .brow > .price { grid-area: 1 / 3 / 2 / 4; }
-  .brow > .when { grid-area: 2 / 2 / 3 / 4; }
-  .brow > .airline { grid-area: 3 / 2 / 4 / 4; }
-  .brow > .brow-detail { grid-area: 4 / 1 / 5 / 4; }
+  .brow > .dest-cell { grid-area: 1 / 1 / 2 / 2; }
+  .brow > .price { grid-area: 1 / 2 / 2 / 3; }
+  .brow > .when { grid-area: 2 / 1 / 3 / 3; white-space: normal; }
+  .brow > .airline { grid-area: 3 / 1 / 4 / 2; align-self: center; }
+  .brow > .fav {
+    grid-area: 3 / 2 / 4 / 3;
+    justify-self: end;
+    align-self: center;
+    width: auto;
+    height: auto;
+    padding: 9px 14px;
+  }
+  .brow > .fav .fav-txt { display: inline; }
+  .brow > .brow-detail { grid-area: 4 / 1 / 5 / 3; }
 
-  .legs, .finder-form .party { grid-template-columns: 1fr 1fr; gap: 14px; }
+  .finder-form .party { grid-template-columns: 1fr 1fr; gap: 14px; }
+  /* Los tramos se doblan a dos columnas pero SIN abrir el hueco: la separación
+     es la misma rejilla de un píxel, si no el fondo asoma como una banda gris. */
+  .legs { grid-template-columns: 1fr 1fr; gap: 1px; }
   .stats { grid-template-columns: 1fr 1fr; }
   .modal-caja { padding: 18px; }
   .panel { width: 100%; border-left: none; }

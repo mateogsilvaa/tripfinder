@@ -58,14 +58,24 @@ function favResumen(o) {
   };
 }
 
-/* Marcar una entrada no es una estrella de favorito: es la anotacion al margen
-   de un indice, un cuadratin que se rellena de rojo. La palabra la pone el
-   aria-label; el dibujo, el CSS. */
+/* Marcar una entrada era un cuadratin de 20 px sin texto: nadie sabia para que
+   servia. Ahora es un boton con campana y su palabra. En escritorio manda el
+   icono —la columna es estrecha— y en movil sale tambien la palabra, que es
+   donde hay sitio y donde mas falta hace. */
+const CAMPANA = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+  aria-hidden="true" focusable="false"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"></path
+  ><path d="M13.7 21a2 2 0 0 1-3.4 0"></path></svg>`;
+
+const QUE_FAV = (activo) =>
+  activo ? "Dejar de seguir este viaje" : "Seguir este viaje y avisarme si baja";
+
 export function favBtn(o) {
   const activo = esFav(o.id);
-  const que = activo ? "Dejar de seguir este viaje" : "Poner este viaje en observación";
+  const que = QUE_FAV(activo);
   return `<button class="fav${activo ? " on" : ""}" type="button" data-fav="${esc(o.id)}"
-    aria-pressed="${activo}" aria-label="${que}" title="${que}"><span aria-hidden="true"></span></button>`;
+    aria-pressed="${activo}" aria-label="${que}" title="${que}">${CAMPANA}<span
+    class="fav-txt" aria-hidden="true">${activo ? "Siguiendo" : "Seguir"}</span></button>`;
 }
 
 function alternar(o) {
@@ -100,9 +110,11 @@ function pintarFavs(raiz = document) {
     const activo = esFav(b.dataset.fav);
     b.classList.toggle("on", activo);
     b.setAttribute("aria-pressed", String(activo));
-    const que = activo ? "Dejar de seguir este viaje" : "Poner este viaje en observación";
+    const que = QUE_FAV(activo);
     b.setAttribute("aria-label", que);
     b.title = que;
+    const txt = b.querySelector(".fav-txt");
+    if (txt) txt.textContent = activo ? "Siguiendo" : "Seguir";
   });
 }
 
@@ -300,7 +312,7 @@ export function sparkline(historia, ancho = 108, alto = 30) {
       aria-label="Evolución del precio: de ${Math.round(precios[0])} a ${Math.round(ultimo)} euros">
       <path d="${d}" fill="none" stroke="currentColor" stroke-width="1.6"
             stroke-linejoin="round" stroke-linecap="round"/>
-      <circle cx="${(ancho).toFixed(1)}" cy="${y(ultimo).toFixed(1)}" r="2.4" fill="currentColor"/>
+      <circle cx="${(ancho - 2.4).toFixed(1)}" cy="${y(ultimo).toFixed(1)}" r="2.4" fill="currentColor"/>
     </svg>`;
 }
 
@@ -352,13 +364,13 @@ export function pintarListaFavs() {
   const lista = Object.values(FAVS).sort((a, b) => (b.desde || 0) - (a.desde || 0));
   if (!lista.length) {
     caja.innerHTML = `
-      <h3 class="watch-head">en observación</h3>
-      <p class="vacio">Todavía no has apuntado ningún viaje. Marca el cuadratín de cualquier
-      entrada y aquí verás si sube o baja de precio cada vez que se actualicen los datos.</p>`;
+      <h3 class="watch-head">vuelos que sigues</h3>
+      <p class="vacio">Todavía no sigues ningún viaje. Dale a Seguir en cualquier entrada
+      del feed y aquí verás si sube o baja de precio cada vez que se actualicen los datos.</p>`;
     return;
   }
   caja.innerHTML =
-    `<h3 class="watch-head">en observación · ${lista.length} viaje${
+    `<h3 class="watch-head">vuelos que sigues · ${lista.length} viaje${
       lista.length > 1 ? "s" : ""
     } apuntado${lista.length > 1 ? "s" : ""}</h3>` + lista.map(favFila).join("");
   caja.querySelectorAll("[data-desfav]").forEach((b) =>
@@ -422,7 +434,7 @@ export async function refrescarFavsDeTodo() {
 
 /* El contador de la portada. No es la lista —esa vive en `seguimientos.html`—:
    es la línea que dice cuántos hay y qué se hace con ellos, para que el
-   cuadratín de cada fila signifique algo desde la primera vez que se pulsa. */
+   botón de Seguir de cada fila signifique algo desde la primera vez que se pulsa. */
 export function refrescarObservacion() {
   const num = document.getElementById("obsCuenta");
   const txt = document.getElementById("obsTexto");
@@ -431,8 +443,8 @@ export function refrescarObservacion() {
   num.textContent = n === 0 ? "—" : String(n);
   txt.textContent =
     n === 0
-      ? "Todavía no has apuntado ningún viaje. Marca el cuadratín de cualquier " +
-        "entrada y aquí verás si sube o baja de precio cada vez que se actualicen los datos."
+      ? "Todavía no sigues ningún viaje. Dale a Seguir en cualquier entrada del feed " +
+        "y aquí verás si sube o baja de precio cada vez que se actualicen los datos."
       : n === 1
         ? "1 viaje apuntado. Se revisa cada 12 h y te avisamos si sube o baja de precio."
         : `${n} viajes apuntados. Se revisan cada 12 h y te avisamos si suben o bajan de precio.`;

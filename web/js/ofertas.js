@@ -32,6 +32,17 @@ export let OFFERS = [];
    vuelo: es la de la tanda, que es lo que dice si esto es de hoy. */
 let DIA_DEL_SCAN = "";
 
+/* Cuantas filas se enseñan de entrada. Con 120 ofertas y "una por destino"
+   puesto salen unas 60, que en pantalla son 5.500px de tabla: la portada se
+   convertia en un rollo de papel y los dos paneles y lo que llevas apuntado
+   quedaban donde no llega nadie.
+
+   Doce es lo que cabe de un vistazo sin hacer scroll infinito, y el resto está
+   a un clic. No es paginacion: no se pierde nada, solo deja de estar todo
+   desplegado a la vez. */
+const DE_ENTRADA = 12;
+let ampliado = false;
+
 /* ------------------------------------------------------------------ ofertas */
 
 /* El esqueleto de carga se quita pase lo que pase: si se queda puesto porque
@@ -118,7 +129,18 @@ export async function init() {
   }
 
   $(".controls").hidden = false;
-  ["#q", "#sort", "#price", "#unique", "#onlyWeekend", "#cont"].forEach((s) => $(s).addEventListener("input", render));
+  const barra = document.querySelector(".filtros-movil");
+  if (barra) barra.hidden = false;
+  // Tocar un filtro vuelve a empezar por arriba: si no, una búsqueda que deja
+  // tres resultados seguiría "ampliada" y el botón de ver más no tendría nada
+  // que enseñar.
+  ["#q", "#sort", "#price", "#unique", "#onlyWeekend", "#cont"].forEach((s) =>
+    $(s).addEventListener("input", () => {
+      ampliado = false;
+      render();
+    })
+  );
+  montarHoja();
 
   // El scan diario guarda el precio de UNA persona (asi el historico es
   // comparable de un dia para otro). Este selector no vuelve a buscar: solo
@@ -191,6 +213,138 @@ function renderCuenta(cuantas) {
   el.textContent =
     `${cuantas} de ${OFFERS.length} ofertas · tope ${$("#price").value} € · ` +
     `${gente} ${gente === 1 ? "persona" : "personas"}`;
+  renderHoja(cuantas);
+}
+
+/* ------------------------------------------------------------- la hoja de
+   filtros (solo movil)
+
+   Nueve controles antes del primer vuelo era demasiado en una pantalla de
+   375 px. Arriba se quedan dos —el buscador y "Filtros · N"— y el resto se
+   guarda en una hoja que sube desde abajo. La hoja NO es otro formulario: es
+   el MISMO `.controls`, con los mismos campos y los mismos oyentes; lo unico
+   que cambia es donde se dibuja. Asi no hay dos estados que sincronizar. */
+
+/* Cuantos filtros estan tocados. Es lo que convierte "Filtros" en
+   "Filtros · 2" y enciende el boton: sin esto, desde la barra no se ve que
+   quede algo puesto dentro de la hoja. */
+function filtrosActivos() {
+  const tope = $("#price");
+  return (
+    ($("#cont").value ? 1 : 0) +
+    ($("#onlyWeekend").checked ? 1 : 0) +
+    (!$("#unique").checked ? 1 : 0) +
+    ($("#sort").value !== "score" ? 1 : 0) +
+    (Number(tope.value) < Number(tope.max) ? 1 : 0) +
+    (grupo() > 1 ? 1 : 0)
+  );
+}
+
+function renderHoja(cuantas) {
+  const boton = document.getElementById("filtrosBtn");
+  if (!boton) return;
+  const n = filtrosActivos();
+  boton.textContent = n ? `Filtros · ${n}` : "Filtros";
+  boton.classList.toggle("on", n > 0);
+  const ver = document.getElementById("filtrosVer");
+  if (ver) ver.textContent = `Ver ${cuantas} ${cuantas === 1 ? "oferta" : "ofertas"}`;
+}
+
+/* Un `<select>` es incomodo con el pulgar y esconde sus opciones. Dentro de la
+   hoja se pintan como fichas, pero el `<select>` sigue siendo la fuente de
+   verdad —lo rellena `data/continentes.json`— y es quien dispara el `input`
+   que ya escucha el render. */
+function chipsDe(sel) {
+  if (!sel || sel.parentElement.querySelector(".hoja-chips")) return;
+  const caja = document.createElement("div");
+  caja.className = "hoja-chips hoja-solo";
+  const pintar = () =>
+    caja.querySelectorAll("[data-val]").forEach((x) =>
+      x.setAttribute("aria-pressed", String(x.dataset.val === sel.value))
+    );
+  caja.innerHTML = [...sel.options]
+    .map(
+      (o) => `<button type="button" class="switch" data-val="${esc(o.value)}"
+        aria-pressed="false">${esc(o.textContent)}</button>`
+    )
+    .join("");
+  caja.addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-val]");
+    if (!b) return;
+    sel.value = b.dataset.val;
+    sel.dispatchEvent(new Event("input", { bubbles: true }));
+    pintar();
+  });
+  sel.addEventListener("input", pintar);
+  pintar();
+  sel.parentElement.append(caja);
+}
+
+function montarHoja() {
+  const hoja = document.getElementById("filtrosHoja");
+  const boton = document.getElementById("filtrosBtn");
+  const fondo = document.getElementById("filtrosFondo");
+  const qm = document.getElementById("qm");
+  if (!hoja || !boton || !fondo || !qm) return;
+
+  chipsDe($("#cont"));
+  chipsDe($("#sort"));
+
+  // El buscador de la barra y el de la hoja son el mismo filtro escrito dos
+  // veces: se copian el valor y solo uno dispara el render.
+  qm.addEventListener("input", () => {
+    $("#q").value = qm.value;
+    $("#q").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  $("#q").addEventListener("input", () => {
+    if (document.activeElement !== qm) qm.value = $("#q").value;
+  });
+
+  const abrir = () => {
+    hoja.classList.add("abierta");
+    fondo.hidden = false;
+    boton.setAttribute("aria-expanded", "true");
+    document.body.style.overflow = "hidden";
+    const primero = hoja.querySelector("#filtrosCerrar");
+    if (primero) primero.focus();
+  };
+  const cerrar = () => {
+    hoja.classList.remove("abierta");
+    fondo.hidden = true;
+    boton.setAttribute("aria-expanded", "false");
+    document.body.style.overflow = "";
+  };
+
+  boton.addEventListener("click", abrir);
+  fondo.addEventListener("click", cerrar);
+  ["#filtrosCerrar", "#filtrosVer"].forEach((sel) => {
+    const b = document.querySelector(sel);
+    if (b) b.addEventListener("click", cerrar);
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && hoja.classList.contains("abierta")) cerrar();
+  });
+
+  const limpiar = document.getElementById("filtrosLimpiar");
+  if (limpiar) {
+    limpiar.addEventListener("click", () => {
+      $("#q").value = "";
+      qm.value = "";
+      $("#price").value = $("#price").max;
+      $("#cont").value = "";
+      $("#sort").value = "score";
+      $("#unique").checked = true;
+      $("#onlyWeekend").checked = false;
+      const gr = $("#grupo");
+      if (gr) {
+        gr.value = "1";
+        ponerGrupo("1");
+      }
+      // Uno solo basta: todos van al mismo `render()`.
+      $("#cont").dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+  renderHoja(0);
 }
 
 function currentList() {
@@ -381,9 +535,11 @@ export function boardRow(o, i) {
       <span class="airline">${esc(o.airline || o.provider)}<small>${escalas(o)}${
         o.useful_hours ? ` · ${Math.round(o.useful_hours)} h de viaje` : ""
       }${o.long_haul ? " · larga distancia" : ""}</small></span>
-      <span class="price">${precioCorto(o)}${
-        o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : ""
-      }${deltaHTML(o)}${escapadaHTML(o)}</span>
+      <span class="price">${precioCorto(
+        o,
+        o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : "",
+        deltaHTML(o) + escapadaHTML(o)
+      )}</span>
       <div class="brow-detail" hidden></div>
     </div>`;
 }
@@ -497,16 +653,38 @@ export function render() {
 
   $("#hero").innerHTML = list.length ? heroTicket(list[0]) : "";
   $("#hero").hidden = !list.length;
-  $("#offers").innerHTML = list.slice(1).map(boardRow).join("");
+  // La primera va arriba, en la lámina: el resto es el feed.
+  const resto = list.slice(1);
+  const visibles = ampliado ? resto : resto.slice(0, DE_ENTRADA);
+  $("#offers").innerHTML = visibles.map(boardRow).join("");
   $("#boardHead").hidden = list.length < 2;
   $("#empty").hidden = list.length > 0;
   renderCuenta(list.length);
+  pintarVerMas(resto.length - visibles.length);
 
   document.querySelectorAll(".hero [data-stay]").forEach((el) =>
     el.addEventListener("click", () => openStays(el.dataset.stay))
   );
   wireFavs($("#hero"));
   wireRows();
+}
+
+/* El botón de "ver el resto". Se pinta solo cuando queda algo por enseñar, y
+   al pulsarlo desaparece: no vuelve a plegarse, porque plegar una lista que
+   acabas de abrir es quitarle a alguien lo que estaba mirando. */
+function pintarVerMas(quedan) {
+  const caja = document.getElementById("verMas");
+  if (!caja) return;
+  caja.hidden = quedan <= 0;
+  if (quedan <= 0) return;
+  caja.innerHTML = `<button class="btn ghost" type="button">Ver ${quedan} viaje${
+    quedan === 1 ? "" : "s"
+  } más</button>`;
+  caja.querySelector("button").addEventListener("click", () => {
+    ampliado = true;
+    render();
+    if (typeof tfAnunciar === "function") tfAnunciar(`${quedan} viajes más en la lista.`);
+  });
 }
 
 function focusOffer(id) {
@@ -523,6 +701,8 @@ function ensureVisible(id) {
   if (document.getElementById(`offer-${id}`)) return;
   const o = OFFERS.find((x) => x.id === id);
   if (!o) return;
+  // Puede estar más allá de las doce primeras: se despliega el resto.
+  ampliado = true;
   if (o.price > Number($("#price").value)) $("#price").value = $("#price").max;
   $("#unique").checked = false;
   $("#q").value = "";

@@ -141,7 +141,7 @@ NAV = (
     '        <a href="./#feed"{promos}>Feed</a>\n'
     '        <a href="./#buscar"{buscar}>Buscar</a>\n'
     '        <a href="./#seguir"{seguir}>Seguir</a>\n'
-    '        <a href="seguimientos.html"{follows}>En observación</a>\n'
+    '        <a href="seguimientos.html"{follows}>Vuelos que sigues</a>\n'
     '      </nav>\n'
 )
 
@@ -206,7 +206,7 @@ PAGINAS = {
         "manifiesto": MANIFIESTO,
         "nav": NAV,
         "descubrir": DESCUBRIR,
-        "titulo": "TripFinder · en observación",
+        "titulo": "TripFinder · vuelos que sigues",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["seguimientos.html"]}">',
         "vivo": VIVO,
         "zona": "follows",

@@ -34,10 +34,16 @@ export const esFaltaDeAcceso = (r) =>
    no se distingue "no tienes nada" de "esto esta roto". */
 export function avisoDeCuenta(que, vacio) {
   if (!tfUid()) {
-    return `<p class="meta cuenta-nota">Entra con tu cuenta para ver tus ${que}.
+    // Si la pagina ya tiene un formulario candado con su propio "Entrar", este
+    // aviso no repite el boton: dos veces la misma puerta a dos dedos de
+    // distancia solo hace ruido.
+    if (document.querySelector(".candado-nota")) {
+      return `<p class="meta cuenta-nota"><span class="nota-txt">Tus ${que} salen aqui en cuanto entres.</span></p>`;
+    }
+    return `<p class="meta cuenta-nota"><span class="nota-txt">Entra con tu cuenta para ver tus ${que}.</span>
       <button class="btn primary small" type="button" data-entrar>Entrar</button></p>`;
   }
-  return `<p class="meta cuenta-nota">${vacio}</p>`;
+  return `<p class="meta cuenta-nota"><span class="nota-txt">${vacio}</span></p>`;
 }
 
 /* Sin cuenta, los formularios que escriben en el repo se quedan a la vista pero
@@ -65,7 +71,7 @@ export function candarFormularios() {
     // del formulario quedaba por encima del propio botón que explica.
     (caja || form).insertAdjacentHTML(
       caja ? "beforeend" : "afterend",
-      `<p class="candado-nota">Para ${que} hace falta una cuenta.
+      `<p class="candado-nota"><span class="nota-txt">Para ${que} hace falta una cuenta.</span>
         <button class="btn primary small" type="button" data-entrar>Entrar</button></p>`
     );
   });

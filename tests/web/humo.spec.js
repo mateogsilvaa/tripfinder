@@ -93,7 +93,7 @@ test.describe("el armazón que comparten las páginas", () => {
   for (const [pagina, activa] of [
     ["/index.html", "Feed"],
     ["/buscar.html", "Buscar"],
-    ["/seguimientos.html", "En observación"],
+    ["/seguimientos.html", "Vuelos que sigues"],
   ]) {
     test(`${pagina} monta cabecera, zonas y pie`, async ({ page }) => {
       await page.goto(pagina);
@@ -361,12 +361,81 @@ test.describe("lo que está pasando se dice", () => {
   });
 });
 
+/* Nueve controles antes del primer vuelo dejaban el feed fuera de pantalla en
+   un móvil. Arriba se quedan dos y el resto vive en una hoja que sube desde
+   abajo — que es el MISMO `.controls` de escritorio, no un segundo formulario
+   que haya que mantener en sintonía. Esto es lo que prueba que sigue siendo
+   uno solo: lo que se toca en la hoja filtra el feed de verdad. */
+test.describe("los filtros en un móvil", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("arriba solo hay buscador y «Filtros»; el resto está en la hoja", async ({ page }) => {
+    await page.goto("/index.html");
+    await expect(page.locator(".filtros-movil")).toBeVisible();
+    await expect(page.locator("#qm")).toBeVisible();
+    await expect(page.locator("#filtrosBtn")).toHaveText("Filtros");
+    // La hoja existe, pero cerrada.
+    await expect(page.locator("#filtrosHoja")).not.toBeVisible();
+    // Y el campo de destino de dentro no se repite: ya está en la barra.
+    await expect(page.locator("#q")).not.toBeVisible();
+  });
+
+  test("el buscador de la barra filtra igual que el de la hoja", async ({ page }) => {
+    await page.goto("/index.html");
+    await expect(page.locator(".brow").first()).toBeVisible();
+    await page.fill("#qm", "zzzz");
+    await expect(page.locator("#empty")).toBeVisible();
+    expect(await page.inputValue("#q")).toBe("zzzz");
+  });
+
+  test("la hoja se abre, filtra y dice cuántas quedan", async ({ page }) => {
+    await page.goto("/index.html");
+    await expect(page.locator(".brow").first()).toBeVisible();
+    await page.click("#filtrosBtn");
+    await expect(page.locator("#filtrosHoja")).toBeVisible();
+    await expect(page.locator("#filtrosFondo")).toBeVisible();
+    await expect(page.locator("#filtrosBtn")).toHaveAttribute("aria-expanded", "true");
+
+    // El `select` de ordenar se pulsa como fichas; el `select` sigue mandando.
+    await page.locator(".hoja-chips button", { hasText: "Precio" }).first().click();
+    expect(await page.inputValue("#sort")).toBe("price");
+    await expect(page.locator("#filtrosBtn")).toHaveText("Filtros · 1");
+    await expect(page.locator("#filtrosVer")).toContainText(/^Ver \d+ oferta/);
+
+    await page.click("#filtrosVer");
+    await expect(page.locator("#filtrosHoja")).not.toBeVisible();
+    await expect(page.locator("#filtrosFondo")).not.toBeVisible();
+  });
+
+  test("«limpiar» deja los filtros como estaban al entrar", async ({ page }) => {
+    await page.goto("/index.html");
+    await expect(page.locator(".brow").first()).toBeVisible();
+    await page.click("#filtrosBtn");
+    await page.locator(".hoja-chips button", { hasText: "Fecha" }).first().click();
+    await page.locator(".switch", { hasText: "Solo findes" }).click();
+    await expect(page.locator("#filtrosBtn")).toHaveText("Filtros · 2");
+    await page.click("#filtrosLimpiar");
+    await expect(page.locator("#filtrosBtn")).toHaveText("Filtros");
+    expect(await page.inputValue("#sort")).toBe("score");
+    expect(await page.isChecked("#onlyWeekend")).toBe(false);
+  });
+
+  test("«escape» cierra la hoja", async ({ page }) => {
+    await page.goto("/index.html");
+    await expect(page.locator(".brow").first()).toBeVisible();
+    await page.click("#filtrosBtn");
+    await expect(page.locator("#filtrosHoja")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#filtrosHoja")).not.toBeVisible();
+  });
+});
+
 test.describe("se acierta con el dedo", () => {
   /* El criterio de la #25: los botones pequeños se aciertan a la primera en un
-     móvil de 320 px. Lo que se agranda es el área de acierto, no el dibujo:
-     el cuadratín de observación sigue midiendo 22 px, que es lo que pide el
-     sistema. Se mide con elementFromPoint, que es lo que decide de verdad
-     dónde cae un dedo. */
+     móvil de 320 px. Se mide con elementFromPoint, que es lo que decide de
+     verdad dónde cae un dedo. El botón de seguir ya no es un cuadratín: en
+     móvil es una píldora con su palabra, y el `::after` le sigue dando los
+     44 px de acierto a los que son pequeños (el de la lámina, por ejemplo). */
 
   /* `reducedMotion` no es un atajo: el CSS lo respeta y apaga las animaciones,
      asi que la caja que se mide es la definitiva. Sin esto se medía el panel
@@ -405,14 +474,15 @@ test.describe("se acierta con el dedo", () => {
       [x, y, sel]
     );
 
-  test("el cuadratín de observación tiene 44 px de acierto", async ({ page }) => {
+  test("el botón de seguir tiene 44 px de acierto", async ({ page }) => {
     await page.goto("/index.html");
     const fav = page.locator(".brow .fav").first();
     await expect(fav).toBeVisible();
     await fav.scrollIntoViewIfNeeded();
+    // En móvil dice lo que hace: sin la palabra nadie sabía para qué servía.
+    await expect(fav.locator(".fav-txt")).toHaveText("Seguir");
     const caja = await cajaQuieta(fav);
-    // El dibujo sigue siendo pequeño: esto no es agrandar el botón.
-    expect(caja.width).toBeLessThan(32);
+    expect(caja.height).toBeGreaterThanOrEqual(32);
 
     // Pero un toque a 20 px del centro, dentro de los 44, lo acierta.
     const cx = caja.x + caja.width / 2;
@@ -794,7 +864,7 @@ test.describe("En observación", () => {
     await expect(fila.locator(".city")).toHaveText("Bergamo");
     await expect(fila.locator(".spark")).toBeVisible();
     await expect(fila.locator(".delta")).toContainText(/−20 €/);
-    await expect(page.locator(".watch-head")).toContainText(/en observación/i);
+    await expect(page.locator(".watch-head")).toContainText(/vuelos que sigues/i);
   });
 
   test("quitar uno lo saca de la lista", async ({ page }) => {
@@ -803,12 +873,12 @@ test.describe("En observación", () => {
     await expect(page.locator(".favrow")).toHaveCount(1);
     await page.locator(".favrow [data-desfav]").click();
     await expect(page.locator(".favrow")).toHaveCount(0);
-    await expect(page.locator(".vacio")).toContainText(/todavía no has apuntado/i);
+    await expect(page.locator(".vacio")).toContainText(/dale a seguir/i);
   });
 
   test("sin nada apuntado, dice qué hacer en vez de quedarse en blanco", async ({ page }) => {
     await page.goto("/seguimientos.html");
-    await expect(page.locator("#favoritos")).toContainText(/todavía no has apuntado|cuenta/i);
+    await expect(page.locator("#favoritos")).toContainText(/dale a seguir|cuenta/i);
   });
 });
 
