@@ -304,7 +304,12 @@ async function ponerAdmin(clave, repetida) {
 }
 
 function explicarFallo(r) {
-  if (r.reason === "sin-token" || r.reason === "token-invalido") {
+  // "sin-cuenta" sale de `tfDispatch` cuando no hay ni sesión ni token, y en el
+  // panel NUNCA hay sesión (lleva `data-sin-cuenta`): aquí las tres cosas son
+  // la misma, que no hay token en este navegador. Sin esto el panel contestaba
+  // "sin-cuenta" a secas y no ofrecía la caja para pegar uno, así que no había
+  // por dónde salir: ni se guardaba nada ni se podía arreglar.
+  if (r.reason === "sin-token" || r.reason === "token-invalido" || r.reason === "sin-cuenta") {
     return `Para escribir en el repositorio hace falta un token de GitHub
       (fine-grained, solo este repo, permiso <em>Contents: Read and write</em>).
       <span class="token-box">
@@ -315,8 +320,8 @@ function explicarFallo(r) {
   return `No se pudo guardar: ${esc(r.reason)}`;
 }
 
-function wireToken() {
-  const b = document.getElementById("tokenSave");
+function wireToken(raiz = document) {
+  const b = raiz.querySelector("#tokenSave");
   if (!b) return;
   b.addEventListener("click", () => {
     const v = document.getElementById("tokenInput").value.trim();
@@ -580,12 +585,27 @@ async function pintarCuentas(forzar = true) {
 /* Todo lo que toca cuentas pasa por aquí: un dispatch, un aviso y a esperar a
    que Actions publique. El fichero tarda un par de minutos en verse, así que se
    dice, en vez de dejar la lista igual y que parezca que no ha hecho nada. */
-async function mandar(evento, payload, trabajando) {
+/* `msg` es el renglón del modal desde el que se llama, si es que se llama
+   desde uno. Sin él, el resultado se pintaba SOLO en `#avisoCuentas`, que está
+   arriba del panel y por tanto debajo del velo del modal: un dispatch fallido
+   dejaba «Guardando…» para siempre y la explicación —con su caja para pegar un
+   token nuevo— donde no se ve ni se alcanza. Se lee como "el botón no hace
+   nada", que es lo peor que le puedes hacer a quien intenta entenderlo. */
+async function mandar(evento, payload, trabajando, msg = null) {
   $("#avisoCuentas").textContent = trabajando;
+  if (msg) msg.textContent = trabajando;
   const r = await tfDispatch(evento, payload);
   if (!r.ok) {
-    $("#avisoCuentas").innerHTML = explicarFallo(r);
-    wireToken();
+    if (msg) {
+      // La explicación entera va dentro, donde se está mirando; fuera queda
+      // una línea corta y sin `id`, para no duplicar el del campo del token.
+      msg.innerHTML = explicarFallo(r);
+      wireToken(msg);
+      $("#avisoCuentas").textContent = "No se pudo guardar. El motivo está en la ventana.";
+    } else {
+      $("#avisoCuentas").innerHTML = explicarFallo(r);
+      wireToken();
+    }
     return false;
   }
   $("#avisoCuentas").textContent =
@@ -679,7 +699,8 @@ function nuevaCuenta() {
           ...cred,
           ...(sobre ? { sobre } : {}),
         },
-        `Creando la cuenta de ${v.cNombre || v.cUser}…`
+        `Creando la cuenta de ${v.cNombre || v.cUser}…`,
+        msg
       );
       if (ok) {
         tfCerrarModal();
@@ -724,7 +745,8 @@ function cambiarClave(user, sinAcceso = false) {
         await mandar(
           "user_passwd",
           { user, ...cred, ...(sobre ? { sobre } : {}) },
-          `Cambiando la contraseña de ${user}…`
+          `Cambiando la contraseña de ${user}…`,
+          msg
         )
       ) {
         tfCerrarModal();
@@ -742,7 +764,8 @@ function cambiarAdmin() {
       msg.textContent = "Guardando…";
       const cred = await tfHash(v.aPass);
       const sobre = MAESTRA ? await tfHacerSobre(v.aPass, MAESTRA) : null;
-      if (await mandar("admin_password", sobre ? { ...cred, sobre } : cred, "Cambiando la contraseña del panel…")) {
+      if (await mandar("admin_password", sobre ? { ...cred, sobre } : cred,
+        "Cambiando la contraseña del panel…", msg)) {
         CLAVE_PANEL = v.aPass;
         guardarSecretos();
         tfCerrarModal();
@@ -759,7 +782,7 @@ function borrarCuenta(user) {
         msg.textContent = "No coincide.";
         return;
       }
-      if (await mandar("user_remove", { user }, `Borrando ${user}…`)) tfCerrarModal();
+      if (await mandar("user_remove", { user }, `Borrando ${user}…`, msg)) tfCerrarModal();
     }
   );
 }
