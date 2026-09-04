@@ -57,6 +57,14 @@ const PIEZAS = [
   "./iconos/marca.svg",
 ];
 
+/* `PIEZAS` son rutas relativas al scope; esto las compara con la ruta pelada
+   de una petición, que es absoluta. */
+const enLaLista = (p) =>
+  PIEZAS.some((pieza) => {
+    const limpia = pieza.replace(/^\.\//, "");
+    return limpia ? p.endsWith(`/${limpia}`) : p.endsWith("/");
+  });
+
 self.addEventListener("install", (ev) => {
   ev.waitUntil(
     (async () => {
@@ -80,6 +88,15 @@ self.addEventListener("activate", (ev) => {
         (k) => k.startsWith("tf-") && k !== ARMAZON && k !== DATOS
       );
       await Promise.all(viejas.map((k) => caches.delete(k)));
+      // Una versión anterior de esto sí guardaba el panel. Si esa copia sigue
+      // en la caché de ESTA versión, se tira: si no, quien ya la tenía seguiría
+      // con ella y este arreglo tampoco le llegaría.
+      const cache = await caches.open(ARMAZON);
+      await Promise.all(
+        (await cache.keys())
+          .filter((r) => esPanel(new URL(r.url).pathname))
+          .map((r) => cache.delete(r))
+      );
       await self.clients.claim();
     })()
   );
@@ -107,6 +124,15 @@ const sinReloj = (url) => {
   return u.toString();
 };
 
+/* El panel NO pasa por aquí. No es una página que se consulte en el metro: es
+   la herramienta con la que se dan de alta cuentas y se cambian contraseñas, y
+   servirla de la caché significa que quien la abrió una vez se queda con esa
+   copia hasta que el worker se renueve. Eso ya pasó: tres despliegues seguidos
+   con arreglos del panel y en el navegador seguía corriendo el de la semana
+   pasada, sin forma de notarlo desde dentro. Un fallo que hace invisibles los
+   arreglos es peor que el fallo que arreglaban. */
+const esPanel = (p) => p.endsWith("/admin.html");
+
 self.addEventListener("fetch", (ev) => {
   const req = ev.request;
   if (req.method !== "GET") return;
@@ -114,6 +140,7 @@ self.addEventListener("fetch", (ev) => {
   const url = new URL(req.url);
   // Otro origen: la API de GitHub y las fuentes de Google. Ni tocarlo.
   if (url.origin !== self.location.origin) return;
+  if (esPanel(url.pathname)) return; // a la red, siempre
 
   const esDato = url.pathname.includes("/data/");
 
@@ -142,7 +169,10 @@ self.addEventListener("fetch", (ev) => {
       if (guardado) return guardado;
       try {
         const r = await fetch(req);
-        if (r.ok && (url.pathname.endsWith(".html") || url.pathname.endsWith("/"))) {
+        // Solo se guarda lo que está en la lista. Guardar CUALQUIER `.html` que
+        // pase es como acabó el panel dentro de la caché sin que nadie lo
+        // pusiera ahí: una página que no se ha pensado para servirse vieja.
+        if (r.ok && enLaLista(url.pathname)) {
           const cache = await caches.open(ARMAZON);
           cache.put(req, r.clone());
         }
