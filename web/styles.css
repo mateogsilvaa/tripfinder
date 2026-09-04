@@ -637,7 +637,9 @@ h1 em { font-size: 1.3em; }
   line-height: 1;
   font-family: var(--font-sans);
 }
-.amount span { font-size: 0.6em; margin-left: 0.09em; }
+/* El símbolo va más pequeño que la cifra, pero pegado se leía "60€" como una
+   sola palabra. Un pelo de aire y ya. */
+.amount span, .quiz-precio .cifra span { font-size: 0.6em; margin-left: 0.11em; }
 .ticket-cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .stamp {
   font: 600 var(--fs-ui-s) / 1 var(--font-mono);
@@ -1232,7 +1234,43 @@ h1 em { font-size: 1.3em; }
   background: var(--surface);
   margin-bottom: 8px;
 }
-.favrow .dest-cell, .watch .dest-cell { grid-column: 2; }
+/* Una entrada en observación tiene lo mismo que una fila del panel de salidas
+   —sitio, fechas, curva, precio— así que se lee igual: en UNA línea y con las
+   columnas alineadas. Con la rejilla de tres se partía en dos renglones y el
+   precio quedaba flotando en mitad de la caja. */
+.favrow {
+  grid-template-columns: 34px minmax(0, 1.1fr) minmax(0, 1fr) 78px 132px auto;
+  gap: 8px 16px;
+}
+.favrow .spark-cell { display: grid; place-items: center; min-width: 0; }
+.favrow .spark-cell:empty { visibility: hidden; }
+.favrow .when { text-align: right; }
+.watch .dest-cell { grid-column: 2; }
+
+/* Un seguimiento y una búsqueda guardada NO empiezan por un código de tres
+   letras: su primera celda es el rótulo entero. Con la rejilla que arranca en
+   34 px el rótulo salía a palabra por renglón y el "quitar" se quedaba suelto
+   en mitad de la caja. */
+.watch, .saved, .ya-hecha {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 4px 14px;
+}
+.watch > b, .saved > b, .ya-hecha > b {
+  grid-column: 1;
+  grid-row: 1;
+  font-weight: 600;
+  font-size: var(--fs-body-s);
+  min-width: 0;
+}
+.watch > .meta, .saved > .meta, .ya-hecha > .meta { grid-column: 1; grid-row: 2; }
+.saved > .best { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
+.watch > .quitar, .saved > .quitar, .ya-hecha > .btn, .saved > .btn {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  justify-self: end;
+}
+/* Lo que un seguimiento o una búsqueda encontró se despliega debajo, entero. */
+.watch > .watch-rows, .saved > .saved-rows { grid-column: 1 / -1; grid-row: 3; }
 .favrow .meta, .watch .meta, .saved .meta, .ya-hecha .meta {
   font-size: var(--fs-ui-s);
   color: var(--muted);
