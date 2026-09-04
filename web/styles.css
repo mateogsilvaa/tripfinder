@@ -817,8 +817,10 @@ h1 em { font-size: 1.3em; }
   min-width: 0;
 }
 /* El campo de destino crece, pero con tope: sin él se comía todo el hueco
-   sobrante y quedaba un subrayado vacío de medio panel. */
-.field.grow { flex: 1 1 190px; max-width: 260px; }
+   sobrante y quedaba un subrayado vacío de medio panel. El tope es SOLO para
+   la barra del feed: en el panel hay campos anchos que tienen que serlo. */
+.field.grow { flex: 1 1 190px; }
+.controls .field.grow { max-width: 260px; }
 /* El hueco que sobre se va entre los campos y los interruptores. */
 .controls .switch:first-of-type { margin-left: auto; }
 .field label, .field > span {
@@ -1252,6 +1254,10 @@ h1 em { font-size: 1.3em; }
 }
 .finder { border: none; background: none; }
 .finder summary { display: none; }
+/* En el panel van varias `.finder` seguidas —token, sin dueño, registro— y sin
+   esto la primera se pegaba al borde de la fila de botones de arriba. */
+#panelAdmin > .finder, #panelAdmin > details.finder { margin-top: 26px; }
+
 
 /* ==========================================================================
    EN OBSERVACIÓN
@@ -1949,7 +1955,12 @@ h1 em { font-size: 1.3em; }
   .hoja-solo { display: flex; }
   #filtrosFondo { z-index: 40; }
 
-  .controls {
+  /* OJO con el selector: `.controls` no es solo la barra de filtros del feed
+     —el panel de administración la reusa para su fila de botones—, así que
+     convertirla en hoja a secas dejaba el panel SIN «crear cuenta», sin
+     «cambiar la contraseña del panel» y sin «cerrar» en cualquier móvil. La
+     hoja es la que lleva `.hoja`. */
+  .controls.hoja {
     position: fixed;
     left: 0; right: 0; bottom: 0;
     z-index: 41;
@@ -1968,17 +1979,17 @@ h1 em { font-size: 1.3em; }
     background: var(--surface);
     animation: tf-rise var(--t-med) var(--ease);
   }
-  .controls.abierta { display: grid; }
-  .controls > *:not(.switch) { grid-column: 1 / -1; }
-  .controls .field { flex: none; max-width: none; }
+  .controls.hoja.abierta { display: grid; }
+  .controls.hoja > *:not(.switch) { grid-column: 1 / -1; }
+  .controls.hoja .field { flex: none; max-width: none; }
   /* Por debajo de 16 px iOS hace zoom al enfocar un campo. */
-  .controls .field input, .controls .field select { font-size: 16px; }
+  .controls.hoja .field input, .controls.hoja .field select { font-size: 16px; }
   /* El buscador ya está en la barra de arriba. */
-  .controls .field.grow { display: none; }
-  .controls .switch:first-of-type { margin-left: 0; }
-  .controls .switch { justify-content: center; }
+  .controls.hoja .field.grow { display: none; }
+  .controls.hoja .switch:first-of-type { margin-left: 0; }
+  .controls.hoja .switch { justify-content: center; }
   /* Continente y ordenar se pulsan como fichas; el `select` sigue mandando. */
-  .controls .field:has(.hoja-chips) select { display: none; }
+  .controls.hoja .field:has(.hoja-chips) select { display: none; }
   .hoja-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 
   .cuenta, #tfCuenta { padding: 10px 12px; }
@@ -2021,6 +2032,16 @@ h1 em { font-size: 1.3em; }
   }
   .brow > .fav .fav-txt { display: inline; }
   .brow > .brow-detail { grid-area: 4 / 1 / 5 / 3; }
+
+  /* El panel reusa `.brow` para sus filas de cuenta, pero sus celdas son otras
+     —no hay precio, ni fechas, ni compañía— así que la maqueta de arriba le
+     descolocaba el sello y los botones. Lleva `.brow.cuenta-row` para ganarle
+     por especificidad y no por orden. */
+  .brow.cuenta-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .cuenta-row > .dest-cell { grid-area: 1 / 1 / 2 / 2; }
+  .cuenta-row > .iata { grid-area: 1 / 2 / 2 / 3; justify-self: end; }
+  .cuenta-row > .favacc { grid-area: 2 / 1 / 3 / 3; justify-content: flex-start; }
+  .cuenta-row > .detalle { grid-area: 3 / 1 / 4 / 3; }
 
   .finder-form .party { grid-template-columns: 1fr 1fr; gap: 14px; }
   /* Los tramos se doblan a dos columnas pero SIN abrir el hueco: la separación

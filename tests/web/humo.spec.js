@@ -889,6 +889,126 @@ test.describe("cambiarse la contraseña desde la cuenta", () => {
   });
 });
 
+/* EL PANEL EN UN MÓVIL.
+
+   El panel reusa dos clases del feed —`.controls` para su fila de botones y
+   `.brow` para sus filas de cuenta—, y el rediseño de móvil convirtió la
+   primera en una hoja que sube desde abajo (`display:none` hasta que se abre)
+   y le dio a la segunda la maqueta de una fila de vuelo. Resultado: en
+   cualquier móvil el panel se quedaba SIN «crear cuenta», sin «cambiar la
+   contraseña del panel» y sin «cerrar», y las filas de cuenta salían
+   descolocadas. Esto es lo que impide que vuelva a pasar. */
+test.describe("el panel de administración en un móvil", () => {
+  const CLAVE = "unaclavelarga1";
+
+  async function panelAbierto(page, enviados) {
+    await page.route("**/api.github.com/repos/**/dispatches", (r) => {
+      enviados.push(JSON.parse(r.request().postData() || "{}"));
+      return r.fulfill({ status: 204, body: "" });
+    });
+    await page.addInitScript(() => {
+      try { localStorage.setItem("tf_token", "ghp_de_mentira"); } catch (e) { /* nada */ }
+    });
+    // Primera pasada solo para tener `auth.js` y fabricar la ficha con sus
+    // propias funciones: un sobre inventado a mano no se abriría.
+    await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
+    const d = await page.evaluate(async (clave) => {
+      const maestra = "bWFlc3RyYS1kZS1tZW50aXJhLTMyLWJ5dGVzLWFxdWk=";
+      return { cred: await tfHash(clave), sobre: await tfHacerSobre(clave, maestra) };
+    }, CLAVE);
+    const users = {
+      admin: { ...d.cred, sobre: d.sobre },
+      site: { token: { iv: "x", data: "y" } },
+      users: [{ id: "u-1", user: "mateo", name: "Mateo", active: true, tiene_email: true,
+                prefs: {}, ...d.cred, sobre: d.sobre }],
+      watches: [], searches: [],
+    };
+    await page.route("**/users.json*", (r) =>
+      r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(users) })
+    );
+    await page.route("**/watch.json*", (r) =>
+      r.fulfill({ status: 200, contentType: "application/json", body: '{"watches":[]}' })
+    );
+    await page.route("**/searches/index.json*", (r) =>
+      r.fulfill({ status: 200, contentType: "application/json", body: '{"searches":[]}' })
+    );
+    await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
+    await page.fill("#pass", CLAVE);
+    await page.click("#puertaBtn");
+    await expect(page.locator("#panelAdmin")).toBeVisible({ timeout: 25000 });
+  }
+
+  for (const [nombre, ancho] of [["a 390 px", 390], ["a 1280 px", 1280]]) {
+    test(`los botones del panel se ven ${nombre}`, async ({ page }) => {
+      await page.setViewportSize({ width: ancho, height: 900 });
+      await panelAbierto(page, []);
+      for (const id of ["#nuevaCuenta", "#cambiarAdmin", "#recargar", "#cerrar"]) {
+        await expect(page.locator(id), `${id} ${nombre}`).toBeVisible();
+      }
+    });
+  }
+
+  /* La fila de cuenta reusa `.brow`, así que hereda la maqueta de móvil del
+     feed —pensada para destino, precio, fechas y compañía— por orden en la
+     hoja. Aquí no se cayó nada, pero la fila quedaba a merced de un cambio en
+     el feed: esto le da su propia maqueta y la fija. */
+  test("la fila de una cuenta tiene su propia maqueta, no la del feed", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    await panelAbierto(page, []);
+    const fila = page.locator(".cuenta-row").first();
+    await expect(fila).toBeVisible();
+    const sitios = await fila.evaluate((el) => {
+      const caja = (s) => {
+        const n = el.querySelector(s);
+        if (!n) return null;
+        const r = n.getBoundingClientRect();
+        return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width) };
+      };
+      return { sello: caja(".iata"), nombre: caja(".dest-cell"), botones: caja(".favacc") };
+    });
+    // Nombre a la izquierda, sello a la derecha, botones debajo y a lo ancho
+    // de los dos: con la maqueta del feed se quedaban en la primera columna.
+    expect(sitios.nombre.x).toBeLessThan(sitios.sello.x);
+    expect(sitios.botones.y).toBeGreaterThan(sitios.nombre.y);
+    expect(sitios.botones.w).toBeGreaterThanOrEqual(
+      sitios.sello.x + sitios.sello.w - sitios.nombre.x
+    );
+  });
+
+  /* El botón de cambiar la contraseña del panel, pulsado de verdad: que abra,
+     que mande `admin_password` y que mande el sobre con él —sin sobre, el
+     token se queda sin llave. */
+  test("cambiar la contraseña del panel manda credencial y sobre", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 900 });
+    const enviados = [];
+    await panelAbierto(page, enviados);
+    await page.click("#cambiarAdmin");
+    await page.fill("#aPass", "otraclavelarga2");
+    await page.click("#formModal button[type=submit]");
+    await expect(page.locator("#modalMsg")).toHaveCount(0, { timeout: 25000 });
+    expect(enviados).toHaveLength(1);
+    expect(enviados[0].event_type).toBe("admin_password");
+    expect(enviados[0].client_payload.hash).toBeTruthy();
+    expect(enviados[0].client_payload.sobre.data).toBeTruthy();
+  });
+
+  /* Un fallo dentro del formulario tiene que decirse. Antes cualquier
+     excepción dejaba "Guardando…" en pantalla para siempre, que se lee como
+     "el botón no hace nada". */
+  test("si algo revienta, el formulario lo dice en vez de quedarse pensando", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await panelAbierto(page, []);
+    await page.evaluate(() => {
+      window.tfHacerSobre = () => Promise.reject(new Error("crypto de mentira"));
+    });
+    await page.click("#cambiarAdmin");
+    await page.fill("#aPass", "otraclavelarga2");
+    await page.click("#formModal button[type=submit]");
+    await expect(page.locator("#modalMsg")).toContainText(/crypto de mentira/i, { timeout: 25000 });
+    await expect(page.locator("#formModal button[type=submit]")).toBeEnabled();
+  });
+});
+
 test.describe("el calendario", () => {
   const abrir = async (page) => {
     await page.goto("/buscar.html");

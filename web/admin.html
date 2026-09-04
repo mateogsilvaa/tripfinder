@@ -106,7 +106,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <div class="finder-body">
         <h3 class="watch-head">El token de la web</h3>
         <p class="finder-lede" id="tokenLede"></p>
-        <form id="formToken" class="finder-form">
+        <form id="formToken" class="finder-form estrecha-form">
           <div class="field grow">
             <label for="tokenNuevo">Token de GitHub</label>
             <input type="password" id="tokenNuevo" placeholder="github_pat_…" autocomplete="off">
@@ -121,7 +121,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <div class="finder-body">
         <h3 class="watch-head">Sin dueño</h3>
         <p class="finder-lede" id="huerfanosLede"></p>
-        <form id="formHuerfanos" class="finder-form">
+        <form id="formHuerfanos" class="finder-form estrecha-form">
           <div class="field grow">
             <label for="huerfanosPara">Asignárselo a</label>
             <select id="huerfanosPara"></select>
@@ -630,8 +630,15 @@ function pedir(titulo, campos, alAceptar) {
     const valores = {};
     campos.forEach((c) => (valores[c.id] = caja.querySelector(`#${c.id}`).value.trim()));
     tfOcupado(enviar, true, "Guardando…");
+    const msg = caja.querySelector("#modalMsg");
     try {
-      await alAceptar(valores, caja.querySelector("#modalMsg"));
+      await alAceptar(valores, msg);
+    } catch (err) {
+      // Sin esto, cualquier excepción de dentro —`tfHash` sin https, un sobre
+      // que no cuadra— dejaba "Guardando…" en pantalla para siempre y sin
+      // decir nada: se leía como "el botón no hace nada".
+      msg.textContent = "No se pudo: " + (err && err.message ? err.message : err);
+      if (typeof tfApuntar === "function") tfApuntar("panel", "fallo en un formulario", String(err));
     } finally {
       tfOcupado(enviar, false);
     }
