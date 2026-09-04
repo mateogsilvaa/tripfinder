@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-04T17:35:31+00:00",
+  "updated": "2026-09-04T17:35:47+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -41,8 +41,8 @@
       "user": "tytustetona",
       "name": "tytus",
       "email": "tytus.zasowski@gmail.com",
-      "salt": "886J+Kim4W3aw1PNr4d8WA==",
-      "hash": "+TVRV/CvYPK5TV/8YwCi82+KDRfHdtFHLBQsBwXi2v0=",
+      "salt": "gvx0CCFT+aLoDsyVT68eGw==",
+      "hash": "6q5YaQB4s1ei+1KMBYgFp0T7OOE3EGp/gTgnRkjH3ac=",
       "iterations": 210000,
       "created": "2026-08-24T10:31:44+00:00",
       "active": true,
@@ -53,10 +53,10 @@
         "seguimientos_solo_novedades": false
       },
       "sobre": {
-        "data": "XqalFoXhW1nfbfhP1p3LLe97oP+fX1vatXC4yssHWu4x/kAnh7Bw597zcnS/MqzG6iCVJoizW5+fDeTD",
+        "data": "bXdnF6FtO110NFX2O+pc/CpthfGkMJOGyFscyhuecPrP/KEYu3AnRgbxxR7XLr2TBAovfXxsG79y3XxR",
         "iterations": 210000,
-        "iv": "KaWawjDgrtCjQIJx",
-        "salt": "QTNBBwSSKDReO6aQ5Mrgtg=="
+        "iv": "s2AXghKM7BrH5Ceg",
+        "salt": "qIShHQ3ogzkcJb2jG6HrkA=="
       }
     }
   ],
