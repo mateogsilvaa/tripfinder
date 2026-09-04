@@ -41,14 +41,18 @@ jobs:
           # Varios de golpe: la web junta los borrados de una tacada y manda
           # UNA sola llamada, en vez de un workflow entero por cada fichero.
           IDS: ${{ toJSON(github.event.client_payload.ids) }}
-          DEST: ${{ github.event.client_payload.dest }}
           LABEL: ${{ github.event.client_payload.label }}
-          DEPART: ${{ github.event.client_payload.depart }}
-          RETURN_DATE: ${{ github.event.client_payload.return_date }}
-          MAXP: ${{ github.event.client_payload.max_price }}
-          MONTHS: ${{ github.event.client_payload.months }}
-          ADULTS: ${{ github.event.client_payload.adults }}
-          WEEKEND: ${{ github.event.client_payload.weekend }}
+          # El encargo viaja JUNTO, en un objeto: GitHub solo admite diez
+          # propiedades de primer nivel en `client_payload` y sueltas eran
+          # once, asi que apuntar un destino concreto devolvia un 422. Un
+          # objeto cuenta como una y dentro caben las que hagan falta.
+          DEST: ${{ github.event.client_payload.viaje.dest }}
+          DEPART: ${{ github.event.client_payload.viaje.depart }}
+          RETURN_DATE: ${{ github.event.client_payload.viaje.return_date }}
+          MAXP: ${{ github.event.client_payload.viaje.max_price }}
+          MONTHS: ${{ github.event.client_payload.viaje.months }}
+          ADULTS: ${{ github.event.client_payload.viaje.adults }}
+          WEEKEND: ${{ github.event.client_payload.viaje.weekend }}
           # De donde sale: la web manda "formulario" o "test" (#13).
           SOURCE: ${{ github.event.client_payload.source }}
           OWNER: ${{ github.event.client_payload.owner }}

@@ -1999,7 +1999,10 @@ h1 em { font-size: 1.3em; }
   .cuenta:not(.dentro) > b { display: none; }
 
   /* DENSIDAD. A 375 px el clamp del titular deja 40 px, que es demasiado. */
-  .masthead { padding: 28px 0 22px; }
+  /* OJO con el 0: el handoff traía `28px 0 22px` y ese cero se lleva por
+     delante `--pad-page`, así que el titular y la entradilla quedaban pegados
+     al borde de la pantalla mientras el resto de la página sí tenía margen. */
+  .masthead { padding: 28px var(--pad-page) 22px; }
   .masthead h1 { font-size: 36px; }
   .stats dd { font-size: 21px; }
   .ticket-izq, .ticket-der { padding: 18px; }
@@ -2044,6 +2047,10 @@ h1 em { font-size: 1.3em; }
   .cuenta-row > .detalle { grid-area: 3 / 1 / 4 / 3; }
 
   .finder-form .party { grid-template-columns: 1fr 1fr; gap: 14px; }
+  /* Impar y último: ocupa la fila entera. Con tres campos —el de seguir los
+     tiene— la rejilla de dos dejaba media celda vacía enseñando el fondo. */
+  .finder-form .party > label:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .stats > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
   /* Los tramos se doblan a dos columnas pero SIN abrir el hueco: la separación
      es la misma rejilla de un píxel, si no el fondo asoma como una banda gris. */
   .legs { grid-template-columns: 1fr 1fr; gap: 1px; }

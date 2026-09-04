@@ -165,17 +165,27 @@ self.addEventListener("fetch", (ev) => {
 
       // El armazón: caché primero, porque no cambia hasta el próximo despliegue
       // y esperar a la red para pintar la misma página es tiempo regalado.
-      const guardado = await caches.match(req, { ignoreSearch: true });
+      //
+      // Pero SOLO en la caché de ESTA versión. `caches.match` a secas busca en
+      // TODAS, y con `ignoreSearch` eso significa que un `styles.css?v=nuevo`
+      // encajaba con el `styles.css` que dejó una versión anterior: mientras
+      // esa caché siguiera existiendo —hasta que el worker nuevo llegue a
+      // activarse— se servía el CSS viejo con el HTML nuevo. Mitad y mitad es
+      // peor que viejo entero, porque no se parece a nada que se haya
+      // publicado nunca.
+      //
+      // `ignoreSearch` sigue haciendo falta DENTRO de la caché buena: al
+      // instalar se guardan las rutas peladas y las páginas las piden con su
+      // `?v=`.
+      const cache = await caches.open(ARMAZON);
+      const guardado = await cache.match(req, { ignoreSearch: true });
       if (guardado) return guardado;
       try {
         const r = await fetch(req);
         // Solo se guarda lo que está en la lista. Guardar CUALQUIER `.html` que
         // pase es como acabó el panel dentro de la caché sin que nadie lo
         // pusiera ahí: una página que no se ha pensado para servirse vieja.
-        if (r.ok && enLaLista(url.pathname)) {
-          const cache = await caches.open(ARMAZON);
-          cache.put(req, r.clone());
-        }
+        if (r.ok && enLaLista(url.pathname)) cache.put(req, r.clone());
         return r;
       } catch (err) {
         // Una página que no está guardada y no hay red: la 404 del sitio dice

@@ -66,17 +66,22 @@ on("#watchForm", "submit", async (e) => {
   ].join(" · ");
   const r = await dispatch("watch", {
     ...comoDueno(),
-    dest,
     label: etiqueta,
-    depart: fecha,
-    return_date: vuelta,
-    max_price: $("#wMax").value,
-    months: $("#wMonths").value || "6",
-    adults: $("#wAdults").value || "2",
-    weekend: cuando === "weekend" ? "si" : "no",
     // De donde sale este seguimiento. El test de destinos manda "test" cuando
     // lo haya; asi se puede ver si trae gente o si todos acaban aqui (#13).
     source: "formulario",
+    // Los datos del viaje van JUNTOS, en un objeto: GitHub solo admite diez
+    // propiedades de primer nivel y sueltas eran once, asi que apuntar un
+    // destino concreto devolvia un 422 y no se guardaba nada.
+    viaje: {
+      dest,
+      depart: fecha,
+      return_date: vuelta,
+      max_price: $("#wMax").value,
+      months: $("#wMonths").value || "6",
+      adults: $("#wAdults").value || "2",
+      weekend: cuando === "weekend" ? "si" : "no",
+    },
   });
   if (r.ok) {
     $("#watches").insertAdjacentHTML(

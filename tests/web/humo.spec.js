@@ -1055,6 +1055,82 @@ test.describe("el panel de administración en un móvil", () => {
   });
 });
 
+/* EL LÍMITE DE LAS DIEZ PROPIEDADES.
+
+   `repository_dispatch` solo admite diez propiedades de primer nivel en
+   `client_payload`. Pasarse devuelve un 422 —«No more than 10 properties are
+   allowed»— que la web enseña tal cual y que no dice qué encargo lo rompió.
+   Este código ya chocó con ese límite una vez y se arregló contando campos a
+   mano; en cuanto alguien añadió uno más, volvió: apuntar un destino concreto
+   mandaba once y no se guardaba nada.
+
+   Contar a mano no es una defensa. Esto lo cuenta por su cuenta. */
+test.describe("un encargo cabe en lo que GitHub admite", () => {
+  const SESION = { uid: "u-p", user: "p", name: "P" };
+
+  const conSesion = (page) =>
+    page.addInitScript((s) => {
+      try {
+        localStorage.setItem("tf_sesion", JSON.stringify(s));
+        localStorage.setItem("tf_token", "ghp_de_mentira");
+      } catch (e) { /* nada */ }
+    }, SESION);
+
+  test("seguir un destino concreto no se pasa de diez", async ({ page }) => {
+    await conSesion(page);
+    let enviado = null;
+    await page.route("**/api.github.com/**", (r) => {
+      enviado = JSON.parse(r.request().postData() || "{}");
+      return r.fulfill({ status: 204, body: "" });
+    });
+    await page.goto("/seguimientos.html", { waitUntil: "domcontentloaded" });
+    // El formulario nace candado hasta que se sabe que hay acceso.
+    await page.evaluate(() =>
+      document.querySelectorAll("#watchForm [disabled]").forEach((e) => (e.disabled = false))
+    );
+    // "Un sitio concreto" es lo que añade `dest`, y con él eran once.
+    await page.selectOption("#wWhere", "one");
+    await page.evaluate(() => {
+      const d = document.querySelector("#wDest");
+      if (d) d.value = "Albania";
+    });
+    await page.click('[form="watchForm"], #watchForm button[type=submit]');
+    // Lo primero, lo que ve quien lo pulsa: que quedó apuntado y no un 422.
+    await expect(page.locator("#watches")).toContainText(/apuntado/i, { timeout: 15000 });
+    await expect(page.locator("#watches")).not.toContainText(/422|no more than/i);
+
+    expect(enviado, "no salió ningún encargo a la red").toBeTruthy();
+    expect(enviado.event_type).toBe("watch");
+    const claves = Object.keys(enviado.client_payload);
+    expect(claves.length, `mandó ${claves.length}: ${claves.join(", ")}`).toBeLessThanOrEqual(10);
+    // Y lo que el workflow necesita sigue llegando, agrupado.
+    expect(enviado.client_payload.viaje).toBeTruthy();
+    expect(enviado.client_payload.source).toBe("formulario");
+  });
+
+  /* Y si alguien vuelve a pasarse, que lo diga aquí y con nombres, en vez de
+     dejar que lo diga GitHub con un 422 delante de quien pulsó el botón. */
+  test("pasarse se avisa antes de salir a la red, con los campos", async ({ page }) => {
+    await conSesion(page);
+    let llamadas = 0;
+    await page.route("**/api.github.com/**", (r) => {
+      llamadas += 1;
+      return r.fulfill({ status: 204, body: "" });
+    });
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    const r = await page.evaluate(async () => {
+      const { dispatch } = await import("./js/disparador.js");
+      const once = {};
+      for (let i = 0; i < 11; i++) once["c" + i] = String(i);
+      return dispatch("watch", once);
+    });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/11 propiedades/);
+    expect(r.reason).toMatch(/c0, c1/);
+    expect(llamadas, "no se llega a molestar a GitHub").toBe(0);
+  });
+});
+
 test.describe("el calendario", () => {
   const abrir = async (page) => {
     await page.goto("/buscar.html");
@@ -1278,6 +1354,36 @@ test.describe("la aplicación instalable", () => {
      arreglos del panel publicados y en el navegador seguía corriendo el de la
      semana anterior. Un fallo que hace invisibles los arreglos es peor que el
      fallo que arreglaban. */
+  /* MITAD Y MITAD ES PEOR QUE VIEJO ENTERO. `caches.match` a secas busca en
+     TODAS las cachés, y con `ignoreSearch` un `styles.css?v=nuevo` encajaba con
+     el `styles.css` que dejó una versión anterior. Mientras esa caché siguiera
+     existiendo se servía el CSS viejo con el HTML nuevo, que no se parece a
+     nada que se haya publicado nunca. */
+  test("una caché de otra versión no puede contestar", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await registrado(page);
+    // El caso real: la caché de ESTA versión todavía no tiene la pieza —una
+    // instalación a medias, o un fichero que no está en `PIEZAS`— y una caché
+    // de antes sí. Con la búsqueda global, contestaba la de antes.
+    await page.evaluate(async () => {
+      const url = new URL("./styles.css", location.href).toString();
+      for (const k of await caches.keys()) {
+        const c = await caches.open(k);
+        for (const r of await c.keys()) if (r.url.includes("styles.css")) await c.delete(r);
+      }
+      const vieja = await caches.open("tf-armazon-de-antes");
+      await vieja.put(
+        new Request(url),
+        new Response("/* CSS DE OTRA VERSION */", { headers: { "Content-Type": "text/css" } })
+      );
+    });
+    const servido = await page.evaluate(async () => {
+      const r = await fetch("./styles.css?v=loquesea");
+      return (await r.text()).slice(0, 40);
+    });
+    expect(servido).not.toContain("OTRA VERSION");
+  });
+
   test("el panel nunca se guarda en la caché", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await registrado(page);

@@ -362,7 +362,9 @@ test.describe("el test de destinos", () => {
     expect(enviado.client_payload.source).toBe("test");
     expect(enviado.client_payload.label).toMatch(/^Test · /);
     expect(enviado.client_payload.owner).toBe(SESION.uid);
-    expect(Number(enviado.client_payload.max_price)).toBeGreaterThan(0);
+    expect(Number(enviado.client_payload.viaje.max_price)).toBeGreaterThan(0);
+    // GitHub solo admite diez de primer nivel: pasarse es un 422 en la cara.
+    expect(Object.keys(enviado.client_payload).length).toBeLessThanOrEqual(10);
   });
 
   test("los tres se pueden apuntar y cada uno es distinto", async ({ page }) => {
@@ -378,7 +380,7 @@ test.describe("el test de destinos", () => {
     const n = await botones.count();
     for (let i = 0; i < n; i++) await botones.nth(i).click();
     await expect(page.locator(".quiz-estado", { hasText: /apuntado/i })).toHaveCount(n);
-    expect(new Set(enviados.map((p) => p.dest)).size).toBe(n);
+    expect(new Set(enviados.map((p) => p.viaje.dest)).size).toBe(n);
   });
 
   test("sin sesión sale la caja de entrar y el test NO se pierde", async ({ page }) => {
