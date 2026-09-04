@@ -1,4 +1,4 @@
-/* motor.js — De seis respuestas a tres destinos, sin pedirle nada a nadie (#8).
+/* motor.js — De diez respuestas a tres destinos, sin pedirle nada a nadie (#8).
 
    Todo pasa en el navegador y con datos que ya se publican: `offers.json` (lo
    vivo), `perfiles.json` (a qué se parece cada sitio) y el histórico que ya
@@ -33,13 +33,17 @@ export function perfilDe(iata) {
 
 /* ---------------------------------------------------------------- los filtros
    `respuestas` es lo que sale del test:
-     apetece  · una de playa|ciudad|naturaleza|noche|gastronomia
-     noches   · [min, max]
-     tope     · euros POR PERSONA
-     personas · cuántos van
-     madrugar · false si no quiere llegar de noche
-     meses    · horizonte en meses
-     lejos    · true (otro continente), false (cerca) o null (le da igual) */
+     apetece   · una de playa|ciudad|naturaleza|noche|gastronomia
+     ademas    · otra de las mismas, o null: suma, nunca descarta
+     noches    · [min, max]
+     finde     · true si tiene que caer en fin de semana
+     tope      · euros POR PERSONA
+     personas  · cuántos van
+     prioridad · barato|cunda|equilibrio: mueve los pesos, no filtra
+     directo   · true si no quiere escalas
+     madrugar  · false si no quiere llegar de noche
+     meses     · horizonte en meses
+     lejos     · true (otro continente), false (cerca) o null (le da igual) */
 /* Devuelve null cuando no hay hora, y eso importa: `"".split(":")` da `[""]`,
    y `Number("")` es 0, que es finito. Sin el guardia, una oferta SIN horas
    —las hay— contaba como salida a las 00:00 y se caía del listado de quien
@@ -77,6 +81,8 @@ export function pasaLosFiltros(o, r, tope) {
     if (noches < r.noches[0] || noches > r.noches[1]) return false;
   }
   if (r.finde && !o.weekend) return false;
+  // `stops` puede no venir en ofertas viejas: sin el dato no se descarta nada.
+  if (r.directo === true && Number(o.stops || 0) > 0) return false;
   if (r.lejos === true && !o.long_haul) return false;
   if (r.lejos === false && o.long_haul) return false;
   if (r.madrugar === false && esDeMadrugada(o)) return false;
@@ -106,10 +112,24 @@ export function afinidad(iata, apetece) {
   return tags[0] === apetece ? 1 : 0.7;
 }
 
+/* El test pregunta dos gustos: uno principal y otro "y algo más". El segundo
+   SUMA, nunca descarta —si descartara, pedir dos cosas devolvería casi nada— y
+   pesa un tercio: acertar con lo segundo mejora el sitio, no lo decide.
+
+   El resultado se queda en [0, 1] para no romper los pesos, que suman uno. */
+export const PESO_SEGUNDO_GUSTO = 0.35;
+
+export function afinidadCon(iata, r) {
+  const principal = afinidad(iata, r.apetece);
+  if (!r.ademas || r.ademas === r.apetece) return principal;
+  const segundo = afinidad(iata, r.ademas);
+  return Math.min(1, principal + PESO_SEGUNDO_GUSTO * segundo);
+}
+
 export function puntuar(o, r, tope, pesos = pesosDe(r.prioridad)) {
   const precio = porPersona(o);
   return (
-    pesos.tags * afinidad(o.destination, r.apetece) +
+    pesos.tags * afinidadCon(o.destination, r) +
     // Margen que deja bajo el tope: a igualdad de todo lo demás, mejor la que
     // deja dinero para cenar.
     pesos.precio * acotar(tope > 0 ? (tope - precio) / tope : 0) +
@@ -242,9 +262,18 @@ export function porque(o, r, tope) {
   const precio = porPersona(o);
   const encaja = afinidad(o.destination, r.apetece) >= 0.7;
   const pedido = COMO_SE_LLAMA[r.apetece] || "";
+  const segundo = COMO_SE_LLAMA[r.ademas] || "";
 
   const motivos = [];
-  if (encaja && pedido) motivos.push(`dijiste ${pedido}`);
+  // Acertar con las DOS cosas que pediste es el mejor motivo que hay: se dice
+  // primero y junto, no como dos frases sueltas.
+  if (encaja && pedido && segundo && afinidad(o.destination, r.ademas) > 0) {
+    motivos.push(`es ${pedido} y además ${segundo}`);
+  } else if (encaja && pedido) {
+    motivos.push(`dijiste ${pedido}`);
+  } else if (segundo && afinidad(o.destination, r.ademas) > 0) {
+    motivos.push(`pediste algo de ${segundo}`);
+  }
   if (tope > 0 && precio <= tope * 0.75) {
     motivos.push(
       `se queda en ${Math.round(precio)} € de los ${Math.round(Number(r.tope) || tope)} que dabas`
@@ -256,6 +285,10 @@ export function porque(o, r, tope) {
   }
   if (r.madrugar === false && !esDeMadrugada(o)) motivos.push("no hay que madrugar");
   if (r.finde && o.weekend) motivos.push("cae en finde");
+  if (r.directo === true && Number(o.stops || 0) === 0) motivos.push("es directo");
+  if (r.prioridad === "cunda" && Number(o.useful_hours) >= 40) {
+    motivos.push(`te deja ${Math.round(Number(o.useful_hours))} h allí`);
+  }
 
   // "a, b y c": la coma de antes de la y sobra en castellano.
   const enumerar = (xs) =>

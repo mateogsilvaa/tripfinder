@@ -672,6 +672,30 @@ async function tfAbrirCuenta() {
       <p class="token-status" id="tfPrefsMsg"></p>
       <button class="btn primary" type="submit">Guardar</button>
       <button class="btn ghost" type="button" id="tfSalir">Salir de la cuenta</button>
+    </form>
+
+    <form id="tfClaveForm" class="modal-form tf-bloque">
+      <h3>Cambiar tu contraseña</h3>
+      ${
+        // Hace falta poder escribir Y tener un sobre que abrir: sin sobre no
+        // hay clave maestra que volver a cerrar, y cambiar solo la contraseña
+        // dejaría la cuenta entrando en la web pero sin poder lanzar nada.
+        puede && yo.sobre && yo.sobre.data && !yo.sobre.stale
+          ? `<p class="meta">Hace falta la de ahora: con ella se abre tu sobre —el que
+             guarda tu acceso— y se vuelve a cerrar con la nueva. Si se cambiara solo
+             la contraseña, entrarías pero ya no podrías lanzar nada.</p>
+      <label for="tfClaveVieja">La de ahora</label>
+      ${tfCampoClave("tfClaveVieja")}
+      <label for="tfClaveNueva">La nueva</label>
+      ${tfCampoClave("tfClaveNueva", "new-password")}
+      <label for="tfClaveRepe">Otra vez, para no jugársela</label>
+      ${tfCampoClave("tfClaveRepe", "new-password")}
+      <p class="token-status" id="tfClaveMsg"></p>
+      <button class="btn primary" type="submit">Cambiar la contraseña</button>`
+          : `<p class="meta"><span class="ojo">Esta cuenta no puede cambiarse la contraseña
+             sola.</span> Cambiarla sin poder rehacer el sobre te dejaría fuera del todo,
+             así que tiene que hacerlo el administrador desde el panel.</p>`
+      }
     </form>`);
 
   caja.querySelector("#tfSalir").addEventListener("click", () => {
@@ -679,6 +703,9 @@ async function tfAbrirCuenta() {
     tfCerrarModal();
     location.reload();
   });
+
+  tfWireVerClave(caja);
+  tfCambiarMiClave(caja, s, yo);
 
   const guardar = caja.querySelector("#tfPrefsForm button[type=submit]");
   caja.querySelector("#tfPrefsForm").addEventListener("submit", async (e) => {
@@ -702,6 +729,86 @@ async function tfAbrirCuenta() {
     msg.textContent = r.ok
       ? "Guardado. Tarda un par de minutos en publicarse."
       : tfExplicarFallo(r);
+  });
+}
+
+/* Cambiarse uno mismo la contraseña.
+
+   Hasta ahora solo se podía desde el panel, así que "quiero otra contraseña"
+   era un recado para el administrador. Se puede hacer entero en el navegador,
+   porque todo lo que hace falta está aquí: la contraseña de ahora abre el
+   sobre y saca la clave maestra, y esa misma clave se vuelve a cerrar con la
+   nueva. Las dos cosas —credencial y sobre— viajan juntas en el mismo
+   `user_passwd`, que es justo lo que `cambiar_password` espera; mandar una sin
+   la otra deja la cuenta entrando en la web pero sin poder abrir el token.
+
+   Lo que NO se puede hacer desde aquí es comprobar de verdad quién eres: el
+   `dispatch` va con el token del sitio, que es el mismo para todas las
+   cuentas, así que el workflow se fía de lo que le llega. Eso ya era así antes
+   de esto —cualquiera con sesión podía mandar un `user_passwd` a mano— y no
+   cambia con esta pantalla; lo que cambia es que ahora el gesto legítimo tiene
+   dónde hacerse. La comprobación de la contraseña de ahora está para evitar
+   que te la cambies sin querer, no para parar a nadie. */
+function tfCambiarMiClave(caja, sesion, yo) {
+  const form = caja.querySelector("#tfClaveForm");
+  const boton = form ? form.querySelector("button[type=submit]") : null;
+  if (!form || !boton) return;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (boton.disabled) return;
+    const msg = caja.querySelector("#tfClaveMsg");
+    const vieja = caja.querySelector("#tfClaveVieja").value;
+    const nueva = caja.querySelector("#tfClaveNueva").value;
+    const repe = caja.querySelector("#tfClaveRepe").value;
+
+    if (nueva.length < 8) {
+      msg.textContent = "La nueva, de 8 caracteres o más.";
+      return;
+    }
+    if (nueva !== repe) {
+      msg.textContent = "Las dos nuevas no coinciden.";
+      return;
+    }
+    if (nueva === vieja) {
+      msg.textContent = "Esa es la que ya tienes.";
+      return;
+    }
+
+    msg.textContent = "Comprobando…";
+    tfOcupado(boton, true);
+    try {
+      if (!(await tfComprobar(vieja, yo))) {
+        msg.textContent = "La de ahora no es esa.";
+        return;
+      }
+      // El sobre es lo que de verdad hay que rehacer: sin la clave maestra no
+      // hay sobre nuevo y cambiar la contraseña sería dejarse fuera.
+      const maestra = await tfAbrirSobre(vieja, yo.sobre);
+      if (!maestra) {
+        msg.textContent =
+          "Tu contraseña es correcta, pero tu sobre no se abre con ella: pídele al " +
+          "administrador que te ponga una contraseña nueva desde el panel.";
+        return;
+      }
+      msg.textContent = "Guardando…";
+      tfOcupado(boton, true, "Guardando…");
+      const cred = await tfHash(nueva);
+      const sobre = await tfHacerSobre(nueva, maestra);
+      const r = await tfDispatch("user_passwd", { user: sesion.user, ...cred, sobre });
+      if (!r.ok) {
+        msg.textContent = tfExplicarFallo(r);
+        return;
+      }
+      form.querySelectorAll("input").forEach((i) => (i.value = ""));
+      msg.textContent =
+        "Cambiada. Tarda un par de minutos en publicarse: hasta entonces sigue " +
+        "valiendo la de antes.";
+    } catch (err) {
+      msg.textContent = "No se pudo: " + (err && err.message ? err.message : err);
+    } finally {
+      tfOcupado(boton, false);
+    }
   });
 }
 

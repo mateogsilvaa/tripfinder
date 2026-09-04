@@ -65,20 +65,35 @@ async function conSesion(page) {
   }, SESION);
 }
 
-/* Contesta el test entero pulsando la primera opción de cada pregunta. */
-/* Contesta el test entero. Por defecto: playa · dos noches · hasta 100 € · yo
-   solo · me importa madrugar · cuando sea. Se elige "cuando sea" a propósito:
-   el horizonte de meses no es lo que se está probando aquí, y con "pronto" la
-   prueba hablaría más del calendario que del test. */
-const POR_DEFECTO = [0, 0, 1, 0, 0, 2, 1];
+/* Contesta el test entero. Por defecto: playa · con eso vale · dos noches · el
+   finde da igual · hasta 100 € · yo solo · término medio · el directo da igual
+   · me importa madrugar · cuando sea.
+
+   Las dos "me da igual" y el "cuando sea" son a propósito: el horizonte de
+   meses, las escalas y el finde no son lo que se está probando aquí, y
+   apretarlos haría que estas pruebas hablasen del catálogo de ejemplo en vez
+   del test. `lejos` no sale con playa y dos noches, así que son diez.
+
+   El índice es por posición, así que si se añade o se mueve una pregunta hay
+   que tocar esta lista: es el precio de contestar por posición, y el aviso de
+   abajo lo hace evidente en vez de dejar que la prueba pase por otro camino. */
+const POR_DEFECTO = [0, 4, 0, 1, 1, 0, 2, 1, 0, 2];
+const CUANTAS_PREGUNTAS = POR_DEFECTO.length;
 
 async function hacerloEntero(page, elecciones = POR_DEFECTO) {
   await page.click("#tfDescubrir");
   await expect(page.locator(".quiz-pregunta")).toBeVisible();
-  for (let i = 0; i < 8; i++) {
+  // El total lo dice la propia pantalla: si el test crece y esta lista no, la
+  // prueba lo dice aquí en vez de fallar tres asertos más abajo.
+  const rotulo = await page.locator(".quiz-cuenta").textContent();
+  const total = Number((rotulo || "").match(/de (\d+)/)?.[1] || 0);
+  expect(total, "el test tiene otro número de preguntas que POR_DEFECTO").toBe(
+    CUANTAS_PREGUNTAS
+  );
+  for (let i = 0; i < CUANTAS_PREGUNTAS + 2; i++) {
     const opciones = page.locator(".quiz-opcion");
-    if (!(await opciones.count())) break;
     const cuantas = await opciones.count();
+    if (!cuantas) break;
     await opciones.nth(Math.min(elecciones[i] ?? 0, cuantas - 1)).click();
   }
   await expect(page.locator("#tfQuizCuerpo")).toBeVisible();
@@ -164,7 +179,7 @@ test.describe("el test de destinos", () => {
     await page.locator("#tfDescubrir").focus();
     await page.keyboard.press("Enter");
     await expect(page.locator(".quiz-pregunta")).toBeVisible();
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < CUANTAS_PREGUNTAS + 2; i++) {
       if (!(await page.locator(".quiz-opcion").count())) break;
       await page.keyboard.press("1");
     }
@@ -218,6 +233,84 @@ test.describe("el test de destinos", () => {
     await expect(page.locator("#tfAnuncios")).toContainText(/pregunta 1 de/i);
     await page.locator(".quiz-opcion").first().click();
     await expect(page.locator("#tfAnuncios")).toContainText(/pregunta 2 de/i);
+  });
+
+  // ------------------------------------------------- que se note que es tuyo
+  /* Diez preguntas y un titular genérico hacen que el resultado parezca sacado
+     de una chistera. Lo que lo vuelve personal es doble: que se pregunte lo
+     que de verdad cambia el resultado, y que al final se te devuelva lo que
+     pediste con tus palabras. */
+  test("la barra dice en qué capítulo vas, no solo cuánto queda", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await page.click("#tfDescubrir");
+    await expect(page.locator(".quiz-capitulo")).toHaveText(/el viaje/i);
+    // Cuánto queda lo dicen las casillas y el "1 de 10", no el capítulo.
+    await expect(page.locator(".quiz-cuenta")).toHaveText(/^1 de 10$/);
+    // Hasta el final del test se pasa por los tres capítulos.
+    const vistos = new Set();
+    for (let i = 0; i < CUANTAS_PREGUNTAS; i++) {
+      const t = await page.locator(".quiz-capitulo").textContent();
+      vistos.add((t || "").trim().toLowerCase());
+      const opciones = page.locator(".quiz-opcion");
+      if (!(await opciones.count())) break;
+      await opciones.nth(POR_DEFECTO[i] ?? 0).click();
+    }
+    expect([...vistos]).toEqual(
+      expect.arrayContaining(["el viaje", "el dinero", "el vuelo"])
+    );
+  });
+
+  test("«¿y algo más?» no vuelve a ofrecer lo que ya elegiste", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await page.click("#tfDescubrir");
+    const primeras = await page.locator(".quiz-opcion .quiz-texto b").allTextContents();
+    expect(primeras).toContain("Salir de noche"); // la etiqueta que no se podía pedir
+    await page.locator(".quiz-opcion").first().click(); // playa
+    await expect(page.locator(".quiz-pregunta")).toContainText(/algo más/i);
+    const segundas = await page.locator(".quiz-opcion .quiz-texto b").allTextContents();
+    expect(segundas).not.toContain("Playa");
+    expect(segundas).toContain("Con eso vale");
+  });
+
+  test("el resultado te devuelve lo que pediste, con tus palabras", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    // playa · y comer bien · dos noches · en finde · hasta 100 € · yo solo ·
+    // que sea barato · directo · me importa madrugar · cuando sea
+    await hacerloEntero(page, [0, 1, 0, 0, 1, 0, 0, 0, 0, 2]);
+    const tuyo = page.locator(".quiz-tuyo");
+    await expect(tuyo).toBeVisible();
+    await expect(tuyo).toContainText(/playa con algo de comer bien/i);
+    await expect(tuyo).toContainText(/2 noches/);
+    await expect(tuyo).toContainText(/en finde/i);
+    await expect(tuyo).toContainText(/directo/i);
+    await expect(tuyo).toContainText(/sin madrugar/i);
+    await expect(tuyo).toContainText(/hasta 100/);
+    await expect(tuyo).toContainText(/lo barato manda/i);
+  });
+
+  /* Un test contestado antes de que existieran estas preguntas sigue guardado
+     tal cual: al volver tiene que recalcular, no romperse ni cambiarle a nadie
+     la prioridad por su cuenta. */
+  test("un test guardado de antes sigue valiendo", async ({ page }) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem(
+          "tf_quiz",
+          JSON.stringify({
+            respuestas: {
+              apetece: "playa", noches: [2, 2], tope: 60,
+              personas: 1, madrugar: false, meses: 10,
+            },
+            cuando: Date.now(),
+          })
+        );
+      } catch (e) { /* nada */ }
+    });
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await page.click("#tfDescubrir");
+    await expect(page.locator(".quiz-billete").first()).toBeVisible();
+    // 60 € se deducía como "barato": esa es la prioridad que esa persona vio.
+    await expect(page.locator(".quiz-tuyo")).toContainText(/lo barato manda/i);
   });
 
   // ------------------------------------------------------------ las tarjetas (#9)
