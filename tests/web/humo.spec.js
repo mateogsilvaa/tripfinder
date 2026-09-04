@@ -1271,6 +1271,35 @@ test.describe("la aplicación instalable", () => {
       timeout: 15000,
     });
 
+  /* EL PANEL NO SE CACHEA. Lo de arriba comprueba que no se REGISTRA nada en
+     el panel; esto es lo otro, que costó tres despliegues descubrir: el worker
+     controla el scope entero, así que veía el panel igual, se lo guardaba
+     —cualquier `.html` que pasara— y lo servía de la caché. Resultado: tres
+     arreglos del panel publicados y en el navegador seguía corriendo el de la
+     semana anterior. Un fallo que hace invisibles los arreglos es peor que el
+     fallo que arreglaban. */
+  test("el panel nunca se guarda en la caché", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await registrado(page);
+    await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await registrado(page);
+
+    const guardado = await page.evaluate(async () => {
+      const fuera = [];
+      for (const k of await caches.keys()) {
+        const c = await caches.open(k);
+        for (const r of await c.keys()) {
+          const p = new URL(r.url).pathname;
+          if (p.endsWith("/admin.html")) fuera.push(k + " → " + p);
+        }
+      }
+      return fuera;
+    });
+    expect(guardado, "el panel no puede quedarse guardado").toEqual([]);
+  });
+
   test("se registra en la portada y no en el panel", async ({ page }) => {
     await page.goto("/index.html");
     await registrado(page);
