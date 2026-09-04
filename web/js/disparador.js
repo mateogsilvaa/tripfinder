@@ -10,7 +10,28 @@
    La llamada vive en auth.js porque el panel de administracion tambien la usa
    para dar de alta cuentas, y dos copias de esto acaban diciendo cosas
    distintas el dia que GitHub cambia un codigo de error. */
-export const dispatch = (evento, payload) => tfDispatch(evento, payload);
+/* GitHub solo admite DIEZ propiedades de primer nivel en `client_payload`, y
+   pasarse devuelve un 422 que no dice qué encargo lo rompió. Este código ya
+   chocó con ese límite una vez, se arregló contando propiedades a mano, y
+   volvió a pasarse en cuanto alguien añadió un campo. Contar a mano no es una
+   defensa: esto lo dice aquí, con el nombre del evento y de los campos, en vez
+   de dejar que lo cuente GitHub cuando el usuario le da al botón.
+
+   La forma de no chocar no es quitar campos, es anidarlos: un objeto cuenta
+   como UNA propiedad y dentro caben los que hagan falta. */
+export const TOPE_PROPIEDADES = 10;
+
+export const dispatch = (evento, payload) => {
+  const claves = Object.keys(payload || {});
+  if (claves.length > TOPE_PROPIEDADES) {
+    const aviso =
+      `El encargo "${evento}" lleva ${claves.length} propiedades y GitHub admite ` +
+      `${TOPE_PROPIEDADES}. Hay que agrupar campos en un objeto: ${claves.join(", ")}.`;
+    if (typeof tfApuntar === "function") tfApuntar("dispatch", `${evento}: demasiadas`, aviso);
+    return Promise.resolve({ ok: false, reason: aviso });
+  }
+  return tfDispatch(evento, payload);
+};
 
 /* Lo que va en cada encargo para saber de quien es. Sin sesion va vacio: eso
    es un encargo compartido, como los de antes de que hubiera cuentas. */

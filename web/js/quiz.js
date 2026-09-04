@@ -526,15 +526,18 @@ async function avisarme(i, boton) {
   estado.textContent = "Apuntando…";
   const res = await dispatch("watch", {
     ...comoDueno(),
-    dest: o.destination,
     label: etiqueta,
-    max_price: String(Math.round(Number(r.tope) || 0)),
-    months: String(r.meses || 6),
-    adults: String(r.personas || 1),
-    weekend: r.finde ? "si" : "no",
     // De dónde viene (#13): es justo la pregunta que el campo existe para
     // contestar, si el test trae gente o si todos acaban en el formulario.
     source: "test",
+    // Mismo sobre que el del formulario: un solo objeto con el encargo.
+    viaje: {
+      dest: o.destination,
+      max_price: String(Math.round(Number(r.tope) || 0)),
+      months: String(r.meses || 6),
+      adults: String(r.personas || 1),
+      weekend: r.finde ? "si" : "no",
+    },
   });
 
   if (res.ok) {
