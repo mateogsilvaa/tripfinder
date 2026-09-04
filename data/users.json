@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-04T17:35:23+00:00",
+  "updated": "2026-09-04T17:35:31+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -18,8 +18,8 @@
       "user": "mateogsilvaa",
       "name": "mateo",
       "email": "mateogonsilva@gmail.com",
-      "salt": "43c1O8mVXzpqDxgB0O5gZA==",
-      "hash": "lwfX0Yk5hjAKQybsI0dhANaSOySsO7oI3CWyzjrdv88=",
+      "salt": "ID/JAuRFxWglDljPXWBy2g==",
+      "hash": "qzvIVlW5GoXoSXC9SaKSOU7S48pjO56qHKJtUOjFHCA=",
       "iterations": 210000,
       "created": "2026-08-23T22:46:48+00:00",
       "active": true,
@@ -29,7 +29,12 @@
         "seguimientos": "diario",
         "seguimientos_solo_novedades": false
       },
-      "sobre": {}
+      "sobre": {
+        "data": "OJUd0Z6SOmTBwGW7a8UadfTVIFXUkms2UVuIpkkKVVb5cp5kntJt4//WPb4dFX1TLiyOMd/5qwE/GXF0",
+        "iterations": 210000,
+        "iv": "uBM2ABxXp4NPdIfN",
+        "salt": "zInOoFEcKg3BYyCUsOOZhA=="
+      }
     },
     {
       "id": "u-e77f874b",
