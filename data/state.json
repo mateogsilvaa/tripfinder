@@ -237,13 +237,17 @@
       "date": "2026-09-02"
     },
     "ryanair-MAD-MAN-20261211": {
-      "price": 76.18,
-      "date": "2026-09-06"
+      "price": 61.94,
+      "date": "2026-09-07"
+    },
+    "ryanair-MAD-NAP-20270115": {
+      "price": 80.63,
+      "date": "2026-09-07"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-06",
-    "tytus.zasowski@gmail.com": "2026-09-06"
+    "mateogonsilva@gmail.com": "2026-09-07",
+    "tytus.zasowski@gmail.com": "2026-09-07"
   },
   "watch_digest": {
     "mateogonsilva@gmail.com": "2026-09-07"
