@@ -1,0 +1,26 @@
+{
+  "slug": "mad-northmacedonia-23-150-12m-finde-2p-bccb1f1e",
+  "label": "North Macedonia · findes · 12 meses · hasta 150 € · 2 pers.",
+  "request": {
+    "destination": "North Macedonia",
+    "label": "North Macedonia · findes · 12 meses · hasta 150 € · 2 pers.",
+    "max_price": 150.0,
+    "nights_min": 2,
+    "nights_max": 3,
+    "months": 12,
+    "weekend_only": true,
+    "adults": 2,
+    "origin": "MAD",
+    "depart": "",
+    "return_date": "",
+    "owner": "u-bccb1f1e",
+    "owner_name": "",
+    "slug": "mad-northmacedonia-23-150-12m-finde-2p-bccb1f1e"
+  },
+  "generated_at": "2026-09-08",
+  "errors": [],
+  "count": 0,
+  "owner": "u-bccb1f1e",
+  "owner_name": "",
+  "offers": []
+}
