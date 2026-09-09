@@ -247,13 +247,17 @@
     "ryanair-MAD-BVA-20261211": {
       "price": 69.77,
       "date": "2026-09-08"
+    },
+    "ryanair-MAD-ACE-20270219": {
+      "price": 81.46,
+      "date": "2026-09-09"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-08",
-    "tytus.zasowski@gmail.com": "2026-09-08"
+    "mateogonsilva@gmail.com": "2026-09-09",
+    "tytus.zasowski@gmail.com": "2026-09-09"
   },
   "watch_digest": {
-    "mateogonsilva@gmail.com": "2026-09-08"
+    "mateogonsilva@gmail.com": "2026-09-09"
   }
 }
