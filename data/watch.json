@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-09",
+  "updated": "2026-09-10",
   "watches": [
     {
       "id": "albania-12-bccb1f1e",
@@ -570,6 +570,26 @@
           "price_per_person": 50.0
         }
       ]
+    },
+    {
+      "id": "narita-6-120250a6",
+      "label": "Narita · 6 meses · avisa bajo 250 € · 2 pers.",
+      "destination": "Narita",
+      "depart": "",
+      "return_date": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 2,
+      "max_price": 250.0,
+      "source": "formulario",
+      "owner": "u-120250a6",
+      "owner_name": "pdp",
+      "created": "2026-09-10",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
