@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-04T17:36:13+00:00",
+  "updated": "2026-09-10T10:05:03+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -57,6 +57,29 @@
         "iterations": 210000,
         "iv": "s2AXghKM7BrH5Ceg",
         "salt": "qIShHQ3ogzkcJb2jG6HrkA=="
+      }
+    },
+    {
+      "id": "u-120250a6",
+      "user": "pdp",
+      "name": "pdp",
+      "email": "pedrotic.cjn@gmail.com",
+      "salt": "xxhYscimVzlbJG3vQFUGcQ==",
+      "hash": "iLrXqeoyqJrOMFemY+79rfIoPcf9iSWg3mVdyxpTelk=",
+      "iterations": 210000,
+      "created": "2026-09-10T10:05:03+00:00",
+      "active": true,
+      "prefs": {
+        "chollos": "cada_vez",
+        "chollos_max_precio": null,
+        "seguimientos": "diario",
+        "seguimientos_solo_novedades": false
+      },
+      "sobre": {
+        "data": "3IDl/DROndDq5iU5Or+95hDAbLubStVNmTrGeYBxcXDfVd1645x2WYNJo2DT87iSaY9R9OSE2PQz3gWN",
+        "iterations": 210000,
+        "iv": "fdHP3Z7XOqNb9KWd",
+        "salt": "osGSAUq0NOXvFMdbd55zDg=="
       }
     }
   ],
