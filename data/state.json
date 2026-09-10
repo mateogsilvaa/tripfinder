@@ -251,13 +251,22 @@
     "ryanair-MAD-ACE-20270219": {
       "price": 81.46,
       "date": "2026-09-09"
+    },
+    "ryanair-MAD-NAP-20270122": {
+      "price": 77.98,
+      "date": "2026-09-10"
+    },
+    "ryanair-MAD-DUB-20261120": {
+      "price": 105.46,
+      "date": "2026-09-10"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-09",
-    "tytus.zasowski@gmail.com": "2026-09-09"
+    "mateogonsilva@gmail.com": "2026-09-10",
+    "tytus.zasowski@gmail.com": "2026-09-10",
+    "pedrotic.cjn@gmail.com": "2026-09-10"
   },
   "watch_digest": {
-    "mateogonsilva@gmail.com": "2026-09-09"
+    "mateogonsilva@gmail.com": "2026-09-10"
   }
 }
