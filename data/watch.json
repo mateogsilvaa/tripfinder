@@ -315,6 +315,26 @@
       "last_checked": "",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "albania-12-bccb1f1e",
+      "label": "Albania · 12 meses · avisa bajo 80 € · 1 pers.",
+      "destination": "Albania",
+      "depart": "",
+      "return_date": "",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 1,
+      "max_price": 80.0,
+      "source": "formulario",
+      "owner": "u-bccb1f1e",
+      "owner_name": "mateo",
+      "created": "2026-09-10",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
