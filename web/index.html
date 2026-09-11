@@ -48,9 +48,8 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
       </a>
       <nav class="zonas" aria-label="Zonas">
-        <a href="./#feed" class="zona activa" data-zona="promos" aria-current="page">Feed</a>
-        <a href="./#buscar" class="zona" data-zona="buscar">Buscar</a>
-        <a href="./#seguir" class="zona" data-zona="seguir">Seguir</a>
+        <a href="./" class="zona activa" data-zona="promos" aria-current="page">Feed</a>
+        <a href="buscar.html" class="zona" data-zona="buscar">Buscar</a>
         <a href="seguimientos.html" class="zona" data-zona="follows">Vuelos que sigues</a>
       </nav>
       <div class="topbar-hueco"></div>
@@ -244,8 +243,9 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     </form>
     <div id="cal" class="cal" hidden></div>
     <p class="hint" id="finderHint"></p>
-    <div>
+    <div class="acciones-fila">
       <button class="btn primary" type="submit" form="finderForm">Buscar</button>
+      <a class="btn ghost" href="buscar.html">Abrir la herramienta</a>
     </div>
     <p class="candado-nota">
       Hace falta una cuenta para buscar y ver tus búsquedas guardadas.
@@ -307,8 +307,9 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     </form>
     <div id="wCal" class="cal" hidden></div>
     <p class="hint" id="watchHint"></p>
-    <div>
+    <div class="acciones-fila">
       <button class="btn deep" type="submit" form="watchForm">Seguir</button>
+      <a class="btn ghost" href="seguimientos.html">Abrir la herramienta</a>
     </div>
     <p class="candado-nota">
       Hace falta una cuenta para seguir un viaje y ver tus seguimientos.
@@ -326,6 +327,9 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <p id="obsTexto">
     Todavía no sigues ningún viaje. Dale a Seguir en cualquier entrada del feed
     y aquí verás si sube o baja de precio cada vez que se actualicen los datos.
+  </p>
+  <p class="observacion-ir">
+    <a class="btn ghost small" href="seguimientos.html">Ver los que sigues</a>
   </p>
 </section>
 
