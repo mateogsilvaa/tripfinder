@@ -107,10 +107,57 @@ test.describe("la ventana que se amplía", () => {
     expect(await page.locator("#buscar #finderForm").count()).toBe(0);
   });
 
-  test("el nav lleva a las dos anclas de la portada y a la página de seguimientos", async ({ page }) => {
+  /* El nav lleva a PAGINAS, las tres. Antes dos de sus enlaces eran anclas de
+     la propia portada —`./#buscar` y `./#seguir`— y a la herramienta entera
+     solo se llegaba rellenando el formulario compacto y enviandolo, porque la
+     pagina completa se abria como RESULTADO de usarla. Quien solo queria ver
+     sus busquedas guardadas tenia que lanzar una. */
+  test("el nav lleva a las tres páginas, sin tener que lanzar nada", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     const hrefs = await page.locator(".zona").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-    expect(hrefs).toEqual(["./#feed", "./#buscar", "./#seguir", "seguimientos.html"]);
+    expect(hrefs).toEqual(["./", "buscar.html", "seguimientos.html"]);
+
+    // Y se llega de verdad: se pulsa y se está en la herramienta completa.
+    await page.locator('.zona[href="buscar.html"]').click();
+    await expect(page).toHaveURL(/buscar\.html$/);
+    await expect(page.locator("#finderForm")).toBeVisible();
+    // La completa no amplía: ya es la ventana grande.
+    expect(await page.locator("#finderForm").getAttribute("data-ampliar")).toBeNull();
+
+    await page.locator('.zona[href="seguimientos.html"]').click();
+    await expect(page).toHaveURL(/seguimientos\.html$/);
+    await expect(page.locator("#watchForm")).toBeVisible();
+  });
+
+  /* En un móvil el nav estaba en `display: none`, así que no había NINGUNA
+     puerta: ni el nav ni un enlace en la portada. Se llegaba solo enviando el
+     formulario, que es justo lo que no quiere hacer quien viene a mirar. */
+  test("y en un móvil también se ve y se puede pulsar", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    for (const href of ["buscar.html", "seguimientos.html"]) {
+      const enlace = page.locator(`.zona[href="${href}"]`);
+      await expect(enlace, `${href} en 390 px`).toBeVisible();
+      const caja = await enlace.boundingBox();
+      expect(caja.width).toBeGreaterThan(0);
+    }
+    await page.locator('.zona[href="seguimientos.html"]').click();
+    await expect(page).toHaveURL(/seguimientos\.html$/);
+  });
+
+  /* Y desde la portada, sin pasar por el nav: el contador de lo que sigues
+     lleva a la lista, y cada panel compacto tiene su puerta a la herramienta
+     entera al lado del botón que la usa. */
+  test("la portada también lleva a las dos, sin ejecutar nada", async ({ page }) => {
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+    await expect(page.locator('#observacion a[href="seguimientos.html"]')).toBeVisible();
+    await expect(page.locator('#buscar a[href="buscar.html"]')).toBeVisible();
+    await expect(page.locator('#seguir a[href="seguimientos.html"]')).toBeVisible();
+
+    await page.locator('#buscar a[href="buscar.html"]').click();
+    await expect(page).toHaveURL(/buscar\.html$/);
+    // Sin nada lanzado: no se ha guardado ninguna búsqueda por el camino.
+    await expect(page.locator(".saved")).toHaveCount(0);
   });
 });
 

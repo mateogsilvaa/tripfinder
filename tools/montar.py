@@ -122,8 +122,8 @@ MANIFIESTO = (
 # cabecera pegajosa, no un bloque debajo del titulo— pero no lo llevan todas:
 # el panel es una herramienta privada y un "Feed" al lado solo confunde.
 #
-# Los `{promos}`/`{buscar}`... los rellena `render()` con los atributos que
-# devuelve `_zonas`, igual que hace con los guiones y el manifiesto.
+# Los `{promos}`/`{buscar}`/`{follows}` los rellena `render()` con los atributos
+# que devuelve `_zonas`, igual que hace con los guiones y el manifiesto.
 # El origen y el cuarto flap: el test de destinos. Las iniciales son
 # decoracion —van con `aria-hidden`— y el `?` de al lado es un boton de verdad,
 # alcanzable con el tabulador. Solo en las paginas publicas: en el panel y en
@@ -138,9 +138,8 @@ DESCUBRIR = (
 
 NAV = (
     '      <nav class="zonas" aria-label="Zonas">\n'
-    '        <a href="./#feed"{promos}>Feed</a>\n'
-    '        <a href="./#buscar"{buscar}>Buscar</a>\n'
-    '        <a href="./#seguir"{seguir}>Seguir</a>\n'
+    '        <a href="./"{promos}>Feed</a>\n'
+    '        <a href="buscar.html"{buscar}>Buscar</a>\n'
     '        <a href="seguimientos.html"{follows}>Vuelos que sigues</a>\n'
     '      </nav>\n'
 )
@@ -255,11 +254,13 @@ MARCA = re.compile(
 def _zonas(activa: str | None) -> dict[str, str]:
     """Los atributos de cada enlace del nav, con el activo marcado.
 
-    Son cuatro y no tres: en la portada, "buscar" y "seguir" son dos anclas de
-    la misma pagina, y cada una se ilumina cuando toca. `follows` es la unica
-    que sigue siendo una pagina aparte desde el nav."""
+    Tres, y las tres son PAGINAS. Antes eran cuatro y dos de ellas —"buscar" y
+    "seguir"— apuntaban a sendas anclas de la portada: a la herramienta entera
+    solo se llegaba rellenando el formulario compacto y enviandolo, porque la
+    pagina completa se abria como resultado de usarla. Quien solo queria ver
+    sus busquedas guardadas tenia que lanzar una."""
     salida: dict[str, str] = {}
-    for z in ("promos", "buscar", "seguir", "follows"):
+    for z in ("promos", "buscar", "follows"):
         if z == activa:
             salida[z] = f' class="zona activa" data-zona="{z}" aria-current="page"'
         else:

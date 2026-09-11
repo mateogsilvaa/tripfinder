@@ -1368,6 +1368,10 @@ h1 em { font-size: 1.3em; }
   transform: translate(-50%, -50%);
 }
 
+/* La puerta a la lista entera desde el contador de la portada: antes el bloque
+   decía cuántos sigues y no llevaba a ninguna parte. */
+.observacion-ir { margin: 14px 0 0; }
+
 .fav-aviso {
   margin: 20px 0 0;
   border: 1px solid var(--accent);
@@ -1935,7 +1939,7 @@ h1 em { font-size: 1.3em; }
 
 @media (max-width: 760px) {
   :root { --pad-page: 16px; }
-  .zonas, .board-live { display: none; }
+  .board-live { display: none; }
   .board-head { display: none; }
 
   /* La barra en un móvil estrecho. Se cae por este orden: primero el nav y el
@@ -1943,7 +1947,23 @@ h1 em { font-size: 1.3em; }
      mientras que el `?` de al lado es un botón— y por último el nombre de la
      cuenta, que deja la inicial. Lo que queda cabe en 320 px, que es el ancho
      del móvil más estrecho que sigue en la calle. */
-  .topbar-in { gap: 10px; }
+  /* EL NAV NO SE ESCONDE. Estaba en `display: none` por debajo de 760 px, así
+     que desde un móvil no había forma de llegar a «buscar» ni a «vuelos que
+     sigues»: la única puerta a la herramienta completa era rellenar el
+     formulario compacto y enviarlo. Baja a una segunda fila de la barra, que
+     ocupa 40 px y es lo que cuesta que la web se pueda recorrer. */
+  .topbar-in { gap: 8px; padding: 9px var(--pad-page) 7px; flex-wrap: wrap; }
+  .zonas {
+    order: 9;
+    flex-basis: 100%;
+    gap: 18px;
+    margin: 0 -2px -2px;
+    padding: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .zonas::-webkit-scrollbar { display: none; }
+  .zona { padding: 4px 0; }
   .flaps { display: none; }
   .flap-boton { margin-left: 0; }
   /* LOS FILTROS EN MÓVIL. Antes se veían los nueve controles a la vez y el

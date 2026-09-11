@@ -42,19 +42,33 @@ def test_las_marcas_cierran(fichero):
     assert abre > 0, f"{fichero} no tiene ninguna parte montada"
 
 
-def test_una_sola_edicion_cambia_el_nav_de_las_cuatro_zonas():
+def test_una_sola_edicion_cambia_el_nav_de_las_tres_zonas():
     """El nav vive DENTRO de la barra, no en una parte suya: en el diseño nuevo
     es una fila de la cabecera pegajosa, no un bloque debajo del título. Sigue
     escribiéndose una vez y apareciendo en las cuatro páginas que lo llevan."""
     barra = (WEB / "partes" / "barra.html").read_text(encoding="utf-8")
     assert "{{nav}}" in barra, "la barra deja el nav en un hueco"
-    for hueco in ("{promos}", "{buscar}", "{seguir}", "{follows}"):
+    for hueco in ("{promos}", "{buscar}", "{follows}"):
         assert hueco in montar.NAV, hueco
 
     # Y cada página marca la suya, sin marcar dos.
     for fichero, datos in montar.PAGINAS.items():
         html = (WEB / fichero).read_text(encoding="utf-8")
         assert html.count('aria-current="page"') == (1 if datos["zona"] else 0), fichero
+
+def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
+    """Los tres enlaces del nav son PAGINAS.
+
+    Antes dos de ellos eran anclas de la propia portada (`./#buscar` y
+    `./#seguir`): a la herramienta entera solo se llegaba rellenando el
+    formulario compacto y enviandolo, porque la pagina completa se abria como
+    RESULTADO de usarla. Quien solo queria ver sus busquedas guardadas tenia
+    que lanzar una."""
+    enlaces = re.findall(r'<a href="([^"]+)"\{', montar.NAV)
+    assert enlaces == ["./", "buscar.html", "seguimientos.html"], enlaces
+    for destino in enlaces[1:]:
+        assert (WEB / destino).exists(), f"{destino} no existe"
+
 
 def test_la_version_de_los_assets_sale_de_un_solo_sitio():
     """El `?v=` y el `build` del pie no pueden desincronizarse nunca mas."""
