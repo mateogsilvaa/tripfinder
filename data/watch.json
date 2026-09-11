@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-10",
+  "updated": "2026-09-11",
   "watches": [
     {
       "id": "todos-2027-01-29-bccb1f1e",
@@ -363,6 +363,26 @@
       "created": "2026-09-10",
       "best_price": null,
       "last_checked": "2026-09-10",
+      "active": true,
+      "last_offers": []
+    },
+    {
+      "id": "todos-6-bccb1f1e",
+      "label": "Donde sea · 6 meses · avisa bajo 120 € · 2 pers.",
+      "destination": "",
+      "depart": "",
+      "return_date": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 2,
+      "max_price": 120.0,
+      "source": "formulario",
+      "owner": "u-bccb1f1e",
+      "owner_name": "mateo",
+      "created": "2026-09-11",
+      "best_price": null,
+      "last_checked": "",
       "active": true,
       "last_offers": []
     }
