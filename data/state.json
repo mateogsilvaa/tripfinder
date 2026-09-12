@@ -263,15 +263,19 @@
     "ryanair-MAD-LIS-20261113": {
       "price": 48.52,
       "date": "2026-09-11"
+    },
+    "ryanair-MAD-PRG-20270219": {
+      "price": 107.98,
+      "date": "2026-09-12"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-11",
-    "tytus.zasowski@gmail.com": "2026-09-11",
-    "pedrotic.cjn@gmail.com": "2026-09-11"
+    "mateogonsilva@gmail.com": "2026-09-12",
+    "tytus.zasowski@gmail.com": "2026-09-12",
+    "pedrotic.cjn@gmail.com": "2026-09-12"
   },
   "watch_digest": {
-    "mateogonsilva@gmail.com": "2026-09-11",
-    "pedrotic.cjn@gmail.com": "2026-09-11"
+    "mateogonsilva@gmail.com": "2026-09-12",
+    "pedrotic.cjn@gmail.com": "2026-09-12"
   }
 }
