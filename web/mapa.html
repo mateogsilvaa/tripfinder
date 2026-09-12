@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TripFinder · vuelos que sigues</title>
-<meta name="description" content="Los viajes que tienes apuntados, revisados cada manana. Te escribe cuando el precio se mueve o cae dentro de tu tope.">
+<title>TripFinder · donde has estado</title>
+<meta name="description" content="El mapa de los paises en los que has estado. Se marca con un toque y se queda en tu navegador, con tu cuenta.">
 <meta name="theme-color" content="#100f0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
 <link rel="manifest" href="manifest.webmanifest?v=dev">
@@ -52,11 +52,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <nav class="zonas" aria-label="Zonas">
         <a href="./" class="zona" data-zona="promos">Feed</a>
         <a href="buscar.html" class="zona" data-zona="buscar">Buscar</a>
-        <a href="seguimientos.html" class="zona activa" data-zona="follows" aria-current="page">Vuelos que sigues</a>
-        <a href="mapa.html" class="zona" data-zona="mundo">El mundo</a>
+        <a href="seguimientos.html" class="zona" data-zona="follows">Vuelos que sigues</a>
+        <a href="mapa.html" class="zona activa" data-zona="mundo" aria-current="page">El mundo</a>
       </nav>
       <div class="topbar-hueco"></div>
-      <span class="board-live"><i aria-hidden="true"></i>en vivo</span>
       <span class="flaps" aria-hidden="true"><span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span><button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-cara" aria-hidden="true">?</span></button>
       <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
         <b aria-hidden="true">☀</b><span class="tema-txt">noche</span>
@@ -67,98 +66,69 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 <header class="masthead">
   <div>
-    <h1>Que te avise<br><em>cuando baje.</em></h1>
-    <p class="lede">Esto no busca ahora: se queda apuntado y lo revisa cada día. Te escribe solo cuando aparece algo dentro de tu tope, o cuando baja de lo más barato que se haya visto hasta ahora.</p>
+    <h1>Dónde<br><em>has estado.</em></h1>
+    <p class="lede">Marca los países en los que has puesto un pie. Se guarda en este navegador, con tu cuenta, y no sale de aquí: no se publica en ningún sitio ni se le manda a nadie.</p>
   </div>
   <dl class="stats" id="stats"></dl>
 </header>
 
 <main>
 
-<section id="favAviso" class="fav-aviso" hidden aria-live="polite"></section>
-  <section class="herramienta completa" id="watchBox">
-    <div class="finder-body">
-      <div class="kicker-num">02 · seguir un viaje</div>
-      <h3 class="solo-lector">El encargo</h3>
-      <form id="watchForm" class="finder-form">
-        <label for="wWhere">
-          <span>¿A dónde?</span>
-          <select id="wWhere">
-            <option value="any">Donde sea</option>
-            <option value="one">Un sitio concreto</option>
-          </select>
-        </label>
-        <label for="wWhen">
-          <span>¿Cuándo?</span>
-          <select id="wWhen">
-            <option value="weekend">Cualquier finde</option>
-            <option value="exact">Una fecha concreta</option>
-            <option value="anytime">Cualquier fecha</option>
-          </select>
-        </label>
-        <label class="celda" id="wDestWrap" hidden>
-          <span>Destino</span>
-          <button type="button" id="wDestBtn" class="date-btn">Elegir destino</button>
-          <input id="wDest" type="hidden">
-        </label>
-        <label class="celda" id="wDateWrap" hidden>
-          <span>Fechas</span>
-          <button type="button" id="wDateBtn" class="date-btn">Elegir en el calendario</button>
-          <input id="wDepart" type="hidden">
-          <input id="wReturn" type="hidden">
-        </label>
-        <div class="party">
-          <label for="wMonths" id="wMonthsWrap">
-            <span>Meses vista</span>
-            <input id="wMonths" class="cifra" type="number" min="1" max="12" value="6">
-          </label>
-          <label for="wMax">
-            <span>Avísame si baja de €</span>
-            <input id="wMax" class="cifra" type="number" min="20" max="3000" step="1" value="120">
-          </label>
-          <label for="wAdults">
-            <span>Personas</span>
-            <input id="wAdults" class="cifra" type="number" min="1" max="8" value="2">
-          </label>
-        </div>
-      </form>
-      <div id="wCal" class="cal" hidden></div>
-      <p class="hint" id="watchHint"></p>
-      <div><button class="btn deep" type="submit" form="watchForm">Seguir</button></div>
-      <div id="watches" class="watches"></div>
-    </div>
-  </section>
+<!-- Sin cuenta esto no tiene sentido: lo marcado es de alguien. Se enseña la
+     puerta en vez de un mapa que luego no se sabría de quién es. -->
+<section id="mundoPuerta" class="finder abierta" hidden>
+  <div class="finder-body">
+    <h3 class="watch-head">Esto es tuyo</h3>
+    <p class="finder-lede">
+      El mapa va con tu cuenta: lo que marques se queda con ella y no se mezcla
+      con lo de nadie más. Entra y empieza a pintarlo.
+    </p>
+    <p class="candado-nota">
+      <span class="nota-txt">Hace falta una cuenta para tener tu mapa.</span>
+      <button type="button" class="btn primary" data-entrar>Entrar</button>
+    </p>
+  </div>
+</section>
 
-  <a id="favoritos-ancla"></a>
-  <section id="favoritos" class="favoritos" aria-label="Viajes apuntados"></section>
+<section id="mundo" class="mundo" hidden aria-labelledby="mundoTitulo">
+  <h2 id="mundoTitulo" class="solo-lector">Tu mapa del mundo</h2>
+
+  <div class="mundo-cifras">
+    <div class="mundo-marcador">
+      <b id="mundoCifra">0</b>
+      <span id="mundoDe">de 0 países y territorios</span>
+    </div>
+    <div class="mundo-barra" id="mundoBarra" role="progressbar"
+      aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+      aria-label="Porcentaje del mundo visitado"><i></i></div>
+  </div>
+
+  <div class="mundo-mapa" id="mundoMapa">
+    <span class="mundo-rotulo" id="mundoRotulo" hidden aria-hidden="true"></span>
+  </div>
+
+  <div class="mundo-pie">
+    <label class="switch">
+      <input type="checkbox" id="mundoSoloVuelo">
+      <span>Marcar a dónde hay vuelo hoy</span>
+    </label>
+    <button type="button" class="btn ghost small" id="mundoBorrar">Empezar de cero</button>
+  </div>
+
+  <p class="mundo-vuelos" id="mundoVuelos" hidden>
+    <span id="mundoVuelosTxt"></span>
+  </p>
+
+  <div class="mundo-buscar">
+    <label for="mundoBusca">Buscar un país</label>
+    <input type="search" id="mundoBusca" placeholder="Malta, Japón, Perú…" autocomplete="off">
+    <p class="hint">Los países pequeños no se aciertan con el dedo: aquí se marcan por su nombre.</p>
+  </div>
+
+  <div class="mundo-lista" id="mundoLista"></div>
+</section>
 
 </main>
-
-<!-- tf:parte hojas -->
-<aside id="panel" class="panel" hidden aria-label="Alojamiento">
-  <header class="panel-head">
-    <div>
-      <p class="kicker">Alojamiento</p>
-      <h2 id="panelTitle"></h2>
-      <p id="panelDates" class="panel-dates"></p>
-    </div>
-    <button id="panelClose" type="button" aria-label="Cerrar el panel de alojamiento">cerrar</button>
-  </header>
-  <div id="panelBody" class="panel-body"></div>
-</aside>
-<div id="backdrop" class="backdrop" hidden></div>
-
-<div id="destModal" class="modal" hidden>
-  <div class="modal-caja" role="dialog" aria-label="Elegir destino">
-    <header class="modal-head">
-      <h2>¿A dónde?</h2>
-      <button id="destClose" type="button" aria-label="Cerrar">cerrar</button>
-    </header>
-    <input id="destSearch" type="search" placeholder="Escribe una ciudad o un país…" autocomplete="off">
-    <div id="destList" class="dest-list"></div>
-  </div>
-</div>
-<!-- /tf:parte -->
 
 <!-- tf:parte pie -->
 <footer class="foot">

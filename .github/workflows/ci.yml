@@ -56,6 +56,12 @@ jobs:
       - name: Los iconos cuadran con la paleta
         run: python tools/iconos.py --check
 
+      # El mapa del mundo es un SVG generado (tools/mapa.py). Si alguien lo
+      # edita a mano y se carga un codigo ISO o un nombre, el mapa deja de
+      # poder marcarse y nadie se entera hasta abrirlo.
+      - name: El mapa del mundo esta entero
+        run: python tools/mapa.py --check
+
   web:
     name: humo de frontend
     runs-on: ubuntu-latest

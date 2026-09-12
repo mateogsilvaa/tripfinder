@@ -47,6 +47,15 @@
   --code-ink: #12110f;
   --sobre-acento: #12110f; /* lo que se lee ENCIMA del naranja */
 
+  /* El mapa del mundo. Tres tintas propias y no las del resto: entre
+     `--surface` y `--surface2` hay siete puntos de luminancia, que en un panel
+     separan bien dos cajas pero en un mapa dejan la tierra y el mar del mismo
+     color. Aquí el contraste no es adorno, es lo que hace que se vea dónde
+     está cada país. */
+  --mapa-mar: #14130f;
+  --mapa-tierra: #37342c;
+  --mapa-linea: #14130f;
+
   /* ---- forma -------------------------------------------------------- */
   --r: 4px;              /* paneles, campos, el feed */
   --r-pill: 999px;       /* botones y chips */
@@ -122,6 +131,9 @@
   --code-bg: #16150f;
   --code-ink: #fffdf8;
   --sobre-acento: #12110f;
+  --mapa-mar: #e8e2d4;
+  --mapa-tierra: #c3bba6;
+  --mapa-linea: #e8e2d4;
   --velo: rgba(22, 21, 15, 0.5);
 }
 
@@ -1727,6 +1739,154 @@ h1 em { font-size: 1.3em; }
 .rescan { justify-self: start; }
 .perdido { color: var(--muted); font-size: var(--fs-body-s); }
 .perdido-ref { font-family: var(--font-mono); }
+
+/* ==========================================================================
+   EL MAPA DEL MUNDO
+   Un `<path>` por país y el color lo pone el tema: el SVG no trae ni un color
+   dentro, así que el mapa cambia con la carta de día y la de noche sin tocar
+   nada. Marcar un país es una clase.
+   ========================================================================== */
+
+.mundo { margin-top: 24px; }
+
+.mundo-cifras {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.mundo-marcador { display: flex; align-items: baseline; gap: 10px; }
+.mundo-marcador b {
+  font: 700 var(--fs-amount) / 1 var(--font-sans);
+  letter-spacing: -0.05em;
+  color: var(--accent-txt);
+}
+.mundo-marcador span { font: 400 var(--fs-data) var(--font-mono); color: var(--muted); }
+
+.mundo-barra {
+  flex: 1;
+  min-width: 160px;
+  height: 6px;
+  background: var(--hair);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.mundo-barra i {
+  display: block;
+  height: 100%;
+  width: var(--pct, 0%);
+  background: var(--accent);
+  transition: width var(--t-med) var(--ease);
+}
+
+/* El marco del mapa. `position: relative` porque el rótulo que sigue al ratón
+   se coloca dentro con coordenadas suyas. */
+.mundo-mapa {
+  position: relative;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--mapa-mar);
+  padding: 10px;
+  overflow: hidden;
+}
+.mundo-mapa .mundo,
+.mundo-mapa svg { display: block; width: 100%; height: auto; }
+
+.pais {
+  fill: var(--mapa-tierra);
+  stroke: var(--mapa-linea);
+  stroke-width: 0.5;
+  cursor: pointer;
+  transition: fill var(--t) var(--ease);
+}
+/* Territorios sin código ISO: se dibujan para no dejar agujeros en el mapa,
+   pero no se marcan. Que no inviten a pulsarlos. */
+.pais.sin-codigo { fill: var(--mapa-tierra); opacity: 0.55; cursor: default; pointer-events: none; }
+.pais:hover { fill: var(--ink); }
+.pais.visitado { fill: var(--accent); }
+.pais.visitado:hover { fill: var(--accent-txt); }
+/* A dónde hay vuelo hoy, cuando se pide: verde por encima del gris, y el
+   naranja de lo visitado sigue mandando porque va después. */
+.pais.con-vuelo { fill: var(--deep); }
+.pais.con-vuelo.visitado { fill: var(--accent); }
+
+.mundo-rotulo {
+  position: absolute;
+  transform: translate(12px, -50%);
+  pointer-events: none;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tag);
+  background: var(--paper);
+  color: var(--ink);
+  font: 500 var(--fs-ui-s) var(--font-sans);
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.mundo-pie {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.mundo-vuelos {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-left: 2px solid var(--deep);
+  background: var(--surface2);
+  font-size: var(--fs-body-s);
+  color: var(--muted);
+}
+.mundo-vuelos b { color: var(--ink); font-family: var(--font-mono); font-weight: 400; }
+
+.mundo-buscar { margin-top: 26px; display: grid; gap: 6px; }
+.mundo-buscar label {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mundo-buscar input {
+  border: 1px solid var(--line);
+  background: var(--field);
+  border-radius: var(--r);
+  padding: 11px 13px;
+  font-size: var(--fs-input);
+  width: 100%;
+  max-width: 420px;
+}
+.mundo-buscar input:hover, .mundo-buscar input:focus { border-color: var(--muted); }
+
+/* Doscientos y pico países: la lista rueda dentro de su caja en vez de
+   empujar el pie de la página a tres pantallas de distancia. */
+.mundo-lista {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.pais-chip {
+  padding: 7px 12px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: 500 var(--fs-ui-s) var(--font-sans);
+  cursor: pointer;
+  transition: all var(--t) var(--ease);
+}
+.pais-chip:hover { border-color: var(--muted); color: var(--ink); }
+.pais-chip.on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--sobre-acento);
+}
 
 /* ==========================================================================
    EL CALENDARIO
