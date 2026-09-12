@@ -384,6 +384,7 @@ def _google_candidatas(
     fechas: list[tuple[date, date]],
     encontradas: dict[str, FlightOffer],
     presupuesto: int,
+    candidatas: int | None = None,
 ) -> list[tuple[str, date, date]]:
     """Reparte las consultas de Google entre descubrir y contrastar.
 
@@ -399,6 +400,14 @@ def _google_candidatas(
 
     Las fechas cercanas van primero: si el presupuesto se acaba, que se acabe
     en marzo del año que viene y no en el finde que viene.
+
+    `presupuesto` son las consultas que se van a gastar; `candidatas`, cuantas
+    se devuelven. Se devuelven mas de las que se gastan a proposito: el provider
+    se salta las rutas que ya sabemos sin vuelos y tira de las siguientes, asi
+    que lo ahorrado en Tartu se gasta en mas fechas de Tallin. Por eso las dos
+    listas van ENTRELAZADAS y no una detras de otra: si fueran seguidas, las
+    primeras `presupuesto` consultas serian todas de descubrir y no se
+    contrastaria ni un precio.
     """
     con_precio = {(o.destination, o.depart_date) for o in encontradas.values()}
     descubrir: list[tuple[str, date, date]] = []
@@ -423,16 +432,35 @@ def _google_candidatas(
     # ofertas por precio, vengan del dia que vengan.
     reserva = max(presupuesto // (4 if len(fechas) <= 2 else 2), 6)
     reserva = min(reserva, len(contrastar))  # sin nada que contrastar no se guarda nada
-    elegidas = descubrir[: max(presupuesto - reserva, 0)]
-    elegidas += contrastar[: presupuesto - len(elegidas)]
-    # Si una de las dos listas se ha quedado corta, la otra rellena el hueco en
-    # vez de devolver el presupuesto a medio gastar.
-    if len(elegidas) < presupuesto:
-        ya = set(elegidas)
-        elegidas += [c for c in descubrir + contrastar if c not in ya][
-            : presupuesto - len(elegidas)
-        ]
-    return elegidas[:presupuesto]
+    # Cuantas de descubrir por cada una de contrastar. Si una de las dos listas
+    # se queda corta, `_entrelazar` deja que la otra ocupe el hueco en vez de
+    # devolver el presupuesto a medio gastar.
+    cada = max(1, (presupuesto - reserva) // max(1, reserva))
+    return _entrelazar(descubrir, contrastar, cada)[: candidatas or presupuesto]
+
+
+def _entrelazar(
+    muchas: list[tuple[str, date, date]],
+    pocas: list[tuple[str, date, date]],
+    cada: int,
+) -> list[tuple[str, date, date]]:
+    """Mezcla las dos listas para que CUALQUIER prefijo lleve la misma mezcla.
+
+    Importa porque quien corta la lista es el presupuesto de consultas, y no se
+    sabe por donde va a cortar: si las de contrastar fueran al final, cualquier
+    corte se las llevaria por delante enteras.
+    """
+    salida: list[tuple[str, date, date]] = []
+    i = j = 0
+    while i < len(muchas) or j < len(pocas):
+        for _ in range(cada):
+            if i < len(muchas):
+                salida.append(muchas[i])
+                i += 1
+        if j < len(pocas):
+            salida.append(pocas[j])
+            j += 1
+    return salida
 
 
 def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int = 45) -> SearchResult:
@@ -558,7 +586,11 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
     # que no tiene una API publica que preguntar.
     if google is not None and universo:
         presupuesto = int(cfg.search.get("google", {}).get("max_queries_search", 90))
-        candidatas = _google_candidatas(universo, fechas, encontradas, presupuesto)
+        # El triple de candidatas que de consultas: las rutas sin vuelos se
+        # saltan y lo ahorrado se gasta en mas fechas de las que si vuelan.
+        candidatas = _google_candidatas(
+            universo, fechas, encontradas, presupuesto, candidatas=presupuesto * 3
+        )
         google.shortlist, google.names = candidatas, dict(universo)
         google.limite = presupuesto
         try:

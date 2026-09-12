@@ -41,13 +41,26 @@ class Store:
         raw = self._read("offers.json", {"offers": []})
         return [FlightOffer.from_dict(o) for o in raw.get("offers", [])]
 
-    def save_offers(self, offers: list[FlightOffer], errors: list[str] | None = None) -> None:
+    def save_offers(
+        self,
+        offers: list[FlightOffer],
+        errors: list[str] | None = None,
+        fuentes: dict[str, Any] | None = None,
+    ) -> None:
+        """El tablon publicado, y de donde ha salido.
+
+        `fuentes` es el parte del barrido: cuantas tarifas ha puesto cada
+        proveedor y cuantas consultas se ahorraron o se comieron un muro. Sin
+        eso, una tanda floja y una tanda capada se ven exactamente igual desde
+        fuera —pocas ofertas— y no hay forma de saber cual de las dos fue.
+        """
         self._write(
             "offers.json",
             {
                 "generated_at": date.today().isoformat(),
                 "count": len(offers),
                 "errors": errors or [],
+                "fuentes": fuentes or {},
                 "offers": [o.to_dict() for o in offers],
             },
         )

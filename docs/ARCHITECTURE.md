@@ -6,6 +6,7 @@
 |---|---|---|
 | `tripfinder.routes` | `src/tripfinder/` | El mapa: a donde se puede volar desde un origen. Se monta antes de pedir un solo precio y es quien decide los candidatos. Cache en `data/routes/<IATA>.json`. |
 | `tripfinder.providers.*` | `src/tripfinder/providers/` | Buscan vuelos. Un adapter por fuente, todos devuelven `FlightOffer`. |
+| `tripfinder.rutas_vacias` | `src/tripfinder/` | El cuaderno de rutas sin vuelo (`data/rutas_vacias.json`). Apunta qué pares origen-destino llevan barridos enteros sin devolver un precio, para sondearlos una vez por barrido en vez de doce. Caduca a los 21 días y un solo precio borra la anotación. |
 | `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. |
 | `tripfinder.scoring` | `src/tripfinder/` | Convierte precio + histórico en un `score` 0-100 y decide si es chollo. |
 | `tripfinder.store` | `src/tripfinder/` | Persistencia en JSON dentro de `data/` (el propio repo es la base de datos). |
@@ -149,6 +150,19 @@ claro en un sitio público. Se guarda cifrado y solo lo abren las cuentas:
   la clave: los logs de Actions se guardan noventa días y los ve cualquiera que pase por el repo.
 - **Nada de scraping agresivo.** Booking se resuelve con deep links; Airbnb es best-effort con
   degradado a deep link. Un `User-Agent` honesto y un intervalo mínimo entre peticiones.
+- **La consulta más barata es la que no se hace.** Buscar "Estonia" a doce meses eran doce
+  consultas a Kuressaare, doce a Kärdla, doce a Pärnu y doce a Tartu: 48 páginas de 2,5 MB para
+  cero tarifas, porque desde Madrid no se vuela a ninguno. Dos ventanas en blanco bastan para
+  dejar ese destino en ese barrido (`google.sondas_vacias`), y lo aprendido queda en
+  `rutas_vacias.json`. No es una lista negra: la ruta se sigue sondeando una vez por barrido, para
+  enterarnos el día que exista.
+- **Un muro no es una ruta sin vuelos.** Cuando Google capa no lo dice: sirve una página de 4 kB y
+  calla. Esa página no cuenta como "aquí no hay vuelos" —si contara, el día que nos capen
+  apuntaríamos media Europa como vacía—. Se espera cada vez más, se reintenta una vez con sigilo
+  (Scrapling, y solo si está instalado: sin él `stealth=True` repite la misma petición) y, tras
+  `google.tope_muros` seguidos, se deja de preguntar durante `google.descanso_segundos`. El
+  descanso es del **proceso**, no del provider: un barrido levanta un provider por búsqueda
+  guardada y antes cada una volvía a darse contra la misma pared.
 
 ## Extender con un provider nuevo
 

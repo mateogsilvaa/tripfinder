@@ -87,9 +87,46 @@ def _scrapling_text(url: str, params, headers, timeout: int) -> str | None:
     return r.html_content
 
 
+def hay_sigilo() -> bool:
+    """Si Scrapling esta instalado de verdad.
+
+    Sin esto, `stealth=True` cuando no esta instalado hace la MISMA peticion con
+    requests que la que acaba de fallar: una descarga de 2,5 MB tirada a la
+    basura y una peticion mas contra un sitio que ya nos estaba capando. Quien
+    reintenta con sigilo tiene que poder preguntar antes si hay sigilo.
+    """
+    global _SIGILO
+    if _SIGILO is None:
+        try:
+            import scrapling.fetchers  # noqa: F401
+
+            _SIGILO = True
+        except ImportError:
+            _SIGILO = False
+    return _SIGILO
+
+
+_SIGILO: bool | None = None
+
+
 def get_text(
-    url: str, *, params=None, headers=None, timeout: int = 25, stealth: bool = False
+    url: str,
+    *,
+    params=None,
+    headers=None,
+    timeout: int = 25,
+    stealth: bool = False,
+    retries: int = 3,
+    throttle_key: str | None = None,
+    min_interval: float = 0.0,
 ) -> str:
+    """Una pagina, con los mismos reintentos que `get_json`.
+
+    Antes esto era un `requests.get` pelado: un corte de red, un 502 de paso o
+    un timeout y la consulta se perdia entera. En el scan eso no es un fallo
+    visible, es un destino que desaparece del listado sin que nadie se entere,
+    porque el provider se traga la excepcion y sigue con el siguiente.
+    """
     h = {"User-Agent": USER_AGENT, "Accept-Language": "es-ES,es;q=0.9,en;q=0.8"}
     h.update(headers or {})
 
@@ -98,6 +135,20 @@ def get_text(
         if texto:
             return texto
 
-    r = requests.get(url, params=params, headers=h, timeout=timeout)
-    r.raise_for_status()
-    return r.text
+    last: Exception | None = None
+    for intento in range(max(1, retries)):
+        if throttle_key and min_interval:
+            throttle(throttle_key, min_interval)
+        try:
+            r = requests.get(url, params=params, headers=h, timeout=timeout)
+            # 429 es "vas muy rapido", no "no existe": se espera y se vuelve.
+            if r.status_code == 429:
+                time.sleep(3 * (intento + 1))
+                continue
+            r.raise_for_status()
+            return r.text
+        except Exception as exc:  # noqa: BLE001 - se reintenta y luego se propaga
+            last = exc
+            log.debug("GET %s fallo (intento %d/%d): %s", url, intento + 1, retries, exc)
+            time.sleep(1.5 * (intento + 1))
+    raise RuntimeError(f"GET {url} fallo tras {retries} intentos: {last}")

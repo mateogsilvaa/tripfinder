@@ -79,6 +79,20 @@ search:
     # las low cost en rutas donde mandan tres tradicionales: easyJet a Basilea
     # o a Ginebra existia en la pagina y no llegaba al listado.
     airlines_per_query: 6
+    # Ventanas seguidas en blanco antes de dejar ese destino en este barrido.
+    # Buscar "Estonia" a doce meses eran 12 consultas a Kuressaare, 12 a Kardla,
+    # 12 a Parnu y 12 a Tartu: 48 paginas de 2,5 MB para cero tarifas, porque no
+    # hay vuelo desde Madrid a ninguno de los cuatro. Con dos sondas se sabe
+    # igual y se gastan 8.
+    sondas_vacias: 2
+    # Muros seguidos antes de dejar a Google en paz. Cuando capa no lo dice:
+    # sirve una pagina de 4 kB y calla, y seguir preguntando solo alarga el
+    # castigo y se come las consultas de las busquedas que vienen detras.
+    tope_muros: 4
+    # Cuanto se le deja descansar despues de eso, en segundos. Vale para todo el
+    # proceso: el barrido levanta un provider por busqueda guardada y sin esto
+    # cada una volvia a darse contra la misma pared.
+    descanso_segundos: 600
 
   # Pasajeros del vuelo (el precio mostrado es el total de ida y vuelta para todos)
   adults: 1
