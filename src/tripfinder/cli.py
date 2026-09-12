@@ -10,7 +10,9 @@ import random
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
+from . import rutas_vacias
 from .config import Config, Route, load_config, site_url
 from .models import FlightOffer, StayOffer
 from .providers import build_providers
@@ -29,7 +31,9 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
-def _shortlist(found: list[FlightOffer], cfg: Config, limit: int) -> tuple[list, dict]:
+def _shortlist(
+    found: list[FlightOffer], cfg: Config, limit: int, consultas: int | None = None
+) -> tuple[list, dict]:
     """Destinos y fechas que merece la pena contrastar con otras aerolineas.
 
     Tres fuentes, en este orden:
@@ -46,7 +50,14 @@ def _shortlist(found: list[FlightOffer], cfg: Config, limit: int) -> tuple[list,
     bloque 3 se baraja con la fecha como semilla: cada scan mira un trozo
     distinto y en unos dias se ha recorrido todo, sin repetir siempre los
     mismos veinte.
+
+    `limit` es cuantas candidatas se preparan y `consultas` cuantas se van a
+    gastar de verdad, que ya no es lo mismo: el provider se salta las rutas que
+    sabe sin vuelos y tira de las siguientes. La mitad reservada al bloque 1 se
+    mide sobre las CONSULTAS —si se midiera sobre las candidatas, preparar el
+    triple significaria contrastar el triple y descubrir lo mismo de siempre—.
     """
+    consultas = consultas or limit
     pairs: list[tuple[str, date, date]] = []
     names: dict[str, tuple[str, str]] = {}
 
@@ -54,7 +65,7 @@ def _shortlist(found: list[FlightOffer], cfg: Config, limit: int) -> tuple[list,
     for o in sorted(found, key=lambda x: (not x.weekend, -x.score)):
         if o.return_date:
             vistos.setdefault((o.destination, o.depart_date, o.return_date), o)
-    for o in list(vistos.values())[: limit // 2]:
+    for o in list(vistos.values())[: consultas // 2]:
         pairs.append((o.destination, date.fromisoformat(o.depart_date), date.fromisoformat(o.return_date)))
         names[o.destination] = (
             o.destination_name or cfg.city_names.get(o.destination, (o.destination, ""))[0],
@@ -235,8 +246,13 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     # destinos y fechas que ya han salido, en vez de buscar a ciegas.
     google = next((p for p in providers if p.name == "google_flights"), None)
     if google is not None:
-        pairs, names = _shortlist(found, cfg, int(cfg.search.get("google", {}).get("max_queries", 20)))
+        tope = int(cfg.search.get("google", {}).get("max_queries", 20))
+        # Se preparan mas candidatas que consultas a proposito: el provider se
+        # salta las rutas que ya sabemos sin vuelos, y lo que ahorra ahi lo
+        # gasta en las siguientes de la lista en vez de terminar antes.
+        pairs, names = _shortlist(found, cfg, tope * 3, consultas=tope)
         google.shortlist, google.names = pairs, names
+        google.limite = tope
         for route in cfg.routes[:1]:  # el origen es el mismo en todas
             try:
                 for offer in google.search(route):
@@ -342,8 +358,24 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     if caducados:
         print(f"{caducados} busquedas de alojamiento caducadas (el viaje ya paso).")
 
+    # El parte del barrido: de donde sale cada tarifa y que ha costado sacarla.
+    from collections import Counter as _Cuenta
+
+    fuentes: dict[str, Any] = {"tarifas": dict(_Cuenta(o.provider for o in found))}
+    if google is not None:
+        fuentes["google"] = {**google.stats, "bloqueado": bool(google.bloqueado)}
+        log.info(
+            "Google: %d consultas, %d tarifas, %d saltadas por ruta vacia, "
+            "%d servidas de memoria, %d muros",
+            google.stats["consultas"], google.stats["tarifas"], google.stats["saltadas"],
+            google.stats["repetidas"], google.stats["muros"],
+        )
+    # Lo aprendido sobre rutas sin vuelo, al disco: es lo que ahorra el barrido
+    # que viene.
+    rutas_vacias.guardar()
+
     store.record_prices(found)
-    store.save_offers(_publicables(found, args.limit), errors=errors)
+    store.save_offers(_publicables(found, args.limit), errors=errors, fuentes=fuentes)
     # El mapa de continentes que usa el filtro de la portada. Sale del listado
     # mundial, que es estatico, asi que casi siempre escribe lo mismo y no
     # genera commit; esta aqui para que no se pueda quedar viejo.
@@ -745,6 +777,7 @@ def cmd_search(args: argparse.Namespace) -> int:
     if not resultado.offers:
         print("  Nada dentro de ese presupuesto. Prueba a subirlo o ampliar meses.")
 
+    rutas_vacias.guardar()
     if args.dry_run:
         return 0
 
@@ -903,6 +936,8 @@ def cmd_watch(args: argparse.Namespace) -> int:
     # le interesa Praga ni tiene por que enterarse de lo que sigues tu. Los
     # seguimientos sin cuenta (o de una cuenta sin email) van al buzon de
     # siempre, que es como funcionaba esto antes de que hubiera cuentas.
+    rutas_vacias.guardar()
+
     if estado and not args.no_email:
         hoy = date.today().isoformat()
         state = store.load_state()
