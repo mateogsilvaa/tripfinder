@@ -15,6 +15,11 @@
       "noche": 72.0,
       "muestras": 3,
       "nombre": "Bergamo"
+    },
+    "OSL": {
+      "noche": 89.67,
+      "muestras": 3,
+      "nombre": "Oslo"
     }
   },
   "paises": {
@@ -28,6 +33,10 @@
     },
     "Marruecos": {
       "noche": 28.0,
+      "muestras": 3
+    },
+    "Noruega": {
+      "noche": 89.67,
       "muestras": 3
     }
   }
