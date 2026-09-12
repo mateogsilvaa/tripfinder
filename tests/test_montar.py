@@ -57,7 +57,7 @@ def test_una_sola_edicion_cambia_el_nav_de_las_tres_zonas():
         assert html.count('aria-current="page"') == (1 if datos["zona"] else 0), fichero
 
 def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
-    """Los tres enlaces del nav son PAGINAS.
+    """Los cuatro enlaces del nav son PAGINAS.
 
     Antes dos de ellos eran anclas de la propia portada (`./#buscar` y
     `./#seguir`): a la herramienta entera solo se llegaba rellenando el
@@ -65,7 +65,7 @@ def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
     RESULTADO de usarla. Quien solo queria ver sus busquedas guardadas tenia
     que lanzar una."""
     enlaces = re.findall(r'<a href="([^"]+)"\{', montar.NAV)
-    assert enlaces == ["./", "buscar.html", "seguimientos.html"], enlaces
+    assert enlaces == ["./", "buscar.html", "seguimientos.html", "mapa.html"], enlaces
     for destino in enlaces[1:]:
         assert (WEB / destino).exists(), f"{destino} no existe"
 
@@ -136,6 +136,8 @@ LLEVAN = {
     "index.html": {"nav": True, "hojas": True},
     "buscar.html": {"nav": True, "hojas": True},
     "seguimientos.html": {"nav": True, "hojas": True},
+    # El mapa no busca vuelos ni alojamiento: no necesita las hojas.
+    "mapa.html": {"nav": True, "hojas": False},
     "404.html": {"nav": True, "hojas": False},
     "admin.html": {"nav": False, "hojas": False},
 }
