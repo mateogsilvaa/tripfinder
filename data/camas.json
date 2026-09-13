@@ -20,6 +20,11 @@
       "noche": 89.67,
       "muestras": 3,
       "nombre": "Oslo"
+    },
+    "RAK": {
+      "noche": 27.0,
+      "muestras": 3,
+      "nombre": "Marrakech"
     }
   },
   "paises": {
@@ -32,8 +37,8 @@
       "muestras": 3
     },
     "Marruecos": {
-      "noche": 28.0,
-      "muestras": 3
+      "noche": 27.5,
+      "muestras": 6
     },
     "Noruega": {
       "noche": 89.67,
