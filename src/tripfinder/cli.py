@@ -628,13 +628,19 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
             log.warning("Fallo %s: %s", provider.name, exc)
             errors.append(f"{provider.name}: {exc}")
 
-    # Con precio primero y de mas barato a mas caro; los enlaces de busqueda, al final.
-    stays.sort(key=lambda s: (s.price_total is None, s.price_total or 0))
+    # Precio Y cercania al centro, no solo precio: un estudio a doce kilometros
+    # no es mas barato que uno normal y central, es otro viaje. Los enlaces de
+    # busqueda, que no traen precio, se quedan al final.
+    from .stays.ranking import a_pie, ordenar
+
+    stays = ordenar(stays, req)
 
     print(f"\n{req.city} {req.checkin} -> {req.checkout} ({req.nights} noches, {req.adults} adultos)")
     for s in stays[:20]:
         price = f"{s.price_total:7.0f}EUR" if s.price_total else "   enlace"
-        print(f"  {price}  [{s.provider}] {s.name[:60]}")
+        donde = f"  {a_pie(s.km_centro)}" if s.km_centro is not None else ""
+        sello = f"  · {s.sello}" if s.sello else ""
+        print(f"  {price}  [{s.provider}] {s.name[:52]}{donde}{sello}")
 
     if args.dry_run:
         print("\n--dry-run: no se escribe nada.")

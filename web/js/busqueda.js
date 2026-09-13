@@ -73,19 +73,44 @@ async function busquedaYaHecha(label) {
   return (indice.searches || []).filter(esMio).find((s) => s.label === label) || null;
 }
 
+/* Esa búsqueda ya estaba hecha. Lo primero que hay que decir es que NO se ha
+   lanzado nada: si no, se queda uno esperando ocho minutos a que pase algo. */
 function yaHechaHTML(s) {
   return `
-    <div class="saved ya-hecha" data-slug="${esc(s.slug)}">
+    <div class="saved ya-hecha lanzada" data-slug="${esc(s.slug)}">
       <b>${esc(s.label)}</b>
-      <span class="meta">ya buscado ${esc(desde(s.generated_at))} · ${s.count} viaje${
+      <span class="lanzada-hora deep">no se ha lanzado nada</span>
+      <span class="meta">Ya buscado ${esc(desde(s.generated_at))} · ${s.count} viaje${
         s.count === 1 ? "" : "s"
       }${s.best_price ? ` · desde ${fmtEUR(s.best_price)}` : ""}</span>
-      <button class="btn ghost small" type="button" data-repetir
-        title="Los precios cambian: esto vuelve a barrer y tarda unos minutos">Buscar otra vez</button>
+      <p class="lanzada-nota">Un barrido «donde sea» son ocho minutos, así que se te ofrece el que
+        hay en vez de repetirlo. Los precios de hace ${esc(desde(s.generated_at))} no son los de
+        hoy: repetirlo es tu decisión.</p>
+      <div class="lanzada-acc">
+        <button class="btn primary small" type="button" data-abrir-guardada="${esc(s.slug)}">Ver
+          ${s.count === 1 ? "el viaje" : `los ${s.count} viajes`}</button>
+        <button class="btn ghost small" type="button" data-repetir
+          title="Los precios cambian: esto vuelve a barrer y tarda unos minutos">Buscar otra vez</button>
+      </div>
     </div>`;
 }
 
 function wireRepetir() {
+  // «Ver los N viajes» abre la búsqueda que YA está guardada más abajo. Hay dos
+  // elementos con el mismo `data-slug` —este aviso y la tarjeta de verdad—, y
+  // la buena es la que tiene resultados dentro.
+  document.querySelectorAll("[data-abrir-guardada]").forEach((b) =>
+    b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const slug = b.dataset.abrirGuardada;
+      const real = [...document.querySelectorAll(`.saved[data-slug="${CSS.escape(slug)}"]`)].find(
+        (el) => el.querySelector(".saved-rows")
+      );
+      if (!real) return;
+      real.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (real.querySelector(".saved-rows").hidden) real.click();
+    })
+  );
   document.querySelectorAll("[data-repetir]").forEach((b) =>
     b.addEventListener("click", (ev) => {
       ev.stopPropagation();

@@ -1267,6 +1267,9 @@ h1 em { font-size: 1.3em; }
 .cargando-nota { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); padding-top: 10px; }
 .spin {
   display: inline-block;
+  /* Sin el hueco, la rueda y el texto salen pegados: «⟳preguntando». */
+  margin-right: 8px;
+  vertical-align: -1px;
   width: 12px; height: 12px;
   border: 1.5px solid var(--line);
   border-top-color: var(--accent);
@@ -1817,17 +1820,127 @@ h1 em { font-size: 1.3em; }
 .panel-body { overflow-y: auto; padding: 20px 22px 40px; display: grid; gap: 14px; }
 .backdrop { position: fixed; inset: 0; z-index: 44; background: var(--velo); }
 
+/* Dos columnas: lo que es a la izquierda, lo que cuesta a la derecha. El
+   precio total es lo que decide, así que va alineado y en cifra grande, no
+   como una línea más de texto corrido. */
 .stay {
   border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 14px;
   background: var(--surface2);
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: start;
+}
+.stay > div:first-child { min-width: 0; }
+.stay .amount-s {
+  text-align: right;
+  font: 600 var(--fs-cifra) var(--font-mono);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.stay .amount-s small {
+  display: block;
+  font: 400 var(--fs-meta) var(--font-sans);
+  color: var(--muted);
+  letter-spacing: 0;
 }
 .stay .name { font-weight: 600; font-size: var(--fs-city-s); }
 .stay .meta { font-size: var(--fs-ui-s); color: var(--muted); }
 .stay .cifra { font: 600 var(--fs-cifra) var(--font-mono); }
+/* --- los estados de una búsqueda ------------------------------------------
+   Lanzar un barrido son ocho minutos. Lo que se ve mientras tanto no puede ser
+   una rueda girando: tiene que decir por dónde va, que se puede cerrar la
+   pestaña, y —cuando la búsqueda ya estaba hecha— que NO se ha lanzado nada. */
+.lanzada { position: relative; }
+.lanzada.ya-hecha { border-left: 2px solid var(--deep); }
+.lanzada-hora {
+  grid-column: 2 / -1;
+  justify-self: end;
+  align-self: start;
+  font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.lanzada-hora.deep { color: var(--deep); }
+.lanzada-barra {
+  grid-column: 1 / -1;
+  height: 6px;
+  background: var(--hair);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.lanzada-barra i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--t-med) var(--ease);
+}
+.lanzada-pie {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: 400 var(--fs-meta) var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.lanzada-nota {
+  grid-column: 1 / -1;
+  margin: 0;
+  max-width: 64ch;
+  font-size: var(--fs-meta);
+  line-height: 1.45;
+  color: var(--muted);
+}
+.lanzada-acc {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--hair);
+  padding-top: 12px;
+}
+.meta.aviso { color: var(--accent-txt); }
+
+/* El sello dice por qué esa cama está donde está: «el más barato», «el más
+   céntrico», «hotel». Verde cuando es un motivo para elegirla; gris cuando solo
+   la describe. */
+.sello {
+  display: inline-block;
+  margin-top: 8px;
+  font: 400 var(--fs-meta) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+.sello.bueno { color: var(--deep); border-color: var(--deep); }
+
+.seguir-buscando { border-top: 1px solid var(--hair); padding-top: 14px; display: grid; gap: 8px; }
+.seguir-buscando h3 {
+  margin: 0;
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.seguir-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.escapada-compartir {
+  border-top: 1px solid var(--hair);
+  padding-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.escapada-compartir span { font-size: var(--fs-meta); color: var(--muted); max-width: 30ch; }
+
 .stay .insignia {
   justify-self: start;
   font: 400 var(--fs-meta) var(--font-mono);
@@ -1847,6 +1960,14 @@ h1 em { font-size: 1.3em; }
 }
 .total-head { font: 400 var(--fs-caps-l) var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .total-figure { font: 600 var(--fs-figure) var(--font-mono); letter-spacing: -0.03em; }
+/* «132 € por persona»: la cifra en mono y la coletilla en texto corrido, que
+   pegada y monoespaciada salía «132 €por persona» y parecía una palabra. */
+.total-figure span {
+  margin-left: 8px;
+  font: 400 var(--fs-ui-s) var(--font-sans);
+  letter-spacing: 0;
+  color: var(--muted);
+}
 .total-break { font-size: var(--fs-ui-s); color: var(--muted); }
 /* El monoespaciado va bien para una línea corta de estado ("Buscando…"), pero
    un párrafo de tres renglones así se lee como un volcado de consola. El texto

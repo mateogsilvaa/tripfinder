@@ -79,3 +79,56 @@ test("sin cuenta, el mapa no inventa cifras de nadie", async ({ page }) => {
   // Lo que no puede salir es el tablón de chollos donde va el mapa.
   await expect(page.locator("#stats")).not.toContainText("ofertas vivas");
 });
+
+/* Lo que se ve mientras una búsqueda corre fuera. Un barrido «donde sea» son
+   ocho minutos: una rueda girando todo ese rato no dice nada. */
+test.describe("los estados de una búsqueda", () => {
+  const conPendientes = (page, lista) =>
+    page.addInitScript(
+      ([s, p]) => {
+        try {
+          localStorage.setItem("tf_sesion", JSON.stringify(s));
+          localStorage.setItem(`tf_pendientes:${s.uid}`, JSON.stringify(p));
+        } catch (e) { /* nada */ }
+      },
+      [SESION, lista]
+    );
+
+  test("una búsqueda en marcha dice por dónde va y que puedes irte", async ({ page }) => {
+    await conPendientes(page, [{ label: "Donde sea · findes", desde: Date.now() - 3 * 60000 }]);
+    await conBusquedas(page, []);
+    await page.goto("/buscar.html", { waitUntil: "domcontentloaded" });
+    const caja = page.locator(".lanzada").first();
+    await expect(caja).toBeVisible({ timeout: 10000 });
+    await expect(caja).toContainText("lleva 3 min");
+    await expect(caja).toContainText("quedan unos 5 min");
+    // Lo que más tranquiliza: que no hay que quedarse mirando.
+    await expect(caja).toContainText("Puedes cerrar la pestaña");
+    const barra = caja.locator(".lanzada-barra");
+    await expect(barra).toHaveAttribute("role", "progressbar");
+    const pct = Number(await barra.getAttribute("aria-valuenow"));
+    expect(pct).toBeGreaterThan(30);
+    expect(pct).toBeLessThan(45);
+  });
+
+  test("la barra no llega al 100 y se queda esperando", async ({ page }) => {
+    // Llegar al 100 % y seguir esperando es peor que ir lento: se queda en 95.
+    await conPendientes(page, [{ label: "Donde sea", desde: Date.now() - 14 * 60000 }]);
+    await conBusquedas(page, []);
+    await page.goto("/buscar.html", { waitUntil: "domcontentloaded" });
+    const barra = page.locator(".lanzada-barra").first();
+    await expect(barra).toBeVisible({ timeout: 10000 });
+    expect(Number(await barra.getAttribute("aria-valuenow"))).toBe(95);
+  });
+
+  test("la que no llegó a terminar lo dice y se puede relanzar", async ({ page }) => {
+    await conPendientes(page, [{ label: "Italia · un finde", desde: Date.now() - 20 * 60000 }]);
+    await conBusquedas(page, []);
+    await page.goto("/buscar.html", { waitUntil: "domcontentloaded" });
+    const caja = page.locator(".lanzada").first();
+    await expect(caja).toContainText("No llegó a terminar", { timeout: 10000 });
+    await expect(caja).toContainText("20 minutos");
+    await expect(caja.locator("[data-repetir]")).toBeVisible();
+    await expect(caja.locator("[data-olvidar]")).toBeVisible();
+  });
+});

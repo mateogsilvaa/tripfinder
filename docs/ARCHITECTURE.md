@@ -8,7 +8,7 @@
 | `tripfinder.providers.*` | `src/tripfinder/providers/` | Buscan vuelos. Un adapter por fuente, todos devuelven `FlightOffer`. |
 | `tripfinder.cache` | `src/tripfinder/` | Lo ya preguntado en este barrido, en `.cache/consultas/` (fuera del repo). Cubre el hueco ENTRE procesos: `scan-flights` y `watch run` corren seguidos en el mismo runner. No se persiste entre workflows a propósito: una búsqueda pedida a mano es una petición de datos frescos. |
 | `tripfinder.rutas_vacias` | `src/tripfinder/` | El cuaderno de rutas sin vuelo (`data/rutas_vacias.json`). Apunta qué pares origen-destino llevan barridos enteros sin devolver un precio, para sondearlos una vez por barrido en vez de doce. Caduca a los 21 días y un solo precio borra la anotación. |
-| `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. |
+| `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. `ranking.py` los ordena por precio **y** cercanía al centro; `centro.py` saca el centro de la ciudad de Nominatim y lo guarda en `data/centros.json` (una vez por ciudad: el centro de Roma no se mueve). |
 | `tripfinder.scoring` | `src/tripfinder/` | Convierte precio + histórico en un `score` 0-100 y decide si es chollo. |
 | `tripfinder.store` | `src/tripfinder/` | Persistencia en JSON dentro de `data/` (el propio repo es la base de datos). |
 | `tripfinder.users` | `src/tripfinder/` | Las cuentas: `data/users.json` con un PBKDF2-SHA256 por contraseña. Lo que se publica en Pages va sin las direcciones de correo (`users publish`): la web solo necesita saber **si** hay una, no cuál. El mismo algoritmo que calcula el navegador en `web/auth.js`. |

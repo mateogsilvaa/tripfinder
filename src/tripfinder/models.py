@@ -135,6 +135,16 @@ class StayOffer:
     area: str = ""
     image: str = ""
     note: str = ""
+    # Donde cae, y a cuanto del centro. En una escapada de dos noches, diez
+    # kilometros son dos horas de transporte: un estudio barato y lejos no es
+    # mas barato que uno normal y central, es otro viaje.
+    lat: float | None = None
+    lon: float | None = None
+    km_centro: float | None = None
+    # Lo que hace que salga arriba: precio y cercania juntos. Lo pone
+    # `stays.ranking`, no el provider, que cada uno solo sabe de lo suyo.
+    score: float = 0.0
+    sello: str = ""  # "el mas barato", "el mas centrico", "hotel"…
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
