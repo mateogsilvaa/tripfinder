@@ -271,7 +271,7 @@ lo que cambia es **qué dice cada página**.
   seguimientos de verdad), y con el foco en un botón de dentro de una fila el
   Enter abría además la fila.
 
-## M19 · Los estados, y dónde dormir  🚧
+## M19 · Los estados, y dónde dormir  🚧 (falta 2d)
 
 Tercer turno de Claude Design (`TripFinder Estados.dc.html`) más la mejora de
 alojamiento pedida a mano.
@@ -291,9 +291,11 @@ alojamiento pedida a mano.
     sería inventado.
   - Ya estaba hecha: lo primero que dice es que **no se ha lanzado nada**.
   - No llegó a terminar: lo dice con los minutos y deja relanzarla.
-- [ ] **La banda de cambio de precio** `ux`
-  - El diseño 2b: titular con lo que baja y lo que sube, tres fichas con su
-    curva y su sello. Hoy `#favAviso` dice bastante menos.
+- [x] **La banda de cambio de precio** `ux`
+  - Filo repartido arriba —verde lo que baja, naranja lo que sube—, titular con
+    la suma, y una ficha por viaje con su curva, su sello y su «compartir».
+    Ninguna ficha se queda sin sello: sin él parece un fallo de maquetación al
+    lado de las que sí lo tienen.
 - [ ] **Pedir una cuenta** `web` `infra`
   - El diseño 2d: formulario, cola en el panel y «Crear la cuenta» con los
     campos ya rellenos. Es una función entera, no una pantalla.
