@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-12",
+  "updated": "2026-09-13",
   "watches": [
     {
       "id": "todos-2027-01-29-bccb1f1e",
@@ -17,7 +17,7 @@
       "owner_name": "mateo",
       "created": "2026-09-03",
       "best_price": 33.28,
-      "last_checked": "2026-09-12",
+      "last_checked": "2026-09-13",
       "active": true,
       "last_offers": [
         {
@@ -38,7 +38,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-09-12T20:02:51+00:00",
+          "found_at": "2026-09-13T10:59:10+00:00",
           "nights": 2,
           "depart_time": "",
           "arrive_time": "",
@@ -53,8 +53,8 @@
           "weekend": true,
           "nocturno": false,
           "alternatives": [],
-          "baseline": 74.98,
-          "discount_pct": 54.4,
+          "baseline": 73.88,
+          "discount_pct": 53.7,
           "score": 83,
           "id": "wizzair-MAD-MXP-20270129",
           "price_per_person": 34.18
@@ -77,7 +77,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-09-12T20:02:59+00:00",
+          "found_at": "2026-09-13T10:59:18+00:00",
           "nights": 2,
           "depart_time": "",
           "arrive_time": "",
@@ -116,7 +116,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-09-12T20:02:57+00:00",
+          "found_at": "2026-09-13T10:59:16+00:00",
           "nights": 2,
           "depart_time": "",
           "arrive_time": "",
@@ -155,7 +155,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-09-12T20:02:25+00:00",
+          "found_at": "2026-09-13T10:58:43+00:00",
           "nights": 2,
           "depart_time": "09:55",
           "arrive_time": "11:15",
@@ -170,7 +170,7 @@
           "weekend": false,
           "nocturno": false,
           "alternatives": [],
-          "baseline": 30.63,
+          "baseline": 30.54,
           "discount_pct": 0.0,
           "score": 31,
           "id": "ryanair-MAD-AGA-20270129",
@@ -194,7 +194,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-09-12T20:04:49+00:00",
+          "found_at": "2026-09-13T11:01:28+00:00",
           "nights": 2,
           "depart_time": "07:10",
           "arrive_time": "08:25",
@@ -233,7 +233,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-09-12T20:06:18+00:00",
+          "found_at": "2026-09-13T11:03:20+00:00",
           "nights": 2,
           "depart_time": "11:40",
           "arrive_time": "13:00",
@@ -272,7 +272,7 @@
       "owner_name": "pdp",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-09-12",
+      "last_checked": "2026-09-13",
       "active": true,
       "last_offers": []
     },
@@ -292,7 +292,7 @@
       "owner_name": "mateo",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-09-12",
+      "last_checked": "2026-09-13",
       "active": true,
       "last_offers": []
     },
@@ -312,7 +312,7 @@
       "owner_name": "mateo",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-09-12",
+      "last_checked": "2026-09-13",
       "active": true,
       "last_offers": []
     },
@@ -332,7 +332,7 @@
       "owner_name": "mateo",
       "created": "2026-09-10",
       "best_price": 79.0,
-      "last_checked": "2026-09-12",
+      "last_checked": "2026-09-13",
       "active": true,
       "last_offers": [
         {
@@ -353,7 +353,7 @@
           "airline_link": "https://www.wizzair.com/es-es/booking/select-flight/MAD/TIA/2026-11-13/2026-11-15/1/0/0/null",
           "airline_link_label": "Wizz Air",
           "adults": 1,
-          "found_at": "2026-09-12T20:19:41+00:00",
+          "found_at": "2026-09-13T11:11:59+00:00",
           "nights": 2,
           "depart_time": "22:15",
           "arrive_time": "01:30",
@@ -392,7 +392,7 @@
       "owner_name": "mateo",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-09-12",
+      "last_checked": "2026-09-13",
       "active": true,
       "last_offers": []
     }
