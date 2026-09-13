@@ -12,7 +12,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from . import rutas_vacias
+from . import cache, rutas_vacias
 from .config import Config, Route, load_config, site_url
 from .models import FlightOffer, StayOffer
 from .providers import build_providers
@@ -371,8 +371,10 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
             google.stats["repetidas"], google.stats["muros"],
         )
     # Lo aprendido sobre rutas sin vuelo, al disco: es lo que ahorra el barrido
-    # que viene.
+    # que viene. Y de paso se tira lo que ya caduco de la cache de consultas,
+    # que en el runner da igual —es efimero— pero en un portatil se acumula.
     rutas_vacias.guardar()
+    cache.limpiar()
 
     store.record_prices(found)
     store.save_offers(_publicables(found, args.limit), errors=errors, fuentes=fuentes)

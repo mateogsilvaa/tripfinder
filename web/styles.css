@@ -41,6 +41,10 @@
   --hero-ink: #12110f;
   --hero-hair: #d9d4c7;
   --hero-muted: #6e6a5e;
+  /* El verde de la lamina va al reves que el de la pagina: la lamina es clara
+     cuando la pagina es oscura, y el mismo token no puede servir para las dos.
+     `tools/contraste.py` lo audita contra `--hero-bg`, no contra `--paper`. */
+  --hero-deep: #0f5f52;
   --btn-bg: #f4f1e8;
   --btn-ink: #12110f;
   --code-bg: #f4f1e8;
@@ -126,6 +130,7 @@
   --hero-ink: #f3f0e9;
   --hero-hair: #2e2c24;
   --hero-muted: #a9a497;
+  --hero-deep: #4fd6b0;
   --btn-bg: #16150f;
   --btn-ink: #f3f0e9;
   --code-bg: #16150f;
@@ -1078,6 +1083,23 @@ h1 em { font-size: 1.3em; }
 .price .nota-fila .escapada,
 .price .nota-fila .delta { display: inline; font-size: var(--fs-meta); }
 .price .escapada { display: block; font-size: var(--fs-meta); color: var(--muted); }
+
+/* "No se ha visto nunca mas barato". Va en verde y no en naranja a proposito:
+   el naranja ya es el descuento, y si las dos cosas salieran del mismo color la
+   fila diria dos veces lo mismo de un vistazo. */
+.minimo {
+  display: inline-block;
+  font: 600 var(--fs-meta) / 1 var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--deep);
+  text-transform: lowercase;
+  white-space: nowrap;
+}
+.ticket-cab .minimo {
+  font-size: var(--fs-ui-s);
+  color: var(--hero-deep);
+}
+.price .nota-fila .minimo { display: inline; }
 
 /* La diferencia contra el precio al que lo apuntaste. */
 .delta { display: block; font: 500 var(--fs-meta) var(--font-mono); }

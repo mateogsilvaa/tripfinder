@@ -188,14 +188,21 @@ class Store:
         return self._read("history.json", {})
 
     def record_prices(self, offers: list[FlightOffer]) -> dict[str, list[dict]]:
-        """Anade el precio de hoy por ruta. Idempotente dentro del mismo dia."""
+        """Anade el precio de hoy por ruta. Idempotente dentro del mismo dia.
+
+        Se graba POR PERSONA, no el total del grupo. El barrido busca para uno,
+        asi que hasta hoy daba igual; el dia que `adults` del YAML cambie, una
+        serie con totales de dos personas al lado de totales de una no se puede
+        comparar con nada, y el historico entero deja de valer hacia atras.
+        """
         history = self.load_history()
         today = date.today().isoformat()
         for o in offers:
             series = history.setdefault(o.history_key, [])
-            if any(e["d"] == today and abs(e["p"] - o.price) < 0.01 for e in series):
+            unidad = o.price_per_person
+            if any(e["d"] == today and abs(e["p"] - unidad) < 0.01 for e in series):
                 continue
-            series.append({"d": today, "p": round(o.price, 2)})
+            series.append({"d": today, "p": round(unidad, 2)})
             del series[:-MAX_HISTORY_PER_ROUTE]
         self._write("history.json", history)
         return history

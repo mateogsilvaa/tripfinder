@@ -35,7 +35,7 @@ FONDOS = ["paper", "surface", "surface2", "field"]
 # La lamina invertida —el chollo del dia y la cabecera del feed— va al reves:
 # fondo claro en el tema oscuro y al reves. Tiene sus propios tokens y se
 # audita aparte, o no se auditaria nunca.
-TINTAS_HERO = ["hero-ink", "hero-muted"]
+TINTAS_HERO = ["hero-ink", "hero-muted", "hero-deep"]
 FONDOS_HERO = ["hero-bg"]
 
 # El texto que va ENCIMA de un relleno de color: el boton primario sobre el

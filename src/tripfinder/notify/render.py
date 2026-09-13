@@ -47,9 +47,16 @@ def _fecha(iso: str) -> str:
 
 def subject_for(offers: list[FlightOffer]) -> str:
     best = offers[0]
+    # "Nunca ha estado tan barato" pesa mas en un asunto que un porcentaje: el
+    # porcentaje se mide contra la mediana y no dice si esto es el suelo.
+    marca = (
+        "nunca tan barato"
+        if best.minimo_historico
+        else f"-{best.discount_pct:.0f}%"
+    )
     text = (
         f"[TripFinder] {best.destination_name or best.destination} "
-        f"{best.price:.0f}EUR ida y vuelta (-{best.discount_pct:.0f}%)"
+        f"{best.price:.0f}EUR ida y vuelta ({marca})"
     )
     if len(offers) > 1:
         text += f" y {len(offers) - 1} mas"
@@ -80,6 +87,13 @@ def _ticket(offer: FlightOffer) -> str:
         f'font:400 11px {MONO};padding:5px 9px;white-space:nowrap">'
         f"&minus;{offer.discount_pct:.0f}%</span>"
         if offer.discount_pct >= 5
+        else ""
+    )
+    minimo = (
+        f'<span style="border:1px solid {VERDE};color:{VERDE};'
+        f'font:400 11px {MONO};padding:5px 9px;white-space:nowrap">'
+        f"m&iacute;nimo hist&oacute;rico</span>"
+        if offer.minimo_historico
         else ""
     )
     escalas = "directo" if not offer.stops else f"{offer.stops} escala{'s' if offer.stops > 1 else ''}"
@@ -129,7 +143,7 @@ def _ticket(offer: FlightOffer) -> str:
 
           <div style="padding-top:18px">
             <span style="font:400 30px {MONO};color:{ROJO};letter-spacing:-.04em">{offer.price:.0f}&euro;</span>
-            &nbsp;{tachado}&nbsp;{sello}
+            &nbsp;{tachado}&nbsp;{sello}{f"&nbsp;{minimo}" if minimo else ""}
             <div style="font:400 11px {MONO};color:{FAINT};padding-top:7px">
               ida y vuelta, 1 adulto{f" &middot; {offer.price_per_hour:.1f} &euro;/hora de viaje" if offer.price_per_hour else ""}
             </div>
@@ -200,8 +214,9 @@ def render_markdown(offers: list[FlightOffer]) -> str:
     ]
     for o in offers:
         fechas = _fecha(o.depart_date) + (f" → {_fecha(o.return_date)}" if o.return_date else "")
+        marca = " 🔻 mínimo histórico" if o.minimo_historico else ""
         lines.append(
-            f"| **{o.price:.0f} €** | {o.origin} → {o.destination_name or o.destination} | "
+            f"| **{o.price:.0f} €**{marca} | {o.origin} → {o.destination_name or o.destination} | "
             f"{fechas} ({o.nights or '?'}n) | {o.useful_hours:.0f} h | "
             f"[web]({site_url()}/?offer={o.id}) · [reservar]({o.deep_link}) |"
         )

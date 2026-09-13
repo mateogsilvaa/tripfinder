@@ -35,7 +35,19 @@ const percentil = (ordenados, q) =>
   ordenados[Math.min(ordenados.length - 1, Math.floor(ordenados.length * q))];
 
 /* Un veredicto de una línea, que es lo que de verdad se quiere saber. */
-function veredicto(precio, serie) {
+function veredicto(precio, serie, o) {
+  // Si el backend ya lo ha marcado, manda el backend: mira el historico entero
+  // y con mas exigencia que esto. Dos sitios de la misma pantalla diciendo
+  // cosas distintas del mismo precio es peor que no decir ninguna.
+  if (o && o.minimo_historico) {
+    const antes = Number(o.minimo_anterior);
+    return {
+      clase: "chollo",
+      texto: Number.isFinite(antes)
+        ? `es lo más barato que se ha visto en esta ruta: lo anterior eran ${Math.round(antes)} €`
+        : "es lo más barato que se ha visto en esta ruta",
+    };
+  }
   const precios = serie.map((e) => Number(e.p)).filter(Number.isFinite).sort((a, b) => a - b);
   if (precios.length < 5) return null;
   const barato = percentil(precios, 0.25);
@@ -48,6 +60,26 @@ function veredicto(precio, serie) {
   if (precio >= caro)
     return { clase: "mal", texto: `caro para esta ruta: suele bajar de ${Math.round(barato)} €` };
   return { clase: "normal", texto: `precio normal (lo habitual: ${Math.round(barato)}–${Math.round(caro)} €)` };
+}
+
+/* La insignia de "no lo he visto nunca mas barato".
+
+   La pone el backend (`scoring.marcar_minimo`) mirando el historico entero de
+   la ruta, y por eso puede salir en la LISTA: si se calculara aqui habria que
+   bajarse `history.json` —60 kB— antes de pintar la primera fila, y hoy eso
+   solo se hace al abrir un viaje.
+
+   No es lo mismo que el sello de descuento. El "-40%" se mide contra la
+   mediana: una ruta que lleva meses cara luce un descuento enorme sin estar
+   barata, y una ruta siempre barata no luce ninguno aunque hoy toque suelo.
+   Esta insignia responde a la otra pregunta, que es la que hace reservar. */
+export function minimoHTML(o) {
+  if (!o || !o.minimo_historico) return "";
+  const antes = Number(o.minimo_anterior);
+  const detalle = Number.isFinite(antes)
+    ? `Lo más barato que se había visto en esta ruta eran ${Math.round(antes)} €`
+    : "No se ha visto más barato en esta ruta";
+  return `<span class="minimo" title="${esc(detalle)}" aria-label="${esc(detalle)}">mínimo histórico</span>`;
 }
 
 export function historiaHTML(o) {
@@ -63,7 +95,7 @@ export function historiaHTML(o) {
     if (previo === undefined || p < previo) porDia.set(e.d, p);
   });
   const dias = [...porDia.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  const v = veredicto(porPersona(o), serie);
+  const v = veredicto(porPersona(o), serie, o);
   if (!dias.length && !v) return "";
   return `
     <div class="historia ${v ? v.clase : ""}">
