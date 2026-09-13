@@ -1267,6 +1267,9 @@ h1 em { font-size: 1.3em; }
 .cargando-nota { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); padding-top: 10px; }
 .spin {
   display: inline-block;
+  /* Sin el hueco, la rueda y el texto salen pegados: «⟳preguntando». */
+  margin-right: 8px;
+  vertical-align: -1px;
   width: 12px; height: 12px;
   border: 1.5px solid var(--line);
   border-top-color: var(--accent);
@@ -1446,8 +1449,8 @@ h1 em { font-size: 1.3em; }
    de seguir, «Siguiendo a diario» salía a cuerpo de subtítulo en vez de como
    el rótulo pequeño que es. Solo se veía con seguimientos de verdad, que es
    justo lo que no tiene una página recién abierta. */
-.watch-head, .aviso-head,
-.herramienta .watch-head, .herramienta .aviso-head {
+.watch-head,
+.herramienta .watch-head {
   font: 400 var(--fs-caps-l) / 1 var(--font-mono);
   letter-spacing: var(--ls-caps);
   text-transform: uppercase;
@@ -1534,15 +1537,132 @@ h1 em { font-size: 1.3em; }
    decía cuántos sigues y no llevaba a ninguna parte. */
 .observacion-ir { margin: 14px 0 0; }
 
+/* --- la banda de cambio de precio ----------------------------------------
+   Lo primero que ves al entrar cuando algo tuyo se ha movido. El titular dice
+   cuánto dinero y en qué dirección; debajo, una ficha por viaje con su curva.
+   El filo de arriba se reparte como se reparten los cambios: verde lo que baja
+   y naranja lo que sube, así se ve la proporción sin contar nada. */
 .fav-aviso {
   margin: 20px 0 0;
-  border: 1px solid var(--accent);
+  border: 1px solid var(--line);
   border-radius: var(--r);
-  padding: 14px 16px;
+  background: var(--surface);
+  overflow: hidden;
   font-size: var(--fs-body-s);
   color: var(--ink);
 }
+.fav-aviso::before {
+  content: "";
+  display: block;
+  height: 3px;
+  background: linear-gradient(
+    to right,
+    var(--deep) 0 var(--pbaja, 100%),
+    var(--accent) var(--pbaja, 100%) 100%
+  );
+}
 .fav-aviso b { color: var(--accent-txt); }
+
+.aviso-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 18px 20px 0;
+}
+.aviso-head .kicker {
+  font-family: var(--font-script);
+  font-size: 24px;
+  line-height: 1;
+  color: var(--accent-txt);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.aviso-head h3 {
+  margin: 4px 0 0;
+  font-size: var(--fs-subhead);
+  letter-spacing: -0.03em;
+}
+.aviso-head h3 small {
+  display: block;
+  margin-top: 4px;
+  font: 400 var(--fs-body-s) var(--font-sans);
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+/* Tres por fila, con un píxel de aire: el fondo es la línea y cada ficha se
+   pinta encima, como el resto de las tablas de la web. */
+.cambios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1px;
+  margin: 16px 0 0;
+  background: var(--hair);
+  border-top: 1px solid var(--hair);
+  border-bottom: 1px solid var(--hair);
+}
+.cambio {
+  background: var(--surface2);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  border-top: 2px solid var(--muted);
+}
+.cambio.baja { border-top-color: var(--deep); }
+.cambio.sube { border-top-color: var(--accent); }
+.cambio header h4 { margin: 0; font-size: var(--fs-city); letter-spacing: -0.025em; }
+.cambio header p {
+  margin: 3px 0 0;
+  font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--muted);
+}
+
+/* La cifra de ahora es lo que se mira: grande, y el resto a su alrededor. */
+.cambio-precio {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cambio-precio s { font: 400 var(--fs-ui) var(--font-mono); color: var(--muted); }
+.cambio-precio b {
+  font: 700 var(--fs-figure) var(--font-sans);
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+.cambio-precio b span { font-size: 0.6em; margin-left: 0.11em; }
+.cambio.baja .sello-dif { color: var(--deep); }
+.cambio-nota { flex-basis: 100%; }
+
+.cambio footer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--hair);
+  padding-top: 12px;
+}
+.cambio .insignia {
+  font: 400 var(--fs-meta) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+.aviso-pie {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 20px 16px;
+  font-size: var(--fs-meta);
+  color: var(--muted);
+}
 
 /* La curva de precio. */
 .historia { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
@@ -1566,8 +1686,6 @@ h1 em { font-size: 1.3em; }
 .spark.baja { color: var(--deep); }
 .spark.sube { color: var(--accent-txt); }
 .ticket .spark { background: none; border-color: var(--hero-hair); }
-.cambios { display: grid; gap: 6px; }
-.cambio-precio { font: 600 var(--fs-data) var(--font-mono); }
 .cambio-nota { font-size: var(--fs-ui-s); color: var(--muted); }
 .sello-dif { font: 500 var(--fs-meta) var(--font-mono); color: var(--accent-txt); }
 
@@ -1596,7 +1714,7 @@ h1 em { font-size: 1.3em; }
 #frescura { white-space: normal; }
 @media (min-width: 460px) { #frescura { white-space: nowrap; } }
 #frescura.viejo { color: var(--accent-txt); }
-.aviso-pie { color: var(--accent-txt); }
+.aviso-pie a { color: var(--accent-txt); }
 
 /* ==========================================================================
    DIÁLOGOS
@@ -1817,17 +1935,132 @@ h1 em { font-size: 1.3em; }
 .panel-body { overflow-y: auto; padding: 20px 22px 40px; display: grid; gap: 14px; }
 .backdrop { position: fixed; inset: 0; z-index: 44; background: var(--velo); }
 
+/* Dos columnas: lo que es a la izquierda, lo que cuesta a la derecha. El
+   precio total es lo que decide, así que va alineado y en cifra grande, no
+   como una línea más de texto corrido. */
 .stay {
   border: 1px solid var(--line);
   border-radius: var(--r);
   padding: 14px;
   background: var(--surface2);
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px 14px;
+  align-items: start;
+}
+.stay > div:first-child { min-width: 0; }
+.stay .amount-s {
+  text-align: right;
+  font: 600 var(--fs-cifra) var(--font-mono);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+.stay .amount-s small {
+  display: block;
+  font: 400 var(--fs-meta) var(--font-sans);
+  color: var(--muted);
+  letter-spacing: 0;
 }
 .stay .name { font-weight: 600; font-size: var(--fs-city-s); }
 .stay .meta { font-size: var(--fs-ui-s); color: var(--muted); }
 .stay .cifra { font: 600 var(--fs-cifra) var(--font-mono); }
+/* En la banda de cambios, el sello va a la izquierda y los botones a la
+   derecha: el motivo primero, la acción después. */
+.cambio footer .empuja { flex: 1; }
+.cambio .insignia.bueno { color: var(--deep); border-color: var(--deep); }
+
+/* --- los estados de una búsqueda ------------------------------------------
+   Lanzar un barrido son ocho minutos. Lo que se ve mientras tanto no puede ser
+   una rueda girando: tiene que decir por dónde va, que se puede cerrar la
+   pestaña, y —cuando la búsqueda ya estaba hecha— que NO se ha lanzado nada. */
+.lanzada { position: relative; }
+.lanzada.ya-hecha { border-left: 2px solid var(--deep); }
+.lanzada-hora {
+  grid-column: 2 / -1;
+  justify-self: end;
+  align-self: start;
+  font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.lanzada-hora.deep { color: var(--deep); }
+.lanzada-barra {
+  grid-column: 1 / -1;
+  height: 6px;
+  background: var(--hair);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.lanzada-barra i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--t-med) var(--ease);
+}
+.lanzada-pie {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font: 400 var(--fs-meta) var(--font-mono);
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.lanzada-nota {
+  grid-column: 1 / -1;
+  margin: 0;
+  max-width: 64ch;
+  font-size: var(--fs-meta);
+  line-height: 1.45;
+  color: var(--muted);
+}
+.lanzada-acc {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--hair);
+  padding-top: 12px;
+}
+.meta.aviso { color: var(--accent-txt); }
+
+/* El sello dice por qué esa cama está donde está: «el más barato», «el más
+   céntrico», «hotel». Verde cuando es un motivo para elegirla; gris cuando solo
+   la describe. */
+.sello {
+  display: inline-block;
+  margin-top: 8px;
+  font: 400 var(--fs-meta) var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+.sello.bueno { color: var(--deep); border-color: var(--deep); }
+
+.seguir-buscando { border-top: 1px solid var(--hair); padding-top: 14px; display: grid; gap: 8px; }
+.seguir-buscando h3 {
+  margin: 0;
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.seguir-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.escapada-compartir {
+  border-top: 1px solid var(--hair);
+  padding-top: 14px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.escapada-compartir span { font-size: var(--fs-meta); color: var(--muted); max-width: 30ch; }
+
 .stay .insignia {
   justify-self: start;
   font: 400 var(--fs-meta) var(--font-mono);
@@ -1847,6 +2080,14 @@ h1 em { font-size: 1.3em; }
 }
 .total-head { font: 400 var(--fs-caps-l) var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .total-figure { font: 600 var(--fs-figure) var(--font-mono); letter-spacing: -0.03em; }
+/* «132 € por persona»: la cifra en mono y la coletilla en texto corrido, que
+   pegada y monoespaciada salía «132 €por persona» y parecía una palabra. */
+.total-figure span {
+  margin-left: 8px;
+  font: 400 var(--fs-ui-s) var(--font-sans);
+  letter-spacing: 0;
+  color: var(--muted);
+}
 .total-break { font-size: var(--fs-ui-s); color: var(--muted); }
 /* El monoespaciado va bien para una línea corta de estado ("Buscando…"), pero
    un párrafo de tres renglones así se lee como un volcado de consola. El texto

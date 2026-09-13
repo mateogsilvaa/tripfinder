@@ -37,14 +37,65 @@ export function anadirPendiente(label) {
   guardarPendientes(lista);
 }
 
+/* Lo que se ve mientras una búsqueda corre fuera.
+
+   LA BARRA ES DE TIEMPO, NO DE DESTINOS. Sería mejor decir «40 de 105
+   destinos», pero el workflow no cuenta por dónde va: publica el resultado al
+   final y no antes. Poner un número de destinos calculado con el reloj sería
+   inventarse un dato, así que se dice lo que de verdad se sabe —cuánto lleva y
+   cuánto suele tardar— y la barra avanza con eso. Una rueda girando ocho
+   minutos no dice nada; esto dice si vas por la mitad o por el final. */
+const ESPERA_TIPICA_MS = 8 * 60 * 1000;
+
+function minutos(ms) {
+  return Math.max(1, Math.round(ms / 60000));
+}
+
 export function pendienteHTML(p, caducada) {
-  return caducada
-    ? `<div class="saved"><b>${esc(p.label)}</b>
-         <span class="meta">no llegó a terminar · vuelve a lanzarla</span>
-         <button class="quitar" type="button" data-olvidar="${esc(p.label)}"
-           aria-label="Olvidar esta búsqueda">olvidar</button></div>`
-    : `<div class="saved"><b>${esc(p.label)}</b>
-         <span class="meta"><span class="spin"></span>buscando… tarda 2–3 min</span></div>`;
+  if (caducada) {
+    return `
+      <div class="saved lanzada">
+        <b>${esc(p.label)}</b>
+        <span class="meta aviso">No llegó a terminar. Pasaron ${minutos(
+          Date.now() - p.desde
+        )} minutos sin que se publicara nada.</span>
+        <div class="lanzada-acc">
+          <button class="btn ghost small" type="button" data-repetir>Volver a lanzarla</button>
+          <button class="quitar" type="button" data-olvidar="${esc(p.label)}"
+            aria-label="Olvidar esta búsqueda">olvidar</button>
+        </div>
+      </div>`;
+  }
+  const llevo = Date.now() - p.desde;
+  // Se queda en el 95 %: llegar al 100 y seguir esperando es peor que ir lento.
+  const pct = Math.min(95, Math.round((llevo / ESPERA_TIPICA_MS) * 100));
+  const quedan = Math.max(0, ESPERA_TIPICA_MS - llevo);
+  return `
+    <div class="saved lanzada">
+      <b>${esc(p.label)}</b>
+      <span class="lanzada-hora">lanzada ${esc(hora(p.desde))}</span>
+      <span class="meta"><span class="spin"></span>preguntando destino a destino…</span>
+      <div class="lanzada-barra" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+        aria-valuenow="${pct}" aria-label="Progreso de la búsqueda"><i style="width:${pct}%"></i></div>
+      <span class="lanzada-pie">
+        <span>lleva ${minutos(llevo)} min</span>
+        <span>${quedan ? `quedan unos ${minutos(quedan)} min` : "está al caer"}</span>
+      </span>
+      <p class="lanzada-nota">Puedes cerrar la pestaña: la búsqueda corre fuera y el resultado se
+        queda guardado aquí.</p>
+      <div class="lanzada-acc">
+        <button class="quitar" type="button" data-olvidar="${esc(p.label)}"
+          aria-label="Dejar de esperar esta búsqueda"
+          title="La búsqueda sigue corriendo fuera; esto solo deja de esperarla aquí">dejar de esperar</button>
+      </div>
+    </div>`;
+}
+
+function hora(ms) {
+  const d = new Date(ms);
+  return Number.isFinite(d.getTime())
+    ? `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`
+    : "";
 }
 
 async function cargarDestinos() {

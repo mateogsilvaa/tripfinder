@@ -271,6 +271,35 @@ lo que cambia es **qué dice cada página**.
   seguimientos de verdad), y con el foco en un botón de dentro de una fila el
   Enter abría además la fila.
 
+## M19 · Los estados, y dónde dormir  🚧 (falta 2d)
+
+Tercer turno de Claude Design (`TripFinder Estados.dc.html`) más la mejora de
+alojamiento pedida a mano.
+
+- [x] **Buscar alojamiento, de verdad** `scraper` `ux`
+  - Hoteles además de pisos, sin credenciales: Airbnb también los lista y se le
+    pregunta dos veces (lo normal y solo habitaciones de hotel).
+  - Cada cama dice a cuánto del centro cae, y la lista se ordena por precio Y
+    cercanía. El centro sale de Nominatim y se guarda en `data/centros.json`.
+  - La ficha, rehecha: sin foto —lo que decide es el precio y de quién es—, con
+    el sello que explica por qué está donde está, y los comparadores como
+    pastillas en vez de fichas que prometen un precio que no traen.
+- [x] **Los estados de una búsqueda** `ux`
+  - En marcha: barra de progreso, «lleva 3 min · quedan unos 5», «puedes cerrar
+    la pestaña» y «dejar de esperar». La barra es de TIEMPO y no de destinos: el
+    workflow no cuenta por dónde va, y un número de destinos sacado del reloj
+    sería inventado.
+  - Ya estaba hecha: lo primero que dice es que **no se ha lanzado nada**.
+  - No llegó a terminar: lo dice con los minutos y deja relanzarla.
+- [x] **La banda de cambio de precio** `ux`
+  - Filo repartido arriba —verde lo que baja, naranja lo que sube—, titular con
+    la suma, y una ficha por viaje con su curva, su sello y su «compartir».
+    Ninguna ficha se queda sin sello: sin él parece un fallo de maquetación al
+    lado de las que sí lo tienen.
+- [ ] **Pedir una cuenta** `web` `infra`
+  - El diseño 2d: formulario, cola en el panel y «Crear la cuenta» con los
+    campos ya rellenos. Es una función entera, no una pantalla.
+
 ## M5 · Robustez y calidad
 
 - [x] **#25 · Tests de scoring y de parseo de providers** `infra`

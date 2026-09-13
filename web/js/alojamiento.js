@@ -15,6 +15,7 @@ import {
   REPO,
 } from "./base.js";
 import { GRUPO, pax } from "./precios.js";
+import { wireCompartir } from "./compartir.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { OFFERS, render } from "./ofertas.js";
 
@@ -205,29 +206,63 @@ function startPolling(id) {
   }, POLL_EVERY_MS);
 }
 
+/* La ficha de una cama va SIN FOTO a propósito. Lo que decide dónde duermes en
+   una escapada de dos noches es el precio total, de quién es y a qué distancia
+   del centro cae; una foto de 300 px de un salón no ayuda a elegir y empuja el
+   resto fuera de la pantalla. */
 function stayRow(s) {
-  const meta = [s.provider, s.rating ? `valoración ${s.rating}` : "", s.note]
+  const meta = [
+    s.provider,
+    s.rating ? `valoración ${s.rating}` : "",
+    // Lo que antes no se decía: un estudio a doce kilómetros del centro no es
+    // más barato que uno normal y céntrico, es otro viaje.
+    aPie(s.km_centro),
+    s.note,
+  ]
     .filter(Boolean)
     .join(" · ");
-  const precio = s.price_total
-    ? `<div class="amount-s">${fmtEUR(s.price_total)}<small>${
-        s.price_per_night ? `${fmtEUR(s.price_per_night)} la noche` : ""
-      }</small></div>`
-    : `<div class="amount-s link-tag">abrir</div>`;
   return `
     <a class="stay" href="${escURL(s.url)}" target="_blank" rel="noopener">
-      ${(() => {
-        // Una imagen con un esquema raro no se pinta: `src="#"` haria que el
-        // navegador se pidiera la propia pagina como si fuera un JPEG.
-        const img = escURL(s.image);
-        return img && img !== "#" ? `<img src="${img}" alt="" loading="lazy">` : "";
-      })()}
       <div>
         <div class="name">${esc(s.name)}</div>
         <div class="meta">${esc(meta)}</div>
+        ${s.sello ? `<span class="sello${s.sello.startsWith("el más") ? " bueno" : ""}">${esc(s.sello)}</span>` : ""}
       </div>
-      ${precio}
+      <div class="amount-s">${fmtEUR(s.price_total)}<small>${
+        s.price_per_night ? `${fmtEUR(s.price_per_night)} la noche` : ""
+      }</small></div>
     </a>`;
+}
+
+/* «a 12 min andando», «a 4,2 km». Lo mismo que dice el backend en el log, para
+   que la web y el barrido cuenten la distancia igual. */
+function aPie(km) {
+  if (km === null || km === undefined || !Number.isFinite(Number(km))) return "";
+  const n = Number(km);
+  if (n <= 3.5) return `a ${Math.max(1, Math.round((n / 4.8) * 60))} min andando del centro`;
+  return `a ${n.toFixed(1).replace(".", ",")} km del centro`;
+}
+
+/* Los comparadores no dan precio: son enlaces con las fechas ya puestas, así
+   que son pastillas y no fichas. Como fichas ocupaban lo mismo que un hotel
+   real y prometían un precio que no traían. */
+function enlacesHTML(links) {
+  if (!links.length) return "";
+  return `
+    <div class="seguir-buscando">
+      <h3>Seguir buscando</h3>
+      <p class="vacio">De estos no se saca precio: se abren con las fechas ya puestas.</p>
+      <div class="seguir-pills">
+        ${links
+          .map(
+            (s) =>
+              `<a class="btn ghost" href="${escURL(s.url)}" target="_blank" rel="noopener">${esc(
+                s.name.replace(/^Buscar en\s*/i, "")
+              )}</a>`
+          )
+          .join("")}
+      </div>
+    </div>`;
 }
 
 export function desde(iso) {
@@ -283,12 +318,20 @@ function renderStays(data) {
       <button class="btn ghost small" id="rescan">Volver a buscar</button>
     </div>
     ${priced.map(stayRow).join("")}
-    ${links.length ? "<h3>Seguir buscando</h3>" : ""}
-    ${links.map(stayRow).join("")}`;
+    ${enlacesHTML(links)}
+    ${
+      offer
+        ? `<div class="escapada-compartir">
+             <button class="btn primary" data-share="${esc(offer.id)}">Compartir la escapada</button>
+             <span>El enlace lleva el viaje y el número real, ya sin el ≈.</span>
+           </div>`
+        : ""
+    }`;
 
   // Los resultados se quedan guardados hasta que pasa la fecha del viaje;
   // este boton es la unica forma de forzar un scrapeo nuevo.
   if (offer) {
+    wireCompartir($("#panelBody"), () => offer);
     $("#rescan").addEventListener("click", () =>
       askForSearch(
         offer,

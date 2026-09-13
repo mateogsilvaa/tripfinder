@@ -29,6 +29,16 @@ from .base import StayProvider, StayRequest, register
 log = logging.getLogger("tripfinder")
 
 SEARCH = "https://www.airbnb.es/s/{place}/homes"
+
+# Airbnb no es solo pisos: tiene hoteles listados con precio y sin pedir clave
+# de nadie. Se pregunta dos veces —lo de siempre y solo habitaciones de hotel—
+# porque en una busqueda normal los hoteles se pierden entre cien apartamentos y
+# no llegan a las dieciocho primeras. Es la unica via de tener hoteles con
+# precio real sin credenciales: la de Amadeus las pide y hoy no las hay.
+PASADAS = (
+    ("stay", {}),
+    ("hotel", {"room_types[]": "Hotel room"}),
+)
 STATE_RE = re.compile(r'id="data-deferred-state-0"[^>]*>(\{.*?\})</script>', re.DOTALL)
 NUM_RE = re.compile(r"(\d[\d.,]*)")
 NIGHTS_RE = re.compile(r"(\d+)\s*noche", re.IGNORECASE)
@@ -101,6 +111,21 @@ def _prices(item: dict, nights: int) -> tuple[float | None, float | None]:
     return round(total, 2), round(total / max(1, nights), 2)
 
 
+def _coordenadas(item: dict) -> tuple[float | None, float | None]:
+    """Donde esta el anuncio, si el estado lo trae.
+
+    Se busca en profundidad y no por una ruta fija a proposito: Airbnb ha movido
+    esta pareja de sitio mas de una vez, y aqui no se puede comprobar contra la
+    pagina real. Sin coordenadas la cama se ordena solo por precio, que es lo
+    que se hacia antes de existir esto.
+    """
+    for nodo in _walk(item):
+        lat, lon = nodo.get("latitude"), nodo.get("longitude")
+        if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+            return float(lat), float(lon)
+    return None, None
+
+
 def _rating(item: dict) -> tuple[float | None, int | None]:
     """'4,87 (131)' -> (4.87, 131)."""
     text = item.get("avgRatingLocalized") or ""
@@ -113,6 +138,17 @@ def _rating(item: dict) -> tuple[float | None, int | None]:
 @register("airbnb")
 class AirbnbProvider(StayProvider):
     def search(self, req: StayRequest) -> list[StayOffer]:
+        vistos: set[str] = set()
+        todo: list[StayOffer] = []
+        for tipo, extra in PASADAS:
+            try:
+                todo += self._pasada(req, tipo, extra, vistos)
+            except Exception as exc:  # noqa: BLE001 - una pasada fallida no tumba la otra
+                log.warning("Airbnb (%s) %s: %s", tipo, req.city, exc)
+        log.info("Airbnb %s: %d alojamientos", req.city, len(todo))
+        return todo
+
+    def _pasada(self, req: StayRequest, tipo: str, extra: dict, vistos: set[str]) -> list[StayOffer]:
         url = SEARCH.format(place=quote(req.slug))
         params = {
             "query": req.query,  # sin esto Airbnb a veces ignora la ciudad de la ruta
@@ -124,6 +160,7 @@ class AirbnbProvider(StayProvider):
         }
         if req.max_total:
             params["price_max"] = int(req.max_total)
+        params.update(extra)
 
         html = get_text(url, params=params, stealth=True, timeout=40)
         m = STATE_RE.search(html)
@@ -142,15 +179,16 @@ class AirbnbProvider(StayProvider):
             if isinstance(results, list):
                 items.extend(r for r in results if isinstance(r, dict))
 
-        seen: set[str] = set()
         offers: list[StayOffer] = []
         for item in items:
             if item.get("__typename") != "StaySearchResult":
                 continue
             lid = _listing_id(item)
-            if not lid or lid in seen:
+            # `vistos` es de las DOS pasadas: un hotel que ya salio en la
+            # busqueda normal no se repite por salir tambien en la de hoteles.
+            if not lid or lid in vistos:
                 continue
-            seen.add(lid)
+            vistos.add(lid)
 
             name = (item.get("nameLocalized") or {}).get(
                 "localizedStringWithTranslationPreference"
@@ -159,6 +197,7 @@ class AirbnbProvider(StayProvider):
             rating, reviews = _rating(item)
             pics = item.get("contextualPictures") or []
             image = pics[0].get("picture", "") if pics and isinstance(pics[0], dict) else ""
+            lat, lon = _coordenadas(item)
 
             offers.append(
                 StayOffer(
@@ -168,17 +207,17 @@ class AirbnbProvider(StayProvider):
                         f"https://www.airbnb.es/rooms/{lid}"
                         f"?check_in={req.checkin}&check_out={req.checkout}&adults={req.adults}"
                     ),
-                    kind="stay",
+                    kind=tipo,
                     price_total=total,
                     price_per_night=per_night,
                     rating=rating,
                     reviews=reviews,
                     area=str(item.get("title") or req.city),
                     image=image,
+                    lat=lat,
+                    lon=lon,
                 )
             )
             if len(offers) >= MAX_RESULTS:
                 break
-
-        log.info("Airbnb %s: %d alojamientos", req.city, len(offers))
         return offers

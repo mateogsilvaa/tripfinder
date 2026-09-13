@@ -193,6 +193,15 @@ export function deltaHTML(o) {
    cada cambio es una ficha: el precio nuevo grande, el viejo tachado al lado, la
    diferencia en un sello de color y la curva de los ultimos dias detras. Se lee
    de un vistazo y desde lejos, que es justo para lo que sirve un aviso. */
+/* Una ficha sin sello se lee como un error de maquetación al lado de las que sí
+   lo tienen. Los tres dicen cosas que sabemos de verdad: el récord se gana
+   comparando con toda la serie, «más barato que cuando lo apuntaste» es
+   literalmente lo que mide `cambio`, y lo que sube sigue vigilándose. */
+function insignia(record, baja) {
+  if (record) return "lo más barato que has visto";
+  return baja ? "más barato que cuando lo apuntaste" : "sigue vigilándose";
+}
+
 function avisoFicha(f) {
   const { antes, ahora } = f.cambio;
   const baja = ahora < antes;
@@ -226,12 +235,15 @@ function avisoFicha(f) {
       <div class="cambio-curva">${sparkline(serie, 132, 34)}</div>
 
       <footer>
-        ${record ? '<span class="insignia">lo más barato que has visto</span>' : ""}
+        <span class="insignia${record ? " bueno" : ""}">${esc(insignia(record, baja))}</span>
+        <span class="empuja"></span>
         ${
           enlace
             ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
             : ""
         }
+        <button type="button" class="compartir-btn" data-share="${esc(f.id)}"
+          aria-label="Compartir ${esc(f.destination_name || f.destination)}">compartir</button>
       </footer>
     </article>`;
 }
@@ -278,6 +290,15 @@ export function refrescarAvisoFavs() {
     <div class="aviso-pie">
       <a href="seguimientos.html#favoritos">Ver todo lo que sigo</a>
     </div>`;
+
+  // Cada ficha se comparte desde la propia banda: es donde te enteras de que
+  // ha bajado, y es justo cuando apetece pasarlo.
+  wireCompartir(caja, (id) => {
+    const f = FAVS[id];
+    if (!f) return null;
+    const gente = Math.max(1, Number(f.adults) || 1);
+    return { ...f, price: (f.precio_visto || f.precio_inicial || 0) * gente };
+  });
 
   const boton = document.getElementById("favVisto");
   if (boton) {

@@ -183,3 +183,81 @@ test.describe("el mínimo histórico", () => {
     expect(await page.locator(".minimo").count()).toBe(0);
   });
 });
+
+test.describe("la hoja de alojamiento", () => {
+  const conCamas = (page, stays, summary) =>
+    page.route("**/data/stays/**", (r) => {
+      const id = decodeURIComponent(
+        r.request().url().split("/").pop().split("?")[0].replace(".json", "")
+      );
+      return r.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          offer_id: id,
+          checkin: "2027-01-15",
+          checkout: "2027-01-17",
+          generated_at: new Date().toISOString().slice(0, 10),
+          summary: summary || { party: 2, total: 264, per_person: 132, flights: 145, stay: 119 },
+          stays,
+        }),
+      });
+    });
+
+  const abrirCamas = async (page, stays, summary) => {
+    await conCamas(page, stays, summary);
+    await conOferta(page);
+    await abierto(page);
+    await page.locator(".hero [data-stay]").click();
+    await expect(page.locator("#panelBody .total-figure")).toBeVisible({ timeout: 10000 });
+  };
+
+  const CAMAS = [
+    { provider: "airbnb", name: "Piso en el centro histórico", url: "https://a.es/1", kind: "stay",
+      price_total: 119, price_per_night: 60, rating: 4.89, km_centro: 0.6,
+      sello: "el más barato, y el más céntrico" },
+    { provider: "airbnb", name: "Hotel Piazza Bellini", url: "https://a.es/2", kind: "hotel",
+      price_total: 148, price_per_night: 74, rating: 8.4, km_centro: 1.1, sello: "hotel" },
+    { provider: "deeplinks", name: "Buscar en Booking", url: "https://booking.com", kind: "link" },
+    { provider: "deeplinks", name: "Buscar en Kayak", url: "https://kayak.es", kind: "link" },
+  ];
+
+  test("cada cama dice a qué distancia del centro cae", async ({ page }) => {
+    await abrirCamas(page, CAMAS);
+    // Un estudio a doce kilómetros no es más barato: es otro viaje.
+    await expect(page.locator(".stay").first()).toContainText("a 8 min andando del centro");
+    await expect(page.locator(".stay").nth(1)).toContainText("a 14 min andando del centro");
+  });
+
+  test("el sello dice por qué está donde está", async ({ page }) => {
+    await abrirCamas(page, CAMAS);
+    await expect(page.locator(".stay .sello").first()).toHaveText("el más barato, y el más céntrico");
+    // Verde cuando es un motivo para elegirla; gris cuando solo la describe.
+    await expect(page.locator(".stay .sello").first()).toHaveClass(/bueno/);
+    await expect(page.locator(".stay .sello").nth(1)).not.toHaveClass(/bueno/);
+  });
+
+  test("los hoteles salen junto a los pisos, no aparte", async ({ page }) => {
+    await abrirCamas(page, CAMAS);
+    await expect(page.locator("#panelBody")).toContainText("Hotel Piazza Bellini");
+    expect(await page.locator(".stay").count()).toBe(2);
+  });
+
+  test("los comparadores son pastillas, no fichas con precio de mentira", async ({ page }) => {
+    await abrirCamas(page, CAMAS);
+    const pills = page.locator(".seguir-pills a");
+    await expect(pills).toHaveCount(2);
+    await expect(pills.first()).toHaveText("Booking");
+    await expect(page.locator(".seguir-buscando")).toContainText("De estos no se saca precio");
+  });
+
+  test("la ficha va sin foto: lo que decide es el precio y de quién es", async ({ page }) => {
+    await abrirCamas(page, [{ ...CAMAS[0], image: "https://ejemplo.com/foto.jpg" }]);
+    expect(await page.locator(".stay img").count()).toBe(0);
+  });
+
+  test("desde el alojamiento se comparte la escapada con su número real", async ({ page }) => {
+    await abrirCamas(page, CAMAS);
+    await page.locator(".escapada-compartir [data-share]").click();
+    await expect(page.locator("#hojaCompartir")).toBeVisible();
+  });
+});
