@@ -93,6 +93,27 @@ export const fetchJSON = (path) =>
     return r.json();
   });
 
+/* ------------------------------------------------- los numeros de la cabecera
+
+   La rejilla de cifras que va arriba a la derecha de cada pagina. La pinta cada
+   pagina con lo SUYO: hasta ahora las cuatro enseñaban las del feed —ofertas
+   vivas, mejor descuento, desde, escapadas de finde— porque el modulo del feed
+   rellenaba `#stats` en todas. En el mapa del mundo eso era, literalmente,
+   decirte cuantas ofertas hay mientras miras cuantos paises has pisado. */
+export const stat = (etiqueta, valor, fuerte = false) =>
+  `<div><dt>${esc(etiqueta)}</dt><dd class="${fuerte ? "hot" : ""}">${esc(valor)}</dd></div>`;
+
+/* El pie de la rejilla, a lo ancho. No es una cifra mas: es la linea que
+   explica las de arriba, y ponerla como una celda mas obliga a leerla dos
+   veces para entender que no cuenta nada. */
+export const statPie = (etiqueta, valor) =>
+  `<div class="stats-pie"><span>${esc(etiqueta)}</span><b>${esc(valor)}</b></div>`;
+
+export function pintarStats(html) {
+  const caja = document.getElementById("stats");
+  if (caja) caja.innerHTML = html;
+}
+
 export let CONTINENTES = {}; // IATA -> continente, para filtrar
 export const SEARCH_OFFERS = {}; // ofertas de busquedas guardadas, por id
 

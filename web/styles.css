@@ -474,6 +474,20 @@ main {
   border-bottom: 1px solid var(--line);
 }
 
+/* El panel no tiene sidebar: su cabecera va en una columna y sus cifras
+   debajo, a lo ancho. Con la rejilla de dos, el texto y los números se
+   repartían en diagonal —título arriba a la izquierda, lede a la derecha,
+   cifras debajo del título— y no se leía en ningún orden. */
+.masthead.ancha {
+  display: block;
+}
+.masthead.ancha .lede { max-width: 52ch; }
+.masthead.ancha .stats {
+  grid-template-columns: repeat(4, 1fr);
+  max-width: 680px;
+  margin-top: 24px;
+}
+
 h1 {
   font-size: var(--fs-display);
   line-height: 0.98;
@@ -893,10 +907,12 @@ h1 em { font-size: 1.3em; }
 .switch:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* --- la tabla ------------------------------------------------------------
-   Una rejilla de cinco columnas compartida por la cabecera y por cada fila:
-   si se cambia aquí, se cambia en las dos a la vez. */
+   Una rejilla de seis columnas compartida por la cabecera y por cada fila:
+   si se cambia aquí, se cambia en las dos a la vez. La última es «compartir»,
+   que se pulsa sin abrir la fila: pasar un chollo a alguien es lo que más se
+   hace con él y no debería costar dos toques. */
 .rows, .board-head, .saved-rows, .watch-rows {
-  --cols: 40px minmax(0, 1.05fr) minmax(0, 1.58fr) minmax(0, 0.83fr) 208px;
+  --cols: 40px minmax(0, 1.05fr) minmax(0, 1.58fr) minmax(0, 0.83fr) 208px 96px;
 }
 
 .tabla {
@@ -1101,6 +1117,112 @@ h1 em { font-size: 1.3em; }
 }
 .price .nota-fila .minimo { display: inline; }
 
+/* ==========================================================================
+   LA HOJA DE COMPARTIR
+   ========================================================================== */
+
+/* Por qué una hoja y no el menú del sistema a secas: `navigator.share` no
+   existe en los navegadores de escritorio, así que allí lo único que quedaba
+   era copiar el enlace. Quien pasa un chollo lo manda por WhatsApp o por
+   correo, y esos son enlaces normales que funcionan en todas partes. */
+.hoja-compartir {
+  width: min(470px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px 26px 28px;
+}
+/* `minmax(0, 1fr)` y no `auto`: un enlace largo es una sola palabra sin sitios
+   por donde partir, y con la pista en `auto` el bloque crecía hasta los 477 px
+   dentro de una hoja de 350 y se salía de la pantalla en un móvil. */
+.hoja-bloque { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+.hoja-rotulo {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hoja-nota { margin: 0; font-size: var(--fs-meta); line-height: 1.45; color: var(--muted); }
+
+/* La ficha del viaje va en la lámina invertida, como el chollo del día: lo que
+   se comparte tiene cara, y verla antes de mandarla evita mandar la que no es. */
+.hoja-ficha {
+  background: var(--hero-bg);
+  color: var(--hero-ink);
+  border: 1px solid var(--hero-hair);
+  border-radius: var(--r);
+  padding: 16px 18px;
+}
+.hoja-ficha-cab {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.hoja-ficha-cab b,
+.hoja-ficha-cab span { font: 700 var(--fs-h3) var(--font-sans); letter-spacing: -0.04em; }
+.hoja-ficha-pie {
+  margin-top: 6px;
+  font: 400 var(--fs-meta) / 1.5 var(--font-mono);
+  color: var(--hero-muted);
+}
+
+.hoja-enlace { display: flex; gap: 8px; align-items: stretch; }
+.hoja-url {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--hair);
+  background: var(--field);
+  border-radius: var(--r);
+  padding: 11px 12px;
+  font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hoja-enlace .btn { flex: none; }
+.hoja-apps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hoja-apps .btn { justify-content: center; text-align: center; }
+.hoja-guardar { border-top: 1px solid var(--hair); padding-top: 16px; }
+.hoja-guardar .btn { justify-self: start; }
+
+/* El botón de guardárselo va en verde y perfilado: no es la acción principal
+   de la hoja —esa es mandarlo— pero tampoco es una más de la lista. */
+.btn.deep-ghost {
+  border-color: var(--deep);
+  background: transparent;
+  color: var(--deep);
+  font-weight: 600;
+}
+.btn.deep-ghost:hover { background: var(--deep); color: var(--sobre); }
+
+/* El filo que separa, al abrir una fila, lo de mirar y reservar de lo de
+   llevárselo: sin él son seis botones seguidos y ninguno manda. */
+.filo {
+  width: 1px;
+  align-self: stretch;
+  min-height: 24px;
+  background: var(--hair);
+  margin: 0 4px;
+}
+
+/* El «compartir» de cada fila. Discreto a propósito: es una acción de paso,
+   no compite con el precio ni con el botón de seguir. */
+.compartir-cell { display: flex; justify-content: flex-end; }
+.compartir-btn {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: 400 var(--fs-meta) var(--font-mono);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.compartir-btn:hover { color: var(--ink); border-color: var(--muted); }
+
 /* La diferencia contra el precio al que lo apuntaste. */
 .delta { display: block; font: 500 var(--fs-meta) var(--font-mono); }
 .delta.baja, .price .delta.baja { color: var(--deep); }
@@ -1192,7 +1314,8 @@ h1 em { font-size: 1.3em; }
   text-transform: uppercase;
   color: var(--accent-txt);
 }
-.herramienta.segunda .kicker-num { color: var(--deep); }
+.herramienta.segunda .kicker-num,
+.herramienta.verde .kicker-num { color: var(--deep); }
 .herramienta h3 { font-size: var(--fs-subhead); margin: 8px 0 0; }
 .herramienta h3 em { font-size: 1.15em; color: inherit; }
 .finder-lede, .herramienta p {
@@ -1319,7 +1442,12 @@ h1 em { font-size: 1.3em; }
 .observacion p { margin: 0; flex: 1; min-width: 260px; }
 
 .favoritos, .watches, .searches { margin-top: 28px; }
-.watch-head, .aviso-head {
+/* `.herramienta h3` es más específica y le ganaba el tamaño: dentro del panel
+   de seguir, «Siguiendo a diario» salía a cuerpo de subtítulo en vez de como
+   el rótulo pequeño que es. Solo se veía con seguimientos de verdad, que es
+   justo lo que no tiene una página recién abierta. */
+.watch-head, .aviso-head,
+.herramienta .watch-head, .herramienta .aviso-head {
   font: 400 var(--fs-caps-l) / 1 var(--font-mono);
   letter-spacing: var(--ls-caps);
   text-transform: uppercase;
@@ -2237,6 +2365,10 @@ h1 em { font-size: 1.3em; }
   }
   .brow > .fav .fav-txt { display: inline; }
   .brow > .brow-detail { grid-area: 4 / 1 / 5 / 3; }
+  /* En 390 px la fila ya son tres renglones: un cuarto botón la haría crecer
+     un 40 % con 120 viajes en la lista. Aquí se comparte abriendo la fila,
+     que es un toque y lleva también «al calendario». */
+  .brow > .compartir-cell { display: none; }
 
   /* El panel reusa `.brow` para sus filas de cuenta, pero sus celdas son otras
      —no hay precio, ni fechas, ni compañía— así que la maqueta de arriba le

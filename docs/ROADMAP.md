@@ -247,6 +247,30 @@ padre, y `step="10"` en el tope de precio hacía que escribir 95 € bloqueara e
 del formulario sin decir por qué.
 
 
+## M18 · El resto de la web, y compartir  ✅
+
+El segundo turno de Claude Design: `TripFinder Páginas.dc.html`, con buscar,
+seguimientos, el mundo, el panel y la 404. La paleta no cambia —es la del M17—;
+lo que cambia es **qué dice cada página**.
+
+- **Las cifras de la cabecera son las de cada página.** Las cuatro enseñaban las
+  del tablón de chollos porque el módulo del feed rellenaba `#stats` en todas: en
+  el mapa del mundo eso era decirte cuántas ofertas hay mientras miras cuántos
+  países has pisado. Ahora buscar cuenta búsquedas y viajes (y cuánto tarda una
+  «donde sea»), seguimientos separa lo que se revisa solo de lo que has apuntado,
+  y el mundo cuenta países.
+- **La hoja de compartir.** Un modal con la ficha del viaje, el enlace con su
+  botón de copiar, WhatsApp / Telegram / correo (y el menú del sistema donde lo
+  haya) y el `.ics`. Aparece en tres sitios con tres pesos: botón principal en el
+  chollo del día, «compartir» en su columna en cada fila —sin abrir nada— y,
+  al abrir una fila, detrás del filo que lo separa de Ver vuelo y Alojamiento.
+- **El mapa dice a qué países hay vuelo hoy, por su nombre**, en vez de contar
+  cuántos son: un número no deja hacer nada; saber cuál te falta, sí.
+- Dos fallos que salieron al montarlo: «Siguiendo a diario» salía a cuerpo de
+  subtítulo (`.herramienta h3` le ganaba por especificidad, y solo se veía con
+  seguimientos de verdad), y con el foco en un botón de dentro de una fila el
+  Enter abría además la fila.
+
 ## M5 · Robustez y calidad
 
 - [x] **#25 · Tests de scoring y de parseo de providers** `infra`

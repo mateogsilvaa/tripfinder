@@ -3,6 +3,7 @@
 import { SEARCH_OFFERS, esc, escURL, fetchJSON, fmtDate } from "./base.js";
 import { conGrupo, pax, porPersona } from "./precios.js";
 import { esMio } from "./disparador.js";
+import { wireCompartir } from "./compartir.js";
 import { OFFERS } from "./ofertas.js";
 
 /* ---------------------------------------------------------------- favoritos
@@ -352,27 +353,51 @@ function favFila(f) {
             ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
             : ""
         }
+        <button type="button" class="compartir-btn" data-share="${esc(f.id)}"
+          aria-label="Compartir ${esc(f.destination_name || f.destination)}">compartir</button>
         <button class="quitar" type="button" data-desfav="${esc(f.id)}"
           aria-label="Dejar de seguir ${esc(f.destination_name || f.destination)}">quitar</button>
       </span>
     </div>`;
 }
 
+/* Cuantos viajes hay apuntados. Lo pregunta la cabecera de seguimientos, que
+   enseña «siguiendo» y «apuntados» como dos cifras distintas porque son dos
+   cosas distintas: un encargo que se revisa solo y un viaje concreto marcado. */
+export const cuantosFavs = () => Object.keys(FAVS).length;
+
+/* A quien avisar cuando la lista cambia. Se apunta seguimientos.js para
+   refrescar su cifra sin que favoritos.js tenga que saber que existe. */
+const OYENTES = [];
+export const alCambiarFavs = (fn) => OYENTES.push(fn);
+const avisarDelCambio = () => OYENTES.forEach((fn) => fn());
+
 export function pintarListaFavs() {
   const caja = document.getElementById("favoritos");
   if (!caja) return;
   const lista = Object.values(FAVS).sort((a, b) => (b.desde || 0) - (a.desde || 0));
   if (!lista.length) {
+    avisarDelCambio();
     caja.innerHTML = `
       <h3 class="watch-head">vuelos que sigues</h3>
       <p class="vacio">Todavía no sigues ningún viaje. Dale a Seguir en cualquier entrada
       del feed y aquí verás si sube o baja de precio cada vez que se actualicen los datos.</p>`;
     return;
   }
+  avisarDelCambio();
   caja.innerHTML =
     `<h3 class="watch-head">vuelos que sigues · ${lista.length} viaje${
       lista.length > 1 ? "s" : ""
     } apuntado${lista.length > 1 ? "s" : ""}</h3>` + lista.map(favFila).join("");
+  // Compartir uno de los apuntados. Lo guardado lleva `precio_visto` POR
+  // PERSONA y la hoja espera el total del grupo, como cualquier oferta: sin
+  // esta cuenta, un viaje para dos se compartiria a mitad de precio.
+  wireCompartir(caja, (id) => {
+    const f = FAVS[id];
+    if (!f) return null;
+    const gente = Math.max(1, Number(f.adults) || 1);
+    return { ...f, price: (f.precio_visto || f.precio_inicial || 0) * gente };
+  });
   caja.querySelectorAll("[data-desfav]").forEach((b) =>
     b.addEventListener("click", () => {
       delete FAVS[b.dataset.desfav];
