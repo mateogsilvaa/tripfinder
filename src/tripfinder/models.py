@@ -78,6 +78,12 @@ class FlightOffer:
     baseline: float | None = None
     discount_pct: float = 0.0
     score: int = 0
+    # Lo mas barato que se ha visto NUNCA en esta ruta. No es lo mismo que un
+    # descuento grande: el descuento se mide contra la mediana, y una ruta que
+    # lleva meses cara puede marcar "-40%" sin estar barata de verdad. Esto solo
+    # se pone cuando el precio baja de todo lo registrado hasta hoy.
+    minimo_historico: bool = False
+    minimo_anterior: float | None = None  # lo mas bajo de antes, para poder decirlo
 
     @property
     def mixed(self) -> bool:

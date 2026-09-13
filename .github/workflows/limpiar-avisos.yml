@@ -1,0 +1,66 @@
+name: Cerrar avisos viejos
+
+# Los avisos de chollo se publican como issue cuando el correo no puede salir
+# (hoy pasa siempre con las cuentas que no son la del dueño de la clave de
+# Resend). Funciona —la gente los recibe igual— pero se acumulan: a 13 de
+# septiembre habia 33 issues abiertas, todas iguales, y el tracker no servia
+# para ver en que estaba el proyecto.
+#
+# Un aviso de un chollo deja de valer en cuanto el precio se mueve, o sea al
+# barrido siguiente. Se dejan abiertos unos dias por si alguien no ha mirado el
+# correo y se cierran solos.
+
+on:
+  schedule:
+    - cron: "30 4 * * *" # una vez al dia, antes del barrido de la mañana
+  workflow_dispatch:
+    inputs:
+      dias:
+        description: "Cerrar los avisos con mas dias que esto"
+        type: string
+        default: "7"
+
+permissions:
+  issues: write
+
+concurrency:
+  group: tripfinder-avisos
+  cancel-in-progress: false
+
+jobs:
+  cerrar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Cerrar los avisos caducados
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          DIAS: ${{ inputs.dias || '7' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          limite=$(date -u -d "-${DIAS} days" +%Y-%m-%dT%H:%M:%SZ)
+          echo "Cerrando avisos anteriores a $limite"
+
+          # Solo los que ha escrito el bot y llevan la etiqueta del aviso: una
+          # issue de verdad, escrita por una persona, no se toca jamas.
+          gh api --paginate \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$REPO/issues?state=open&labels=chollo&per_page=100" \
+            --jq '.[] | select(.user.login == "github-actions[bot]")
+                      | select(.pull_request == null)
+                      | [.number, .created_at] | @tsv' > abiertas.tsv || true
+
+          total=0
+          while IFS=$'\t' read -r numero creada; do
+            [ -z "${numero:-}" ] && continue
+            if [[ "$creada" < "$limite" ]]; then
+              echo "  cerrando #$numero (de $creada)"
+              gh api -X PATCH "/repos/$REPO/issues/$numero" \
+                -f state=closed -f state_reason=completed >/dev/null
+              total=$((total + 1))
+            fi
+          done < abiertas.tsv
+
+          echo "$total avisos cerrados." >> "$GITHUB_STEP_SUMMARY"

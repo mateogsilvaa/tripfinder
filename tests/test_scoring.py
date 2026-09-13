@@ -123,3 +123,89 @@ def test_un_vuelo_que_aterriza_pasada_medianoche_no_regala_un_dia():
 
     nocturno = weekend_offer(nights=2, depart_time="21:55", arrive_time="00:05", return_time="16:45")
     assert 20 < useful_hours(nocturno) < 30
+
+
+# -- lo mas barato que se ha visto nunca ----------------------------------
+def _serie(dias: int, precio: float = 100.0, desde: int = 0):
+    from datetime import date, timedelta
+
+    hoy = date.today()
+    return [
+        {"d": (hoy - timedelta(days=desde + i)).isoformat(), "p": precio + i}
+        for i in range(dias)
+    ]
+
+
+def test_un_precio_por_debajo_de_todo_lo_visto_se_marca():
+    from tripfinder.scoring import marcar_minimo
+
+    o = offer(90.0)
+    marcar_minimo(o, {"MAD-FCO": _serie(20)})
+    assert o.minimo_historico
+    assert o.minimo_anterior == 100.0
+
+
+def test_con_poco_historico_no_se_dice_que_es_un_record():
+    """«Nunca ha estado tan barato» con cinco tarifas de dos días no significa
+    nada. Hacen falta DIAS_PARA_MINIMO días distintos."""
+    from tripfinder.scoring import DIAS_PARA_MINIMO, marcar_minimo
+
+    o = offer(10.0)
+    marcar_minimo(o, {"MAD-FCO": _serie(DIAS_PARA_MINIMO - 1)})
+    assert not o.minimo_historico
+
+
+def test_igualar_el_minimo_no_es_un_record():
+    """Si no, una ruta parada en su suelo anunciaría un récord cada barrido."""
+    from tripfinder.scoring import marcar_minimo
+
+    o = offer(100.0)
+    marcar_minimo(o, {"MAD-FCO": _serie(20)})
+    assert not o.minimo_historico
+
+
+def test_lo_de_hoy_tambien_cuenta():
+    """El barrido corre dos veces al día: si por la mañana estaba a 50, la tarde
+    a 55 no puede anunciarse como el precio más bajo de la historia."""
+    from tripfinder.scoring import marcar_minimo
+
+    historia = _serie(20, 100.0)
+    historia.append({"d": historia[0]["d"], "p": 50.0})  # el barrido de la mañana
+    o = offer(55.0)
+    marcar_minimo(o, historia and {"MAD-FCO": historia})
+    assert not o.minimo_historico
+
+
+def test_el_historico_se_compara_por_persona():
+    """`price` es el total del grupo y el histórico va por persona. Sin esto una
+    búsqueda para dos daba 240 € contra un histórico de 120 y nunca salía ni
+    descuento ni mínimo: el sello no significaba nada para quien busca en
+    pareja, que es el caso normal."""
+    from tripfinder.scoring import marcar_minimo
+
+    dos = offer(180.0)
+    dos.adults = 2  # 90 € por persona
+    marcar_minimo(dos, {"MAD-FCO": _serie(20)})
+    assert dos.minimo_historico
+
+    caro = offer(400.0)
+    caro.adults = 2  # 200 € por persona
+    marcar_minimo(caro, {"MAD-FCO": _serie(20)})
+    assert not caro.minimo_historico
+
+
+def test_el_descuento_tambien_se_mide_por_persona():
+    o = offer(100.0)
+    o.adults = 2  # 50 € por persona contra un histórico de 100
+    score_offer(o, {"MAD-FCO": _serie(20)}, ROUTE)
+    assert o.discount_pct > 40
+
+
+def test_el_historico_se_graba_por_persona(tmp_path):
+    """Lo que se graba tiene que poder compararse con lo grabado ayer."""
+    from tripfinder.store import Store
+
+    o = offer(240.0)
+    o.adults = 2
+    historia = Store(tmp_path).record_prices([o])
+    assert historia[o.history_key][-1]["p"] == 120.0

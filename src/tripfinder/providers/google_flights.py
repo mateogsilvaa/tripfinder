@@ -26,7 +26,7 @@ import re
 import time
 from datetime import date
 
-from .. import rutas_vacias
+from .. import cache, rutas_vacias
 from ..config import Route
 from ..models import FlightOffer
 from ..util import get_text, hay_sigilo, throttle
@@ -136,6 +136,12 @@ _MEMORIA: dict[tuple, list[FlightOffer]] = {}
 # Tope por si un dia el barrido se hace mucho mas largo. Cada entrada son seis
 # ofertas: mil entradas son unos pocos MB.
 _MEMORIA_MAX = 1000
+
+
+def _clave(recuerdo: tuple) -> str:
+    """La consulta, como texto, para poder buscarla en disco."""
+    origen, dest, ida, vuelta, adultos = recuerdo
+    return f"google:{origen}:{dest}:{ida.isoformat()}:{vuelta.isoformat()}:{adultos}"
 
 
 def _castigo_activo() -> float:
@@ -398,6 +404,17 @@ class GoogleFlightsProvider(FlightProvider):
             self.ultimo_muro = False
             return [FlightOffer.from_dict(o.to_dict()) for o in self.memoria[recuerdo]]
 
+        # Y si no lo ha preguntado ESTE proceso, quiza lo pregunto el anterior:
+        # el barrido arranca `scan-flights` y despues `watch run`, minutos
+        # despues y en el mismo runner.
+        guardado = cache.leer(_clave(recuerdo))
+        if guardado is not None:
+            self.stats["repetidas"] += 1
+            self.ultimo_muro = False
+            ofertas = [FlightOffer.from_dict(d) for d in guardado]
+            self.memoria[recuerdo] = ofertas
+            return [FlightOffer.from_dict(o.to_dict()) for o in ofertas]
+
         throttle("google", float(self.gcfg.get("min_interval_seconds", 4)))
         tfs = build_tfs(route.origin, dest, out_date.isoformat(), in_date.isoformat(), adultos)
         url = f"{URL}?tfs={tfs}&curr=EUR&hl=es&gl=ES"
@@ -482,4 +499,5 @@ class GoogleFlightsProvider(FlightProvider):
         """
         if len(self.memoria) < _MEMORIA_MAX:
             self.memoria[recuerdo] = [FlightOffer.from_dict(o.to_dict()) for o in ofertas]
+        cache.guardar(_clave(recuerdo), [o.to_dict() for o in ofertas])
         return ofertas

@@ -13,7 +13,7 @@ from datetime import date, timedelta
 
 import pytest
 
-from tripfinder import rutas_vacias
+from tripfinder import cache, rutas_vacias
 from tripfinder.config import Route
 from tripfinder.models import FlightOffer
 from tripfinder.providers import google_flights as gf
@@ -22,11 +22,14 @@ RUTA = Route(origin="MAD", origin_name="Madrid")
 
 
 @pytest.fixture(autouse=True)
-def _sin_castigo():
-    """El castigo y la memoria son de modulo —el barrido entero los comparte—,
-    asi que sin limpiarlos una prueba dejaria capada o servida a la siguiente."""
+def _sin_castigo(tmp_path, monkeypatch):
+    """El castigo, la memoria y la cache los comparte el barrido entero, asi que
+    sin aislarlos una prueba dejaria capada —o servida— a la siguiente. La cache
+    ademas se manda a un tmp: si no, las pruebas escribirian en el `.cache/` de
+    verdad y la segunda vez que se pasan ya estaria todo respondido."""
     gf._MURO_HASTA = 0.0
     gf._MEMORIA.clear()
+    monkeypatch.setattr(cache, "RAIZ", tmp_path / "consultas")
     yield
     gf._MURO_HASTA = 0.0
     gf._MEMORIA.clear()
@@ -366,3 +369,53 @@ def test_preparar_mas_candidatas_no_cambia_lo_que_se_contrasta():
     assert sum(1 for p in antes[:40] if p[0] in conocidos) == sum(
         1 for p in ahora[:40] if p[0] in conocidos
     )
+
+
+# -- la cache entre procesos -----------------------------------------------
+def test_lo_preguntado_por_el_proceso_anterior_no_se_vuelve_a_pedir():
+    """El barrido arranca `scan-flights` y después `watch run`, minutos después y
+    en el mismo runner. Lo que el segundo repite son 2,5 MB otra vez y una
+    petición más contra quien ya nos está contando las peticiones."""
+    hoy = date.today()
+    descargas = []
+
+    def provider():
+        p = gf.GoogleFlightsProvider({"google": {"min_interval_seconds": 0}})
+        p._descargar = lambda tfs, dest, out: (
+            descargas.append(dest) or ("<html>" + "x" * 30000 + "</html>")
+        )
+        return p
+
+    primero = provider()
+    primero._one_search(RUTA, "FCO", hoy, hoy + timedelta(days=2))
+    assert descargas == ["FCO"]
+
+    # Otro proceso: memoria nueva, disco compartido.
+    gf._MEMORIA.clear()
+    segundo = provider()
+    segundo._one_search(RUTA, "FCO", hoy, hoy + timedelta(days=2))
+    assert descargas == ["FCO"], "el segundo proceso ha vuelto a descargar"
+    assert segundo.stats["repetidas"] == 1
+
+
+def test_lo_guardado_caduca(monkeypatch):
+    """Una respuesta vieja es un precio viejo: pasada la vigencia no vale."""
+    cache.guardar("k", [{"price": 1}])
+    assert cache.leer("k") is not None
+    monkeypatch.setattr(cache, "VIGENCIA", -1)
+    assert cache.leer("k") is None
+
+
+def test_una_cache_corrupta_no_tumba_el_barrido():
+    cache.guardar("k", [1])
+    cache._fichero("k").write_text("{ esto no es json")
+    assert cache.leer("k") is None
+
+
+def test_sin_poder_escribir_se_sigue_igual(monkeypatch, tmp_path):
+    """Sin caché el barrido va más lento; con el barrido caído, no va."""
+    fichero = tmp_path / "no-se-puede"
+    fichero.write_text("soy un fichero, no una carpeta")
+    monkeypatch.setattr(cache, "RAIZ", fichero / "consultas")
+    cache.guardar("k", [1])  # no revienta
+    assert cache.leer("k") is None

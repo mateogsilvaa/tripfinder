@@ -17,6 +17,13 @@ from .models import FlightOffer
 
 MIN_SAMPLES = 5
 
+# Dias distintos de historico que hacen falta para atreverse a decir "esto es lo
+# mas barato que se ha visto nunca". Con cinco tarifas de dos dias esa frase no
+# significa nada; con dos semanas ya se ha visto la ruta subir y bajar. De las
+# 116 rutas con historico, 102 pasan de aqui, asi que tampoco deja fuera casi
+# nada de lo que se publica.
+DIAS_PARA_MINIMO = 14
+
 # Horas de sueño que no cuentan como viaje. Un vuelo que aterriza a las 23:25 es
 # barato y es un mal viaje: esto es lo que ningun comparador te dice.
 SLEEP_HOURS = 8
@@ -93,6 +100,43 @@ def baseline_for(route_key: str, history: dict[str, list[dict]], fallback: float
     return float(median(prices))
 
 
+def marcar_minimo(offer: FlightOffer, history: dict[str, list[dict]]) -> FlightOffer:
+    """Pone `minimo_historico` si el precio baja de todo lo visto hasta hoy.
+
+    Por que aparte del descuento: el sello "-40%" se mide contra la MEDIANA, asi
+    que una ruta que lleva meses cara puede lucir un descuento enorme sin estar
+    barata, y una ruta siempre barata no luce ninguno aunque hoy este en su
+    suelo. Esto es la otra pregunta, la que de verdad hace reservar: ¿lo he
+    visto alguna vez mas barato que ahora?
+
+    El dia de hoy SI cuenta. El barrido corre dos veces al dia: si por la mañana
+    estaba a 50 y por la tarde a 55, la tarde no puede anunciarse como minimo.
+    """
+    serie = history.get(offer.history_key) or []
+    # La serie trae una entrada por tarifa vista; de cada dia vale la mas
+    # barata, que es la que se podia comprar ese dia.
+    por_dia: dict[str, float] = {}
+    for e in serie:
+        try:
+            precio, dia = float(e["p"]), str(e["d"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if precio <= 0:
+            continue
+        if dia not in por_dia or precio < por_dia[dia]:
+            por_dia[dia] = precio
+
+    if len(por_dia) < DIAS_PARA_MINIMO:
+        return offer
+
+    minimo = min(por_dia.values())
+    # El "- 0.01" es para no anunciar un record por un céntimo de redondeo.
+    if offer.price_per_person < minimo - 0.01:
+        offer.minimo_historico = True
+        offer.minimo_anterior = round(minimo, 2)
+    return offer
+
+
 def score_offer(
     offer: FlightOffer,
     history: dict[str, list[dict]],
@@ -102,11 +146,19 @@ def score_offer(
     # El encaje de finde se decide antes: cambia contra que precios se compara.
     offer.weekend = weekend_fit(offer, weekend_cfg)
 
+    # Contra el historico se compara SIEMPRE por persona. El historico se graba
+    # por persona y `price` es el total del grupo: sin esto, una busqueda para
+    # dos daba 240 EUR contra un historico de 120 y salia "sin descuento"
+    # siempre. El sello de la web no significaba nada en cuanto alguien buscaba
+    # para mas de uno, que es el caso normal.
+    unidad = offer.price_per_person
     baseline = baseline_for(offer.history_key, history, route.baseline_for(offer.weekend))
     offer.baseline = round(baseline, 2)
 
-    discount = 0.0 if baseline <= 0 else (baseline - offer.price) / baseline * 100
+    discount = 0.0 if baseline <= 0 else (baseline - unidad) / baseline * 100
     offer.discount_pct = round(max(0.0, discount), 1)
+
+    marcar_minimo(offer, history)
 
     # Componente descuento: un 50% de rebaja ya satura sus puntos.
     discount_pts = min(offer.discount_pct, 50.0) / 50.0 * 55.0

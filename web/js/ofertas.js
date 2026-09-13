@@ -23,8 +23,9 @@ import {
   porPersona,
   precioCorto,
 } from "./precios.js";
+import { botonesHTML, wireCompartir } from "./compartir.js";
 import { deltaHTML, favBtn, sincronizarFavs, wireFavs } from "./favoritos.js";
-import { HISTORIA, cargarHistoria, historiaHTML } from "./historia.js";
+import { HISTORIA, cargarHistoria, historiaHTML, minimoHTML } from "./historia.js";
 import { openStays } from "./alojamiento.js";
 
 export let OFFERS = [];
@@ -473,6 +474,7 @@ function heroTicket(o) {
                 ? `<span class="stamp">−${Math.round(o.discount_pct)}%</span>`
                 : ""
             }
+            ${minimoHTML(o)}
           </div>
           <span class="per-person">por persona${o.return_date ? ", ida y vuelta" : ""}</span>
           <span class="ticket-notas">
@@ -498,6 +500,7 @@ function heroTicket(o) {
                    Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
               : ""
           }
+          ${botonesHTML(o)}
         </div>
       </div>
     </article>`;
@@ -538,7 +541,7 @@ export function boardRow(o, i) {
       <span class="price">${precioCorto(
         o,
         o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : "",
-        deltaHTML(o) + escapadaHTML(o)
+        minimoHTML(o) + deltaHTML(o) + escapadaHTML(o)
       )}</span>
       <div class="brow-detail" hidden></div>
     </div>`;
@@ -578,12 +581,14 @@ function detalleHTML(o) {
                >Comparar en eDreams</a>`
           : ""
       }
+      ${botonesHTML(o)}
     </div>`;
 }
 
 /* El detalle se pinta dos veces: una al abrirlo y otra cuando llega el
    historico de precios, asi que sus botones se cablean aparte. */
 function wireDetalle(caja, o) {
+  wireCompartir(caja, () => o);
   caja.querySelectorAll("[data-stay]").forEach((b) =>
     b.addEventListener("click", (ev) => {
       ev.stopPropagation();
@@ -665,6 +670,7 @@ export function render() {
   document.querySelectorAll(".hero [data-stay]").forEach((el) =>
     el.addEventListener("click", () => openStays(el.dataset.stay))
   );
+  wireCompartir($("#hero"), (id) => list.find((x) => x.id === id));
   wireFavs($("#hero"));
   wireRows();
 }

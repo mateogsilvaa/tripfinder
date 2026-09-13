@@ -6,6 +6,7 @@
 |---|---|---|
 | `tripfinder.routes` | `src/tripfinder/` | El mapa: a donde se puede volar desde un origen. Se monta antes de pedir un solo precio y es quien decide los candidatos. Cache en `data/routes/<IATA>.json`. |
 | `tripfinder.providers.*` | `src/tripfinder/providers/` | Buscan vuelos. Un adapter por fuente, todos devuelven `FlightOffer`. |
+| `tripfinder.cache` | `src/tripfinder/` | Lo ya preguntado en este barrido, en `.cache/consultas/` (fuera del repo). Cubre el hueco ENTRE procesos: `scan-flights` y `watch run` corren seguidos en el mismo runner. No se persiste entre workflows a propósito: una búsqueda pedida a mano es una petición de datos frescos. |
 | `tripfinder.rutas_vacias` | `src/tripfinder/` | El cuaderno de rutas sin vuelo (`data/rutas_vacias.json`). Apunta qué pares origen-destino llevan barridos enteros sin devolver un precio, para sondearlos una vez por barrido en vez de doce. Caduca a los 21 días y un solo precio borra la anotación. |
 | `tripfinder.stays.*` | `src/tripfinder/stays/` | Buscan alojamiento. Devuelven `StayOffer`. |
 | `tripfinder.scoring` | `src/tripfinder/` | Convierte precio + histórico en un `score` 0-100 y decide si es chollo. |
@@ -18,7 +19,7 @@
 | `web/js/` | GitHub Pages | Doce módulos ES, uno por asunto (`ofertas`, `busqueda`, `seguimientos`, `favoritos`, `alojamiento`, `precios`, `historia`, `destinos`, `calendario`, `disparador`, `quiz`, `motor`, `ampliar` —el que lleva lo escrito en la portada a la herramienta entera— y `base`, que es lo compartido). `arranque.js` es lo único que *hace* algo al cargar; `tripfinder.js` es la puerta que abren las páginas. Sin bundler: el navegador resuelve los `import`. |
 | `web/auth.js` | GitHub Pages | Quién está delante: sesión, login contra `data/users.json` y el espacio de nombres de `localStorage` por cuenta. |
 | `tools/` | — | Utilidades que no se publican: `montar.py` (las partes comunes de la web), `contraste.py` (auditoría de la paleta), `iconos.py` (los PNG de la aplicación instalable, generados desde la misma paleta). |
-| `.github/workflows/` | GitHub Actions | Los siete, en la tabla de abajo. |
+| `.github/workflows/` | GitHub Actions | Los nueve, en la tabla de abajo. |
 
 ## Los workflows
 
@@ -31,6 +32,7 @@
 | `watch.yml` | `repository_dispatch: watch / unwatch / delete_search` | Apunta, quita o borra: sólo toca `data/watch.json` y `data/searches/`. Acepta lotes. |
 | `users.yml` | `repository_dispatch: user_* / admin_* / site_token / claim` | Las cuentas: altas, contraseñas, preferencias y el token del sitio cifrado. |
 | `pages.yml` | push a `main` sobre `web/`, `data/` o `tools/montar.py` | Monta el sitio: comprueba las partes, sella la versión, quita lo que no es página y publica sin los emails. |
+| `limpiar-avisos.yml` | cron diario, o a mano | Cierra las issues de aviso con más de siete días. Los avisos salen por issue cuando el correo no puede (hoy, siempre que el destinatario no sea el dueño de la clave de Resend) y se acumulaban hasta dejar el tracker inservible: 33 abiertas el 13 de septiembre. Sólo toca las del bot con la etiqueta `chollo`. |
 | `ci.yml` | cada push y cada pull request | Lo que decide si algo entra: ruff, pytest, montaje, contraste, oxlint y humo de frontend. |
 
 ## La hora de los cron
@@ -150,6 +152,15 @@ claro en un sitio público. Se guarda cifrado y solo lo abren las cuentas:
   la clave: los logs de Actions se guardan noventa días y los ve cualquiera que pase por el repo.
 - **Nada de scraping agresivo.** Booking se resuelve con deep links; Airbnb es best-effort con
   degradado a deep link. Un `User-Agent` honesto y un intervalo mínimo entre peticiones.
+- **"Nunca ha estado tan barato" no es lo mismo que "−40%".** El descuento se mide contra la
+  mediana, así que una ruta que lleva meses cara luce un sello enorme sin estar barata, y una
+  ruta siempre barata no luce ninguno aunque hoy toque suelo. `scoring.marcar_minimo` marca la
+  otra pregunta —la que hace reservar— con el histórico entero y pidiendo 14 días distintos antes
+  de atreverse a decirlo. Lo calcula el backend para que la insignia pueda salir en la lista sin
+  bajarse los 60 kB de `history.json`.
+- **Contra el histórico se compara por persona.** `price` es el total del grupo y el histórico va
+  por persona: sin esto, una búsqueda para dos daba 240 € contra un histórico de 120 y no salía
+  descuento nunca. El sello no significaba nada justo para quien busca en pareja.
 - **La consulta más barata es la que no se hace.** Buscar "Estonia" a doce meses eran doce
   consultas a Kuressaare, doce a Kärdla, doce a Pärnu y doce a Tartu: 48 páginas de 2,5 MB para
   cero tarifas, porque desde Madrid no se vuela a ninguno. Dos ventanas en blanco bastan para
