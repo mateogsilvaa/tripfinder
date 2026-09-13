@@ -36,18 +36,35 @@ function resolver(url) {
    las peticiones que hace un service worker —las hace el worker, no la pagina—,
    asi que para probar que la web abre sin red hay que cortarla de verdad, aqui.
 
-   `GET /__corte?on=1` y a partir de ahi todo lo de /data/ muere con la conexion
-   cerrada de golpe, que es lo que ve un movil al meterse en el metro. */
-let cortado = false;
+   `GET /__corte?on=1&marca=XXX` y a partir de ahi todo lo de /data/ QUE VENGA
+   CON ESA MARCA muere con la conexion cerrada de golpe, que es lo que ve un
+   movil al meterse en el metro.
+
+   LA MARCA NO ES ADORNO. Este servidor es uno solo para toda la suite, que
+   corre en paralelo: un interruptor global tumbaba /data/ tambien para las
+   pruebas de los otros workers, que se quedaban sin feed y fallaban por algo
+   que no habian hecho ellas. La marca la pone la prueba en una cookie de su
+   propio contexto, asi que el corte llega justo hasta donde tiene que llegar. */
+const cortados = new Set();
+
+const marcaDe = (req) => {
+  const galletas = req.headers.cookie || "";
+  const m = /(?:^|;\s*)tf_corte=([^;]+)/.exec(galletas);
+  return m ? decodeURIComponent(m[1]) : "";
+};
 
 const servidor = http.createServer((req, res) => {
   if (req.url.startsWith("/__corte")) {
-    cortado = new URL(req.url, "http://x").searchParams.get("on") === "1";
+    const q = new URL(req.url, "http://x").searchParams;
+    const marca = q.get("marca") || "";
+    const on = q.get("on") === "1";
+    if (on && marca) cortados.add(marca);
+    else cortados.delete(marca);
     res.writeHead(200, { "Content-Type": "text/plain", "Cache-Control": "no-store" });
-    res.end(cortado ? "sin cobertura" : "con cobertura");
+    res.end(on ? "sin cobertura" : "con cobertura");
     return;
   }
-  if (cortado && req.url.startsWith("/data/")) {
+  if (req.url.startsWith("/data/") && cortados.has(marcaDe(req))) {
     // `destroy` sin responder: el navegador lo ve como ERR_CONNECTION_RESET,
     // no como un 500. Un 500 lo serviria el worker igual, y no es el caso.
     req.socket.destroy();

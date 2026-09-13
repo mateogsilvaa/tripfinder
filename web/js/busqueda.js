@@ -31,12 +31,17 @@ import {
   comoDueno,
 } from "./disparador.js";
 import { boardRow, wireRows } from "./ofertas.js";
+import { compartirCeldaHTML, wireCompartir } from "./compartir.js";
 import {
   MAX_ESPERA_MS,
   anadirPendiente,
+  anotarTerminada,
   guardarPendientes,
+  olvidarTerminada,
   pendienteHTML,
   pendientes,
+  terminadaHTML,
+  terminadas,
 } from "./destinos.js";
 import { cargarWatches } from "./seguimientos.js";
 import { desde } from "./alojamiento.js";
@@ -356,6 +361,9 @@ export async function loadSearches() {
     .forEach((p) => {
       const hecha = guardadas.find((g) => g.label === p.label);
       const n = hecha ? hecha.count : 0;
+      // Y se queda anotada para que la ficha de "terminada" salga donde estaba
+      // la barra de progreso, en vez de que la busqueda desaparezca sin mas.
+      if (hecha) anotarTerminada(p.label, hecha.slug);
       tfOlvidarAnuncio();
       tfAnunciar(
         n
@@ -374,9 +382,14 @@ export async function loadSearches() {
     });
   guardarPendientes(pend);
 
-  const cabecera = pend
-    .map((p) => pendienteHTML(p, ahora - p.desde > MAX_ESPERA_MS))
-    .join("");
+  // Las recien terminadas van donde estaba su barra de progreso: encima de las
+  // guardadas, que es donde estabas mirando. Solo las que siguen en el indice:
+  // una borrada no puede seguir anunciando su final.
+  const porSlug = new Map(guardadas.map((s) => [s.slug, s]));
+  const recien = terminadas().filter((t) => porSlug.has(t.slug));
+  const cabecera =
+    recien.map((t) => terminadaHTML(t, porSlug.get(t.slug))).join("") +
+    pend.map((p) => pendienteHTML(p, ahora - p.desde > MAX_ESPERA_MS)).join("");
 
   if (!guardadas.length && !cabecera) {
     $("#searches").innerHTML = avisoDeCuenta(
@@ -426,6 +439,28 @@ export async function loadSearches() {
       })
     );
 
+  recien.forEach((t) => rellenarTerminada(t.slug));
+
+  $("#searches")
+    .querySelectorAll("[data-term-abrir]")
+    .forEach((b) =>
+      b.addEventListener("click", () => {
+        // Abrirla es justo lo que la ficha venia a ofrecer, asi que en cuanto lo
+        // haces la ficha ya sobra: la busqueda es una guardada mas. Se abre la
+        // tarjeta de verdad, que es la que tiene los resultados dentro.
+        const slug = b.dataset.termAbrir;
+        olvidarTerminada(slug);
+        const real = [...document.querySelectorAll(`.saved[data-slug="${CSS.escape(slug)}"]`)].find(
+          (el) => el.querySelector(".saved-rows")
+        );
+        if (real) {
+          real.scrollIntoView({ block: "center", behavior: "smooth" });
+          if (real.querySelector(".saved-rows").hidden) real.click();
+        }
+        b.closest(".terminada")?.remove();
+      })
+    );
+
   if (pend.length) esperarCambios();
 
   document.querySelectorAll("[data-borrar]").forEach((b) =>
@@ -455,6 +490,59 @@ export async function loadSearches() {
       el.scrollIntoView({ block: "center", behavior: "smooth" });
     }
   }
+}
+
+/* Las tres filas de dentro de la ficha de "terminada", y la unica cifra que
+   contesta si ha merecido la pena: cuantos de los que salieron caben en el tope
+   que pusiste. Siete viajes con un tope de 120 € no dicen nada si todos estan a
+   400; tres dentro del tope, si. El tope sale del propio fichero de la busqueda
+   (`request.max_price`), no de leerlo de la etiqueta. */
+async function rellenarTerminada(slug) {
+  const caja = $("#searches").querySelector(`[data-terminada="${CSS.escape(slug)}"]`);
+  if (!caja) return;
+  const filas = caja.querySelector("[data-term-filas]");
+  let data = null;
+  try {
+    data = await fetchJSON(`data/searches/${slug}.json`);
+  } catch {
+    if (filas) filas.remove(); // el resumen de arriba ya dice lo esencial
+    return;
+  }
+  const ofertas = conGrupo(data.offers || [], (data.request || {}).adults);
+  ofertas.forEach((o) => (SEARCH_OFFERS[o.id] = o));
+
+  // El diseño pide aquí «3 dentro de tu tope», y NO se puede decir: el barrido
+  // filtra por el tope antes de guardar (`search.py`, `o.price <= max_price`),
+  // así que dentro del fichero están todos dentro siempre. «7 viajes · 7 dentro
+  // de tu tope» es ruido. Lo que sí se sabe, y es lo mismo que se quería saber,
+  // es cuánto aire ha quedado: por debajo de qué has entrado.
+  const tope = Number((data.request || {}).max_price) || 0;
+  const barato = Math.min(...ofertas.map((o) => Number(o.price) || Infinity));
+  const hueco = caja.querySelector("[data-term-tope]");
+  if (hueco && tope && Number.isFinite(barato) && barato <= tope) {
+    const aire = Math.round(tope - barato);
+    hueco.textContent = aire
+      ? ` · el más barato entra ${fmtEUR(aire)} por debajo de tu tope`
+      : " · el más barato entra justo en tu tope";
+  }
+
+  if (!filas) return;
+  filas.innerHTML = ofertas
+    .slice(0, 3)
+    .map(
+      (o) => `
+      <div class="term-fila">
+        <span class="term-que">
+          <span class="term-iata">${esc(o.destination)}</span>
+          <span class="term-ciudad">${esc(o.destination_name || o.destination)}</span>
+          <span class="term-cia">${esc(o.airline || "")}</span>
+        </span>
+        <span class="term-precio">${fmtEUR(o.price)}</span>
+        ${compartirCeldaHTML(o)}
+      </div>`
+    )
+    .join("");
+  wireCompartir(filas, (id) => SEARCH_OFFERS[id] || null);
 }
 
 async function toggleSearch(el) {

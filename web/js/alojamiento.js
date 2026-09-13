@@ -66,15 +66,27 @@ function issueURL(o, adultos) {
   );
 }
 
+/* La cabecera dice PARA CUANTOS se ha buscado en cuanto se sabe. Una cama de
+   119 € no significa nada sin saber si es para dos o para cuatro, y ese numero
+   lo eliges tu al lanzarla: callarlo despues deja el precio a medias. */
+let OFERTA_ABIERTA = null;
+
+function ponerFechas(offer, para = 0) {
+  if (!offer) return;
+  $("#panelDates").textContent =
+    `${fmtDate(offer.depart_date, true)}${offer.return_date ? ` → ${fmtDate(offer.return_date, true)}` : ""}` +
+    `${offer.nights ? ` · ${offer.nights} noches` : ""}` +
+    `${para > 0 ? ` · para ${para}` : ""}`;
+}
+
 export async function openStays(id) {
   const offer = OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id];
   if (!offer) return;
 
   abrirPanel();
+  OFERTA_ABIERTA = offer;
   $("#panelTitle").textContent = offer.destination_name || offer.destination;
-  $("#panelDates").textContent =
-    `${fmtDate(offer.depart_date, true)}${offer.return_date ? ` → ${fmtDate(offer.return_date, true)}` : ""}` +
-    `${offer.nights ? ` · ${offer.nights} noches` : ""}`;
+  ponerFechas(offer);
   $("#panelBody").innerHTML = '<p class="status">Comprobando si ya hay resultados…</p>';
 
   let datos = null;
@@ -135,6 +147,8 @@ function askForSearch(offer, aviso = "") {
           Math.max(1, pax(offer) > 1 ? pax(offer) : GRUPO)
         )}" inputmode="numeric">
       </label>
+      <p class="party-nota">El vuelo es por persona y la cama es para el grupo: el número
+        cambia el precio, así que viaja en la petición.</p>
       <button class="btn primary" id="launch">Buscar alojamiento</button>
     </div>`;
 
@@ -152,6 +166,7 @@ function askForSearch(offer, aviso = "") {
       adults: String(adultos),
     });
     if (r.ok) {
+      ponerFechas(offer, adultos);
       startPolling(offer.id);
       return;
     }
@@ -171,11 +186,29 @@ function askForSearch(offer, aviso = "") {
   });
 }
 
+/* Tres huecos barriendo mientras se busca. No es adorno: dicen QUE VAN A SALIR
+   FILAS y cuantas caben, asi que al llegar el resultado la hoja no da un salto
+   de vacia a llena. Con una sola linea de texto quedaba un palmo de nada debajo
+   y parecia que se habia colgado.
+
+   Se exporta para poder comprobar lo que se pinta DE VERDAD: el camino que
+   lleva aqui pasa por un dispatch autenticado, que en una prueba no se puede
+   recorrer sin inventarse media sesion. */
+export function buscandoHTML() {
+  return `
+    <div class="buscando">
+      <p class="buscando-linea"><span class="spin"></span>buscando cama… 2-3 minutos</p>
+      <div class="esqueleto" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="buscando-nota">Puedes cerrar esta hoja y volver luego: el resultado se guarda y la
+        próxima vez sale al momento. Si tarda más de quince minutos se te dice, no se queda
+        girando.</p>
+    </div>`;
+}
+
 function startPolling(id) {
   clearInterval(pollTimer);
   const started = Date.now();
-  $("#panelBody").innerHTML =
-    '<div class="status wait"><span class="spin"></span>Buscando… puedes cerrar esta ventana y volver luego.</div>';
+  $("#panelBody").innerHTML = buscandoHTML();
   // Quince minutos de espera sin que nadie te diga que hay algo en marcha son
   // quince minutos de no saber si le has dado al boton.
   tfOlvidarAnuncio();
@@ -302,6 +335,7 @@ function tripTotal(resumen) {
 
 function renderStays(data) {
   const stays = data.stays || [];
+  ponerFechas(OFERTA_ABIERTA, Number(data.summary && data.summary.party) || 0);
   const priced = stays.filter((s) => s.price_total);
   const links = stays.filter((s) => !s.price_total);
   const offer =

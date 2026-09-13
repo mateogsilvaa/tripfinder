@@ -296,6 +296,22 @@ alojamiento pedida a mano.
     la suma, y una ficha por viaje con su curva, su sello y su «compartir».
     Ninguna ficha se queda sin sello: sin él parece un fallo de maquetación al
     lado de las que sí lo tienen.
+- [x] **La búsqueda que acaba de terminar** `ux`
+  - El estado 3 de la 2a, que faltaba: al acabar un barrido su tarjeta de
+    progreso desaparecía y la búsqueda se colaba entre las guardadas de hace
+    tres días. Ocho minutos de espera para que el final sea que algo deja de
+    parpadear. Ahora sale una ficha con cuántos viajes han salido, el más
+    barato, los tres primeros con su «compartir» y por dónde seguir.
+  - El diseño pide ahí «3 dentro de tu tope» y NO se puede decir: el barrido
+    filtra por el tope antes de guardar, así que dentro del fichero están todos
+    dentro siempre. Se dice el aire que ha quedado, que es lo mismo que se
+    quería saber.
+- [x] **La hoja de alojamiento mientras busca** `ux`
+  - Tres huecos barriendo y lo que tarda, en vez de una línea de texto con un
+    palmo de nada debajo. Los huecos dicen que van a salir filas y cuántas
+    caben, así que la hoja no salta de vacía a llena.
+  - Y la cabecera dice para cuántos se ha buscado: una cama de 119 € no
+    significa nada sin saber si es para dos o para cuatro.
 - [ ] **Pedir una cuenta** `web` `infra`
   - El diseño 2d: formulario, cola en el panel y «Crear la cuenta» con los
     campos ya rellenos. Es una función entera, no una pantalla.

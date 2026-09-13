@@ -1435,7 +1435,21 @@ test.describe("la aplicación instalable", () => {
      peticiones de datos las hace el service worker, que se queda con línea. La
      cobertura se corta en el servidor de pruebas, que es donde de verdad se
      nota. */
-  const cobertura = (page, si) => page.request.get(`/__corte?on=${si ? 0 : 1}`);
+  /* El corte va MARCADO: el servidor de pruebas es uno solo para toda la suite,
+     que corre en paralelo, y un interruptor global tumbaba /data/ también para
+     las pruebas de los otros workers. La marca viaja en una cookie del contexto
+     de esta prueba —también en las peticiones que hace el worker, que son del
+     mismo origen—, así que el corte llega justo hasta aquí. */
+  const marcar = async (page) => {
+    const marca = `m${Math.random().toString(36).slice(2)}`;
+    await page.context().addCookies([
+      { name: "tf_corte", value: marca, url: page.url() || "http://localhost:4173" },
+    ]);
+    return marca;
+  };
+
+  const cobertura = (page, si, marca) =>
+    page.request.get(`/__corte?on=${si ? 0 : 1}&marca=${marca}`);
 
   test("sin cobertura, abre con la última tanda y lo dice", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
@@ -1444,7 +1458,8 @@ test.describe("la aplicación instalable", () => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".brow").first()).toBeVisible();
 
-    await cobertura(page, false);
+    const marca = await marcar(page);
+    await cobertura(page, false, marca);
     try {
       await page.goto("/index.html", { waitUntil: "domcontentloaded" });
       // Los datos siguen ahí…
@@ -1453,7 +1468,7 @@ test.describe("la aplicación instalable", () => {
       await expect(page.locator("#frescura")).toContainText(/sin conexión/i);
       await expect(page.locator("#frescura")).toHaveClass(/viejo/);
     } finally {
-      await cobertura(page, true);
+      await cobertura(page, true, marca);
     }
   });
 
@@ -1477,11 +1492,12 @@ test.describe("la aplicación instalable", () => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".brow").first()).toBeVisible();
 
-    await cobertura(page, false);
+    const marca = await marcar(page);
+    await cobertura(page, false, marca);
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#frescura")).toContainText(/sin conexión/i);
 
-    await cobertura(page, true);
+    await cobertura(page, true, marca);
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#frescura")).toContainText(/levantamiento/);
   });

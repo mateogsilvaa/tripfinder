@@ -1592,6 +1592,112 @@ h1 em { font-size: 1.3em; }
   color: var(--muted);
 }
 
+/* La búsqueda que acaba de terminar (2a·3 del diseño). Va donde estaba su
+   barra de progreso, encima de las guardadas, porque es donde estabas mirando. */
+.terminada {
+  display: grid;
+  /* `.saved` es una rejilla de tres columnas y esta ficha va apilada: sin
+     reponer la columna, el titular, el resumen y las filas salian uno al lado
+     del otro y la ficha se leia en diagonal. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface);
+  padding: 16px 18px;
+}
+.term-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+}
+.term-head b { font-weight: 600; font-size: var(--fs-body-s); }
+.term-desde {
+  flex: none;
+  font: 600 var(--fs-meta) var(--font-mono);
+  color: var(--deep);
+}
+.term-meta { font-size: var(--fs-meta); color: var(--muted); }
+.term-fila {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--hair);
+}
+.term-que { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.term-iata {
+  flex: none;
+  font: 500 var(--fs-data-s) / 1 var(--font-mono);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 3px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.1em;
+}
+.term-ciudad {
+  font-weight: 600;
+  font-size: var(--fs-city-s);
+  letter-spacing: -0.02em;
+  /* El nombre largo se recorta él; lo que no puede es empujar al precio fuera. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.term-cia { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); }
+.term-precio { font: 600 var(--fs-city-s) var(--font-mono); }
+.term-acc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--hair);
+  padding-top: 12px;
+}
+
+/* En el móvil la compañía se cae: entre el destino y el precio, es lo único
+   que se puede mirar después. */
+@media (max-width: 560px) {
+  .term-cia { display: none; }
+}
+
+/* La hoja de alojamiento mientras busca (2c del diseño). Los huecos barriendo
+   no son adorno: dicen que van a salir FILAS y cuántas caben, así que al llegar
+   el resultado la hoja no salta de vacía a llena. Con una sola línea de texto
+   quedaba un palmo de nada debajo y parecía que se había colgado. */
+.buscando { display: grid; gap: 14px; }
+.buscando-linea {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--muted);
+}
+.esqueleto { display: grid; gap: 8px; }
+.esqueleto i {
+  height: 74px;
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  background: linear-gradient(90deg, transparent, var(--surface2), transparent);
+  background-size: 200% 100%;
+  animation: tf-barrer 1.4s infinite linear;
+}
+.buscando-nota, .party-nota {
+  margin: 0;
+  font-size: var(--fs-body-s);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 62ch;
+}
+.party-nota { font-size: var(--fs-meta); line-height: 1.45; }
+
+/* Quien prefiere no ver animaciones tampoco quiere tres barras barriendo. */
+@media (prefers-reduced-motion: reduce) {
+  .esqueleto i { animation: none; background: var(--surface2); }
+}
+
 /* Tres por fila, con un píxel de aire: el fondo es la línea y cada ficha se
    pinta encima, como el resto de las tablas de la web. */
 .cambios {
