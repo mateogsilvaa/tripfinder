@@ -14,7 +14,7 @@
    la propia pantalla, para que nadie descubra tarde que se le perdió al cambiar
    de navegador. */
 
-import { $, esc, fetchJSON } from "./base.js";
+import { $, esc, fetchJSON, pintarStats, stat } from "./base.js";
 import { wireEntrar } from "./disparador.js";
 
 const MEMORIA = tfClave("tf_mundo");
@@ -81,20 +81,44 @@ function contar() {
     barra.style.setProperty("--pct", `${pct}%`);
     barra.setAttribute("aria-valuenow", String(pct));
   }
+  // Las cifras de la cabecera son las de ESTA pagina: cuantos paises llevas y
+  // que parte del mundo es. Hasta ahora salian las del tablon de chollos.
+  pintarStats(stat("países", String(n)) + stat("del mundo", `${pct} %`, true));
 
   // El dato que solo puede dar esta web: de los sitios a los que hay vuelo hoy,
   // en cuántos has estado. Es lo que convierte el mapa en algo que mirar antes
   // de elegir destino, y no en un álbum de cromos.
-  const conVuelo = [...CON_VUELO];
-  const hechos = conVuelo.filter((i) => VISTOS.has(i)).length;
+  //
+  // Y se dicen los NOMBRES, no solo cuantos son. "De los 6 países a los que hay
+  // vuelo has estado en 2" no te deja hacer nada con el dato; "hoy hay vuelo a
+  // Italia, Portugal y Albania, y Albania no la tienes" sí.
   const caja = $("#mundoVuelos");
-  if (caja) {
-    caja.hidden = !conVuelo.length;
-    $("#mundoVuelosTxt").innerHTML = conVuelo.length
-      ? `De los <b>${conVuelo.length}</b> países a los que hay vuelo ahora mismo, ` +
-        `has estado en <b>${hechos}</b>. Quedan <b>${conVuelo.length - hechos}</b>.`
-      : "";
+  if (!caja) return;
+  const conVuelo = PAISES.filter((p) => CON_VUELO.has(p.iso));
+  const faltan = conVuelo.filter((p) => !VISTOS.has(p.iso));
+  caja.hidden = !conVuelo.length;
+  if (!conVuelo.length) {
+    $("#mundoVuelosTxt").innerHTML = "";
+    return;
   }
+  const lista = enumerar(conVuelo.map((p) => p.nombre));
+  const cola = !faltan.length
+    ? "Los has pisado todos."
+    : faltan.length === conVuelo.length
+      ? `Ninguno lo tienes marcado.`
+      : `${faltan.length === 1 ? "Uno de ellos no lo tienes" : `${faltan.length} de ellos no los tienes`} marcado${faltan.length === 1 ? "" : "s"}.`;
+  $("#mundoVuelosTxt").innerHTML = `Hoy hay vuelo barato a <b>${esc(lista)}</b>. ${esc(cola)}`;
+}
+
+/* "Italia, Portugal y Albania", no "Italia, Portugal, Albania". Con mas de
+   cinco se corta: la frase esta para leerse de un vistazo, y una lista de
+   cuarenta paises no se lee, se salta. */
+function enumerar(nombres, tope = 6) {
+  const lista = nombres.slice(0, tope);
+  const resto = nombres.length - lista.length;
+  const texto =
+    lista.length > 1 ? `${lista.slice(0, -1).join(", ")} y ${lista[lista.length - 1]}` : lista[0] || "";
+  return resto > 0 ? `${texto} y ${resto} más` : texto;
 }
 
 /* La lista es la otra mitad del mapa, no un extra: Malta, Andorra o Singapur

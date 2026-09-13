@@ -12,6 +12,9 @@ import {
   fmtDate,
   fmtEUR,
   parseISO,
+  pintarStats,
+  stat,
+  statPie,
 } from "./base.js";
 import {
   edreamsURL,
@@ -23,7 +26,12 @@ import {
   porPersona,
   precioCorto,
 } from "./precios.js";
-import { botonesHTML, wireCompartir } from "./compartir.js";
+import {
+  botonesHTML,
+  compartirCeldaHTML,
+  compartirPrincipalHTML,
+  wireCompartir,
+} from "./compartir.js";
 import { deltaHTML, favBtn, sincronizarFavs, wireFavs } from "./favoritos.js";
 import { HISTORIA, cargarHistoria, historiaHTML, minimoHTML } from "./historia.js";
 import { openStays } from "./alojamiento.js";
@@ -64,7 +72,7 @@ export async function init() {
   try {
     payload = await fetchJSON("data/offers.json");
   } catch {
-    if (existe("#stats")) $("#stats").innerHTML = statBlock("estado", "sin datos aún");
+    if (existe("#offers")) pintarStats(stat("estado", "sin datos aún"));
     dejarDeCargar(
       "No se han podido leer los precios. Puede ser tu conexión, o que el último " +
         "scan no llegara a publicar. Vuelve a cargar en un rato."
@@ -164,8 +172,6 @@ export async function init() {
   }
 }
 
-const statBlock = (label, value, hot = false) =>
-  `<div><dt>${esc(label)}</dt><dd class="${hot ? "hot" : ""}">${esc(value)}</dd></div>`;
 
 /* Cuanto hace que se actualizo: sin esto no sabes si miras datos de hoy o de
    hace tres dias, que en precios de vuelo es toda la diferencia. */
@@ -190,19 +196,19 @@ function frescura(iso) {
 }
 
 function renderStats(payload) {
-  if (!existe("#stats")) return;
+  // Solo el feed. `#stats` existe en las cuatro paginas, y mientras esto no
+  // miraba de cual se trataba, buscar, seguimientos y el mapa enseñaban las
+  // cifras del tablon de chollos en vez de las suyas.
+  if (!existe("#offers") || !existe("#stats")) return;
   const best = OFFERS.reduce((a, o) => (o.discount_pct > (a?.discount_pct ?? -1) ? o : a), null);
   const findes = OFFERS.filter((o) => o.weekend).length;
-  $("#stats").innerHTML =
-    statBlock("ofertas vivas", OFFERS.length) +
-    (best ? statBlock("mejor descuento", `−${Math.round(best.discount_pct)}%`, true) : "") +
-    (best ? statBlock("desde", fmtEUR(Math.min(...OFFERS.map((o) => o.price)))) : "") +
-    statBlock("escapadas de finde", findes) +
-    // La fecha va en su propia banda, a lo ancho: no es una cifra, es el pie
-    // de la tabla, y ponerla como una más obligaba a leerla dos veces.
-    `<div class="stats-pie"><span>actualizado</span><b>${esc(
-      fmtDate(payload.generated_at) || "hoy"
-    )}</b></div>`;
+  pintarStats(
+    stat("ofertas vivas", OFFERS.length) +
+      (best ? stat("mejor descuento", `−${Math.round(best.discount_pct)}%`, true) : "") +
+      (best ? stat("desde", fmtEUR(Math.min(...OFFERS.map((o) => o.price)))) : "") +
+      stat("escapadas de finde", findes) +
+      statPie("actualizado", fmtDate(payload.generated_at) || "hoy")
+  );
 }
 
 /* "3 de 120 ofertas · tope 200 € · 2 personas". Es lo que dice si lo que se
@@ -492,15 +498,15 @@ function heroTicket(o) {
           </span>
         </div>
         <div class="actions">
-          <button class="btn primary" data-stay="${esc(o.id)}">Buscar alojamiento</button>
+          ${compartirPrincipalHTML(o)}
           <a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+          <button class="btn ghost" data-stay="${esc(o.id)}">Buscar alojamiento</button>
           ${
             o.airline_link
               ? `<a class="btn ghost" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
                    Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
               : ""
           }
-          ${botonesHTML(o)}
         </div>
       </div>
     </article>`;
@@ -543,6 +549,7 @@ export function boardRow(o, i) {
         o.discount_pct >= 5 ? `<small class="off">−${Math.round(o.discount_pct)}%</small>` : "",
         minimoHTML(o) + deltaHTML(o) + escapadaHTML(o)
       )}</span>
+      ${compartirCeldaHTML(o)}
       <div class="brow-detail" hidden></div>
     </div>`;
 }
@@ -625,12 +632,18 @@ function toggleRow(fila) {
 
 export function wireRows(raiz = document) {
   wireFavs(raiz);
+  // El «compartir» de la columna: abre la hoja sin desplegar la fila.
+  wireCompartir(raiz, (id) => OFFERS.find((x) => x.id === id) || SEARCH_OFFERS[id]);
   raiz.querySelectorAll(".brow[data-open]").forEach((fila) => {
     fila.addEventListener("click", (ev) => {
       if (ev.target.closest("a, button")) return; // los enlaces hacen lo suyo
       toggleRow(fila);
     });
     fila.addEventListener("keydown", (ev) => {
+      // Con el foco en un botón de dentro —seguir, compartir— el Enter es de
+      // ese botón. Sin esta línea la fila se abría además de lo que pulsabas,
+      // que con el teclado es la única forma de usarla.
+      if (ev.target.closest("a, button")) return;
       if (ev.key === "Enter" || ev.key === " ") {
         ev.preventDefault();
         toggleRow(fila);

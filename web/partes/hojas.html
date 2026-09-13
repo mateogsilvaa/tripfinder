@@ -21,3 +21,34 @@
     <div id="destList" class="dest-list"></div>
   </div>
 </div>
+
+<div id="hojaCompartir" class="modal" hidden>
+  <div class="modal-caja hoja-compartir" role="dialog" aria-labelledby="hojaCompartirTit">
+    <header class="modal-head">
+      <h2 id="hojaCompartirTit">Compartir este viaje</h2>
+      <button id="hojaCompartirClose" type="button" aria-label="Cerrar">cerrar</button>
+    </header>
+
+    <div class="hoja-ficha" id="hojaFicha"></div>
+
+    <div class="hoja-bloque">
+      <span class="hoja-rotulo">el enlace</span>
+      <div class="hoja-enlace">
+        <span id="hojaURL" class="hoja-url"></span>
+        <button id="hojaCopiar" type="button" class="btn primary">Copiar</button>
+      </div>
+      <p class="hoja-nota">Abre el feed con este viaje resaltado. Si mañana ya no está barato, quien lo abra lo verá dicho y no un hueco.</p>
+    </div>
+
+    <div class="hoja-bloque">
+      <span class="hoja-rotulo">mandarlo por</span>
+      <div class="hoja-apps" id="hojaApps"></div>
+    </div>
+
+    <div class="hoja-bloque hoja-guardar">
+      <span class="hoja-rotulo">guardártelo</span>
+      <button id="hojaICS" type="button" class="btn deep-ghost">Al calendario (.ics)</button>
+      <p class="hoja-nota">Dos eventos, ida y vuelta, con la hora del billete. No caduca ni depende de que esta web siga en pie.</p>
+    </div>
+  </div>
+</div>

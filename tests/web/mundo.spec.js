@@ -141,10 +141,12 @@ test.describe("el mapa del mundo", () => {
     await abierto(page);
     const caja = page.locator("#mundoVuelos");
     await expect(caja).toBeVisible();
-    // El JSON de ejemplo vuela a España, Italia y Reino Unido: tres países.
-    await expect(caja).toContainText("De los 3 países a los que hay vuelo ahora mismo, has estado en 0. Quedan 3.");
+    // Se dicen los NOMBRES, no solo cuántos son: "de los 6 países has estado en
+    // 2" no deja hacer nada con el dato; saber cuál te falta, sí.
+    await expect(caja).toContainText("Hoy hay vuelo barato a España, Italia y Reino Unido.");
+    await expect(caja).toContainText("Ninguno lo tienes marcado.");
     await pulsarPais(page, "IT");
-    await expect(caja).toContainText("has estado en 1. Quedan 2.");
+    await expect(caja).toContainText("2 de ellos no los tienes marcados.");
   });
 
   test("«a dónde hay vuelo hoy» se pinta sobre el mapa", async ({ page }) => {

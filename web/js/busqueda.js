@@ -11,6 +11,9 @@ import {
   fmtDate,
   fmtEUR,
   on,
+  pintarStats,
+  stat,
+  statPie,
 } from "./base.js";
 import { conGrupo } from "./precios.js";
 import { CAMPOS_BUSCAR, ampliar, recogerAmpliado } from "./ampliar.js";
@@ -285,6 +288,18 @@ async function enviarBorrados(boton) {
   alert("No se pudo borrar: " + r.reason);
 }
 
+/* Las cifras de esta pagina, no las del feed. Cuantas busquedas tienes
+   guardadas y cuantos viajes han sacado entre todas; y abajo, lo que de verdad
+   quiere saber quien va a darle a Buscar: cuanto tarda. */
+function pintarCifras(guardadas) {
+  const viajes = guardadas.reduce((n, s) => n + (Number(s.count) || 0), 0);
+  pintarStats(
+    stat("búsquedas guardadas", guardadas.length) +
+      stat("viajes dentro", viajes) +
+      statPie("una búsqueda «donde sea»", "unos 8 minutos")
+  );
+}
+
 export async function loadSearches() {
   // Esta caja solo existe en buscar.html, pero el mismo modulo carga en las cuatro
   // paginas. Sin esta linea, en el indice y en seguimientos petaba con
@@ -300,6 +315,7 @@ export async function loadSearches() {
     return;
   }
   const guardadas = (indice.searches || []).filter(esMio);
+  pintarCifras(guardadas);
 
   // Lo que ya esta en el indice deja de estar pendiente.
   const etiquetas = new Set(guardadas.map((s) => s.label));

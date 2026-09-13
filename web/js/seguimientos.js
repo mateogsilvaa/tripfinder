@@ -1,8 +1,19 @@
 /* seguimientos.js — Apuntar un viaje para que lo revise el cron cada dia. */
 
-import { $, SEARCH_OFFERS, esc, existe, fetchJSON, fmtDate, on } from "./base.js";
+import {
+  $,
+  SEARCH_OFFERS,
+  esc,
+  existe,
+  fetchJSON,
+  fmtDate,
+  on,
+  pintarStats,
+  stat,
+  statPie,
+} from "./base.js";
 import { conGrupo } from "./precios.js";
-import { sincronizarFavs } from "./favoritos.js";
+import { alCambiarFavs, cuantosFavs, sincronizarFavs } from "./favoritos.js";
 import {
   avisoDeCuenta,
   cajaAcceso,
@@ -103,8 +114,41 @@ on("#watchForm", "submit", async (e) => {
   )}</span></div>`;
 });
 
+/* Las cifras de esta pagina. «Siguiendo» son los encargos que se revisan
+   solos; «apuntados», los viajes concretos que has marcado en el feed. Son dos
+   cosas distintas y la pagina enseña las dos, asi que la cabecera tambien.
+
+   Se guarda lo ultimo pintado porque las dos mitades llegan por su cuenta: los
+   seguimientos son un fetch y los apuntados salen de `localStorage`, que puede
+   cambiar despues (al quitar uno de la lista). Quien llegue segundo repinta
+   con lo que ya sabia el primero. */
+let VIVOS = [];
+let apuntadoACambios = false;
+
+function pintarCifras(vivos) {
+  if (vivos) VIVOS = vivos;
+  const apuntados = cuantosFavs();
+  const ultima = VIVOS
+    .map((w) => w.last_checked)
+    .filter(Boolean)
+    .sort()
+    .pop();
+  pintarStats(
+    stat("siguiendo", VIVOS.length) +
+      stat("apuntados", apuntados) +
+      (ultima ? statPie("revisado", desde(ultima)) : "")
+  );
+}
+
 export async function cargarWatches() {
   if (!$("#watches")) return;  // solo existe en seguimientos.html
+  // Si quitas un viaje de la lista, la cifra de arriba baja con él. Se apunta
+  // aquí y no al cargar el módulo —solo `arranque.js` hace cosas al cargar— y
+  // una sola vez, que esto se llama otra vez en cada refresco automático.
+  if (!apuntadoACambios) {
+    apuntadoACambios = true;
+    alCambiarFavs(() => pintarCifras());
+  }
   let datos;
   try {
     datos = await fetchJSON("data/watch.json");
@@ -112,6 +156,7 @@ export async function cargarWatches() {
     return;
   }
   const vivos = (datos.watches || []).filter((w) => w.active !== false).filter(esMio);
+  pintarCifras(vivos);
   vivos.forEach((w) => conGrupo(w.last_offers || [], w.adults));
   sincronizarFavs(vivos.flatMap((w) => w.last_offers || []));
   if (!vivos.length) {
