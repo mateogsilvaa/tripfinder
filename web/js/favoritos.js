@@ -232,14 +232,6 @@ export function deltaHTML(o) {
    cada cambio es una ficha: el precio nuevo grande, el viejo tachado al lado, la
    diferencia en un sello de color y la curva de los ultimos dias detras. Se lee
    de un vistazo y desde lejos, que es justo para lo que sirve un aviso. */
-/* Una ficha sin sello se lee como un error de maquetación al lado de las que sí
-   lo tienen. Los tres dicen cosas que sabemos de verdad: el récord se gana
-   comparando con toda la serie, «más barato que cuando lo apuntaste» es
-   literalmente lo que mide `cambio`, y lo que sube sigue vigilándose. */
-function insignia(record, baja) {
-  if (record) return "lo más barato que has visto";
-  return baja ? "más barato que cuando lo apuntaste" : "sigue vigilándose";
-}
 
 /* La puerta para volver a lo ya buscado. El unico boton que abria la hoja de
    alojamiento vivia en el tablon de chollos, y el tablon se renueva dos veces al
@@ -268,49 +260,30 @@ function avisoFicha(f) {
   const { antes, ahora } = f.cambio;
   const baja = ahora < antes;
   const dif = Math.abs(ahora - antes);
-  const pct = antes > 0 ? Math.round((dif / antes) * 100) : 0;
   const serie = Array.isArray(f.historia) ? f.historia : [];
-  const minimo = serie.length ? Math.min(...serie.map((h) => Number(h.p))) : ahora;
-  // "Lo mas barato que has visto" es la unica insignia que se gana sola: dice
-  // que ahora mismo esta mejor que cualquier dia desde que lo guardaste.
-  const record = baja && ahora <= minimo + 0.01 && serie.length > 2;
   const enlace = f.deep_link || f.airline_link || "";
+  const sitio = esc(f.destination_name || f.destination);
 
+  /* UNA LINEA POR VIAJE, y la curva pegada al vuelo del que habla. Antes cada
+     cambio era una ficha con titular, precio a cuerpo de portada, sello,
+     tres botones y su propia caja: un cartel para decir que algo baja catorce
+     euros. Aqui lo que hay que saber cabe en un renglon —que ha cambiado, cual,
+     cuanto y como viene— y lo demas ya esta en la lista de abajo. */
   return `
-    <article class="cambio ${baja ? "baja" : "sube"}">
-      <header>
-        <h4>${esc(f.destination_name || f.destination)}</h4>
-        <p>${esc(f.origin || "MAD")}–${esc(f.destination)} · ${fmtDate(f.depart_date, true)}${
-    f.return_date ? ` → ${fmtDate(f.return_date, true)}` : ""
-  }${f.airline ? ` · ${esc(f.airline)}` : ""}</p>
-      </header>
-
-      <div class="cambio-fila">
-        <div class="cambio-precio">
-          <s>${Math.round(antes)} €</s>
-          <b>${Math.round(ahora)}<span>€</span></b>
-          <em class="sello-dif">${baja ? "−" : "+"}${Math.round(dif)} €${
-    pct ? ` · ${pct}%` : ""
-  }</em>
-          <span class="cambio-nota">por persona</span>
-        </div>
-        <div class="cambio-curva">${sparkline(serie, 104, 30)}</div>
-      </div>
-
-      <footer>
-        <span class="insignia${record ? " bueno" : ""}">${esc(insignia(record, baja))}</span>
-        <span class="empuja"></span>
-        ${
-          enlace
-            ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
-            : ""
-        }
-        <button class="btn ghost small" type="button" data-cama="${esc(f.id)}"
-          aria-label="Alojamiento en ${esc(f.destination_name || f.destination)}">Alojamiento</button>
-        <button type="button" class="compartir-btn" data-share="${esc(f.id)}"
-          aria-label="Compartir ${esc(f.destination_name || f.destination)}">compartir</button>
-      </footer>
-    </article>`;
+    <li class="cambio ${baja ? "baja" : "sube"}">
+      <span class="cambio-curva" aria-hidden="true">${sparkline(serie, 64, 20)}</span>
+      <span class="cambio-sitio">${sitio}</span>
+      <span class="cambio-precio">
+        <s>${Math.round(antes)} €</s><b>${Math.round(ahora)} €</b>
+      </span>
+      <span class="cambio-dif">${baja ? "−" : "+"}${Math.round(dif)} €</span>
+      ${
+        enlace
+          ? `<a class="cambio-ver" href="${escURL(enlace)}" target="_blank" rel="noopener"
+               aria-label="Ver el vuelo a ${sitio}">ver</a>`
+          : "<span></span>"
+      }
+    </li>`;
 }
 
 export function refrescarAvisoFavs() {
@@ -347,27 +320,10 @@ export function refrescarAvisoFavs() {
   caja.hidden = false;
   caja.innerHTML = `
     <div class="aviso-head">
-      <span class="aviso-titulo">
-        <span class="kicker">cambio de precio</span>
-        <h3>${esc(titulo)}<small>${esc(detalle)}</small></h3>
-      </span>
-      <button class="btn ghost small" id="favVisto">Enterado</button>
+      <p class="aviso-rotulo">${esc(titulo)} <span>${esc(detalle)}</span></p>
+      <button class="quitar" type="button" id="favVisto">Enterado</button>
     </div>
-    <div class="cambios">${bajan.concat(suben).map(avisoFicha).join("")}</div>
-    <div class="aviso-pie">
-      <a href="seguimientos.html#favoritos">Ver todo lo que sigo</a>
-    </div>`;
-
-  // Cada ficha se comparte desde la propia banda: es donde te enteras de que
-  // ha bajado, y es justo cuando apetece pasarlo.
-  wireCompartir(caja, (id) => {
-    const f = FAVS[id];
-    if (!f) return null;
-    const gente = Math.max(1, Number(f.adults) || 1);
-    return { ...f, price: (f.precio_visto || f.precio_inicial || 0) * gente };
-  });
-
-  cablearCamas(caja);
+    <ul class="cambios">${bajan.concat(suben).map(avisoFicha).join("")}</ul>`;
 
   const boton = document.getElementById("favVisto");
   if (boton) {
