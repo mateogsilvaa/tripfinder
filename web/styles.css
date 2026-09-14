@@ -1543,7 +1543,9 @@ h1 em { font-size: 1.3em; }
    El filo de arriba se reparte como se reparten los cambios: verde lo que baja
    y naranja lo que sube, así se ve la proporción sin contar nada. */
 .fav-aviso {
-  margin: 20px 0 0;
+  /* Aire por abajo también: sin él, el rótulo de la sección siguiente —«02 ·
+     seguir un viaje»— salía pegado al borde de la banda, como si fuera suyo. */
+  margin: 20px 0 24px;
   border: 1px solid var(--line);
   border-radius: var(--r);
   background: var(--surface);
@@ -1591,6 +1593,80 @@ h1 em { font-size: 1.3em; }
   letter-spacing: 0;
   color: var(--muted);
 }
+
+/* La cola de peticiones, en el panel. */
+.peticiones { margin-top: 24px; display: grid; gap: 8px; }
+.peticion {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  padding: 14px 16px;
+  display: grid;
+  gap: 10px;
+}
+.peticion-quien { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 10px; }
+.peticion-tag {
+  font: 500 var(--fs-data-s) / 1 var(--font-mono);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 3px 6px;
+  letter-spacing: 0.1em;
+}
+.peticion-porque {
+  margin: 0;
+  font-size: var(--fs-body-s);
+  line-height: 1.55;
+  max-width: 70ch;
+  white-space: pre-wrap;
+}
+.peticion-acc { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+/* Pedir una cuenta (2d del diseño). */
+.pedir-caja { max-width: 560px; }
+.pedir-body { padding: 0 22px 24px; display: grid; gap: 16px; }
+.pedir-lede {
+  margin: 0;
+  font-size: var(--fs-body-s);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 62ch;
+}
+.pedir-campos { display: grid; gap: 14px; }
+.campo { display: grid; gap: 6px; }
+.campo > span:first-child {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.campo input, .campo textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--hair);
+  border-radius: 4px;
+  background: var(--field);
+  color: var(--ink);
+  font: 400 var(--fs-input) var(--font-sans);
+}
+.campo textarea { resize: vertical; line-height: 1.5; }
+.campo input.mal { border-color: var(--accent); }
+.campo-pie { font-size: var(--fs-meta); color: var(--muted); line-height: 1.45; }
+.campo-pie-doble { display: flex; justify-content: space-between; gap: 12px; }
+.pedir-sugerencias { display: flex; flex-wrap: wrap; gap: 8px; }
+.pedir-acc { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.pedir-nota {
+  margin: 0;
+  font-size: var(--fs-meta);
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 62ch;
+}
+.pedir-nota.mal { color: var(--accent-txt); }
+.pedir-hecha { display: grid; gap: 12px; }
+.pedir-hecha h3 { margin: 0; font-size: var(--fs-subhead); letter-spacing: -0.025em; }
+.pedir-hecha p { margin: 0; font-size: var(--fs-body-s); line-height: 1.55; }
+.pedir-hecha .meta { color: var(--muted); }
 
 /* La búsqueda que acaba de terminar (2a·3 del diseño). Va donde estaba su
    barra de progreso, encima de las guardadas, porque es donde estabas mirando. */
@@ -2716,6 +2792,39 @@ h1 em { font-size: 1.3em; }
      un 40 % con 120 viajes en la lista. Aquí se comparte abriendo la fila,
      que es un toque y lleva también «al calendario». */
   .brow > .compartir-cell { display: none; }
+
+  /* La cabecera de la banda se reparte en tres —rúbrica, titular, «Enterado»—
+     y a lo ancho eso funciona. Envuelta en 390 px salía la rúbrica abajo a la
+     izquierda, el titular arriba a la derecha y el botón en un tercer renglón:
+     se leía en zigzag. Apilada se lee en el orden en que está escrita. */
+  .aviso-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .aviso-head h3 { margin: 0; }
+
+  /* La fila de un viaje apuntado no tenía maqueta de móvil: se quedaba con sus
+     SEIS columnas de escritorio —34px + 1.1fr + 1fr + 78px + 132px + auto— que
+     en 390 px no caben de ninguna manera. El resultado era la ciudad comida,
+     los botones colgando fuera de la tarjeta y la página con barra horizontal.
+     Se lee como la del feed: el sitio arriba, el precio a su lado, y las fechas
+     y los botones en sus propios renglones. */
+  .favrow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    align-items: start;
+  }
+  .favrow > .iata { grid-area: 1 / 1 / 2 / 2; justify-self: start; }
+  .favrow > .dest-cell { grid-area: 2 / 1 / 3 / 2; }
+  .favrow > .dest-cell .country { flex-basis: 100%; }
+  .favrow > .price { grid-area: 2 / 2 / 3 / 3; text-align: right; }
+  .favrow > .when { grid-area: 3 / 1 / 4 / 3; text-align: left; white-space: normal; }
+  .favrow > .spark-cell { grid-area: 4 / 1 / 5 / 3; justify-items: start; }
+  /* El puntito de relleno solo tiene sentido en una línea que se lee de un
+     lado al otro; apilada, es una raya suelta en medio. */
+  .favrow > .leader { display: none; }
+  .favrow > .favacc { grid-area: 5 / 1 / 6 / 3; justify-content: flex-start; }
 
   /* El panel reusa `.brow` para sus filas de cuenta, pero sus celdas son otras
      —no hay precio, ni fechas, ni compañía— así que la maqueta de arriba le

@@ -5,6 +5,7 @@ import { conGrupo, pax, porPersona } from "./precios.js";
 import { esMio } from "./disparador.js";
 import { wireCompartir } from "./compartir.js";
 import { OFFERS } from "./ofertas.js";
+import { openStays } from "./alojamiento.js";
 
 /* ---------------------------------------------------------------- favoritos
    Marcar un vuelo con la estrella lo guarda en ESTE navegador junto con el
@@ -145,6 +146,19 @@ export function sincronizarFavs(ofertas) {
   (ofertas || []).forEach((o) => {
     const f = FAVS[o.id];
     if (!f) return;
+
+    /* CADA PAGINA SINCRONIZA CON UNA FUENTE DISTINTA: el feed con el barrido
+       diario, "lo que sigues" con los resultados del seguimiento, una busqueda
+       guardada con los suyos. Son tres fotos del mismo vuelo hechas a horas
+       distintas, y sus precios no tienen por que coincidir.
+
+       Sin mirar CUANDO se hizo cada foto, cambiar de pagina inventaba un cambio
+       de precio: dabas a "Enterado" en el feed, ibas a lo que sigues, y la banda
+       estaba otra vez ahi con los mismos euros dando tumbos de una foto a la
+       otra. Una foto mas vieja que la que ya tenemos no cuenta nada nuevo. */
+    const cuando = o.found_at || "";
+    if (cuando && f.fuente_en && cuando < f.fuente_en) return;
+
     const ahora = redondea(porPersona(o));
     const antes = Number(f.precio_visto);
 
@@ -159,10 +173,19 @@ export function sincronizarFavs(ofertas) {
     Object.assign(f, favResumen(o)); // la oferta puede haber cambiado de compania
     f.precio_visto = ahora;
     f.visto_en = hoy;
+    if (cuando) f.fuente_en = cuando;
     tocado = true;
 
     // Menos de medio euro es ruido de redondeo, no una bajada.
-    if (Number.isFinite(antes) && Math.abs(ahora - antes) >= 0.5) {
+    //
+    // Y "Enterado" es enterado: `avisado` guarda el precio del que ya te hemos
+    // avisado, asi que volver a ese mismo precio no es noticia. Sin esto, un
+    // vuelo que baila entre 98 y 104 te daba la banda cada vez que pasaba por
+    // un sitio por el que ya habias pasado.
+    const nuevo = Number.isFinite(antes) && Math.abs(ahora - antes) >= 0.5;
+    const yaAvisado =
+      Number.isFinite(Number(f.avisado)) && Math.abs(ahora - Number(f.avisado)) < 0.5;
+    if (nuevo && !yaAvisado) {
       f.cambio = { antes, ahora, cuando: hoy, visto: false };
     }
   });
@@ -200,6 +223,29 @@ export function deltaHTML(o) {
 function insignia(record, baja) {
   if (record) return "lo más barato que has visto";
   return baja ? "más barato que cuando lo apuntaste" : "sigue vigilándose";
+}
+
+/* La puerta para volver a lo ya buscado. El unico boton que abria la hoja de
+   alojamiento vivia en el tablon de chollos, y el tablon se renueva dos veces al
+   dia: al dia siguiente el vuelo ya no estaba, el boton tampoco, y la cama que
+   habias esperado tres minutos a que se buscara quedaba inalcanzable. Aqui el
+   viaje sigue estando mientras tu lo sigas, que es lo que quieres.
+
+   Va en los dos sitios donde sale un viaje apuntado —la lista y la ficha de la
+   banda de cambio de precio—, y se cablea en los dos: un boton pintado y sin
+   cablear es peor que no ponerlo. */
+function cablearCamas(raiz) {
+  if (!raiz) return;
+  raiz.querySelectorAll("[data-cama]").forEach((b) => {
+    if (b.dataset.cableado) return;
+    b.dataset.cableado = "1";
+    b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      // Se pasa la ficha guardada: el vuelo puede no estar ya en ninguna lista,
+      // y sin ella la hoja no sabria ni a que ciudad es.
+      openStays(b.dataset.cama, FAVS[b.dataset.cama] || null);
+    });
+  });
 }
 
 function avisoFicha(f) {
@@ -242,6 +288,8 @@ function avisoFicha(f) {
             ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
             : ""
         }
+        <button class="btn ghost small" type="button" data-cama="${esc(f.id)}"
+          aria-label="Alojamiento en ${esc(f.destination_name || f.destination)}">Alojamiento</button>
         <button type="button" class="compartir-btn" data-share="${esc(f.id)}"
           aria-label="Compartir ${esc(f.destination_name || f.destination)}">compartir</button>
       </footer>
@@ -300,11 +348,17 @@ export function refrescarAvisoFavs() {
     return { ...f, price: (f.precio_visto || f.precio_inicial || 0) * gente };
   });
 
+  cablearCamas(caja);
+
   const boton = document.getElementById("favVisto");
   if (boton) {
     boton.addEventListener("click", () => {
       Object.values(FAVS).forEach((f) => {
-        if (f.cambio) f.cambio.visto = true;
+        if (!f.cambio) return;
+        f.cambio.visto = true;
+        // Queda apuntado A QUE PRECIO te diste por enterado, que es lo que
+        // impide que el mismo cambio vuelva por otra puerta.
+        f.avisado = f.cambio.ahora;
       });
       favGuardar(FAVS);
       refrescarAvisoFavs();
@@ -374,6 +428,8 @@ function favFila(f) {
             ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
             : ""
         }
+        <button class="btn ghost small" type="button" data-cama="${esc(f.id)}"
+          aria-label="Alojamiento en ${esc(f.destination_name || f.destination)}">Alojamiento</button>
         <button type="button" class="compartir-btn" data-share="${esc(f.id)}"
           aria-label="Compartir ${esc(f.destination_name || f.destination)}">compartir</button>
         <button class="quitar" type="button" data-desfav="${esc(f.id)}"
@@ -410,6 +466,8 @@ export function pintarListaFavs() {
     `<h3 class="watch-head">vuelos que sigues · ${lista.length} viaje${
       lista.length > 1 ? "s" : ""
     } apuntado${lista.length > 1 ? "s" : ""}</h3>` + lista.map(favFila).join("");
+  cablearCamas(caja);
+
   // Compartir uno de los apuntados. Lo guardado lleva `precio_visto` POR
   // PERSONA y la hoja espera el total del grupo, como cualquier oferta: sin
   // esta cuenta, un viaje para dos se compartiria a mitad de precio.

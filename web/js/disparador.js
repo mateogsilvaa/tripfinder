@@ -62,7 +62,8 @@ export function avisoDeCuenta(que, vacio) {
       return `<p class="meta cuenta-nota"><span class="nota-txt">Tus ${que} salen aqui en cuanto entres.</span></p>`;
     }
     return `<p class="meta cuenta-nota"><span class="nota-txt">Entra con tu cuenta para ver tus ${que}.</span>
-      <button class="btn primary small" type="button" data-entrar>Entrar</button></p>`;
+      <button class="btn primary small" type="button" data-entrar>Entrar</button>
+      <button class="btn ghost small" type="button" data-pedir-cuenta>Pedir una cuenta</button></p>`;
   }
   return `<p class="meta cuenta-nota"><span class="nota-txt">${vacio}</span></p>`;
 }
@@ -93,7 +94,8 @@ export function candarFormularios() {
     (caja || form).insertAdjacentHTML(
       caja ? "beforeend" : "afterend",
       `<p class="candado-nota"><span class="nota-txt">Para ${que} hace falta una cuenta.</span>
-        <button class="btn primary small" type="button" data-entrar>Entrar</button></p>`
+        <button class="btn primary small" type="button" data-entrar>Entrar</button>
+        <button class="btn ghost small" type="button" data-pedir-cuenta>Pedir una cuenta</button></p>`
     );
   });
   wireEntrar(document);
@@ -115,6 +117,18 @@ export function wireEntrar(raiz = document) {
       tfAbrirLogin();
     });
   });
+  /* Y la otra puerta: quien no tiene cuenta no tiene donde pedirla, y hasta
+     ahora el camino se acababa aqui. Se carga el modulo solo cuando se pulsa:
+     es una pantalla que la mayoria no abre nunca. */
+  raiz.querySelectorAll("[data-pedir-cuenta]:not([data-atado])").forEach((b) => {
+    b.dataset.atado = "1";
+    b.addEventListener("click", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const m = await import("./cuenta.js");
+      m.abrirPedirCuenta();
+    });
+  });
 }
 
 /* Lo que se enseña cuando algo no se puede lanzar. Ya no se pide el token a
@@ -134,6 +148,7 @@ export function cajaAcceso(r) {
                una contraseña nueva desde el panel y vuelve a entrar.`
         }
         ${sinCuenta ? '<button class="btn primary small" data-entrar type="button">Entrar</button>' : ""}
+        ${sinCuenta ? '<button class="btn ghost small" data-pedir-cuenta type="button">Pedir una cuenta</button>' : ""}
       </div>`,
     wire: () => wireEntrar(document),
   };
