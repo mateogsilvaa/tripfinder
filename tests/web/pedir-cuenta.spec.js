@@ -97,7 +97,7 @@ test("mandarla abre GitHub con la petición escrita", async ({ page, context }) 
   await page.locator("#pcUser").fill("lucia");
   await page
     .locator("#pcPorque")
-    .fill("Soy la hermana de Mateo y volamos juntos casi todos los findes.");
+    .fill("Nos conocemos de la facultad y volamos juntos casi todos los findes.");
 
   // GitHub no se visita desde aquí: se contesta con un sello para poder leer
   // la dirección a la que se iba, que es lo que comprueba esta prueba.
@@ -114,7 +114,7 @@ test("mandarla abre GitHub con la petición escrita", async ({ page, context }) 
   expect(decodeURIComponent(url)).toContain("labels=peticion-cuenta");
   expect(decodeURIComponent(url)).toContain("[cuenta] lucia");
   expect(decodeURIComponent(url)).toContain("Usuario: lucia");
-  expect(decodeURIComponent(url)).toContain("hermana de Mateo");
+  expect(decodeURIComponent(url)).toContain("de la facultad");
   // Y en el cuerpo no viaja ninguna dirección.
   expect(decodeURIComponent(url)).not.toMatch(/[\w.]+@[\w.]+/);
 
