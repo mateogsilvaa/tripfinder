@@ -149,6 +149,19 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 </aside>
 <div id="backdrop" class="backdrop" hidden></div>
 
+<div id="pedirCuenta" class="modal" hidden>
+  <div class="modal-caja pedir-caja" role="dialog" aria-label="Pedir una cuenta">
+    <header class="modal-head">
+      <div>
+        <p class="kicker">sin cuenta</p>
+        <h2>Pedir una cuenta</h2>
+      </div>
+      <button id="pedirClose" type="button" aria-label="Cerrar">cerrar</button>
+    </header>
+    <div id="pedirBody" class="pedir-body"></div>
+  </div>
+</div>
+
 <div id="destModal" class="modal" hidden>
   <div class="modal-caja" role="dialog" aria-label="Elegir destino">
     <header class="modal-head">

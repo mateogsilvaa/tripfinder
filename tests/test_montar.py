@@ -199,6 +199,10 @@ def test_todos_los_modulos_cuelgan_de_la_puerta():
         texto = ruta.read_text(encoding="utf-8")
         importados |= {m.group(1) for m in re.finditer(r'from "\./([\w-]+\.js)"', texto)}
         importados |= {m.group(1) for m in re.finditer(r'^import "\./([\w-]+\.js)"', texto, re.MULTILINE)}
+        # Y el `import()` dinamico, que tambien es importar: hay pantallas que
+        # casi nadie abre —pedir una cuenta— y cargarlas solo al pulsar es lo
+        # correcto. Sin esta linea, el modulo parecia huerfano.
+        importados |= {m.group(1) for m in re.finditer(r'import\("\./([\w-]+\.js)"\)', texto)}
     huerfanos = set(_modulos()) - importados - {"tripfinder.js"}
     assert not huerfanos, f"nadie importa: {sorted(huerfanos)}"
 

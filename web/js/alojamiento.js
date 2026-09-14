@@ -66,24 +66,106 @@ function issueURL(o, adultos) {
   );
 }
 
-export async function openStays(id) {
-  const offer = OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id];
-  if (!offer) return;
+/* --------------------------------------------- las camas que ya has buscado
 
-  abrirPanel();
-  $("#panelTitle").textContent = offer.destination_name || offer.destination;
+   Buscar cama cuesta tres minutos de workflow y el resultado se guarda para
+   siempre en `data/stays/<id>.json`. Lo que no habia era forma de VOLVER: el
+   unico boton que abria la hoja vivia en el tablon de chollos, y el tablon se
+   renueva dos veces al dia. Al dia siguiente el vuelo ya no estaba, el boton
+   tampoco, y lo buscado quedaba ahi sin que nadie pudiera verlo.
+
+   Se apunta en el navegador, con el espacio de nombres de la cuenta, como los
+   favoritos: es tuyo y no tiene por que salir publicado en el repositorio. */
+const CAMAS_KEY = tfClave("tf_camas");
+export const MAX_CAMAS = 12;
+
+export const camasBuscadas = () => {
+  try {
+    return JSON.parse(localStorage.getItem(CAMAS_KEY) || "[]");
+  } catch {
+    return [];
+  }
+};
+
+export function recordarCama(id, offer) {
+  if (!id || !offer) return;
+  try {
+    const lista = camasBuscadas().filter((c) => c.id !== id);
+    lista.unshift({
+      id,
+      ciudad: offer.destination_name || offer.destination || "",
+      ida: offer.depart_date || "",
+      vuelta: offer.return_date || "",
+      cuando: Date.now(),
+    });
+    localStorage.setItem(CAMAS_KEY, JSON.stringify(lista.slice(0, MAX_CAMAS)));
+  } catch {
+    /* navegacion privada: dura lo que la pestaña */
+  }
+}
+
+/* Un viaje que ya ha pasado no hay donde dormirlo. */
+export const camasVivas = (hoy = new Date().toISOString().slice(0, 10)) =>
+  camasBuscadas().filter((c) => !c.ida || c.ida >= hoy);
+
+/* La cabecera dice PARA CUANTOS se ha buscado en cuanto se sabe. Una cama de
+   119 € no significa nada sin saber si es para dos o para cuatro, y ese numero
+   lo eliges tu al lanzarla: callarlo despues deja el precio a medias. */
+let OFERTA_ABIERTA = null;
+
+function ponerFechas(offer, para = 0) {
+  if (!offer) return;
   $("#panelDates").textContent =
     `${fmtDate(offer.depart_date, true)}${offer.return_date ? ` → ${fmtDate(offer.return_date, true)}` : ""}` +
-    `${offer.nights ? ` · ${offer.nights} noches` : ""}`;
+    `${offer.nights ? ` · ${offer.nights} noches` : ""}` +
+    `${para > 0 ? ` · para ${para}` : ""}`;
+}
+
+export async function openStays(id, conocida = null) {
+  /* EL VUELO PUEDE HABERSE IDO DEL TABLON y la cama seguir buscada. El barrido
+     publica una tanda nueva dos veces al dia, asi que el vuelo para el que
+     esperaste tres minutos a que se buscara cama deja de estar en `OFFERS` al
+     dia siguiente. Antes esto era `if (!offer) return;`: la hoja no se abria,
+     sin decir nada, y lo ya buscado quedaba inalcanzable.
+
+     El fichero de la busqueda lleva dentro el vuelo entero (`data.offer`), asi
+     que con el id basta para volver a abrirla. */
+  let offer = OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id] || conocida || null;
+
+  abrirPanel();
+  $("#panelTitle").textContent = offer
+    ? offer.destination_name || offer.destination
+    : "Alojamiento";
+  if (offer) ponerFechas(offer);
   $("#panelBody").innerHTML = '<p class="status">Comprobando si ya hay resultados…</p>';
 
   let datos = null;
   try {
     datos = await fetchJSON(`data/stays/${id}.json`);
   } catch {
+    if (!offer) {
+      // Ni vuelo ni fichero: no hay nada que enseñar, y callarse es lo que
+      // hacia que el boton pareciera roto.
+      $("#panelBody").innerHTML = `
+        <div class="status wait">
+          <p>Este vuelo ya no está en la tanda de hoy y no hay ninguna búsqueda de
+          alojamiento guardada para él.</p>
+          <p class="meta">Los precios de los vuelos cambian cada doce horas; búscalo otra
+          vez desde Buscar y podrás pedir cama para las fechas nuevas.</p>
+        </div>`;
+      return;
+    }
     askForSearch(offer); // todavia no se ha buscado para estas fechas
     return;
   }
+
+  // El fichero manda: lleva el vuelo tal y como estaba cuando se busco la cama,
+  // que es con el que cuadra el resumen de precios que se va a pintar debajo.
+  if (datos && datos.offer) offer = { ...offer, ...datos.offer };
+  OFERTA_ABIERTA = offer;
+  $("#panelTitle").textContent = offer.destination_name || offer.destination;
+  ponerFechas(offer);
+  recordarCama(id, offer);
   pintarStays(datos, offer);
 }
 
@@ -135,6 +217,8 @@ function askForSearch(offer, aviso = "") {
           Math.max(1, pax(offer) > 1 ? pax(offer) : GRUPO)
         )}" inputmode="numeric">
       </label>
+      <p class="party-nota">El vuelo es por persona y la cama es para el grupo: el número
+        cambia el precio, así que viaja en la petición.</p>
       <button class="btn primary" id="launch">Buscar alojamiento</button>
     </div>`;
 
@@ -152,6 +236,7 @@ function askForSearch(offer, aviso = "") {
       adults: String(adultos),
     });
     if (r.ok) {
+      ponerFechas(offer, adultos);
       startPolling(offer.id);
       return;
     }
@@ -171,11 +256,29 @@ function askForSearch(offer, aviso = "") {
   });
 }
 
+/* Tres huecos barriendo mientras se busca. No es adorno: dicen QUE VAN A SALIR
+   FILAS y cuantas caben, asi que al llegar el resultado la hoja no da un salto
+   de vacia a llena. Con una sola linea de texto quedaba un palmo de nada debajo
+   y parecia que se habia colgado.
+
+   Se exporta para poder comprobar lo que se pinta DE VERDAD: el camino que
+   lleva aqui pasa por un dispatch autenticado, que en una prueba no se puede
+   recorrer sin inventarse media sesion. */
+export function buscandoHTML() {
+  return `
+    <div class="buscando">
+      <p class="buscando-linea"><span class="spin"></span>buscando cama… 2-3 minutos</p>
+      <div class="esqueleto" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="buscando-nota">Puedes cerrar esta hoja y volver luego: el resultado se guarda y la
+        próxima vez sale al momento. Si tarda más de quince minutos se te dice, no se queda
+        girando.</p>
+    </div>`;
+}
+
 function startPolling(id) {
   clearInterval(pollTimer);
   const started = Date.now();
-  $("#panelBody").innerHTML =
-    '<div class="status wait"><span class="spin"></span>Buscando… puedes cerrar esta ventana y volver luego.</div>';
+  $("#panelBody").innerHTML = buscandoHTML();
   // Quince minutos de espera sin que nadie te diga que hay algo en marcha son
   // quince minutos de no saber si le has dado al boton.
   tfOlvidarAnuncio();
@@ -302,6 +405,7 @@ function tripTotal(resumen) {
 
 function renderStays(data) {
   const stays = data.stays || [];
+  ponerFechas(OFERTA_ABIERTA, Number(data.summary && data.summary.party) || 0);
   const priced = stays.filter((s) => s.price_total);
   const links = stays.filter((s) => !s.price_total);
   const offer =

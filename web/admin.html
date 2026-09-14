@@ -102,6 +102,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
     <div id="avisoCuentas" class="hint"></div>
 
+    <!-- La cola de quien ha pedido entrar. Vive en las issues del repositorio
+         porque quien la pide todavia no tiene con que escribir aqui. -->
+    <section id="peticiones" class="peticiones" hidden></section>
+
     <section id="cajaToken" class="finder abierta" hidden>
       <div class="finder-body">
         <h3 class="watch-head">El token de la web</h3>
@@ -339,6 +343,8 @@ function abrirPanel() {
     "Cada cuenta tiene sus favoritos, sus seguimientos y sus búsquedas. El tablón de chollos es el mismo para todas.";
   pintarCuentas();
   pintarLog();
+  // La cola va detras del token: si no hay, no se pide nada y no se dice nada.
+  pintarPeticiones();
 }
 
 /* --------------------------------------------------------- token del sitio
@@ -636,6 +642,7 @@ function pedir(titulo, campos, alAceptar) {
                <input id="${c.id}" type="${c.type || "text"}" autocomplete="off"
                  autocapitalize="${c.id === "cUser" ? "none" : "sentences"}"
                  ${c.required === false ? "" : "required"}
+                 ${c.valor ? `value="${esc(c.valor)}"` : ""}
                  ${c.hint ? `placeholder="${esc(c.hint)}"` : ""}>`
         )
         .join("")}
@@ -666,12 +673,12 @@ function pedir(titulo, campos, alAceptar) {
   caja.querySelector(`#${campos[0].id}`).focus();
 }
 
-function nuevaCuenta() {
+function nuevaCuenta(de = {}) {
   pedir(
     "Crear cuenta",
     [
-      { id: "cNombre", label: "Nombre", hint: "Ana" },
-      { id: "cUser", label: "Usuario", hint: "ana" },
+      { id: "cNombre", label: "Nombre", hint: "Ana", valor: de.nombre || "" },
+      { id: "cUser", label: "Usuario", hint: "ana", valor: de.user || "" },
       { id: "cEmail", label: "Email para sus avisos (opcional)", type: "email", required: false },
       { id: "cPass", label: "Contraseña", type: "password" },
     ],
@@ -823,9 +830,12 @@ $("#formHuerfanos").addEventListener("submit", async (e) => {
   if (!r.ok) wireToken();
 });
 
-$("#nuevaCuenta").addEventListener("click", nuevaCuenta);
+$("#nuevaCuenta").addEventListener("click", () => nuevaCuenta());
 $("#cambiarAdmin").addEventListener("click", cambiarAdmin);
-$("#recargar").addEventListener("click", () => pintarCuentas(true));
+$("#recargar").addEventListener("click", () => {
+  pintarCuentas(true);
+  pintarPeticiones();
+});
 $("#cerrar").addEventListener("click", () => {
   marcarAbierto(false);
   MAESTRA = "";
@@ -885,6 +895,127 @@ $("#vaciar").addEventListener("click", () => {
   tfVaciarLog();
   pintarLog();
 });
+
+/* ------------------------------------------- quien ha pedido entrar (2d)
+
+   La peticion llega como una issue etiquetada `peticion-cuenta`, y no por
+   capricho: quien pide una cuenta no tiene cuenta, luego no tiene token, luego
+   no puede escribir en el repositorio como escribe todo lo demas en esta web.
+   Abrir una issue con su propio GitHub es lo unico que puede hacer alguien de
+   fuera, asi que la cola vive ahi y el panel la lee con el token del sitio.
+
+   NO SE PIDE EL EMAIL en el formulario: la issue es publica y este proyecto ya
+   publica `users.json` sin emails, con un grep en el despliegue que falla si se
+   cuela una arroba. Aqui se pone a mano al crear la cuenta, si hace falta. */
+const REPO_PETICIONES = "mateogsilvaa/tripfinder";
+
+function leerPeticion(issue) {
+  const cuerpo = String(issue.body || "");
+  const campo = (etiqueta) => {
+    const m = new RegExp(`^${etiqueta}:\\s*(.+)$`, "mi").exec(cuerpo);
+    return m ? m[1].trim() : "";
+  };
+  const mPorque = /^Por qu[eé]:\s*\n([\s\S]*?)(?:\n\s*---|$)/mi.exec(cuerpo);
+  return {
+    numero: issue.number,
+    url: issue.html_url,
+    autor: (issue.user || {}).login || "",
+    cuando: issue.created_at || "",
+    nombre: campo("Nombre"),
+    // Sin "Nombre:" en el cuerpo, el titulo "[cuenta] ana" todavia lleva el usuario.
+    user: campo("Usuario") || String(issue.title || "").replace(/^\[cuenta\]\s*/i, "").trim(),
+    porque: mPorque ? mPorque[1].trim() : "",
+  };
+}
+
+async function pedirAGitHub(ruta, opciones = {}) {
+  const token = tfToken();
+  if (!token) return null;
+  const r = await fetch(`https://api.github.com/repos/${REPO_PETICIONES}${ruta}`, {
+    ...opciones,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      ...(opciones.body ? { "Content-Type": "application/json" } : {}),
+      ...(opciones.headers || {}),
+    },
+  });
+  if (!r.ok) throw new Error(`GitHub contestó ${r.status}`);
+  return r.status === 204 ? null : r.json();
+}
+
+async function pintarPeticiones() {
+  const caja = $("#peticiones");
+  if (!caja) return;
+  let lista = [];
+  try {
+    const d = await pedirAGitHub("/issues?state=open&per_page=100&sort=created&direction=desc");
+    if (d === null) return; // sin token: no hay nada que decir todavia
+    /* Se filtra POR EL TITULO y no por la etiqueta. `labels=peticion-cuenta` en
+       la direccion con la que se abre la issue solo pinta la etiqueta si ya
+       existe en el repositorio: si no, GitHub la ignora sin decir nada y la
+       cola saldria siempre vacia sin que nada pareciera roto. El titulo lo
+       ponemos nosotros y llega siempre.
+
+       La API mete tambien los pull requests en /issues; los de verdad no lo son. */
+    lista = (Array.isArray(d) ? d : [])
+      .filter((i) => !i.pull_request && /^\[cuenta\]/i.test(String(i.title || "")))
+      .map(leerPeticion);
+  } catch (err) {
+    caja.hidden = false;
+    caja.innerHTML = `<h3 class="watch-head">peticiones de cuenta</h3>
+      <p class="hint">No se pudieron leer: ${esc(err.message)}</p>`;
+    return;
+  }
+  if (!lista.length) {
+    caja.hidden = true;
+    caja.innerHTML = "";
+    return;
+  }
+  caja.hidden = false;
+  caja.innerHTML =
+    `<h3 class="watch-head">peticiones de cuenta · ${lista.length}</h3>` +
+    lista
+      .map(
+        (p) => `
+      <article class="peticion" data-num="${p.numero}">
+        <div class="peticion-quien">
+          <span class="peticion-tag">${esc(p.user)}</span>
+          <b>${esc(p.nombre || p.user)}</b>
+          <span class="meta">pedida por ${esc(p.autor)} · ${esc((p.cuando || "").slice(0, 10))}</span>
+        </div>
+        <p class="peticion-porque">${esc(p.porque || "(no contó por qué)")}</p>
+        <div class="peticion-acc">
+          <button class="btn primary small" type="button" data-crear="${p.numero}">Crear la cuenta</button>
+          <a class="btn ghost small" href="${esc(p.url)}" target="_blank" rel="noopener">Ver la petición</a>
+          <button class="quitar" type="button" data-descartar="${p.numero}">descartar</button>
+        </div>
+      </article>`
+      )
+      .join("");
+
+  caja.querySelectorAll("[data-crear]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const p = lista.find((x) => String(x.numero) === b.dataset.crear);
+      if (p) nuevaCuenta({ nombre: p.nombre, user: p.user });
+    })
+  );
+  caja.querySelectorAll("[data-descartar]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      b.disabled = true;
+      try {
+        await pedirAGitHub(`/issues/${b.dataset.descartar}`, {
+          method: "PATCH",
+          body: JSON.stringify({ state: "closed" }),
+        });
+        pintarPeticiones();
+      } catch (err) {
+        b.disabled = false;
+        $("#avisoCuentas").textContent = "No se pudo descartar: " + err.message;
+      }
+    })
+  );
+}
 
 /* Los fallos de los workflows no los ve el navegador: se piden a GitHub con
    el mismo token que ya usa la web para lanzar búsquedas. */

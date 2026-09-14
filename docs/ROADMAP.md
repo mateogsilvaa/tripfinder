@@ -296,9 +296,47 @@ alojamiento pedida a mano.
     la suma, y una ficha por viaje con su curva, su sello y su «compartir».
     Ninguna ficha se queda sin sello: sin él parece un fallo de maquetación al
     lado de las que sí lo tienen.
-- [ ] **Pedir una cuenta** `web` `infra`
-  - El diseño 2d: formulario, cola en el panel y «Crear la cuenta» con los
-    campos ya rellenos. Es una función entera, no una pantalla.
+- [x] **La búsqueda que acaba de terminar** `ux`
+  - El estado 3 de la 2a, que faltaba: al acabar un barrido su tarjeta de
+    progreso desaparecía y la búsqueda se colaba entre las guardadas de hace
+    tres días. Ocho minutos de espera para que el final sea que algo deja de
+    parpadear. Ahora sale una ficha con cuántos viajes han salido, el más
+    barato, los tres primeros con su «compartir» y por dónde seguir.
+  - El diseño pide ahí «3 dentro de tu tope» y NO se puede decir: el barrido
+    filtra por el tope antes de guardar, así que dentro del fichero están todos
+    dentro siempre. Se dice el aire que ha quedado, que es lo mismo que se
+    quería saber.
+- [x] **La hoja de alojamiento mientras busca** `ux`
+  - Tres huecos barriendo y lo que tarda, en vez de una línea de texto con un
+    palmo de nada debajo. Los huecos dicen que van a salir filas y cuántas
+    caben, así que la hoja no salta de vacía a llena.
+  - Y la cabecera dice para cuántos se ha buscado: una cama de 119 € no
+    significa nada sin saber si es para dos o para cuatro.
+- [x] **Pedir una cuenta** `web` `infra`
+  - El diseño 2d entero: formulario con «ese usuario ya está cogido» y sus
+    alternativas, la confirmación, y la cola en el panel con «Crear la cuenta»
+    ya relleno, «Ver la petición» y «descartar».
+  - La petición sale como issue etiquetada `peticion-cuenta`, y no por capricho:
+    quien pide una cuenta no tiene cuenta, luego no tiene token, luego no puede
+    escribir en el repositorio como escribe todo lo demás en esta web.
+  - **El email no se pide**, apartándose del diseño: la issue es pública y este
+    proyecto ya publica `users.json` sin emails, con un `grep` en el despliegue
+    que falla si se cuela una arroba. Se pone desde el panel al crear la cuenta.
+
+## M20 · Lo que se rompía por el camino
+
+- [x] **«Enterado» era enterado a medias** `ux`
+  - Cada página sincroniza los favoritos con una fuente distinta —el barrido, el
+    seguimiento, la búsqueda guardada—, que son tres fotos del mismo vuelo
+    hechas a horas distintas. Sin mirar cuándo se hizo cada una, cambiar de
+    página inventaba un cambio de precio y la banda volvía a salir.
+- [x] **Volver a la cama que ya buscaste** `ux`
+  - El único botón que abría la hoja vivía en el tablón, y el tablón se renueva
+    dos veces al día: al día siguiente lo buscado quedaba inalcanzable. Ahora
+    el fichero basta para reabrirla, y cada viaje apuntado lleva su botón.
+- [x] **La fila de un viaje apuntado, en el móvil** `ux`
+  - No tenía maqueta de móvil: se quedaba con sus seis columnas de escritorio y
+    en 390 px desbordaba la página.
 
 ## M5 · Robustez y calidad
 

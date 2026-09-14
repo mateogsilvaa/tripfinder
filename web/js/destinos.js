@@ -1,6 +1,6 @@
 /* destinos.js — La lamina de destinos: cargar el listado, filtrar y elegir. */
 
-import { $, esc, fetchJSON, on } from "./base.js";
+import { $, esc, fetchJSON, fmtEUR, on } from "./base.js";
 
 let destinoPara = "fDest";
 
@@ -188,3 +188,80 @@ on("#destModal", "click", (e) => {
 });
 on("#destSearch", "input", (e) => pintarDestinos(e.target.value));
 
+
+/* --------------------------------------------- la búsqueda que acaba de salir
+
+   El estado 3 del diseño, y el que faltaba. Hasta ahora, cuando un barrido
+   terminaba, su tarjeta de "preguntando destino a destino…" desaparecía y la
+   búsqueda se colaba en la lista de guardadas como una más, entre las de hace
+   tres días. Ocho minutos esperando para que el final sea que algo deja de
+   parpadear.
+
+   Lo que hace falta saber justo ahí es si ha MERECIDO LA PENA: cuántos viajes
+   salieron, por cuánto el más barato y cuántos caben en el tope que pusiste
+   —que es la pregunta de verdad: "hasta 120 €" y siete resultados no dice si
+   hay tres a 110 o siete a 400—. */
+const TERM_KEY = tfClave("tf_terminadas");
+export const VIDA_TERMINADA_MS = 60 * 60 * 1000;
+
+export const terminadas = () => {
+  try {
+    const lista = JSON.parse(localStorage.getItem(TERM_KEY) || "[]");
+    const ahora = Date.now();
+    return lista.filter((t) => ahora - t.cuando < VIDA_TERMINADA_MS);
+  } catch {
+    return [];
+  }
+};
+
+export const guardarTerminadas = (lista) => {
+  try {
+    localStorage.setItem(TERM_KEY, JSON.stringify(lista));
+  } catch {
+    /* navegacion privada: dura lo que la pestaña */
+  }
+};
+
+export function anotarTerminada(label, slug) {
+  const lista = terminadas().filter((t) => t.slug !== slug);
+  lista.unshift({ label, slug, cuando: Date.now() });
+  guardarTerminadas(lista);
+}
+
+export function olvidarTerminada(slug) {
+  guardarTerminadas(terminadas().filter((t) => t.slug !== slug));
+}
+
+/* La ficha sale con el titular ya puesto y las filas de dentro llegan después:
+   el resumen lo da el índice, que ya está en memoria, y los tres vuelos hay que
+   ir a buscarlos al fichero de la búsqueda. Enseñar el titular al momento y
+   rellenar debajo es mejor que tener la ficha entera esperando a un fetch. */
+export function terminadaHTML(t, resumen) {
+  const desde = resumen && resumen.best_price
+    ? `<span class="term-desde">desde ${fmtEUR(resumen.best_price)}</span>`
+    : "";
+  const n = (resumen && resumen.count) || 0;
+  return `
+    <div class="saved terminada" data-terminada="${esc(t.slug)}">
+      <div class="term-head">
+        <b>${esc(t.label)}</b>
+        ${desde}
+      </div>
+      <span class="term-meta">${n} viaje${n === 1 ? "" : "s"} · terminada ${esc(
+        haceCuanto(t.cuando)
+      )}<span data-term-tope></span></span>
+      <div class="term-filas" data-term-filas></div>
+      <div class="term-acc">
+        <button class="btn primary" type="button" data-term-abrir="${esc(t.slug)}">Abrir la búsqueda</button>
+        <a class="btn ghost small" href="seguimientos.html#watchBox">Seguir estas fechas a diario</a>
+      </div>
+    </div>`;
+}
+
+function haceCuanto(ms) {
+  const min = Math.round((Date.now() - ms) / 60000);
+  if (min < 1) return "ahora mismo";
+  if (min < 60) return `hace ${min} minuto${min === 1 ? "" : "s"}`;
+  const h = Math.round(min / 60);
+  return `hace ${h} hora${h === 1 ? "" : "s"}`;
+}
