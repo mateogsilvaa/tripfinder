@@ -924,7 +924,30 @@ h1 em { font-size: 1.3em; }
    que se pulsa sin abrir la fila: pasar un chollo a alguien es lo que más se
    hace con él y no debería costar dos toques. */
 .rows, .board-head, .saved-rows, .watch-rows {
-  --cols: 40px minmax(0, 1.05fr) minmax(0, 1.58fr) minmax(0, 0.83fr) 208px 96px;
+  /* EL NOMBRE DEL SITIO ES LO ULTIMO QUE SE CEDE, y era lo primero. Las
+     columnas fijas —seguir, precio, compartir— y los huecos suman 424 px que no
+     se encogen; las otras tres llevaban `minmax(0, …)`, o sea permiso para
+     bajar hasta CERO. Entre 761 y 1000 px de ventana el destino se quedaba en
+     14 px: "Dublín" era una D y media. Justo debajo de esa franja empieza la
+     maqueta apilada del móvil, así que el fallo solo se veía en ventanas de
+     portátil, que es donde más se mira esto.
+
+     `9ch` es el suelo: por debajo de eso no cabe el nombre de una ciudad. */
+  --cols: 40px minmax(9ch, 1.05fr) minmax(0, 1.58fr) minmax(0, 0.83fr) 208px 96px;
+}
+
+/* Y antes de llegar al suelo se sueltan las columnas que sobran, en orden de
+   lo menos importante: primero compartir —que es un atajo, y la fila se abre
+   igual—, luego la compañía, que se lee dentro de la fila abierta. Lo que
+   queda es lo que contesta «¿a dónde, cuándo y cuánto?». */
+@media (max-width: 1080px) and (min-width: 761px) {
+  .rows, .board-head, .saved-rows, .watch-rows {
+    --cols: 40px minmax(11ch, 1.25fr) minmax(0, 1.4fr) 168px;
+  }
+  .board-head span:nth-child(4),
+  .board-head span:nth-child(6) { display: none; }
+  .brow > .airline,
+  .brow > .compartir-cell { display: none; }
 }
 
 .tabla {
@@ -1031,7 +1054,17 @@ h1 em { font-size: 1.3em; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* EL PAIS CEDE PRIMERO. `.city` y `.country` son dos hermanos en un flex y
+   encogian por igual, asi que al estrechar la ventana «Reino Unido» se llevaba
+   por delante a «Manchester» aunque la celda tuviera 193 px de sobra. Con un
+   `flex-shrink` enorme, el pais absorbe practicamente toda la reduccion y el
+   nombre solo se corta cuando ya no cabe ni el nombre solo.
+
+   Es la misma regla que la rejilla, dicha donde de verdad aprieta: lo que hay
+   que leer es a donde vas. */
 .country {
+  flex: 0 9999 auto;
+  min-width: 0;
   font-size: var(--fs-ui-s);
   color: var(--muted);
   white-space: nowrap;
@@ -1485,8 +1518,17 @@ h1 em { font-size: 1.3em; }
    columnas alineadas. Con la rejilla de tres se partía en dos renglones y el
    precio quedaba flotando en mitad de la caja. */
 .favrow {
-  grid-template-columns: 34px minmax(0, 1.1fr) minmax(0, 1fr) 78px 132px auto;
+  /* Mismo suelo que el tablón, y por lo mismo: aquí el destino también llevaba
+     `minmax(0, …)` y a 780 px de ventana se quedaba en 0 px de ancho. */
+  grid-template-columns: 34px minmax(9ch, 1.1fr) minmax(0, 1fr) 78px 132px auto;
   gap: 8px 16px;
+}
+
+/* En la franja de portátil estrecho se suelta la curva: dice cómo va el precio,
+   que es mirar, no decidir. El nombre y el precio se quedan. */
+@media (max-width: 1080px) and (min-width: 761px) {
+  .favrow { grid-template-columns: 34px minmax(11ch, 1.2fr) minmax(0, 1fr) 132px auto; }
+  .favrow > .spark-cell { display: none; }
 }
 .favrow .spark-cell { display: grid; place-items: center; min-width: 0; }
 .favrow .spark-cell:empty { visibility: hidden; }
