@@ -640,9 +640,15 @@ test.describe("las cuentas que se publican", () => {
     await expect(email).toBeVisible();
     // Vacío, porque la dirección ya no viaja...
     await expect(email).toHaveValue("");
-    // ...pero diciendo la verdad: que hay una guardada.
-    await expect(email).toHaveAttribute("placeholder", /ya tienes guardado/i);
-    await expect(page.locator("#tfPrefsForm")).toContainText(/déjalo en blanco para no cambiarlo/i);
+    // ...pero diciendo la verdad: que hay una guardada, que no se enseña, y que
+    // dejarlo en blanco no la borra. Se comprueba lo que se DICE y no dónde: el
+    // hueco de un campo enseña la forma de lo que hay que escribir, y el estado
+    // se dice como estado.
+    const form = page.locator("#tfPrefsForm");
+    await expect(form).toContainText(/tienes una dirección guardada/i);
+    await expect(form).toContainText(/déjalo en blanco/i);
+    // Y no se enseña: ni en el valor ni en el hueco.
+    await expect(email).not.toHaveAttribute("placeholder", /@/);
   });
 
   test("y a quien no tiene, se lo dice", async ({ page }) => {
@@ -661,7 +667,11 @@ test.describe("las cuentas que se publican", () => {
     });
     await page.goto("/index.html");
     await page.locator("#tfCuenta, .cuenta").first().click();
-    await expect(page.locator("#tfEmail")).toHaveAttribute("placeholder", /no recibes nada/i);
+    /* Se lo dice, pero ya no dentro del campo: el hueco de un campo enseña la
+       FORMA de lo que hay que escribir, y el estado se dice como estado. Lo que
+       esta prueba defiende es que la consecuencia se cuente, no dónde. */
+    await expect(page.locator("#tfPrefsForm")).toContainText(/no tienes ninguna/i);
+    await expect(page.locator("#tfPrefsForm")).toContainText(/no se te manda nada/i);
   });
 });
 

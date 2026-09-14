@@ -137,3 +137,34 @@ def test_sin_destinatario_se_escribe_uno_mismo(monkeypatch):
     monkeypatch.setenv("SMTP_PASSWORD", "x")
     smtp.send_email("Hola", "<p>hola</p>")
     assert registro["msg"]["To"] == "yo@gmail.com"
+
+
+def test_probar_un_transporte_no_cae_a_los_demas(monkeypatch):
+    """PROBAR ES PROBAR ESE. Sin `solo`, un `--method smtp` que falla lo rescata
+    la cadena —resend, y si no, abrir una issue— y el comando dice «enviado»:
+    justo lo contrario de lo que se le ha preguntado. Para un botón que existe
+    para saber si unas credenciales están bien, eso es mentir con éxito."""
+    import tripfinder.notify as N
+    from tripfinder.models import FlightOffer
+
+    intentados = []
+
+    def _apunta(method, offers, to):
+        intentados.append(method)
+        raise RuntimeError("no")
+
+    monkeypatch.setattr(N, "_send_with", _apunta)
+    monkeypatch.setattr(N, "_configured", lambda _m: True)
+    oferta = FlightOffer(provider="x", origin="MAD", destination="FCO",
+                         depart_date="2027-01-01", price=10.0)
+
+    with pytest.raises(RuntimeError):
+        N.notify_offers([oferta], to="t@t.com", method="smtp", solo=True)
+    assert intentados == ["smtp"]
+
+    # Y sin `solo`, la cadena entera: un chollo vale más por una vía rara que
+    # perdido, que es justo lo contrario del caso de arriba.
+    intentados.clear()
+    with pytest.raises(RuntimeError):
+        N.notify_offers([oferta], to="t@t.com", method="smtp")
+    assert intentados == ["smtp", "resend", "github_issue"]

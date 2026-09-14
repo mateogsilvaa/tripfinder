@@ -41,12 +41,20 @@ def _configured(method: str) -> bool:
     }.get(method, False)
 
 
-def notify_offers(offers: list[FlightOffer], to: str, method: str = "resend") -> str:
-    """Envia el aviso y devuelve el metodo que funciono."""
+def notify_offers(
+    offers: list[FlightOffer], to: str, method: str = "smtp", solo: bool = False
+) -> str:
+    """Envia el aviso y devuelve el metodo que funciono.
+
+    `solo` apaga la cadena de respaldo. Para un aviso de verdad NO se usa —vale
+    mas un chollo por una via rara que un chollo perdido—, pero para comprobar
+    unas credenciales si: si se pregunta "funciona el SMTP?" y contesta que si
+    porque ha abierto una issue, la respuesta es peor que no tenerla.
+    """
     if not offers:
         return ""
 
-    candidates = [method] + [m for m in ORDER if m != method]
+    candidates = [method] if solo else [method] + [m for m in ORDER if m != method]
     errors: list[str] = []
     for candidate in candidates:
         if not _configured(candidate):

@@ -83,10 +83,11 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          # `--method` fuerza el transporte, pero si falla el codigo prueba los
-          # demas: por eso se dice DESPUES cual funciono de verdad.
+          # `--solo`: se prueba EXACTAMENTE el transporte que se ha pedido. Sin
+          # eso, un SMTP roto lo rescataba la cadena abriendo una issue y esto
+          # decia "correcto", que es justo lo contrario de lo que se pregunta.
           if python -m tripfinder test-email \
-               --method "${{ inputs.metodo }}" \
+               --method "${{ inputs.metodo }}" --solo \
                ${{ inputs.destino && format('--to "{0}"', inputs.destino) || '' }} 2>&1 | tee salida.txt; then
             echo "" >> "$GITHUB_STEP_SUMMARY"
             grep -i "enviado\|funciono\|usando" salida.txt >> "$GITHUB_STEP_SUMMARY" || true
