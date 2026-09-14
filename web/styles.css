@@ -1597,59 +1597,43 @@ h1 em { font-size: 1.3em; }
    El filo de arriba se reparte como se reparten los cambios: verde lo que baja
    y naranja lo que sube, así se ve la proporción sin contar nada. */
 .fav-aviso {
-  /* Aire por abajo también: sin él, el rótulo de la sección siguiente —«02 ·
-     seguir un viaje»— salía pegado al borde de la banda, como si fuera suyo. */
+  /* Sin caja, sin fondo y sin sombra: la banda es un aviso, no un panel. Lo
+     único que queda es el filo de arriba, que se reparte como se reparten los
+     cambios —verde lo que baja, naranja lo que sube— y es la única nota de
+     color de todo esto. */
   margin: 20px 0 24px;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  background: var(--surface);
-  overflow: hidden;
   font-size: var(--fs-body-s);
   color: var(--ink);
 }
 .fav-aviso::before {
   content: "";
   display: block;
-  height: 3px;
+  height: 2px;
   background: linear-gradient(
     to right,
     var(--deep) 0 var(--pbaja, 100%),
     var(--accent) var(--pbaja, 100%) 100%
   );
 }
-.fav-aviso b { color: var(--accent-txt); }
 
-/* La rúbrica y el titular son UNA cosa y se leen juntos; «Enterado» es la
-   acción y va al otro lado. Antes eran tres bloques repartidos a lo ancho con
-   el titular flotando en medio de un metro de nada. */
 .aviso-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px 18px;
+  gap: 10px 18px;
   flex-wrap: wrap;
-  padding: 18px 20px 14px;
+  padding: 12px 0 8px;
 }
-.aviso-titulo { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; min-width: 0; }
-.aviso-head .kicker {
-  font-family: var(--font-script);
-  font-size: 24px;
-  line-height: 1;
-  color: var(--accent-txt);
-  text-transform: none;
-  letter-spacing: 0;
+/* Un rótulo, no un titular. La cifra grande y la rúbrica en script eran un
+   cartel para decir que algo ha bajado catorce euros. */
+.aviso-rotulo {
+  margin: 0;
+  font: 400 var(--fs-caps-l) / 1.2 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ink);
 }
-.aviso-head h3 {
-  margin: 4px 0 0;
-  font-size: var(--fs-subhead);
-  letter-spacing: -0.03em;
-}
-.aviso-head h3 small {
-  font: 400 var(--fs-body-s) var(--font-sans);
-  letter-spacing: 0;
-  color: var(--muted);
-  margin-left: 8px;
-}
+.aviso-rotulo span { color: var(--muted); }
 
 /* La cola de peticiones, en el panel. */
 .peticiones { margin-top: 24px; display: grid; gap: 8px; }
@@ -1899,85 +1883,70 @@ h1 em { font-size: 1.3em; }
   .esqueleto i { animation: none; background: var(--surface2); }
 }
 
-/* Tres por fila, con un píxel de aire: el fondo es la línea y cada ficha se
-   pinta encima, como el resto de las tablas de la web. */
-.cambios {
-  display: grid;
-  /* `auto-fit` con `1fr` estiraba UNA ficha sola hasta los 1200 px: el nombre
-     pegado a la izquierda, los botones volando a la derecha y medio metro de
-     nada en medio. Con `auto-fill` y un tope, una ficha mide lo que mide una
-     ficha y las demás se colocan a su lado. */
-  grid-template-columns: repeat(auto-fill, minmax(272px, 360px));
-  justify-content: start;
-  gap: 0;
-  margin: 16px 0 0;
-  border-top: 1px solid var(--hair);
-  border-bottom: 1px solid var(--hair);
-}
+/* UNA LINEA POR VIAJE, con su curva pegada al lado: de eso habla la fila.
+   Antes cada cambio era una ficha con caja, titular, precio a cuerpo de
+   portada, sello y tres botones. Lo que se HACE con el viaje —seguirlo,
+   compartirlo, buscar cama— ya está en la lista de abajo; aquí solo hace falta
+   saber qué ha cambiado, cuál, cuánto y cómo viene. */
+.cambios { list-style: none; margin: 0; padding: 0; display: grid; }
 
 .cambio {
-  /* Sin fondo propio: con una sola ficha, un panel más claro al lado de un
-     hueco vacío se leía como una baldosa que falta. */
-  background: transparent;
-  padding: 16px 18px;
   display: grid;
-  gap: 10px;
-  align-content: start;
-  /* La dirección, en una marca lateral. Arriba era un muñón de dos píxeles que
-     acababa donde acababa la ficha y dejaba la banda coja. */
-  border-left: 2px solid var(--muted);
+  grid-template-columns: 64px minmax(8ch, 1fr) auto auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 9px 0;
+  border-top: 1px solid var(--hair);
 }
-.cambio.baja { border-left-color: var(--deep); }
-.cambio.sube { border-left-color: var(--accent); }
-.cambio header h4 { margin: 0; font-size: var(--fs-city); letter-spacing: -0.025em; }
-.cambio header p {
-  margin: 3px 0 0;
-  font: 400 var(--fs-meta) var(--font-mono);
-  color: var(--muted);
+.cambio:first-child { border-top: 0; }
+.cambio-curva { line-height: 0; }
+.cambio-sitio {
+  font-weight: 600;
+  font-size: var(--fs-city-s);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
-/* La cifra de ahora es lo que se mira: grande, y el resto a su alrededor. */
 .cambio-precio {
   display: flex;
   align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
+  gap: 8px;
+  font: 400 var(--fs-data) var(--font-mono);
 }
-.cambio-precio s { font: 400 var(--fs-ui) var(--font-mono); color: var(--muted); }
-.cambio-precio b {
-  font: 700 var(--fs-figure) var(--font-sans);
-  letter-spacing: -0.05em;
-  line-height: 1;
+.cambio-precio s { color: var(--muted); }
+.cambio-precio b { font-weight: 600; }
+.cambio-dif {
+  font: 400 var(--fs-data) var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  min-width: 6ch;
+  text-align: right;
 }
-.cambio-precio b span { font-size: 0.6em; margin-left: 0.11em; }
-.cambio.baja .sello-dif { color: var(--deep); }
-/* «por persona» iba en su propio renglón, debajo de la cifra, y sobre una
-   ficha de cuatro líneas eso es un renglón entero para dos palabras. Va detrás
-   del porcentaje, que es donde se lee sin buscarlo. */
-.cambio-nota { font-size: var(--fs-meta); color: var(--muted); }
-
-/* La curva explica la cifra, así que va a su lado y no debajo en una caja
-   suelta: el hueco vacío que dejaba era la mitad de la ficha. */
-.cambio-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.cambio-curva { flex: none; line-height: 0; }
-
-.cambio footer {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  border-top: 1px solid var(--hair);
-  padding-top: 12px;
-}
-.cambio .insignia {
+.cambio.baja .cambio-dif { color: var(--deep); }
+.cambio.sube .cambio-dif { color: var(--accent-txt); }
+.cambio-ver {
   font: 400 var(--fs-meta) var(--font-mono);
-  letter-spacing: var(--ls-caps);
-  text-transform: uppercase;
   color: var(--muted);
-  border: 1px solid var(--hair);
-  border-radius: 3px;
-  padding: 2px 6px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
+.cambio-ver:hover { color: var(--accent-txt); }
+
+/* En el móvil la fila se parte en dos renglones antes que comerse el nombre, y
+   la curva se queda al lado de los dos: sigue siendo de lo que habla la fila. */
+@media (max-width: 560px) {
+  .cambio {
+    grid-template-columns: 64px minmax(0, 1fr) auto;
+    gap: 2px 12px;
+    padding: 11px 0;
+  }
+  .cambio-curva { grid-area: 1 / 1 / 3 / 2; align-self: center; }
+  .cambio-sitio { grid-area: 1 / 2 / 2 / 3; }
+  .cambio-dif { grid-area: 1 / 3 / 2 / 4; }
+  .cambio-precio { grid-area: 2 / 2 / 3 / 3; }
+  .cambio-ver { grid-area: 2 / 3 / 3 / 4; text-align: right; }
+}
+
 .aviso-pie {
   display: flex;
   justify-content: space-between;
@@ -2013,6 +1982,12 @@ h1 em { font-size: 1.3em; }
 /* Dentro de la ficha de cambio, la caja sobra: la ficha ya es la caja, y dos
    marcos anidados en 272 px es un marco de más. */
 .cambio .spark { background: none; border-color: transparent; padding: 0; }
+/* La curva va del color del CAMBIO, no del de la serie entera. `sparkline` se
+   pinta según el primer punto contra el último, así que un vuelo que lleva
+   semanas bajando y hoy sube salía con la curva verde al lado de un «+9 €»
+   naranja: la misma fila diciendo dos cosas. Aquí manda lo que ha pasado. */
+.cambio.baja .spark { color: var(--deep); }
+.cambio.sube .spark { color: var(--accent-txt); }
 .cambio-nota { font-size: var(--fs-ui-s); color: var(--muted); }
 .sello-dif { font: 500 var(--fs-meta) var(--font-mono); color: var(--accent-txt); }
 
@@ -2332,8 +2307,6 @@ h1 em { font-size: 1.3em; }
 .stay .cifra { font: 600 var(--fs-cifra) var(--font-mono); }
 /* En la banda de cambios, el sello va a la izquierda y los botones a la
    derecha: el motivo primero, la acción después. */
-.cambio footer .empuja { flex: 1; }
-.cambio .insignia.bueno { color: var(--deep); border-color: var(--deep); }
 
 /* --- los estados de una búsqueda ------------------------------------------
    Lanzar un barrido son ocho minutos. Lo que se ve mientras tanto no puede ser

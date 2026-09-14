@@ -172,10 +172,13 @@ test.describe("la banda de cambio de precio", () => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     const banda = page.locator("#favAviso");
     await expect(banda).toBeVisible({ timeout: 10000 });
-    // Manda lo que baja: es lo que hace que te levantes a mirar.
-    await expect(banda.locator("h3")).toContainText("Baja 21 €");
-    await expect(banda.locator("h3")).toContainText("en 2 viajes apuntados");
-    await expect(banda.locator("h3")).toContainText("otro sube 9 €");
+    /* Manda lo que baja: es lo que hace que te levantes a mirar. Ya no es un
+       titular a cuerpo de portada sino un rótulo —la banda dejó de ser un
+       cartel— pero dice exactamente lo mismo y en el mismo orden. */
+    const rotulo = banda.locator(".aviso-rotulo");
+    await expect(rotulo).toContainText("Baja 21 €");
+    await expect(rotulo).toContainText("en 2 viajes apuntados");
+    await expect(rotulo).toContainText("otro sube 9 €");
   });
 
   test("el filo de arriba se reparte como se reparten los cambios", async ({ page }) => {
@@ -189,19 +192,22 @@ test.describe("la banda de cambio de precio", () => {
     expect(pct).toBe("67%");
   });
 
-  test("cada ficha dice por qué está ahí y se puede compartir", async ({ page }) => {
+  test("una línea por viaje, lo que baja primero", async ({ page }) => {
     await conCambios(page, BAJA_Y_SUBE);
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
-    const fichas = page.locator("#favAviso .cambio");
-    await expect(fichas).toHaveCount(3, { timeout: 10000 });
+    const filas = page.locator("#favAviso .cambio");
+    await expect(filas).toHaveCount(3, { timeout: 10000 });
     // Lo que baja primero, y lo que sube al final.
-    await expect(fichas.first()).toHaveClass(/baja/);
-    await expect(fichas.last()).toHaveClass(/sube/);
-    // Ninguna ficha se queda sin sello: sin él parece un fallo de maquetación.
-    await expect(fichas.locator(".insignia")).toHaveCount(3);
-    await expect(fichas.last().locator(".insignia")).toHaveText("sigue vigilándose");
-    await fichas.first().locator("[data-share]").click();
-    await expect(page.locator("#hojaCompartir")).toBeVisible();
+    await expect(filas.first()).toHaveClass(/baja/);
+    await expect(filas.last()).toHaveClass(/sube/);
+    // Cada fila lleva su curva: es de lo que habla.
+    await expect(filas.locator(".cambio-curva svg")).toHaveCount(3);
+
+    /* El sello y el botón de compartir se cayeron a propósito: la banda avisa,
+       y lo que se HACE con el viaje —compartirlo, seguirlo, buscarle cama— está
+       en la lista de abajo, donde el viaje ya sale. */
+    await expect(filas.locator(".insignia")).toHaveCount(0);
+    await expect(filas.locator("[data-share]")).toHaveCount(0);
   });
 
   test("sin cambios no hay banda", async ({ page }) => {
