@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-10T10:05:03+00:00",
+  "updated": "2026-09-14T08:27:33+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -24,10 +24,10 @@
       "created": "2026-08-23T22:46:48+00:00",
       "active": true,
       "prefs": {
-        "chollos": "cada_vez",
+        "chollos": "diario",
         "chollos_max_precio": null,
         "seguimientos": "diario",
-        "seguimientos_solo_novedades": false
+        "seguimientos_solo_novedades": true
       },
       "sobre": {
         "data": "bb+oZL4bu8OTMXl/iVobTriHIybUjPf7TpRySDc7kzrLIOmkiuO81GxVjGmyLRoeEPVMr1e7YUO/XM0f",
