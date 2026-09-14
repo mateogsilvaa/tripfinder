@@ -191,3 +191,43 @@ test("«Crear la cuenta» abre el formulario relleno", async ({ page }) => {
   // Y la contraseña sigue poniéndola quien aprueba, no la petición.
   await expect(page.locator("#cPass")).toHaveValue("");
 });
+
+/* ------------------------------------------------- y desde dónde se llega */
+
+/* La portada lleva sus dos avisos de «hace falta una cuenta» ESCRITOS A MANO en
+   el HTML, y como ya existen, `candarFormularios` no añade los suyos: en la
+   página a la que llega todo el mundo no había ninguna puerta para pedirla. */
+test("desde la portada, sin sesión, se puede pedir una cuenta", async ({ page }) => {
+  await conUsuarios(page);
+  await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+  const puertas = page.locator(".candado-nota [data-pedir-cuenta]");
+  await expect(puertas).toHaveCount(2);
+  await expect(puertas.first()).toBeVisible();
+
+  await puertas.first().click();
+  await expect(page.locator("#pedirCuenta")).toBeVisible();
+});
+
+/* Y con sesión no sale por ningún lado, que es lo suyo: ya la tienes. Los
+   avisos de la portada están en el HTML pase lo que pase, así que hay que
+   apagarlos a mano —antes se quedaban puestos y quien ya había entrado seguía
+   leyendo «hace falta una cuenta para buscar» encima de un formulario que le
+   funcionaba, con un «Entrar» al lado. */
+test("con sesión, ni la puerta ni el aviso de que falta cuenta", async ({ page }) => {
+  await conUsuarios(page);
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem(
+        "tf_sesion",
+        JSON.stringify({ uid: "u-1", user: "mateogsilvaa", name: "mateo" })
+      );
+    } catch (e) { /* nada */ }
+  });
+  await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+
+  await expect(page.locator("[data-pedir-cuenta]:visible")).toHaveCount(0);
+  await expect(page.locator(".candado-nota:visible")).toHaveCount(0);
+  // Y el formulario, vivo: es lo que hace que el aviso fuera una contradicción.
+  await expect(page.locator("#finderForm select").first()).toBeEnabled();
+});
