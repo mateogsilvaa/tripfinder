@@ -114,3 +114,62 @@ test("una bajada nueva sí avisa, y «Enterado» la cierra para siempre", async 
   await page.waitForTimeout(900);
   await expect(page.locator("#favAviso")).toBeHidden();
 });
+
+/* -------------------------------------------- cuánto tiene que moverse -----
+
+   Antes bastaba con medio euro, y medio euro sobre 98 es medio por ciento: las
+   tarifas bailan eso solas varias veces al día, así que la banda saltaba una y
+   otra vez para decir «baja 1 €» con un titular enorme. Una banda que sale por
+   nada deja de mirarse, y entonces tampoco sirve el día que de verdad baja 30. */
+
+const conWatch = (page, precio, cuando = "2026-09-14T09:00:00+00:00") =>
+  page.route("**/data/watch.json*", (r) =>
+    r.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        watches: [{
+          slug: "w1", label: "Tirana", owner: UID, activo: true,
+          last_offers: [oferta(precio, cuando)],
+        }],
+      }),
+    })
+  );
+
+test("un euro no es noticia", async ({ page }) => {
+  await conFav(page, favorito(99, 99));
+  await conWatch(page, 98);
+  await page.goto("/seguimientos.html", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  await expect(page.locator("#favAviso")).toBeHidden();
+});
+
+/* Los dos listones, y por qué hacen falta los dos. */
+test("tres euros sobre un vuelo caro tampoco: es un 0,7 %", async ({ page }) => {
+  await conFav(page, { ...favorito(400, 400), precio_inicial: 400 });
+  await conWatch(page, 396);
+  await page.goto("/seguimientos.html", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  await expect(page.locator("#favAviso")).toBeHidden();
+});
+
+test("un 4 % sobre un vuelo de 20 € tampoco: son ochenta céntimos", async ({ page }) => {
+  await conFav(page, { ...favorito(20, 20), precio_inicial: 20 });
+  await conWatch(page, 19);
+  await page.goto("/seguimientos.html", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  await expect(page.locator("#favAviso")).toBeHidden();
+});
+
+test("una bajada de verdad sí, y una sola vez", async ({ page }) => {
+  await conFav(page, favorito(99, 99));
+  await conWatch(page, 78); // −21 €, −21 %
+  await page.goto("/seguimientos.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#favAviso")).toBeVisible();
+  await expect(page.locator("#favAviso")).toContainText("Baja 21 €");
+
+  await page.locator("#favVisto").click();
+  await expect(page.locator("#favAviso")).toBeHidden();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(900);
+  await expect(page.locator("#favAviso")).toBeHidden();
+});

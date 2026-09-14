@@ -1619,14 +1619,18 @@ h1 em { font-size: 1.3em; }
 }
 .fav-aviso b { color: var(--accent-txt); }
 
+/* La rúbrica y el titular son UNA cosa y se leen juntos; «Enterado» es la
+   acción y va al otro lado. Antes eran tres bloques repartidos a lo ancho con
+   el titular flotando en medio de un metro de nada. */
 .aviso-head {
   display: flex;
-  align-items: flex-end;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 18px;
+  gap: 12px 18px;
   flex-wrap: wrap;
-  padding: 18px 20px 0;
+  padding: 18px 20px 14px;
 }
+.aviso-titulo { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; min-width: 0; }
 .aviso-head .kicker {
   font-family: var(--font-script);
   font-size: 24px;
@@ -1641,11 +1645,10 @@ h1 em { font-size: 1.3em; }
   letter-spacing: -0.03em;
 }
 .aviso-head h3 small {
-  display: block;
-  margin-top: 4px;
   font: 400 var(--fs-body-s) var(--font-sans);
   letter-spacing: 0;
   color: var(--muted);
+  margin-left: 8px;
 }
 
 /* La cola de peticiones, en el panel. */
@@ -1900,23 +1903,32 @@ h1 em { font-size: 1.3em; }
    pinta encima, como el resto de las tablas de la web. */
 .cambios {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1px;
+  /* `auto-fit` con `1fr` estiraba UNA ficha sola hasta los 1200 px: el nombre
+     pegado a la izquierda, los botones volando a la derecha y medio metro de
+     nada en medio. Con `auto-fill` y un tope, una ficha mide lo que mide una
+     ficha y las demás se colocan a su lado. */
+  grid-template-columns: repeat(auto-fill, minmax(272px, 360px));
+  justify-content: start;
+  gap: 0;
   margin: 16px 0 0;
-  background: var(--hair);
   border-top: 1px solid var(--hair);
   border-bottom: 1px solid var(--hair);
 }
+
 .cambio {
-  background: var(--surface2);
-  padding: 16px;
+  /* Sin fondo propio: con una sola ficha, un panel más claro al lado de un
+     hueco vacío se leía como una baldosa que falta. */
+  background: transparent;
+  padding: 16px 18px;
   display: grid;
-  gap: 12px;
+  gap: 10px;
   align-content: start;
-  border-top: 2px solid var(--muted);
+  /* La dirección, en una marca lateral. Arriba era un muñón de dos píxeles que
+     acababa donde acababa la ficha y dejaba la banda coja. */
+  border-left: 2px solid var(--muted);
 }
-.cambio.baja { border-top-color: var(--deep); }
-.cambio.sube { border-top-color: var(--accent); }
+.cambio.baja { border-left-color: var(--deep); }
+.cambio.sube { border-left-color: var(--accent); }
 .cambio header h4 { margin: 0; font-size: var(--fs-city); letter-spacing: -0.025em; }
 .cambio header p {
   margin: 3px 0 0;
@@ -1939,7 +1951,15 @@ h1 em { font-size: 1.3em; }
 }
 .cambio-precio b span { font-size: 0.6em; margin-left: 0.11em; }
 .cambio.baja .sello-dif { color: var(--deep); }
-.cambio-nota { flex-basis: 100%; }
+/* «por persona» iba en su propio renglón, debajo de la cifra, y sobre una
+   ficha de cuatro líneas eso es un renglón entero para dos palabras. Va detrás
+   del porcentaje, que es donde se lee sin buscarlo. */
+.cambio-nota { font-size: var(--fs-meta); color: var(--muted); }
+
+/* La curva explica la cifra, así que va a su lado y no debajo en una caja
+   suelta: el hueco vacío que dejaba era la mitad de la ficha. */
+.cambio-fila { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.cambio-curva { flex: none; line-height: 0; }
 
 .cambio footer {
   display: flex;
@@ -1990,6 +2010,9 @@ h1 em { font-size: 1.3em; }
 .spark.baja { color: var(--deep); }
 .spark.sube { color: var(--accent-txt); }
 .ticket .spark { background: none; border-color: var(--hero-hair); }
+/* Dentro de la ficha de cambio, la caja sobra: la ficha ya es la caja, y dos
+   marcos anidados en 272 px es un marco de más. */
+.cambio .spark { background: none; border-color: transparent; padding: 0; }
 .cambio-nota { font-size: var(--fs-ui-s); color: var(--muted); }
 .sello-dif { font: 500 var(--fs-meta) var(--font-mono); color: var(--accent-txt); }
 
