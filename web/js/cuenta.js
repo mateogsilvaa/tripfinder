@@ -117,7 +117,7 @@ function formHTML() {
       <label class="campo">
         <span>Por qué deberían dejarte entrar</span>
         <textarea id="pcPorque" rows="4" maxlength="${MAX_PORQUE}"
-          placeholder="Soy la hermana de Mateo y volamos juntos casi todos los findes."></textarea>
+          placeholder="Nos conocemos de la facultad y volamos juntos casi todos los findes."></textarea>
         <span class="campo-pie campo-pie-doble">
           <span>Quien aprueba esto conoce a la gente que entra. Dos líneas con quién eres bastan.</span>
           <span id="pcCuenta">0/${MAX_PORQUE}</span>
