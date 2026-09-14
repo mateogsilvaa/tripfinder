@@ -139,6 +139,10 @@ export function wireFavs(raiz = document) {
    Se llama desde todos los sitios donde aparecen ofertas, asi que un favorito
    se actualiza tanto si lo ves en los chollos como si abres la busqueda que lo
    encontro o el seguimiento que lo trajo. */
+/* El listón de la banda de cambio de precio. Ver el porqué donde se usa. */
+export const MIN_AVISO_EUR = 3;
+export const MIN_AVISO_PCT = 3;
+
 export function sincronizarFavs(ofertas) {
   const hoy = hoyISO();
   let tocado = false;
@@ -176,15 +180,27 @@ export function sincronizarFavs(ofertas) {
     if (cuando) f.fuente_en = cuando;
     tocado = true;
 
-    // Menos de medio euro es ruido de redondeo, no una bajada.
+    // CUANTO TIENE QUE MOVERSE PARA MERECER LA BANDA. Antes bastaba con medio
+    // euro, y medio euro sobre 98 es medio por ciento: las tarifas bailan eso
+    // solas varias veces al dia, asi que la banda saltaba una y otra vez para
+    // decir "baja 1 €" con un titular enorme. Una banda que sale por nada deja
+    // de mirarse, y entonces tampoco sirve el dia que de verdad baja 30.
     //
+    // Tienen que cumplirse LAS DOS: tres euros y un 3 %. Solo euros y un vuelo
+    // de 400 € avisaria por un 0,7 %; solo porcentaje y uno de 20 € avisaria
+    // por sesenta centimos.
+    const salto = Math.abs(ahora - antes);
+    const nuevo =
+      Number.isFinite(antes) && salto >= MIN_AVISO_EUR && antes > 0 &&
+      (salto / antes) * 100 >= MIN_AVISO_PCT;
+
     // Y "Enterado" es enterado: `avisado` guarda el precio del que ya te hemos
     // avisado, asi que volver a ese mismo precio no es noticia. Sin esto, un
     // vuelo que baila entre 98 y 104 te daba la banda cada vez que pasaba por
     // un sitio por el que ya habias pasado.
-    const nuevo = Number.isFinite(antes) && Math.abs(ahora - antes) >= 0.5;
     const yaAvisado =
-      Number.isFinite(Number(f.avisado)) && Math.abs(ahora - Number(f.avisado)) < 0.5;
+      Number.isFinite(Number(f.avisado)) &&
+      Math.abs(ahora - Number(f.avisado)) < MIN_AVISO_EUR;
     if (nuevo && !yaAvisado) {
       f.cambio = { antes, ahora, cuando: hoy, visto: false };
     }
@@ -269,16 +285,17 @@ function avisoFicha(f) {
   }${f.airline ? ` · ${esc(f.airline)}` : ""}</p>
       </header>
 
-      <div class="cambio-precio">
-        <s>${Math.round(antes)} €</s>
-        <b>${Math.round(ahora)}<span>€</span></b>
-        <em class="sello-dif">${baja ? "−" : "+"}${Math.round(dif)} €${
+      <div class="cambio-fila">
+        <div class="cambio-precio">
+          <s>${Math.round(antes)} €</s>
+          <b>${Math.round(ahora)}<span>€</span></b>
+          <em class="sello-dif">${baja ? "−" : "+"}${Math.round(dif)} €${
     pct ? ` · ${pct}%` : ""
   }</em>
-        <span class="cambio-nota">por persona</span>
+          <span class="cambio-nota">por persona</span>
+        </div>
+        <div class="cambio-curva">${sparkline(serie, 104, 30)}</div>
       </div>
-
-      <div class="cambio-curva">${sparkline(serie, 132, 34)}</div>
 
       <footer>
         <span class="insignia${record ? " bueno" : ""}">${esc(insignia(record, baja))}</span>
@@ -330,8 +347,10 @@ export function refrescarAvisoFavs() {
   caja.hidden = false;
   caja.innerHTML = `
     <div class="aviso-head">
-      <span class="kicker">cambio de precio</span>
-      <h3>${esc(titulo)}<small>${esc(detalle)}</small></h3>
+      <span class="aviso-titulo">
+        <span class="kicker">cambio de precio</span>
+        <h3>${esc(titulo)}<small>${esc(detalle)}</small></h3>
+      </span>
       <button class="btn ghost small" id="favVisto">Enterado</button>
     </div>
     <div class="cambios">${bajan.concat(suben).map(avisoFicha).join("")}</div>
