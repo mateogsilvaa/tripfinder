@@ -117,3 +117,77 @@ test("la casilla de los seguimientos es una casilla, y se ve", async ({ page }) 
   await casilla.check();
   await expect(casilla).toBeChecked();
 });
+
+/* ------------------------------------- la puerta que faltaba, y el rediseño */
+
+/* La puerta de pedir una cuenta estaba SOLO donde la web sale sin sesión —los
+   formularios candados, los avisos de «entra para ver lo tuyo»—, así que quien
+   llegaba al diálogo de entrar a probar una contraseña que no tiene se
+   encontraba un «pídesela a quien lleve la web» y ningún sitio donde hacerlo. */
+test("desde «Entrar» se puede pedir una cuenta", async ({ page }) => {
+  await page.route("**/data/users.json*", (r) =>
+    r.fulfill({ contentType: "application/json", body: JSON.stringify(USUARIOS) })
+  );
+  await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+  await page.locator("#tfCuenta").click(); // sin sesión abre «Entrar»
+  await expect(page.locator("#tfModal")).toBeVisible();
+  await expect(page.locator("#tfPedirCuenta")).toBeVisible();
+
+  await page.locator("#tfPedirCuenta").click();
+  await expect(page.locator("#pedirCuenta")).toBeVisible();
+  // Y el de entrar se cierra: son dos capas distintas y si no se superponen.
+  await expect(page.locator("#tfModal")).toBeHidden();
+
+  // La vuelta también: «Ya tengo una: entrar».
+  await page.locator("#pcEntrar").click();
+  await expect(page.locator("#tfModal")).toBeVisible();
+});
+
+test.describe("el diálogo de cuenta, rehecho", () => {
+  /* Lo que de verdad puede romper un rediseño: el cableado busca estos ids y
+     ninguno falla en voz alta si desaparece —simplemente deja de guardarse. */
+  test("no se ha perdido ningún campo por el camino", async ({ page }) => {
+    await abrirCuenta(page);
+    for (const id of [
+      "#tfEmail", "#tfChollos", "#tfTope", "#tfSeg", "#tfSoloNov",
+      "#tfPrefsMsg", "#tfSalir", "#tfClaveForm", "#tfPrefsForm",
+      "#tfClaveVieja", "#tfClaveNueva", "#tfClaveRepe", "#tfClaveMsg",
+    ]) {
+      await expect(page.locator(id), `falta ${id}`).toHaveCount(1);
+    }
+  });
+
+  /* El hueco decía «el que ya tienes guardado», que finge ser un valor: parecía
+     que la dirección estaba escrita ahí. Y no puede estarlo — el fichero que
+     publica la web va sin direcciones. */
+  test("dice si tienes dirección guardada, sin fingir enseñarla", async ({ page }) => {
+    await abrirCuenta(page);
+    await expect(page.locator("#tfEmail")).toHaveValue("");
+    await expect(page.locator("#tfPrefsForm")).toContainText("Tienes una dirección guardada");
+    const hueco = await page.locator("#tfEmail").getAttribute("placeholder");
+    expect(hueco).not.toContain("ya tienes guardado");
+  });
+
+  /* Salir era un botón del mismo ancho que «Guardar», justo debajo: el mismo
+     peso para la acción principal y para la que te echa fuera. */
+  test("«Salir» ya no compite con «Guardar»", async ({ page }) => {
+    await abrirCuenta(page);
+    const salir = page.locator("#tfSalir");
+    await expect(salir).toHaveClass(/quitar/);
+    await expect(page.locator(".cuenta-salir")).toContainText("En este navegador");
+
+    const anchos = await page.evaluate(() => ({
+      guardar: document.querySelector("#tfPrefsForm button[type=submit]").getBoundingClientRect().width,
+      salir: document.querySelector("#tfSalir").getBoundingClientRect().width,
+    }));
+    expect(anchos.salir).toBeLessThan(anchos.guardar * 0.75);
+  });
+
+  test("cada bloque dice de qué va", async ({ page }) => {
+    await abrirCuenta(page);
+    const cabeceras = page.locator("#tfModal .bloque-head");
+    await expect(cabeceras).toHaveCount(2);
+    await expect(cabeceras.first()).toHaveText(/tus avisos/i);
+    await expect(cabeceras.nth(1)).toHaveText(/tu contraseña/i);
+  });
+});

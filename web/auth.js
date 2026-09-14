@@ -536,15 +536,43 @@ async function tfAbrirLogin() {
       <label for="tfLoginPass">Contraseña</label>
       ${tfCampoClave("tfLoginPass")}
       <p class="token-status" id="tfLoginMsg">${
-        hay ? "" : "Todavía no hay ninguna cuenta creada. Pídesela a quien lleve la web."
+        hay ? "" : "Todavía no hay ninguna cuenta creada."
       }</p>
       <button class="btn primary" type="submit">Entrar</button>
+      <p class="login-pedir">
+        <span>¿No tienes cuenta?</span>
+        <button class="btn ghost small" type="button" id="tfPedirCuenta">Pedir una cuenta</button>
+      </p>
     </form>`);
 
   const form = caja.querySelector("#tfLoginForm");
   const msg = caja.querySelector("#tfLoginMsg");
   const boton = form.querySelector("button[type=submit]");
   tfWireVerClave(caja);
+
+  /* EL SITIO MAS OBVIO, y era el que faltaba. La puerta de pedir una cuenta
+     estaba solo donde la web sale SIN SESION —los formularios candados, los
+     avisos de "entra para ver lo tuyo"—, o sea que quien llegaba aqui a probar
+     una contrasena que no tiene se encontraba un "pidesela a quien lleve la
+     web" y ningun sitio donde hacerlo.
+
+     `auth.js` es un script normal y la pantalla es un modulo, asi que se carga
+     con un `import()` al pulsar. Si la pagina no lleva la hoja —el panel no la
+     lleva— el boton no se pinta: mas vale no ofrecerlo que ofrecerlo muerto. */
+  const pedir = caja.querySelector("#tfPedirCuenta");
+  if (pedir) {
+    if (!document.getElementById("pedirCuenta")) {
+      pedir.closest(".login-pedir").hidden = true;
+    } else {
+      pedir.addEventListener("click", async () => {
+        const m = await import("./js/cuenta.js");
+        // Primero se cierra este: son dos capas distintas —`tfModal` y
+        // `tfAbrirDialogo`— y si no, la de pedir sale encima de la de entrar.
+        tfCerrarModal();
+        m.abrirPedirCuenta();
+      });
+    }
+  }
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -630,52 +658,64 @@ async function tfAbrirCuenta() {
 
   const caja = tfModal(`
     <header class="modal-head">
-      <h2>${tfEsc(s.name || s.user)}</h2>
+      <div>
+        <p class="kicker">tu cuenta</p>
+        <h2>${tfEsc(s.name || s.user)}</h2>
+      </div>
       <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
-    <form id="tfPrefsForm" class="modal-form">
-      <p class="meta">
-        Estás dentro como <strong>${tfEsc(s.user)}</strong>. Tus favoritos, tus
-        seguimientos y tus búsquedas solo los ves tú.
-        ${
-          puede
-            ? ""
-            : `<br><span class="ojo">Esta cuenta no puede lanzar búsquedas todavía:
-               pídele al administrador que te ponga una contraseña nueva desde el panel.</span>`
-        }
-      </p>
 
-      <label for="tfEmail">Tus avisos van a</label>
+    <p class="cuenta-quien">
+      Entras como <b>${tfEsc(s.user)}</b>. Tus favoritos, tus seguimientos y tus búsquedas
+      solo los ves tú.
+      ${
+        puede
+          ? ""
+          : `<span class="cuenta-aviso">Esta cuenta no puede lanzar búsquedas todavía:
+             pídele al administrador que te ponga una contraseña nueva desde el panel.</span>`
+      }
+    </p>
+
+    <form id="tfPrefsForm" class="modal-form">
+      <h3 class="bloque-head">Tus avisos</h3>
+
+      <label for="tfEmail">A dónde te escribimos</label>
       <input id="tfEmail" type="email" autocomplete="email"
-        placeholder="${yo.tiene_email ? "el que ya tienes guardado" : "sin email: no recibes nada"}">
+        placeholder="${yo.tiene_email ? "para cambiarlo, escribe otro" : "ana@correo.com"}">
       <p class="meta">${
+        // El estado, dicho como estado. Antes el hueco decia "el que ya tienes
+        // guardado", que finge ser un valor: parecia que estaba puesto ahi.
         yo.tiene_email
-          ? "Ya tienes uno guardado. Déjalo en blanco para no cambiarlo, o escribe otro."
-          : "Sin dirección no se te manda nada."
+          ? "<b>Tienes una dirección guardada.</b> No se enseña aquí, ni siquiera a ti: " +
+            "el fichero que publica la web va sin direcciones. Déjalo en blanco para no tocarla."
+          : "<b>No tienes ninguna.</b> Sin dirección no se te manda nada."
       }</p>
 
       <label for="tfChollos">Chollos del día</label>
-      <select id="tfChollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
-
-      <label for="tfTope">…y solo si bajan de (€, opcional)</label>
-      <input id="tfTope" type="number" min="0" step="10" placeholder="sin tope"
-        value="${prefs.chollos_max_precio ? Math.round(prefs.chollos_max_precio) : ""}">
+      <div class="par-campo">
+        <select id="tfChollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
+        <span class="par-tope">
+          <span class="par-y">…y solo si bajan de</span>
+          <input id="tfTope" type="number" min="0" step="10" placeholder="sin tope"
+            aria-label="Precio máximo de los chollos, en euros"
+            value="${prefs.chollos_max_precio ? Math.round(prefs.chollos_max_precio) : ""}">
+          <span class="par-unidad">€</span>
+        </span>
+      </div>
 
       <label for="tfSeg">Parte de tus seguimientos</label>
       <select id="tfSeg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
-
-      <label class="switch suelto">
+      <label class="switch sangrada">
         <input type="checkbox" id="tfSoloNov"${prefs.seguimientos_solo_novedades ? " checked" : ""}>
         <span>Solo cuando haya algo nuevo que contar</span>
       </label>
 
       <p class="token-status" id="tfPrefsMsg"></p>
       <button class="btn primary" type="submit">Guardar</button>
-      <button class="btn ghost" type="button" id="tfSalir">Salir de la cuenta</button>
     </form>
 
     <form id="tfClaveForm" class="modal-form tf-bloque">
-      <h3>Cambiar tu contraseña</h3>
+      <h3 class="bloque-head">Tu contraseña</h3>
       ${
         // Hace falta poder escribir Y tener un sobre que abrir: sin sobre no
         // hay clave maestra que volver a cerrar, y cambiar solo la contraseña
@@ -696,7 +736,12 @@ async function tfAbrirCuenta() {
              sola.</span> Cambiarla sin poder rehacer el sobre te dejaría fuera del todo,
              así que tiene que hacerlo el administrador desde el panel.</p>`
       }
-    </form>`);
+    </form>
+
+    <div class="cuenta-salir">
+      <button class="quitar" type="button" id="tfSalir">Salir de la cuenta</button>
+      <span class="meta">En este navegador. Lo tuyo se queda donde está.</span>
+    </div>`);
 
   caja.querySelector("#tfSalir").addEventListener("click", () => {
     tfSalir();

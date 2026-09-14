@@ -1634,6 +1634,74 @@ h1 em { font-size: 1.3em; }
 }
 .peticion-acc { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 
+/* El diálogo de tu cuenta. Era una columna plana de campo-tras-campo con
+   «Guardar» y «Salir de la cuenta» como dos botones del mismo ancho, uno encima
+   del otro: salir pesaba lo mismo que guardar y estaba a un dedo. */
+.cuenta-quien {
+  margin: 0;
+  font-size: var(--fs-body-s);
+  line-height: 1.55;
+  color: var(--muted);
+  max-width: 62ch;
+}
+.cuenta-quien b { color: var(--ink); }
+.cuenta-aviso { display: block; margin-top: 8px; color: var(--accent-txt); }
+
+/* Cada bloque dice de qué va antes de empezar, para que no haya que deducirlo
+   del primer campo. */
+.bloque-head {
+  margin: 0 0 4px;
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* «Cada cuánto» y «hasta cuánto» son una sola decisión, así que van en una
+   línea. Sueltos parecían dos ajustes sin relación. */
+.par-campo { display: grid; gap: 8px; }
+/* La caja es de 440 px: el desplegable y «…y solo si bajan de 150 €» no caben
+   en una línea, y forzarlos dejaba el tope colgando solo en el renglón de
+   abajo. Cada cosa en su línea, y la segunda sangrada para que se lea como lo
+   que es: el matiz de la de arriba, no otro ajuste. */
+.par-tope {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-left: 2px;
+}
+.par-tope #tfTope { width: 92px; text-align: right; }
+.par-y, .par-unidad { font-size: var(--fs-body-s); color: var(--muted); }
+
+/* La casilla depende del desplegable de encima: sangrada se ve que es suya. */
+.modal-form .switch.sangrada { margin: 2px 0 0 2px; }
+
+/* Salir va al final y en peso de texto: es la única acción de aquí que
+   deshace algo, y no compite con «Guardar». */
+.cuenta-salir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--hair);
+}
+
+/* La otra puerta, en el diálogo de entrar. Quien llega ahí a probar una
+   contraseña que no tiene es justo quien necesita pedirla. */
+.login-pedir {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--hair);
+  font-size: var(--fs-body-s);
+  color: var(--muted);
+}
+
 /* Pedir una cuenta (2d del diseño). */
 .pedir-caja { max-width: 560px; }
 .pedir-body { padding: 0 22px 24px; display: grid; gap: 16px; }

@@ -1167,12 +1167,15 @@ def cmd_test_email(args: argparse.Namespace) -> int:
     # Esto lo lee quien acaba de pegar unos secretos en GitHub, no quien escribio
     # el codigo: una traza de Python no le dice si le falta un secreto o si Gmail
     # le ha dicho que no.
+    metodo = args.method or cfg.notify.get("method", "smtp")
+    destino = args.to or cfg.notify.get("to", "")
+
+    # PROBAR ES PROBAR ESE. Sin `--solo`, un `--method smtp` que falla lo rescata
+    # la cadena —resend, y si no, abrir una issue— y el comando dice "enviado":
+    # justo lo contrario de lo que se le ha preguntado. Para un boton que existe
+    # para saber si las credenciales estan bien, eso es mentir con exito.
     try:
-        used = notify_offers(
-            [demo],
-            to=args.to or cfg.notify.get("to", ""),
-            method=args.method or cfg.notify.get("method", "smtp"),
-        )
+        used = notify_offers([demo], to=destino, method=metodo, solo=args.solo)
     except RuntimeError as exc:
         print(f"No salio: {exc}")
         return 1
@@ -1433,6 +1436,11 @@ def build_parser() -> argparse.ArgumentParser:
     t = sub.add_parser("test-email", help="Envia un aviso de ejemplo")
     t.add_argument("--to")
     t.add_argument("--method", choices=["resend", "smtp", "github_issue"])
+    t.add_argument(
+        "--solo",
+        action="store_true",
+        help="Probar SOLO ese transporte, sin la cadena de respaldo",
+    )
     t.set_defaults(func=cmd_test_email)
     return p
 
