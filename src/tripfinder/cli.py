@@ -224,6 +224,7 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     found: list[FlightOffer] = []
     deals: list[FlightOffer] = []
     errors: list[str] = []
+    mudos: dict[str, int] = {}  # proveedores que no han devuelto ni una tarifa
 
     for route in cfg.routes:
         for provider in providers:
@@ -236,6 +237,14 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
                 log.warning("Fallo %s", msg)
                 errors.append(msg)
                 continue
+            # UN PROVEEDOR QUE NO HACE NADA SE VE IGUAL QUE UNO QUE NO
+            # ENCUENTRA NADA, y por eso Amadeus llevaba meses devolviendo cero
+            # sin que nadie lo notara: se salta la ruta entera cuando no hay
+            # destinos explicitos, que es el caso del barrido diario
+            # (`destinations: any`). Quedaba en un `log.info` que no lee nadie.
+            if not results:
+                mudos.setdefault(provider.name, 0)
+                mudos[provider.name] += 1
             for offer in results:
                 score_offer(offer, history, route, weekend_cfg)
                 found.append(offer)
@@ -362,6 +371,13 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     from collections import Counter as _Cuenta
 
     fuentes: dict[str, Any] = {"tarifas": dict(_Cuenta(o.provider for o in found))}
+    # Los que estaban encendidos y no han puesto nada, con su nombre. Sin esta
+    # linea, un proveedor roto y un proveedor sin suerte son indistinguibles.
+    callados = sorted(n for n in mudos if not any(o.provider == n for o in found))
+    if callados:
+        fuentes["sin_tarifas"] = callados
+        log.warning("Proveedores encendidos que no han puesto ni una tarifa: %s",
+                    ", ".join(callados))
     if google is not None:
         fuentes["google"] = {**google.stats, "bloqueado": bool(google.bloqueado)}
         log.info(

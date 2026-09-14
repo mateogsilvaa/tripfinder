@@ -15,6 +15,7 @@ import requests
 
 from ..config import Route
 from ..models import FlightOffer
+from ..routes import _mundial
 from ..util import USER_AGENT, get_json
 from . import links
 from .base import FlightProvider, register
@@ -125,7 +126,8 @@ class AmadeusProvider(FlightProvider):
                     origin=route.origin,
                     destination=dest,
                     origin_name=route.origin_name,
-                    destination_name=dest,
+                    destination_name=_mundial(dest)[0] or dest,
+                    destination_country=_mundial(dest)[1],
                     depart_date=d.isoformat(),
                     return_date=(d + timedelta(days=nights)).isoformat(),
                     nights=nights,
