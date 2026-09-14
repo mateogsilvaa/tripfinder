@@ -949,10 +949,18 @@ async function pintarPeticiones() {
   if (!caja) return;
   let lista = [];
   try {
-    const d = await pedirAGitHub("/issues?labels=peticion-cuenta&state=open&per_page=20");
+    const d = await pedirAGitHub("/issues?state=open&per_page=100&sort=created&direction=desc");
     if (d === null) return; // sin token: no hay nada que decir todavia
-    // La API mete tambien los pull requests en /issues; los de verdad no lo son.
-    lista = (Array.isArray(d) ? d : []).filter((i) => !i.pull_request).map(leerPeticion);
+    /* Se filtra POR EL TITULO y no por la etiqueta. `labels=peticion-cuenta` en
+       la direccion con la que se abre la issue solo pinta la etiqueta si ya
+       existe en el repositorio: si no, GitHub la ignora sin decir nada y la
+       cola saldria siempre vacia sin que nada pareciera roto. El titulo lo
+       ponemos nosotros y llega siempre.
+
+       La API mete tambien los pull requests en /issues; los de verdad no lo son. */
+    lista = (Array.isArray(d) ? d : [])
+      .filter((i) => !i.pull_request && /^\[cuenta\]/i.test(String(i.title || "")))
+      .map(leerPeticion);
   } catch (err) {
     caja.hidden = false;
     caja.innerHTML = `<h3 class="watch-head">peticiones de cuenta</h3>

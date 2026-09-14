@@ -122,3 +122,72 @@ test("mandarla abre GitHub con la petición escrita", async ({ page, context }) 
   await expect(page.locator("#pedirBody")).toContainText("Submit new issue");
   await expect(page.locator("#pedirBody")).toContainText("lucia");
 });
+
+/* ------------------------------------------------ y cómo le llega al panel */
+
+const ISSUES = [
+  {
+    number: 12, html_url: "https://github.com/mateogsilvaa/tripfinder/issues/12",
+    title: "[cuenta] lucia", created_at: "2026-09-14T10:02:00Z",
+    user: { login: "luciaperez" },
+    body: [
+      "Nombre: Lucía Pérez", "Usuario: lucia", "", "Por qué:",
+      "Soy la hermana de Mateo y volamos juntos casi todos los findes.", "",
+      "---", "Pedida desde la web.",
+    ].join("\n"),
+  },
+  // Una issue del bot, de las que se publican cuando el correo no sale: no es
+  // una petición y no puede colarse en la cola.
+  {
+    number: 11, html_url: "https://github.com/x/y/issues/11",
+    title: "Chollo: Roma 41 €", created_at: "2026-09-13T06:00:00Z",
+    user: { login: "github-actions[bot]" }, body: "…",
+  },
+  // Y un pull request, que la API mete también en /issues.
+  {
+    number: 10, html_url: "https://github.com/x/y/pull/10", title: "[cuenta] no",
+    created_at: "2026-09-13T06:00:00Z", user: { login: "x" }, body: "",
+    pull_request: { url: "…" },
+  },
+];
+
+const conPanel = async (page) => {
+  await page.route("https://api.github.com/**", (r) =>
+    r.fulfill({ contentType: "application/json", body: JSON.stringify(ISSUES) })
+  );
+  // `tfToken` es un `const`, así que no se puede sustituir desde fuera: se le
+  // pone el token donde de verdad lo lee.
+  await page.addInitScript(() => {
+    try {
+      sessionStorage.setItem("tf_token_abierto", "token-de-mentira");
+    } catch (e) { /* nada */ }
+  });
+  await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
+  await page.evaluate(() => {
+    document.querySelector("#panelAdmin").hidden = false;
+  });
+};
+
+test("la cola del panel lee las peticiones y deja las demás issues fuera", async ({ page }) => {
+  await conPanel(page);
+  await page.evaluate(() => window.pintarPeticiones());
+  const caja = page.locator("#peticiones");
+  await expect(caja).toContainText("peticiones de cuenta · 1");
+  await expect(caja).toContainText("Lucía Pérez");
+  await expect(caja).toContainText("hermana de Mateo");
+  await expect(caja).toContainText("pedida por luciaperez");
+  await expect(caja).not.toContainText("Chollo");
+  await expect(page.locator(".peticion")).toHaveCount(1);
+});
+
+/* «Crear la cuenta» sale con los campos ya puestos: copiarlos a mano de una
+   issue a un formulario es justo donde se cuela una errata en el usuario. */
+test("«Crear la cuenta» abre el formulario relleno", async ({ page }) => {
+  await conPanel(page);
+  await page.evaluate(() => window.pintarPeticiones());
+  await page.locator("[data-crear]").click();
+  await expect(page.locator("#cNombre")).toHaveValue("Lucía Pérez");
+  await expect(page.locator("#cUser")).toHaveValue("lucia");
+  // Y la contraseña sigue poniéndola quien aprueba, no la petición.
+  await expect(page.locator("#cPass")).toHaveValue("");
+});
