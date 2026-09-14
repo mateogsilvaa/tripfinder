@@ -69,9 +69,45 @@ automaticamente para no perder un chollo por un problema de credenciales:
 
 | Metodo | Credencial | Notas |
 |---|---|---|
-| `resend` (por defecto) | `RESEND_API_KEY` | API key revocable, 3.000 emails/mes gratis. El remitente de pruebas `onboarding@resend.dev` funciona sin dominio propio, pero solo puede escribirte a ti. |
-| `smtp` | `SMTP_USER` + `SMTP_PASSWORD` | Gmail exige contraseña de aplicación (y 2FA activo). |
-| `github_issue` | ninguna | El workflow abre una issue con el chollo y GitHub te manda el email. Cero configuración. |
+| `smtp` (por defecto) | `SMTP_USER` + `SMTP_PASSWORD` | Gmail, con **contraseña de aplicación**. Escribe a cualquier dirección, que es lo que hace falta cuando hay varias cuentas. ~500 correos al día. |
+| `resend` | `RESEND_API_KEY` | 3.000 emails/mes gratis, pero **solo escribe al dueño de la clave** mientras el dominio no esté verificado. |
+| `github_issue` | ninguna | El workflow abre una issue con el chollo y GitHub te manda el email. Cero configuración, pero lo lee cualquiera: el repositorio es público. |
+
+### Por que SMTP y no Resend
+
+Resend solo deja escribir a la direccion del dueno de la clave hasta que verificas un dominio, y
+el dominio de esta web es `mateogsilvaa.github.io`. **`github.io` es de GitHub**: no hay ningun
+registrador donde meter los registros DKIM y SPF que Resend pide, asi que esa verificacion no se
+puede hacer nunca. Con Resend solo recibe avisos una cuenta y las demas acaban en una issue.
+
+Las alternativas reales son SMTP o comprar un dominio propio.
+
+### Poner el correo de Gmail
+
+1. En la cuenta de Google, **enciende la verificacion en dos pasos**
+   ([myaccount.google.com/security](https://myaccount.google.com/security)). Sin ella no existe la
+   opcion del paso siguiente.
+2. Crea una **contraseña de aplicacion** en
+   [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords). Son 16
+   caracteres y Google los ensena en cuatro grupos de cuatro: **da igual si copias los espacios**,
+   se quitan solos.
+3. En GitHub, `Settings -> Secrets and variables -> Actions`:
+
+   | Secreto | Valor |
+   |---|---|
+   | `SMTP_USER` | tu direccion de Gmail entera |
+   | `SMTP_PASSWORD` | la contraseña de aplicacion del paso 2 |
+   | `NOTIFY_TO` | *(opcional)* a donde escribir por defecto; si falta, a ti mismo |
+
+   `SMTP_HOST` y `SMTP_PORT` no hacen falta: van a `smtp.gmail.com` y `465`. Si prefieres el 587
+   tambien vale — se habla STARTTLS en vez de TLS directo.
+
+4. **Compruebalo sin esperar al barrido**: `Actions -> Probar el correo -> Run workflow`. Manda un
+   chollo de mentira y deja escrito en el resumen si salio o por que no. Se puede lanzar las veces
+   que haga falta: no toca ningun dato.
+
+No es la contraseña de entrar a Gmail, es una aparte y revocable: si se filtra, se borra desde esa
+misma pagina y no da acceso a la cuenta.
 
 ## Comandos
 

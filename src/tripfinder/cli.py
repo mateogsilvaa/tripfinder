@@ -998,7 +998,13 @@ def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
 
     asunto = render.subject_watch_digest(estado)
     cuerpo = render.render_watch_digest(estado)
-    for candidato in [cfg.notify.get("method", "resend"), "resend", "smtp", "github_issue"]:
+    # El elegido primero y los demas detras, SIN REPETIR: esta lista estaba
+    # escrita a mano y con `method: smtp` quedaba [smtp, resend, smtp, ...], asi
+    # que un SMTP roto se intentaba dos veces y se esperaba dos timeouts.
+    from .notify import ORDER
+
+    elegido = cfg.notify.get("method", "resend")
+    for candidato in [elegido, *(m for m in ORDER if m != elegido)]:
         try:
             if not _configured(candidato):
                 continue
@@ -1158,11 +1164,18 @@ def cmd_test_email(args: argparse.Namespace) -> int:
         airline="Ryanair",
         deep_link="https://www.ryanair.com",
     )
-    used = notify_offers(
-        [demo],
-        to=args.to or cfg.notify.get("to", ""),
-        method=args.method or cfg.notify.get("method", "resend"),
-    )
+    # Esto lo lee quien acaba de pegar unos secretos en GitHub, no quien escribio
+    # el codigo: una traza de Python no le dice si le falta un secreto o si Gmail
+    # le ha dicho que no.
+    try:
+        used = notify_offers(
+            [demo],
+            to=args.to or cfg.notify.get("to", ""),
+            method=args.method or cfg.notify.get("method", "smtp"),
+        )
+    except RuntimeError as exc:
+        print(f"No salio: {exc}")
+        return 1
     print(f"Aviso de prueba enviado por {used}.")
     return 0
 

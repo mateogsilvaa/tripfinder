@@ -67,4 +67,4 @@ def notify_offers(offers: list[FlightOffer], to: str, method: str = "resend") ->
     raise RuntimeError("Ningun metodo de aviso tiene credenciales configuradas.")
 
 
-__all__ = ["notify_offers", "render"]
+__all__ = ["ORDER", "notify_offers", "render"]
