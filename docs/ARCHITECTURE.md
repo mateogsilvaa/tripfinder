@@ -33,6 +33,7 @@
 | `users.yml` | `repository_dispatch: user_* / admin_* / site_token / claim` | Las cuentas: altas, contraseñas, preferencias y el token del sitio cifrado. |
 | `pages.yml` | push a `main` sobre `web/`, `data/` o `tools/montar.py` | Monta el sitio: comprueba las partes, sella la versión, quita lo que no es página y publica sin los emails. |
 | `limpiar-avisos.yml` | cron diario, o a mano | Cierra las issues de aviso con más de siete días. Los avisos salen por issue cuando el correo no puede (hoy, siempre que el destinatario no sea el dueño de la clave de Resend) y se acumulaban hasta dejar el tracker inservible: 33 abiertas el 13 de septiembre. Sólo toca las del bot con la etiqueta `chollo`. |
+| `peticion-cuenta.yml` | una issue nueva, o a mano | Pone la etiqueta `peticion-cuenta` a las issues `[cuenta] …`, y crea la etiqueta si no existía. La dirección con la que la web abre la petición ya lleva `labels=`, pero GitHub sólo pinta una etiqueta que YA EXISTE y si no la ignora en silencio. La cola del panel no depende de esto: filtra por el título. |
 | `ci.yml` | cada push y cada pull request | Lo que decide si algo entra: ruff, pytest, montaje, contraste, oxlint y humo de frontend. |
 
 ## La hora de los cron

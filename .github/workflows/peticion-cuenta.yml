@@ -1,0 +1,72 @@
+name: Etiquetar peticiones de cuenta
+
+# La web manda las peticiones de cuenta abriendo una issue con el titulo
+# "[cuenta] <usuario>". La direccion con la que se abre lleva ya
+# `labels=peticion-cuenta`, pero GitHub SOLO pinta una etiqueta que YA EXISTE en
+# el repositorio: si no existe la ignora, y no lo dice. Crearla a mano una vez
+# funcionaria hasta el dia que alguien clone el repositorio o la borre sin
+# querer, y entonces las peticiones entrarian sin etiquetar sin que nada
+# pareciera roto.
+#
+# Asi que la pone este workflow, y de paso se asegura de que la etiqueta existe.
+# La cola del panel NO depende de esto —filtra por el titulo, que lo ponemos
+# nosotros y llega siempre—: la etiqueta es para quien mire las issues a mano.
+
+on:
+  issues:
+    types: [opened, reopened]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+concurrency:
+  group: tripfinder-peticion-${{ github.event.issue.number || 'manual' }}
+  cancel-in-progress: false
+
+jobs:
+  etiquetar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Poner la etiqueta a las peticiones sin etiquetar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # La etiqueta, si no estaba. Un 422 aqui significa "ya existe", que es
+          # justo lo que queriamos, asi que no es un fallo.
+          if gh api "/repos/$REPO/labels/peticion-cuenta" >/dev/null 2>&1; then
+            echo "La etiqueta ya existia."
+          else
+            gh api -X POST "/repos/$REPO/labels" \
+              -f name=peticion-cuenta \
+              -f color=ff5a22 \
+              -f description="Alguien ha pedido una cuenta desde la web" >/dev/null
+            echo "Etiqueta creada."
+          fi
+
+          # Se repasan TODAS las peticiones abiertas, no solo la del evento: si
+          # el workflow no existia cuando llegaron, se quedaron sin etiquetar y
+          # nadie volveria a mirarlas. Lanzandolo a mano se ponen al dia.
+          gh api --paginate \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/$REPO/issues?state=open&per_page=100" \
+            --jq '.[] | select(.pull_request == null)
+                      | select(.title | test("^\\[cuenta\\]"; "i"))
+                      | select([.labels[].name] | index("peticion-cuenta") | not)
+                      | .number' > sin-etiqueta.txt || true
+
+          total=0
+          while read -r numero; do
+            [ -z "${numero:-}" ] && continue
+            echo "  etiquetando #$numero"
+            gh api -X POST "/repos/$REPO/issues/$numero/labels" \
+              -f "labels[]=peticion-cuenta" >/dev/null
+            total=$((total + 1))
+          done < sin-etiqueta.txt
+
+          echo "$total peticiones etiquetadas." >> "$GITHUB_STEP_SUMMARY"
