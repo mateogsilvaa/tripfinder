@@ -204,7 +204,19 @@ a:hover { color: var(--accent-txt); }
 img, svg { max-width: 100%; }
 input, select, button, textarea { font: inherit; color: inherit; }
 ::placeholder { color: var(--muted); opacity: 1; }
-select option { color: #16150f; background: #fffdf8; }
+/* LO QUE PINTA EL NAVEGADOR TAMBIÉN TIENE TEMA, y sin decírselo lo pinta claro:
+   es lo que da por hecho cuando nadie declara nada. De ahí venía el desplegable
+   de las preferencias con fondo casi blanco y el texto casi blanco encima —se
+   veía la caja y no se leía lo de dentro—, y también la barra de scroll clara
+   en un modal oscuro, las flechitas de los campos numéricos y el amarillo del
+   autorrelleno. Una línea por tema y se acaba la familia entera de fallos. */
+:root { color-scheme: dark; }
+:root[data-tema="claro"] { color-scheme: light; }
+
+/* Las opciones las pinta el sistema en su propia ventana, fuera de la página,
+   así que van con el tema puesto a mano: forzarlas claras dejaba una lista
+   blanca colgando de un desplegable oscuro. */
+select option { color: var(--ink); background: var(--surface); }
 
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -1967,15 +1979,54 @@ h1 em { font-size: 1.3em; }
   text-transform: uppercase;
   color: var(--muted);
 }
-.modal-form input, .token-box input, #destSearch {
+/* OJO CON EL `select`. Esta regla solo decía `input`, así que los dos desplegables
+   de las preferencias —cada cuánto quieres los chollos y el parte de lo que
+   sigues— se quedaban con el aspecto que les da el navegador: fondo
+   `rgb(239,239,239)`, casi blanco, heredando el color de texto de la página, que
+   también es casi blanco. Blanco sobre blanco: se veía la caja y no se leía lo
+   que ponía dentro. El resto de la web ya los pinta (`.field select`,
+   `.finder-form select`); aquí faltaban. */
+.modal-form input, .modal-form select, .token-box input, #destSearch {
   border: 1px solid var(--hair);
   background: var(--field);
+  color: var(--ink);
   border-radius: var(--r);
   padding: 10px 12px;
   font-size: var(--fs-input);
   width: 100%;
 }
-.modal-form input:hover, .token-box input:hover, #destSearch:hover { border-color: var(--muted); }
+.modal-form input:hover, .modal-form select:hover,
+.token-box input:hover, #destSearch:hover { border-color: var(--muted); }
+
+/* Dentro de un formulario, esto es una casilla con su frase al lado, no uno de
+   los chips de la barra de filtros. Sin deshacer lo de `.switch` y lo de
+   `.modal-form label`, «Solo cuando haya algo nuevo que contar» salía como una
+   pastilla de mono en mayúsculas y con la casilla en `opacity: 0`: una frase
+   entera gritada, dentro de una caja, sin nada que indicara que se marca. */
+.modal-form .switch {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: none;
+  border-radius: 0;
+  padding: 2px 0;
+  min-height: 0;
+  font: 400 var(--fs-body-s) / 1.4 var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  white-space: normal;
+}
+.modal-form .switch input {
+  position: static;
+  opacity: 1;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--accent);
+}
+.modal-form .switch:has(input:checked) { background: none; color: var(--ink); }
+.modal-form .switch:hover { border: none; color: var(--ink); }
 .modal-form .meta { margin: 0 0 4px; font-size: var(--fs-ui-s); color: var(--muted); }
 .modal-form .btn { margin-top: 14px; }
 /* La puerta del panel lleva `.finder-form` y `.estrecha-form` a la vez, y son
