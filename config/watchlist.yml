@@ -6,7 +6,16 @@ party_size: 2
 
 notify:
   # resend | smtp | github_issue  (ver docs/ARCHITECTURE.md)
-  method: resend
+  #
+  # SMTP, y no Resend, porque Resend solo deja escribir a la direccion del dueno
+  # de la clave mientras el dominio no este verificado — y el dominio de esta web
+  # es `mateogsilvaa.github.io`: `github.io` es de GitHub, asi que no hay ningun
+  # registrador donde meter los registros que Resend pide. Con Resend solo recibe
+  # avisos una cuenta y las demas acaban en una issue.
+  #
+  # Si no hay SMTP_USER/SMTP_PASSWORD, esto NO rompe nada: se cae solo al
+  # siguiente transporte que si tenga credenciales.
+  method: smtp
   to: mateogonsilva@gmail.com
   # Aviso inmediato solo si es un chollo excepcional (evita el correo diario)
   min_score: 88

@@ -19,7 +19,7 @@
 | `web/js/` | GitHub Pages | Doce módulos ES, uno por asunto (`ofertas`, `busqueda`, `seguimientos`, `favoritos`, `alojamiento`, `precios`, `historia`, `destinos`, `calendario`, `disparador`, `quiz`, `motor`, `ampliar` —el que lleva lo escrito en la portada a la herramienta entera— y `base`, que es lo compartido). `arranque.js` es lo único que *hace* algo al cargar; `tripfinder.js` es la puerta que abren las páginas. Sin bundler: el navegador resuelve los `import`. |
 | `web/auth.js` | GitHub Pages | Quién está delante: sesión, login contra `data/users.json` y el espacio de nombres de `localStorage` por cuenta. |
 | `tools/` | — | Utilidades que no se publican: `montar.py` (las partes comunes de la web), `contraste.py` (auditoría de la paleta), `iconos.py` (los PNG de la aplicación instalable, generados desde la misma paleta). |
-| `.github/workflows/` | GitHub Actions | Los nueve, en la tabla de abajo. |
+| `.github/workflows/` | GitHub Actions | Los once, en la tabla de abajo. |
 
 ## Los workflows
 
@@ -34,6 +34,7 @@
 | `pages.yml` | push a `main` sobre `web/`, `data/` o `tools/montar.py` | Monta el sitio: comprueba las partes, sella la versión, quita lo que no es página y publica sin los emails. |
 | `limpiar-avisos.yml` | cron diario, o a mano | Cierra las issues de aviso con más de siete días. Los avisos salen por issue cuando el correo no puede (hoy, siempre que el destinatario no sea el dueño de la clave de Resend) y se acumulaban hasta dejar el tracker inservible: 33 abiertas el 13 de septiembre. Sólo toca las del bot con la etiqueta `chollo`. |
 | `peticion-cuenta.yml` | una issue nueva, o a mano | Pone la etiqueta `peticion-cuenta` a las issues `[cuenta] …`, y crea la etiqueta si no existía. La dirección con la que la web abre la petición ya lleva `labels=`, pero GitHub sólo pinta una etiqueta que YA EXISTE y si no la ignora en silencio. La cola del panel no depende de esto: filtra por el título. |
+| `probar-correo.yml` | a mano | Manda un chollo de mentira para saber si las credenciales del correo han quedado bien **sin esperar al barrido de las 08:00**. Cuenta caracteres de cada secreto, nunca los imprime. |
 | `ci.yml` | cada push y cada pull request | Lo que decide si algo entra: ruff, pytest, montaje, contraste, oxlint y humo de frontend. |
 
 ## La hora de los cron

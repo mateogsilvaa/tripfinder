@@ -1,0 +1,102 @@
+name: Probar el correo
+
+# Para saber si las credenciales han quedado bien SIN esperar al barrido de las
+# 08:00. Se pone SMTP_USER y SMTP_PASSWORD en los secretos, se le da a Run
+# workflow, y o llega un correo o sale escrito aqui que ha fallado y por que.
+#
+# Manda un chollo de mentira (Madrid-Roma, 38 €), asi que se puede lanzar las
+# veces que haga falta: no toca ningun dato ni avisa a nadie mas.
+
+on:
+  workflow_dispatch:
+    inputs:
+      destino:
+        description: "A que direccion escribir (vacio: la del YAML o la propia cuenta)"
+        type: string
+        default: ""
+      metodo:
+        description: "Que transporte probar"
+        type: choice
+        options: [smtp, resend, github_issue]
+        default: smtp
+
+permissions:
+  contents: read
+  issues: write # solo lo usa el transporte github_issue
+
+concurrency:
+  group: tripfinder-probar-correo
+  cancel-in-progress: false
+
+jobs:
+  probar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+
+      - name: Mirar que hay puesto, sin enseñarlo
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          NOTIFY_TO: ${{ secrets.NOTIFY_TO }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        shell: bash
+        run: |
+          # Se cuentan caracteres, no se imprime nada: un secreto en un log de
+          # un repositorio publico es un secreto quemado.
+          {
+            echo "| secreto | puesto |"
+            echo "|---|---|"
+            echo "| SMTP_USER | ${#SMTP_USER} caracteres |"
+            echo "| SMTP_PASSWORD | ${#SMTP_PASSWORD} caracteres |"
+            echo "| NOTIFY_TO | ${#NOTIFY_TO} caracteres |"
+            echo "| RESEND_API_KEY | ${#RESEND_API_KEY} caracteres |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          # La de aplicacion de Gmail son dieciseis, y Google la ensena en
+          # cuatro grupos de cuatro: si vienen 19 es que se han copiado los
+          # espacios. El codigo ya los quita, pero mas vale decirlo.
+          sin_espacios="${SMTP_PASSWORD// /}"
+          if [ -n "$SMTP_PASSWORD" ] && [ "${#sin_espacios}" -ne 16 ]; then
+            echo "> Ojo: la contraseña de aplicación de Gmail son 16 caracteres y esta tiene ${#sin_espacios}." \
+              >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Mandar el chollo de mentira
+        env:
+          PYTHONPATH: src
+          SMTP_HOST: ${{ secrets.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          NOTIFY_TO: ${{ inputs.destino || secrets.NOTIFY_TO || secrets.SMTP_USER }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM: ${{ secrets.RESEND_FROM }}
+          GITHUB_TOKEN: ${{ github.token }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          REPO_SLUG: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -o pipefail
+          # `--method` fuerza el transporte, pero si falla el codigo prueba los
+          # demas: por eso se dice DESPUES cual funciono de verdad.
+          if python -m tripfinder test-email \
+               --method "${{ inputs.metodo }}" \
+               ${{ inputs.destino && format('--to "{0}"', inputs.destino) || '' }} 2>&1 | tee salida.txt; then
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            grep -i "enviado\|funciono\|usando" salida.txt >> "$GITHUB_STEP_SUMMARY" || true
+          else
+            {
+              echo ""
+              echo "**No salió.** Lo que dijo:"
+              echo '```'
+              tail -20 salida.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
