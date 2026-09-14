@@ -72,7 +72,15 @@ export function avisoDeCuenta(que, vacio) {
    apagados, con el motivo puesto. Es mas honesto que dejarlos vivos y fallar al
    darle al boton, y ademas se ve de un vistazo que la web tiene cuentas. */
 export function candarFormularios() {
-  if (tfUid()) return;
+  /* CON SESION, LOS AVISOS SOBRAN. Los de la portada estan escritos a mano en
+     el HTML —no los pone esta funcion—, asi que salir por aqui los dejaba
+     puestos: quien ya habia entrado seguia leyendo "hace falta una cuenta para
+     buscar" y un "Entrar" encima de un formulario que le funcionaba. Se dice de
+     una cosa que falta cuando falta. */
+  if (tfUid()) {
+    document.querySelectorAll(".candado-nota").forEach((n) => (n.hidden = true));
+    return;
+  }
   [
     ["#finderForm", "buscar"],
     ["#watchForm", "seguir un viaje"],
