@@ -55,10 +55,11 @@ function elegirDia(clave, iso) {
   }
   $(c.ida).value = c.rango.ida || "";
   $(c.vuelta).value = c.rango.vuelta || "";
+  // Un tramo no tiene vuelta, tiene final: es la ventana en la que se puede
+  // viajar, no el billete.
+  const falta = $(c.btn).dataset.modo === "tramo" ? " → elige el final" : " → elige la vuelta";
   $(c.btn).textContent = c.rango.ida
-    ? `${fmtDate(c.rango.ida, true)}${
-        c.rango.vuelta ? ` → ${fmtDate(c.rango.vuelta, true)}` : " → elige la vuelta"
-      }`
+    ? `${fmtDate(c.rango.ida, true)}${c.rango.vuelta ? ` → ${fmtDate(c.rango.vuelta, true)}` : falta}`
     : "Elegir en el calendario";
   pintarCalendario(clave);
   if (c.rango.ida && c.rango.vuelta) setTimeout(() => ($(c.cal).hidden = true), 250);

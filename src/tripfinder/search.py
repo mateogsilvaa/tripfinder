@@ -39,6 +39,14 @@ class SearchRequest:
     origin: str = "MAD"
     depart: str = ""  # fecha exacta de ida (ISO); si esta, manda sobre todo lo demas
     return_date: str = ""
+    # La ventana: "en marzo", "entre el 3 y el 19". Es el termino medio entre
+    # saber la fecha exacta y no tener ni idea, que es como se decide de verdad
+    # un viaje: las vacaciones son de una semana concreta, pero dentro de ella
+    # da igual el dia. Con ventana, el barrido se hace SOLO dentro y con el
+    # paso apretado, porque un tramo de diez dias muestreado cada quince no
+    # mira ninguno.
+    desde: str = ""
+    hasta: str = ""
     # Quien la pidio. Vacio = busqueda de antes de las cuentas: la ve todo el mundo.
     owner: str = ""
     owner_name: str = ""
@@ -61,6 +69,13 @@ class SearchRequest:
             partes.append(self.depart.replace("-", ""))
             if self.return_date:
                 partes.append(self.return_date.replace("-", ""))
+        elif self.desde:
+            # Dos meses distintos son dos busquedas distintas: sin esto, marzo
+            # pisaba a febrero y en la web parecia que se borraban solas.
+            partes.append(self.desde.replace("-", ""))
+            if self.hasta:
+                partes.append(self.hasta.replace("-", ""))
+            partes.append("finde" if self.weekend_only else "libre")
         else:
             partes.append(f"{int(self.months)}m")
             partes.append("finde" if self.weekend_only else "libre")
@@ -365,6 +380,33 @@ def resolve_destination(texto: str, cfg: Config) -> tuple[str, str, str]:
     )
 
 
+def _fecha(texto: str) -> date | None:
+    """Una fecha ISO, o None si no lo es. Lo que llega de la web puede ser todo."""
+    try:
+        return date.fromisoformat(texto)
+    except (TypeError, ValueError):
+        return None
+
+
+def _paso(dias_ventana: int) -> int:
+    """Cada cuantos dias se sondea una ventana sin restriccion de finde.
+
+    El muestreo de siempre —uno cada quince dias— vale para un horizonte de un
+    año, donde la gracia es cubrir doce meses con veinticuatro consultas. En una
+    ventana de diez dias no mira NINGUNO: el primer sondeo cae dentro y el
+    segundo ya se ha salido. Cuanto mas corto es el tramo, mas apretado va el
+    paso, que es justo cuando el usuario espera que se mire dia a dia.
+    """
+    if dias_ventana <= 40:
+        return 1  # un mes entero cabe dia a dia en el presupuesto de consultas
+    if dias_ventana <= 120:
+        return 3
+    # Y un tramo enorme se reparte para que entre ENTERO en el presupuesto: con
+    # un paso fijo se barrian los primeros meses y el resto se cortaba al
+    # truncar, o sea que pedir "de aqui a un año" miraba hasta octubre.
+    return max(7, dias_ventana // 45 + 1)
+
+
 def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, date]]:
     """Fechas a probar: los findes del horizonte, o el dia 1 y 15 de cada mes."""
     hoy = date.today()
@@ -372,22 +414,40 @@ def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, 
 
     # Fechas exactas: si el usuario ya sabe cuando viaja, no hay nada que barrer.
     if req.depart:
-        try:
-            ida = date.fromisoformat(req.depart)
-            vuelta = (
-                date.fromisoformat(req.return_date)
-                if req.return_date
-                else ida + timedelta(days=req.nights_min)
-            )
+        ida = _fecha(req.depart)
+        if ida is not None:
+            vuelta = _fecha(req.return_date) or ida + timedelta(days=req.nights_min)
             return [(ida, vuelta)]
-        except ValueError:
-            log.warning("Fechas exactas invalidas (%s / %s), se ignoran", req.depart, req.return_date)
+        log.warning("Fechas exactas invalidas (%s / %s), se ignoran", req.depart, req.return_date)
+
+    # La ventana: "en marzo", "entre el 3 y el 19". Recorta el barrido por los
+    # dos lados en vez de empezar hoy y llegar hasta donde llegue.
+    desde = _fecha(req.desde)
+    hasta = _fecha(req.hasta)
+    if req.desde and desde is None:
+        log.warning("Tramo invalido (%s / %s), se busca el horizonte entero", req.desde, req.hasta)
+    if desde is not None:
+        # Un tramo que empieza ayer empieza mañana: lo de antes no se vende.
+        principio = max(desde, hoy + timedelta(days=1))
+        # Sin final, el tramo es "de aqui en adelante" y manda el horizonte.
+        final = hasta if hasta is not None and hasta >= principio else fin
+        # Y la VUELTA tambien cae dentro: quien dice "del 3 al 19" no quiere
+        # volver el 21. Si el tramo no da ni para las noches minimas se deja
+        # salir el ultimo dia y que la vuelta caiga donde caiga, que es mejor
+        # que no devolver nada.
+        tope = final - timedelta(days=req.nights_min)
+        if tope < principio:
+            tope = final
+        hoy, fin = principio, tope
 
     if req.weekend_only:
         salida = int(weekend_cfg.get("outbound_weekday", 4))
         vuelta = int(weekend_cfg.get("inbound_weekday", 6))
         noches = (vuelta - salida) % 7 or 7
-        primero = hoy + timedelta(days=(salida - hoy.weekday()) % 7 or 7)
+        # Con ventana, el primer viernes puede ser el mismo dia en que empieza;
+        # sin ventana se salta el de hoy, que ya no se compra.
+        arranque = 0 if desde is not None else 7
+        primero = hoy + timedelta(days=(salida - hoy.weekday()) % 7 or arranque)
         dias = []
         d = primero
         while d <= fin:
@@ -397,11 +457,12 @@ def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, 
 
     # Sin restriccion de finde basta con muestrear: la API devuelve la tarifa
     # mas barata de la ventana, asi que dos sondeos por mes cubren el mes entero.
+    salto = _paso((fin - hoy).days) if desde is not None else 15
     dias = []
-    d = hoy + timedelta(days=1)
+    d = hoy if desde is not None else hoy + timedelta(days=1)
     while d <= fin:
         dias.append((d, d + timedelta(days=req.nights_min)))
-        d += timedelta(days=15)
+        d += timedelta(days=salto)
     return dias
 
 

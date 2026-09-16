@@ -19,6 +19,7 @@ export const CAMPOS_BUSCAR = {
   donde: "#fWhere",
   cuando: "#fWhen",
   dest: "#fDest",
+  mes: "#fMes",
   depart: "#fDepart",
   regreso: "#fReturn",
   noches: "#fNights",

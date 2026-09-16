@@ -27,7 +27,7 @@
 | --- | --- | --- |
 | `scan-flights.yml` | cron cada 12 h, o a mano | El barrido: busca vuelos, puntúa contra el histórico, avisa por correo y publica `data/`. Después revisa los seguimientos. |
 | `scan-nocturno.yml` | cron la madrugada del miércoles, o a mano | El barrido de las 02:00–03:00 peninsulares: el mapa entero de Google (110 consultas a 7 s, `config/watchlist-nocturno.yml`) sin escribir a nadie. Lo que encuentra se aparca en `state.json` y lo manda el scan de la mañana. |
-| `custom-search.yml` | `repository_dispatch: search` | Una búsqueda concreta pedida desde la web: destino, fechas y tope. Escribe `data/searches/<slug>.json`. |
+| `custom-search.yml` | `repository_dispatch: search` | Una búsqueda concreta pedida desde la web: destino, fechas y tope. Las fechas pueden ser exactas o una **ventana** (`--desde`/`--hasta`: un mes, los findes de un mes, o un tramo), y viajan agrupadas en `client_payload.fechas` porque `repository_dispatch` solo admite diez propiedades de primer nivel. Escribe `data/searches/<slug>.json`. |
 | `stay-request.yml` | `repository_dispatch: stay`, o una issue `[stay] …` | Busca cama para unas fechas exactas. Escribe `data/stays/<offer_id>.json`. |
 | `watch.yml` | `repository_dispatch: watch / unwatch / delete_search` | Apunta, quita o borra: sólo toca `data/watch.json` y `data/searches/`. Acepta lotes. |
 | `users.yml` | `repository_dispatch: user_* / admin_* / site_token / claim` | Las cuentas: altas, contraseñas, preferencias y el token del sitio cifrado. |

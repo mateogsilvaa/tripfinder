@@ -766,6 +766,8 @@ def cmd_search(args: argparse.Namespace) -> int:
         adults=args.adults or cfg.party_size,
         depart=args.depart or "",
         return_date=getattr(args, "return") or "",
+        desde=args.desde or "",
+        hasta=args.hasta or "",
         owner=args.owner or "",
         owner_name=args.owner_name or "",
     )
@@ -818,7 +820,14 @@ def _search_markdown(resultado) -> str:
     lines = [
         f"### {req.label or req.destination}",
         "",
-        f"Hasta {req.months} meses vista · {req.nights_min}-{req.nights_max} noches"
+        (
+            f"Del {req.desde} al {req.hasta}"
+            if req.desde and req.hasta
+            else f"Desde el {req.desde}"
+            if req.desde
+            else f"Hasta {req.months} meses vista"
+        )
+        + f" · {req.nights_min}-{req.nights_max} noches"
         + (f" · maximo {req.max_price:.0f} €" if req.max_price else "")
         + (" · solo findes" if req.weekend_only else ""),
         "",
@@ -1381,6 +1390,11 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--any-day", action="store_true", help="No limitarse a fines de semana")
     b.add_argument("--depart", help="Fecha exacta de ida (YYYY-MM-DD)")
     b.add_argument("--return", dest="return", help="Fecha exacta de vuelta (YYYY-MM-DD)")
+    # El termino medio entre saber la fecha y no tener ni idea: "en marzo", "la
+    # semana del 3". Dentro del tramo se busca el mejor dia, que es lo que se
+    # quiere decir con fechas flexibles.
+    b.add_argument("--desde", help="Primer dia del tramo en que puedes viajar (YYYY-MM-DD)")
+    b.add_argument("--hasta", help="Ultimo dia del tramo (YYYY-MM-DD)")
     b.add_argument("--adults", type=int)
     b.add_argument("--summary-out")
     b.add_argument("--owner", default="", help="Id de la cuenta que la pide")
