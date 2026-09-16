@@ -1635,6 +1635,20 @@ h1 em { font-size: 1.3em; }
 }
 .aviso-rotulo span { color: var(--muted); }
 
+/* Las regiones, arriba del selector de destinos: son lo más ancho que se puede
+   elegir sin irse a un continente entero, y quien abre esto sin un sitio en la
+   cabeza es justo a quien le sirven. */
+.pais.regiones { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 4px; }
+.regiones-rotulo {
+  margin: 0 0 8px;
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ciudad.region { font-weight: 600; }
+.ciudad.region i { font-style: normal; color: var(--muted); font-family: var(--font-mono); }
+
 /* La cola de peticiones, en el panel. */
 .peticiones { margin-top: 24px; display: grid; gap: 8px; }
 .peticion {

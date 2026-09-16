@@ -102,7 +102,39 @@ class Store:
             "continentes.json",
             {c: "".join(sorted(codigos)) for c, codigos in sorted(agrupado.items())},
         )
+        self._save_regions(crudo)
         return plano
+
+    def _save_regions(self, crudo: list[dict]) -> None:
+        """El mismo truco para las regiones: «los Balcanes», «los nórdicos».
+
+        Se deriva de `regiones.REGIONES`, que es la UNICA definicion: si se
+        escribieran a mano tambien en el navegador, el dia que se añada una
+        region la web y el backend dirian cosas distintas y nadie lo notaria
+        hasta que alguien filtrara y no le saliera nada.
+
+        Mismo formato que los continentes —codigos pegados de tres en tres—
+        por lo mismo: el mapa plano repetiria el nombre de la region una vez
+        por aeropuerto.
+        """
+        from .regiones import REGIONES, nombre_bonito
+
+        de_pais: dict[str, list[str]] = {}
+        for region, paises in REGIONES.items():
+            dentro = set(paises)
+            for a in crudo:
+                if a.get("code") and a.get("pais") in dentro:
+                    de_pais.setdefault(region, []).append(a["code"])
+
+        # `n` es como se enseña y `c` los codigos: la clave va sin tildes porque
+        # es lo que se teclea, y el desplegable no puede poner "El caucaso".
+        self._write(
+            "regiones.json",
+            {
+                r: {"n": nombre_bonito(r), "c": "".join(sorted(set(codigos)))}
+                for r, codigos in sorted(de_pais.items())
+            },
+        )
 
     # -- camas ------------------------------------------------------------
     def save_beds(self, minimo_muestras: int = 3) -> dict[str, Any]:

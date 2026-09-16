@@ -3,6 +3,8 @@
 import {
   $,
   CONTINENTES,
+  NOMBRE_REGION,
+  REGIONES,
   DAYS,
   SEARCH_OFFERS,
   esc,
@@ -128,10 +130,40 @@ export async function init() {
     }
     const presentes = [...new Set(OFFERS.map((o) => CONTINENTES[o.destination]).filter(Boolean))].sort();
     const hayLejos = OFFERS.some((o) => o.long_haul);
+
+    /* Y las regiones, que son el escalon que falta entre el continente —Europa
+       son 44 paises— y el pais suelto. Solo salen las que hoy tienen algun
+       vuelo: una lista con quince opciones de las que doce no dan nada es peor
+       que no tenerla. Se derivan del MISMO sitio que el backend
+       (`regiones.REGIONES` -> `data/regiones.json`), para que no puedan decir
+       cosas distintas. */
+    let conRegion = [];
+    try {
+      const mapa = await fetchJSON("data/regiones.json");
+      for (const [region, { n, c }] of Object.entries(mapa)) {
+        NOMBRE_REGION[region] = n;
+        for (let i = 0; i < c.length; i += 3) {
+          (REGIONES[c.slice(i, i + 3)] ||= []).push(region);
+        }
+      }
+      const vivas = new Set();
+      OFFERS.forEach((o) => (REGIONES[o.destination] || []).forEach((r) => vivas.add(r)));
+      conRegion = [...vivas].sort((a, b) =>
+        (NOMBRE_REGION[a] || a).localeCompare(NOMBRE_REGION[b] || b)
+      );
+    } catch {
+      /* sin regiones el filtro sigue siendo el de continentes de siempre */
+    }
+
     $("#cont").insertAdjacentHTML(
       "beforeend",
       (hayLejos ? '<option value="__lejos__">Otros continentes</option>' : "") +
-        presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")
+        presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("") +
+        (conRegion.length
+          ? `<optgroup label="Regiones">${conRegion
+              .map((r) => `<option value="r:${esc(r)}">${esc(NOMBRE_REGION[r] || r)}</option>`)
+              .join("")}</optgroup>`
+          : "")
     );
   } catch {
     $("#cont").parentElement.hidden = true;
@@ -368,7 +400,12 @@ function currentList() {
     (o) =>
       o.price <= max &&
       (!soloFindes || o.weekend) &&
-      (lejos ? o.long_haul : !continente || CONTINENTES[o.destination] === continente) &&
+      (lejos
+        ? o.long_haul
+        : !continente ||
+          (continente.startsWith("r:")
+            ? (REGIONES[o.destination] || []).includes(continente.slice(2))
+            : CONTINENTES[o.destination] === continente)) &&
       (lejos || !o.long_haul) &&
       (!q ||
         `${o.destination_name} ${o.destination} ${o.destination_country}`.toLowerCase().includes(q))

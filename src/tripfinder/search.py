@@ -18,6 +18,7 @@ from . import routes as rutas
 from .config import Config, Route
 from .models import FlightOffer
 from .providers import build_providers
+from .regiones import paises_de
 from .scoring import score_offer, useful_hours
 
 log = logging.getLogger("tripfinder")
@@ -235,6 +236,31 @@ def resolve_many(texto: str, cfg: Config) -> list[tuple[str, str, str]]:
     aeropuertos de ese pais y se buscan todos.
     """
     objetivo = _norm(texto)
+
+    # Una region —"los Balcanes", "los nordicos"— es un puñado de paises que se
+    # viajan juntos. Va ANTES que el pais: ninguna region se llama como un pais,
+    # pero si como un continente ("Centroamerica"), y ahi manda la region porque
+    # es mas concreta. Hay una prueba que vigila que no se solapen.
+    de_region = paises_de(texto)
+    if de_region:
+        dentro = {_norm(p) for p in de_region}
+        salida = [
+            (
+                a["code"],
+                (a.get("city") or {}).get("name") or a.get("name", a["code"]),
+                (a.get("country") or {}).get("name", ""),
+            )
+            for a in _airport_directory()
+            if _norm((a.get("country") or {}).get("name") or "") in dentro
+        ]
+        if salida:
+            # Los elegidos a mano delante, como en el caso del pais: sin esto,
+            # "los Balcanes" se gastaria las doce consultas en islas griegas.
+            conocidos = set(cfg.long_haul.get("destinations", []) or []) | set(cfg.city_names)
+            salida.sort(key=lambda a: a[0] not in conocidos)
+            log.info("'%s' es una region: %d aeropuertos de %d paises",
+                     texto, len(salida), len(de_region))
+            return salida[:14]
 
     # Un continente entero: solo sus hubs, o la busqueda no termina nunca.
     if objetivo in CONTINENTES:
