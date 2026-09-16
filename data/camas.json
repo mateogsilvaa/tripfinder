@@ -11,6 +11,11 @@
       "muestras": 3,
       "nombre": "Agadir"
     },
+    "ATH": {
+      "noche": 19.5,
+      "muestras": 3,
+      "nombre": "Atenas"
+    },
     "BGY": {
       "noche": 72.0,
       "muestras": 3,
@@ -30,6 +35,10 @@
   "paises": {
     "España": {
       "noche": 62.0,
+      "muestras": 3
+    },
+    "Grecia": {
+      "noche": 19.5,
       "muestras": 3
     },
     "Italia": {
