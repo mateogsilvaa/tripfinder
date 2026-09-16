@@ -159,13 +159,32 @@ class Store:
         por_destino: dict[str, list[float]] = {}
         por_pais: dict[str, list[float]] = {}
         nombres: dict[str, str] = {}
+        # Y de paso, QUE VIAJES tienen ya la cama buscada. Se recorre la misma
+        # carpeta, asi que sale gratis, y es lo que permite que el tablon marque
+        # esas filas sin pedir un fichero por vuelo.
+        hechos: dict[str, dict[str, Any]] = {}
 
         for f in sorted(carpeta.glob("*.json")) if carpeta.exists() else []:
+            # El indice vive en la misma carpeta y no es una busqueda: sin esto
+            # se contaria a si mismo y aparecia un viaje llamado "index".
+            if f.name == "index.json":
+                continue
             try:
                 datos = json.loads(f.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 continue
             oferta = datos.get("offer") or {}
+            identificador = datos.get("offer_id") or f.stem
+            resumen = datos.get("summary") or {}
+            hechos[identificador] = {
+                "n": oferta.get("destination_name") or oferta.get("destination") or "",
+                "d": oferta.get("depart_date") or datos.get("checkin") or "",
+                "c": len(datos.get("stays") or []),
+                # El precio de la escapada entera, si se calculo. Con esto la
+                # fila puede decir el numero REAL sin abrir el panel: hasta
+                # ahora solo lo sabia quien ya lo habia abierto en esa sesion.
+                "t": round(float(resumen.get("total") or 0), 2),
+            }
             codigo = oferta.get("destination")
             if not codigo:
                 continue
@@ -213,6 +232,10 @@ class Store:
             },
         }
         self._write("camas.json", payload)
+        self._write(
+            "stays/index.json",
+            {"generated_at": date.today().isoformat(), "viajes": hechos},
+        )
         return payload
 
     # -- historico de precios -------------------------------------------
@@ -337,6 +360,8 @@ class Store:
         hoy = date.today().isoformat()
         borrados = 0
         for f in self.stays_dir.glob("*.json"):
+            if f.name == "index.json":
+                continue
             try:
                 datos = json.loads(f.read_text(encoding="utf-8"))
             except json.JSONDecodeError:

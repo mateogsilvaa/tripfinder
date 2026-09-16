@@ -1092,6 +1092,22 @@ h1 em { font-size: 1.3em; }
 }
 .when.weekend b { color: var(--ink); }
 
+/* LOS VUELOS EN LOS QUE YA SE BUSCÓ CAMA.
+
+   Buscar alojamiento son tres minutos de workflow, y lo buscado queda
+   publicado para siempre: la fila tiene que decir que eso ya está hecho ANTES
+   de que la abras, o se vuelve a pedir lo que ya está.
+
+   Se marca con un filo en el margen y con la palabra donde ya se lee el resto
+   del viaje. Nada de una columna nueva: el ancho es justo lo que no sobra en
+   esta rejilla, y añadir una se come el nombre de la ciudad. */
+.brow.con-cama { box-shadow: inset 3px 0 0 var(--deep); }
+.when .cama-ok {
+  font-style: normal;
+  color: var(--deep);
+}
+.kicker-tag.cama-ok { color: var(--deep); }
+
 .airline { min-width: 0; }
 .airline small {
   display: block;
