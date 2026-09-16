@@ -2509,6 +2509,49 @@ h1 em { font-size: 1.3em; }
 
 .mundo { margin-top: 24px; }
 
+/* DE QUIÉN ES EL MAPA QUE SE MIRA.
+
+   Va arriba del todo y no escondido en un pie: si estás viendo el de otra
+   cuenta, eso cambia el significado de todo lo que hay debajo —las cifras, la
+   lista, el mapa— y enterarse después de marcar tres países es tarde. */
+.mundo-quien {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.mundo-quien label {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.mundo-quien select { max-width: 100%; }
+.mundo-comparar {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--fs-body-s);
+  color: var(--muted);
+}
+
+/* Y el mapa de otro se ve distinto, no solo lo pone: en cuanto sueltas el ojo
+   del selector, el color es lo único que queda diciéndolo. */
+.mundo.ajeno .mundo-mapa path.visitado { fill: var(--deep); }
+.mundo.ajeno .pais-chip.on {
+  border-color: var(--deep);
+  background: var(--deep);
+  color: var(--sobre-acento);
+}
+
+/* Lo que se guarda y dónde, dicho debajo del interruptor que lo decide. */
+.mundo-nota {
+  margin: 10px 0 0;
+  font-size: var(--fs-meta);
+  color: var(--muted);
+  max-width: 68ch;
+}
+
 .mundo-cifras {
   display: flex;
   align-items: baseline;

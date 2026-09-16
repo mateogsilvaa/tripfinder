@@ -1311,6 +1311,42 @@ def cmd_users(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_mundo(args: argparse.Namespace) -> int:
+    """El mapa de donde ha estado una cuenta: guardarlo, borrarlo o listarlos.
+
+    Lo llama `mundo.yml` con lo que manda la web. Guardar aqui es PUBLICAR —el
+    repositorio es publico y `data/` se copia entero a Pages—, y por eso la web
+    lo pregunta antes y deja quitarlo.
+    """
+    from . import mundo as M
+
+    if args.accion == "list":
+        indice = M.reindexar()
+        print(f"\n{len(indice['mundos'])} mapas guardados")
+        for m in indice["mundos"]:
+            print(f"  {m['o']:<12} {m['c']:>3} paises  {m['n'] or '(sin nombre)'}")
+        return 0
+
+    if not args.owner:
+        print("Hace falta --owner.")
+        return 1
+
+    try:
+        if args.accion == "clear":
+            borrado = M.borrar(args.owner)
+            print("Mapa borrado." if borrado else "Esa cuenta no tenia mapa guardado.")
+            return 0
+
+        datos = M.guardar(args.owner, args.paises or "", args.owner_name or "")
+    except ValueError as exc:
+        # Un `owner` que no tiene forma de cuenta no es un fallo del sistema:
+        # es un encargo mal hecho, y se dice sin tocar el disco.
+        print(str(exc))
+        return 1
+    print(f"Mapa de {datos['owner_name'] or datos['owner']}: {len(datos['paises'])} paises.")
+    return 0
+
+
 def cmd_claim(args: argparse.Namespace) -> int:
     """Le pone dueño a lo que no lo tiene. Lo lanza el panel."""
     from . import watch as W
@@ -1455,6 +1491,13 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--prefs", help="JSON: que correos quiere y cada cuanto")
     c.add_argument("--token", help="JSON: el token del sitio, ya cifrado por el navegador")
     c.set_defaults(func=cmd_users)
+
+    m = sub.add_parser("mundo", help="El mapa de paises de una cuenta")
+    m.add_argument("accion", choices=["set", "clear", "list"])
+    m.add_argument("--owner", help="Id de la cuenta")
+    m.add_argument("--owner-name", dest="owner_name", default="")
+    m.add_argument("--paises", default="", help="Codigos ISO separados por comas: ES,FR,IT")
+    m.set_defaults(func=cmd_mundo)
 
     cl = sub.add_parser("claim", help="Asigna a una cuenta lo que no tiene dueño")
     cl.add_argument("--owner", required=True, help="Id de la cuenta")

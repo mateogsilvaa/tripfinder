@@ -67,7 +67,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <header class="masthead">
   <div>
     <h1>Dónde<br><em>has estado.</em></h1>
-    <p class="lede">Marca los países en los que has puesto un pie. Se guarda en este navegador, con tu cuenta, y no sale de aquí: no se publica en ningún sitio ni se le manda a nadie.</p>
+    <p class="lede">Marca los países en los que has puesto un pie. Se guarda en tu cuenta, así que lo tienes igual en el móvil que en el portátil — y puedes mirar el de los demás.</p>
   </div>
   <dl class="stats" id="stats"></dl>
 </header>
@@ -93,6 +93,12 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <section id="mundo" class="mundo" hidden aria-labelledby="mundoTitulo">
   <h2 id="mundoTitulo" class="solo-lector">Tu mapa del mundo</h2>
 
+  <div class="mundo-quien">
+    <label for="mundoQuien">Mapa de</label>
+    <select id="mundoQuien"><option value="">El mío</option></select>
+    <p class="mundo-comparar" id="mundoComparar" hidden></p>
+  </div>
+
   <div class="mundo-cifras">
     <div class="mundo-marcador">
       <b id="mundoCifra">0</b>
@@ -112,8 +118,18 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <input type="checkbox" id="mundoSoloVuelo">
       <span>Marcar a dónde hay vuelo hoy</span>
     </label>
+    <label class="switch">
+      <input type="checkbox" id="mundoGuardar" checked>
+      <span>Guardarlo en mi cuenta</span>
+    </label>
     <button type="button" class="btn ghost small" id="mundoBorrar">Empezar de cero</button>
   </div>
+
+  <!-- Dicho con las palabras que son, y no una promesa que esta web no puede
+       cumplir: no hay servidor propio donde esconderlo, la única base de datos
+       que hay es un repositorio público. Quien lo prefiera solo en su
+       navegador, apaga el interruptor y el fichero se borra. -->
+  <p class="mundo-nota" id="mundoNota"></p>
 
   <p class="mundo-vuelos" id="mundoVuelos" hidden>
     <span id="mundoVuelosTxt"></span>

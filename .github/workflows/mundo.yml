@@ -1,0 +1,81 @@
+name: Guardar el mapa del mundo
+
+# La web manda un repository_dispatch con los paises marcados y esto los deja
+# escritos en data/mundos/<cuenta>.json. Guardar aqui es PUBLICAR: el
+# repositorio es publico y `data/` se copia entero a Pages. La web lo dice con
+# esas palabras antes de encender el interruptor, y apagarlo borra el fichero.
+
+on:
+  repository_dispatch:
+    types: [mundo]
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  # Un grupo por cuenta: dos personas marcando su mapa a la vez no tienen por
+  # que esperarse, y dos encargos de la MISMA cuenta si —el segundo lleva el
+  # mapa entero, asi que cancelar el primero no pierde nada.
+  group: mundo-${{ github.event.client_payload.owner || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  guardar:
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Aplicar el cambio sobre lo ultimo publicado
+        env:
+          PYTHONPATH: src
+          ACCION: ${{ github.event.client_payload.accion }}
+          OWNER: ${{ github.event.client_payload.owner }}
+          OWNER_NAME: ${{ github.event.client_payload.owner_name }}
+          PAISES: ${{ github.event.client_payload.paises }}
+        run: |
+          git config user.name  "tripfinder-bot"
+          git config user.email "actions@github.com"
+
+          aplicar() {
+            if [ "$ACCION" = "clear" ]; then
+              python -m tripfinder mundo clear --owner "$OWNER"
+            else
+              python -m tripfinder mundo set --owner "$OWNER" \
+                --owner-name "$OWNER_NAME" --paises "$PAISES"
+            fi
+          }
+
+          # Como en los seguimientos: cada intento se resincroniza con lo que ya
+          # esta publicado y vuelve a aplicar el cambio encima, para que dos
+          # runs a la vez no se pisen el push.
+          for intento in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            aplicar
+            git add data/mundos
+            if git diff --staged --quiet; then
+              echo "Sin cambios que guardar"
+              exit 0
+            fi
+            git commit -m "data: mapa del mundo"
+            if git push; then
+              echo "Guardado al intento $intento"
+              exit 0
+            fi
+            echo "Otro cambio llego antes; se reintenta"
+            sleep $((RANDOM % 6 + 2))
+          done
+          echo "No se pudo guardar tras varios intentos"
+          exit 1
+
+      - name: Redesplegar la web
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
