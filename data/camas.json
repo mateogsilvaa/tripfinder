@@ -30,6 +30,11 @@
       "noche": 27.0,
       "muestras": 3,
       "nombre": "Marrakech"
+    },
+    "WAW": {
+      "noche": 47.67,
+      "muestras": 3,
+      "nombre": "Varsovia"
     }
   },
   "paises": {
@@ -51,6 +56,10 @@
     },
     "Noruega": {
       "noche": 89.67,
+      "muestras": 3
+    },
+    "Polonia": {
+      "noche": 47.67,
       "muestras": 3
     }
   }
