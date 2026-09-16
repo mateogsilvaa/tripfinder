@@ -102,7 +102,39 @@ class Store:
             "continentes.json",
             {c: "".join(sorted(codigos)) for c, codigos in sorted(agrupado.items())},
         )
+        self._save_regions(crudo)
         return plano
+
+    def _save_regions(self, crudo: list[dict]) -> None:
+        """El mismo truco para las regiones: «los Balcanes», «los nórdicos».
+
+        Se deriva de `regiones.REGIONES`, que es la UNICA definicion: si se
+        escribieran a mano tambien en el navegador, el dia que se añada una
+        region la web y el backend dirian cosas distintas y nadie lo notaria
+        hasta que alguien filtrara y no le saliera nada.
+
+        Mismo formato que los continentes —codigos pegados de tres en tres—
+        por lo mismo: el mapa plano repetiria el nombre de la region una vez
+        por aeropuerto.
+        """
+        from .regiones import REGIONES, nombre_bonito
+
+        de_pais: dict[str, list[str]] = {}
+        for region, paises in REGIONES.items():
+            dentro = set(paises)
+            for a in crudo:
+                if a.get("code") and a.get("pais") in dentro:
+                    de_pais.setdefault(region, []).append(a["code"])
+
+        # `n` es como se enseña y `c` los codigos: la clave va sin tildes porque
+        # es lo que se teclea, y el desplegable no puede poner "El caucaso".
+        self._write(
+            "regiones.json",
+            {
+                r: {"n": nombre_bonito(r), "c": "".join(sorted(set(codigos)))}
+                for r, codigos in sorted(de_pais.items())
+            },
+        )
 
     # -- camas ------------------------------------------------------------
     def save_beds(self, minimo_muestras: int = 3) -> dict[str, Any]:
@@ -127,13 +159,32 @@ class Store:
         por_destino: dict[str, list[float]] = {}
         por_pais: dict[str, list[float]] = {}
         nombres: dict[str, str] = {}
+        # Y de paso, QUE VIAJES tienen ya la cama buscada. Se recorre la misma
+        # carpeta, asi que sale gratis, y es lo que permite que el tablon marque
+        # esas filas sin pedir un fichero por vuelo.
+        hechos: dict[str, dict[str, Any]] = {}
 
         for f in sorted(carpeta.glob("*.json")) if carpeta.exists() else []:
+            # El indice vive en la misma carpeta y no es una busqueda: sin esto
+            # se contaria a si mismo y aparecia un viaje llamado "index".
+            if f.name == "index.json":
+                continue
             try:
                 datos = json.loads(f.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 continue
             oferta = datos.get("offer") or {}
+            identificador = datos.get("offer_id") or f.stem
+            resumen = datos.get("summary") or {}
+            hechos[identificador] = {
+                "n": oferta.get("destination_name") or oferta.get("destination") or "",
+                "d": oferta.get("depart_date") or datos.get("checkin") or "",
+                "c": len(datos.get("stays") or []),
+                # El precio de la escapada entera, si se calculo. Con esto la
+                # fila puede decir el numero REAL sin abrir el panel: hasta
+                # ahora solo lo sabia quien ya lo habia abierto en esa sesion.
+                "t": round(float(resumen.get("total") or 0), 2),
+            }
             codigo = oferta.get("destination")
             if not codigo:
                 continue
@@ -181,6 +232,10 @@ class Store:
             },
         }
         self._write("camas.json", payload)
+        self._write(
+            "stays/index.json",
+            {"generated_at": date.today().isoformat(), "viajes": hechos},
+        )
         return payload
 
     # -- historico de precios -------------------------------------------
@@ -305,6 +360,8 @@ class Store:
         hoy = date.today().isoformat()
         borrados = 0
         for f in self.stays_dir.glob("*.json"):
+            if f.name == "index.json":
+                continue
             try:
                 datos = json.loads(f.read_text(encoding="utf-8"))
             except json.JSONDecodeError:

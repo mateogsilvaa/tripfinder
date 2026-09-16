@@ -104,6 +104,35 @@ export function recordarCama(id, offer) {
   }
 }
 
+/* Y las que ha buscado CUALQUIERA, que es lo que hay publicado.
+
+   `tf_camas` vive en tu navegador: se borra al limpiar el historial, no llega
+   a tu movil y no sabe nada de lo que buscaron los demas. Pero el resultado si
+   esta publicado —`data/stays/<id>.json`— y abrirlo es instantaneo. El indice
+   es la lista de esos ficheros, que escribe el backend de la misma pasada con
+   la que destila `camas.json`, asi que marcar una fila no cuesta una peticion
+   por vuelo. */
+export const CAMAS_PUBLICAS = {};
+
+export async function cargarCamasHechas() {
+  try {
+    const { viajes } = await fetchJSON("data/stays/index.json");
+    Object.entries(viajes || {}).forEach(([id, v]) => {
+      CAMAS_PUBLICAS[id] = v;
+      // Si el fichero trae el precio de la escapada entera, la fila ya puede
+      // decir el numero REAL sin abrir el panel: hasta ahora solo lo sabia
+      // quien lo hubiera abierto en esa misma sesion.
+      if (v && v.t > 0 && !ESCAPADAS_REALES[id]) ESCAPADAS_REALES[id] = { total: v.t };
+    });
+  } catch {
+    /* sin indice, solo se marcan las tuyas */
+  }
+}
+
+/* Si este vuelo ya tiene cama buscada: la tuya o la de cualquiera. */
+export const conCama = (id) =>
+  Boolean(id) && (Boolean(CAMAS_PUBLICAS[id]) || camasBuscadas().some((c) => c.id === id));
+
 /* Un viaje que ya ha pasado no hay donde dormirlo. */
 export const camasVivas = (hoy = new Date().toISOString().slice(0, 10)) =>
   camasBuscadas().filter((c) => !c.ida || c.ida >= hoy);

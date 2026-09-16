@@ -3,6 +3,7 @@
 import {
   $,
   MAX_VUELTAS,
+  MONTHS,
   POLL_EVERY_MS,
   SEARCH_OFFERS,
   esc,
@@ -134,10 +135,49 @@ const HINTS = {
   "any|weekend": "Un fin de semana donde sea: se recorren todos los findes del horizonte.",
   "any|exact": "Ese fin de semana concreto, a cualquier destino que haya.",
   "any|anytime": "Cualquier destino y cualquier fecha: lo más barato del horizonte.",
+  "any|mes": "Ese mes, donde sea: se mira día a día y sale lo más barato del mes.",
+  "any|mes-finde": "Los findes de ese mes, donde sea.",
+  "any|tramo": "Dentro de ese tramo, donde sea: se busca el mejor día que haya.",
   "one|weekend": "Ese destino, el finde que salga más barato de aquí a los meses que pongas.",
   "one|exact": "Ese destino en esas fechas exactas.",
   "one|anytime": "Ese destino, cualquier día de la semana.",
+  "one|mes": "Ese destino en ese mes: se mira día a día y sale el más barato.",
+  "one|mes-finde": "Ese destino, el finde de ese mes que salga más barato.",
+  "one|tramo": "Ese destino, el mejor día dentro del tramo que has marcado.",
 };
+
+/* Los modos de fecha flexible: un mes, un mes de findes, o un tramo. Los tres
+   mandan una VENTANA (`desde`/`hasta`) en vez de una fecha, que es el término
+   medio que faltaba entre saber el día exacto y no tener ni idea. */
+const CON_MES = new Set(["mes", "mes-finde"]);
+const FLEXIBLES = new Set(["mes", "mes-finde", "tramo"]);
+
+/* Los doce meses que vienen. El valor es `YYYY-MM` y no un nombre suelto:
+   «marzo» sin año es de este año o del que viene según cuándo lo mires. */
+function llenarMeses() {
+  const sel = $("#fMes");
+  if (!sel || sel.options.length) return;
+  const hoy = new Date();
+  const meses = [];
+  for (let m = 0; m < 12; m++) {
+    const d = new Date(hoy.getFullYear(), hoy.getMonth() + m, 1);
+    const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    meses.push(`<option value="${valor}">${MONTHS[d.getMonth()]} ${d.getFullYear()}</option>`);
+  }
+  sel.innerHTML = meses.join("");
+  // El mes en curso ya va medio ido: de casa se ofrece el que viene.
+  sel.selectedIndex = Math.min(1, sel.options.length - 1);
+}
+
+/* De `2027-03` al primer y último día del mes. El día 0 del mes SIGUIENTE es el
+   último del que se pide, y así no hay que saberse cuántos tiene febrero. */
+function mesEnTramo(valor) {
+  const [a, m] = (valor || "").split("-").map(Number);
+  if (!a || !m) return { desde: "", hasta: "" };
+  const ultimo = new Date(a, m, 0).getDate();
+  const mm = String(m).padStart(2, "0");
+  return { desde: `${a}-${mm}-01`, hasta: `${a}-${mm}-${ultimo}` };
+}
 
 function syncFinder() {
   if (!existe("#finderForm")) return;
@@ -145,15 +185,30 @@ function syncFinder() {
   const cuando = $("#fWhen").value;
   // Ida y vuelta comparten ya un solo control, asi que #returnWrap no existe.
   $("#destWrap").hidden = donde !== "one";
-  $("#departWrap").hidden = cuando !== "exact";
+  if (existe("#mesWrap")) {
+    llenarMeses();
+    $("#mesWrap").hidden = !CON_MES.has(cuando);
+  }
+  // El calendario vale para las dos cosas: con fechas exactas marca la ida y la
+  // vuelta, y con un tramo marca los dos extremos de la ventana. Lo que cambia
+  // es lo que significan, y eso lo dice el rótulo.
+  $("#departWrap").hidden = cuando !== "exact" && cuando !== "tramo";
+  if (existe("#departRot")) {
+    $("#departRot").textContent = cuando === "tramo" ? "Entre" : "Fechas";
+    // El calendario pinta lo mismo, pero lo que pide el segundo clic no es lo
+    // mismo: en fechas exactas es la vuelta y en un tramo es el final de la
+    // ventana. Decir «elige la vuelta» ahí es mentir.
+    $("#dateBtn").dataset.modo = cuando === "tramo" ? "tramo" : "fechas";
+  }
   $("#nightsWrap").hidden = cuando === "exact";
-  $("#monthsWrap").hidden = cuando === "exact";
+  // Con ventana, el horizonte sobra: ya has dicho hasta cuándo.
+  $("#monthsWrap").hidden = cuando === "exact" || FLEXIBLES.has(cuando);
   $("#finderHint").textContent = HINTS[`${donde}|${cuando}`] || "";
   // El calendario solo pinta cuando has dicho "fechas exactas". Esto vivia mas
   // abajo, reasignando `syncFinder` por encima de si misma: el efecto era que
   // el original quedaba enganchado dos veces al `change` y corria dos veces por
   // cada cambio. Aqui dentro se hace una sola vez y se lee de corrido.
-  if (existe("#cal") && cuando !== "exact") $("#cal").hidden = true;
+  if (existe("#cal") && cuando !== "exact" && cuando !== "tramo") $("#cal").hidden = true;
 }
 ["#fWhere", "#fWhen"].forEach((s) => on(s, "change", syncFinder));
 if (existe("#finderForm")) syncFinder();
@@ -182,6 +237,27 @@ on("#finderForm", "submit", async (e) => {
     $("#fDepart").focus();
     return;
   }
+  // Un tramo con un solo extremo no es un tramo. Se dice y no se lanza: ocho
+  // minutos de barrido para descubrir que faltaba una fecha es peor que un
+  // aviso ahora.
+  if (cuando === "tramo" && !($("#fDepart").value && $("#fReturn").value)) {
+    $("#finderHint").textContent = "Marca los dos extremos del tramo en el calendario.";
+    $("#cal").hidden = false;
+    $("#dateBtn").focus();
+    return;
+  }
+
+  /* La ventana en que se puede viajar. Un mes se convierte aquí en sus dos
+     extremos —el backend solo entiende fechas— y un tramo son los dos días que
+     se han marcado en el calendario. */
+  const ventana = CON_MES.has(cuando)
+    ? mesEnTramo($("#fMes").value)
+    : cuando === "tramo"
+    ? { desde: $("#fDepart").value, hasta: $("#fReturn").value }
+    : { desde: "", hasta: "" };
+  const mesTxt = CON_MES.has(cuando)
+    ? $("#fMes").selectedOptions[0]?.textContent.trim() || $("#fMes").value
+    : "";
 
   const personas = Number($("#fAdults").value) || 1;
   const cuandoTxt =
@@ -189,6 +265,12 @@ on("#finderForm", "submit", async (e) => {
       ? `${fmtDate($("#fDepart").value)}${
           $("#fReturn").value ? ` → ${fmtDate($("#fReturn").value)}` : ""
         }`
+      : cuando === "mes"
+      ? mesTxt
+      : cuando === "mes-finde"
+      ? `findes de ${mesTxt}`
+      : cuando === "tramo"
+      ? `${fmtDate(ventana.desde)} → ${fmtDate(ventana.hasta)}`
       : cuando === "weekend"
       ? `findes · ${$("#fMonths").value || 12} meses`
       : `${$("#fMonths").value || 12} meses`;
@@ -206,9 +288,22 @@ on("#finderForm", "submit", async (e) => {
     nights: $("#fNights").value.trim() || "2-3",
     months: $("#fMonths").value || "12",
     adults: $("#fAdults").value || "2",
-    weekend: cuando === "weekend" ? "si" : "no",
-    depart: cuando === "exact" ? $("#fDepart").value : "",
-    return_date: cuando === "exact" ? $("#fReturn").value : "",
+    weekend: cuando === "weekend" || cuando === "mes-finde" ? "si" : "no",
+    /* TODAS LAS FECHAS EN UNA SOLA PROPIEDAD. `repository_dispatch` admite
+       diez de primer nivel y con esto eran doce: el encargo no habría salido
+       nunca —lo para `dispatch` antes de la red— y quien buscara un mes se
+       habría quedado mirando. Agrupadas son una, como ya hace el seguimiento
+       con `viaje`.
+
+       Y van juntas porque son lo mismo contado con distinto grado de certeza:
+       `depart` es «salgo el 12»; `desde` es «puedo salir entre el 3 y el 19,
+       dime cuál sale mejor». */
+    fechas: {
+      depart: cuando === "exact" ? $("#fDepart").value : "",
+      return_date: cuando === "exact" ? $("#fReturn").value : "",
+      desde: ventana.desde,
+      hasta: ventana.hasta,
+    },
   };
 
   const aviso = (html) => ($("#searches").innerHTML = html + $("#searches").innerHTML);

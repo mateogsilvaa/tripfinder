@@ -766,6 +766,8 @@ def cmd_search(args: argparse.Namespace) -> int:
         adults=args.adults or cfg.party_size,
         depart=args.depart or "",
         return_date=getattr(args, "return") or "",
+        desde=args.desde or "",
+        hasta=args.hasta or "",
         owner=args.owner or "",
         owner_name=args.owner_name or "",
     )
@@ -818,7 +820,14 @@ def _search_markdown(resultado) -> str:
     lines = [
         f"### {req.label or req.destination}",
         "",
-        f"Hasta {req.months} meses vista · {req.nights_min}-{req.nights_max} noches"
+        (
+            f"Del {req.desde} al {req.hasta}"
+            if req.desde and req.hasta
+            else f"Desde el {req.desde}"
+            if req.desde
+            else f"Hasta {req.months} meses vista"
+        )
+        + f" · {req.nights_min}-{req.nights_max} noches"
         + (f" · maximo {req.max_price:.0f} €" if req.max_price else "")
         + (" · solo findes" if req.weekend_only else ""),
         "",
@@ -1302,6 +1311,42 @@ def cmd_users(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_mundo(args: argparse.Namespace) -> int:
+    """El mapa de donde ha estado una cuenta: guardarlo, borrarlo o listarlos.
+
+    Lo llama `mundo.yml` con lo que manda la web. Guardar aqui es PUBLICAR —el
+    repositorio es publico y `data/` se copia entero a Pages—, y por eso la web
+    lo pregunta antes y deja quitarlo.
+    """
+    from . import mundo as M
+
+    if args.accion == "list":
+        indice = M.reindexar()
+        print(f"\n{len(indice['mundos'])} mapas guardados")
+        for m in indice["mundos"]:
+            print(f"  {m['o']:<12} {m['c']:>3} paises  {m['n'] or '(sin nombre)'}")
+        return 0
+
+    if not args.owner:
+        print("Hace falta --owner.")
+        return 1
+
+    try:
+        if args.accion == "clear":
+            borrado = M.borrar(args.owner)
+            print("Mapa borrado." if borrado else "Esa cuenta no tenia mapa guardado.")
+            return 0
+
+        datos = M.guardar(args.owner, args.paises or "", args.owner_name or "")
+    except ValueError as exc:
+        # Un `owner` que no tiene forma de cuenta no es un fallo del sistema:
+        # es un encargo mal hecho, y se dice sin tocar el disco.
+        print(str(exc))
+        return 1
+    print(f"Mapa de {datos['owner_name'] or datos['owner']}: {len(datos['paises'])} paises.")
+    return 0
+
+
 def cmd_claim(args: argparse.Namespace) -> int:
     """Le pone dueño a lo que no lo tiene. Lo lanza el panel."""
     from . import watch as W
@@ -1381,6 +1426,11 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--any-day", action="store_true", help="No limitarse a fines de semana")
     b.add_argument("--depart", help="Fecha exacta de ida (YYYY-MM-DD)")
     b.add_argument("--return", dest="return", help="Fecha exacta de vuelta (YYYY-MM-DD)")
+    # El termino medio entre saber la fecha y no tener ni idea: "en marzo", "la
+    # semana del 3". Dentro del tramo se busca el mejor dia, que es lo que se
+    # quiere decir con fechas flexibles.
+    b.add_argument("--desde", help="Primer dia del tramo en que puedes viajar (YYYY-MM-DD)")
+    b.add_argument("--hasta", help="Ultimo dia del tramo (YYYY-MM-DD)")
     b.add_argument("--adults", type=int)
     b.add_argument("--summary-out")
     b.add_argument("--owner", default="", help="Id de la cuenta que la pide")
@@ -1441,6 +1491,13 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--prefs", help="JSON: que correos quiere y cada cuanto")
     c.add_argument("--token", help="JSON: el token del sitio, ya cifrado por el navegador")
     c.set_defaults(func=cmd_users)
+
+    m = sub.add_parser("mundo", help="El mapa de paises de una cuenta")
+    m.add_argument("accion", choices=["set", "clear", "list"])
+    m.add_argument("--owner", help="Id de la cuenta")
+    m.add_argument("--owner-name", dest="owner_name", default="")
+    m.add_argument("--paises", default="", help="Codigos ISO separados por comas: ES,FR,IT")
+    m.set_defaults(func=cmd_mundo)
 
     cl = sub.add_parser("claim", help="Asigna a una cuenta lo que no tiene dueño")
     cl.add_argument("--owner", required=True, help="Id de la cuenta")

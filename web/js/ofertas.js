@@ -3,6 +3,8 @@
 import {
   $,
   CONTINENTES,
+  NOMBRE_REGION,
+  REGIONES,
   DAYS,
   SEARCH_OFFERS,
   esc,
@@ -34,7 +36,7 @@ import {
 } from "./compartir.js";
 import { deltaHTML, favBtn, sincronizarFavs, wireFavs } from "./favoritos.js";
 import { HISTORIA, cargarHistoria, historiaHTML, minimoHTML } from "./historia.js";
-import { openStays } from "./alojamiento.js";
+import { cargarCamasHechas, conCama, openStays } from "./alojamiento.js";
 
 export let OFFERS = [];
 /* El día del levantamiento, para el rótulo del chollo. No es la fecha del
@@ -119,6 +121,10 @@ export async function init() {
     ponerCamas(null);
   }
 
+  // Y en cuales de estos vuelos ya se busco cama: se marcan en la fila, para no
+  // volver a pagar tres minutos de workflow por algo que ya esta hecho.
+  await cargarCamasHechas();
+
   try {
     const mapa = await fetchJSON("data/continentes.json");
     for (const [continente, codigos] of Object.entries(mapa)) {
@@ -128,10 +134,40 @@ export async function init() {
     }
     const presentes = [...new Set(OFFERS.map((o) => CONTINENTES[o.destination]).filter(Boolean))].sort();
     const hayLejos = OFFERS.some((o) => o.long_haul);
+
+    /* Y las regiones, que son el escalon que falta entre el continente —Europa
+       son 44 paises— y el pais suelto. Solo salen las que hoy tienen algun
+       vuelo: una lista con quince opciones de las que doce no dan nada es peor
+       que no tenerla. Se derivan del MISMO sitio que el backend
+       (`regiones.REGIONES` -> `data/regiones.json`), para que no puedan decir
+       cosas distintas. */
+    let conRegion = [];
+    try {
+      const mapa = await fetchJSON("data/regiones.json");
+      for (const [region, { n, c }] of Object.entries(mapa)) {
+        NOMBRE_REGION[region] = n;
+        for (let i = 0; i < c.length; i += 3) {
+          (REGIONES[c.slice(i, i + 3)] ||= []).push(region);
+        }
+      }
+      const vivas = new Set();
+      OFFERS.forEach((o) => (REGIONES[o.destination] || []).forEach((r) => vivas.add(r)));
+      conRegion = [...vivas].sort((a, b) =>
+        (NOMBRE_REGION[a] || a).localeCompare(NOMBRE_REGION[b] || b)
+      );
+    } catch {
+      /* sin regiones el filtro sigue siendo el de continentes de siempre */
+    }
+
     $("#cont").insertAdjacentHTML(
       "beforeend",
       (hayLejos ? '<option value="__lejos__">Otros continentes</option>' : "") +
-        presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("")
+        presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("") +
+        (conRegion.length
+          ? `<optgroup label="Regiones">${conRegion
+              .map((r) => `<option value="r:${esc(r)}">${esc(NOMBRE_REGION[r] || r)}</option>`)
+              .join("")}</optgroup>`
+          : "")
     );
   } catch {
     $("#cont").parentElement.hidden = true;
@@ -368,7 +404,12 @@ function currentList() {
     (o) =>
       o.price <= max &&
       (!soloFindes || o.weekend) &&
-      (lejos ? o.long_haul : !continente || CONTINENTES[o.destination] === continente) &&
+      (lejos
+        ? o.long_haul
+        : !continente ||
+          (continente.startsWith("r:")
+            ? (REGIONES[o.destination] || []).includes(continente.slice(2))
+            : CONTINENTES[o.destination] === continente)) &&
       (lejos || !o.long_haul) &&
       (!q ||
         `${o.destination_name} ${o.destination} ${o.destination_country}`.toLowerCase().includes(q))
@@ -455,6 +496,7 @@ function heroTicket(o) {
         <div class="ticket-top">
           <span class="kicker">chollo</span>
           <span class="kicker-tag">del día · ${esc(DIA_DEL_SCAN || "hoy")}</span>
+          ${conCama(o.id) ? '<span class="kicker-tag cama-ok">cama buscada</span>' : ""}
           ${favBtn(o)}
         </div>
         <h2 class="dest">${esc(o.destination_name || o.destination)}<small>${esc(sub)}</small></h2>
@@ -500,7 +542,8 @@ function heroTicket(o) {
         <div class="actions">
           ${compartirPrincipalHTML(o)}
           <a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
-          <button class="btn ghost" data-stay="${esc(o.id)}">Buscar alojamiento</button>
+          <button class="btn ${conCama(o.id) ? "deep-ghost" : "ghost"}" data-stay="${esc(o.id)}"
+            >${conCama(o.id) ? "Ver el alojamiento" : "Buscar alojamiento"}</button>
           ${
             o.airline_link
               ? `<a class="btn ghost" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
@@ -514,6 +557,11 @@ function heroTicket(o) {
 
 /* El resto, como el panel de salidas de un aeropuerto: una línea por vuelo. */
 export function boardRow(o, i) {
+  /* Si este vuelo ya tiene la cama buscada se marca, y fuerte: buscarla nueva
+     son tres minutos de workflow y aqui esta hecha, con sus precios, a un clic.
+     Es lo que mas cambia lo que haces con la fila, asi que no puede ser un
+     detalle escondido en el desplegable. */
+  const cama = conCama(o.id);
   // Si ida y vuelta caen en el mismo mes, el mes no se repite: "vie 13 nov → dom 15".
   const mismoMes = o.return_date && o.return_date.slice(0, 7) === o.depart_date.slice(0, 7);
   const vueltaTxt = o.return_date
@@ -527,7 +575,8 @@ export function boardRow(o, i) {
     ? ` → <b>${vueltaTxt}</b>${horaVuelta || " <i>(hora en el enlace)</i>"}`
     : "";
   return `
-    <div class="brow" id="offer-${esc(o.id)}" data-open="${esc(o.id)}" role="button" tabindex="0"
+    <div class="brow${cama ? " con-cama" : ""}" id="offer-${esc(o.id)}"
+         data-open="${esc(o.id)}" role="button" tabindex="0"
          style="animation-delay:${Math.min(i, 14) * 35}ms">
       ${favBtn(o)}
       <span class="dest-cell">
@@ -539,7 +588,11 @@ export function boardRow(o, i) {
         o.depart_date,
         true
       )}</b>${hora}${vuelta}${
-        o.nights ? `<small>${o.nights} noches</small>` : ""
+        o.nights || cama
+          ? `<small>${o.nights ? `${o.nights} noches` : ""}${
+              o.nights && cama ? " · " : ""
+            }${cama ? '<i class="cama-ok">cama buscada</i>' : ""}</small>`
+          : ""
       }</span>
       <span class="airline">${esc(o.airline || o.provider)}<small>${escalas(o)}${
         o.useful_hours ? ` · ${Math.round(o.useful_hours)} h de viaje` : ""
@@ -580,7 +633,8 @@ function detalleHTML(o) {
                Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
           : ""
       }
-      <button class="btn ghost" data-stay="${esc(o.id)}">Buscar alojamiento</button>
+      <button class="btn ${conCama(o.id) ? "deep-ghost" : "ghost"}" data-stay="${esc(o.id)}"
+        >${conCama(o.id) ? "Ver el alojamiento" : "Buscar alojamiento"}</button>
       ${
         edreamsURL(o)
           ? `<a class="btn ghost" href="${escURL(edreamsURL(o))}" target="_blank" rel="noopener"

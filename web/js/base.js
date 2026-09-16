@@ -115,5 +115,15 @@ export function pintarStats(html) {
 }
 
 export let CONTINENTES = {}; // IATA -> continente, para filtrar
+/* IATA -> regiones (varias: Grecia es Balcanes Y Mediterraneo oriental). El
+   escalon que falta entre el continente —Europa son 44 paises— y el pais
+   suelto, que es el que de verdad se usa al decidir un viaje. Se deriva del
+   mismo sitio que el backend: `regiones.REGIONES` -> `data/regiones.json`. */
+export const REGIONES = {};
+
+/* Y como se ENSEÑA cada una: la clave va sin tildes porque es lo que se teclea,
+   pero el desplegable no puede poner «El caucaso». Lo pone el backend, que es
+   donde estan definidas. */
+export const NOMBRE_REGION = {};
 export const SEARCH_OFFERS = {}; // ofertas de busquedas guardadas, por id
 

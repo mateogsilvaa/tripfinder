@@ -47,8 +47,12 @@ jobs:
           P_MONTHS: ${{ github.event.client_payload.months }}
           P_WEEKEND: ${{ github.event.client_payload.weekend }}
           P_ADULTS: ${{ github.event.client_payload.adults }}
-          P_DEPART: ${{ github.event.client_payload.depart }}
-          P_RETURN: ${{ github.event.client_payload.return_date }}
+          # Las fechas van agrupadas: `client_payload` solo admite diez
+          # propiedades de primer nivel y sueltas eran doce.
+          P_DEPART: ${{ github.event.client_payload.fechas.depart }}
+          P_RETURN: ${{ github.event.client_payload.fechas.return_date }}
+          P_DESDE: ${{ github.event.client_payload.fechas.desde }}
+          P_HASTA: ${{ github.event.client_payload.fechas.hasta }}
           P_OWNER: ${{ github.event.client_payload.owner }}
           P_OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
@@ -57,6 +61,7 @@ jobs:
             echo "dest=$P_DEST"; echo "label=$P_LABEL"; echo "max_price=$P_MAX"
             echo "nights=$P_NIGHTS"; echo "months=$P_MONTHS"; echo "weekend=$P_WEEKEND"
             echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
+            echo "desde=$P_DESDE"; echo "hasta=$P_HASTA"
             echo "owner=$P_OWNER"; echo "owner_name=$P_OWNER_NAME"
           } >> "$GITHUB_OUTPUT"
 
@@ -73,6 +78,8 @@ jobs:
           ADULTS: ${{ steps.parse.outputs.adults }}
           DEPART: ${{ steps.parse.outputs.depart }}
           RETURN_DATE: ${{ steps.parse.outputs.return_date }}
+          DESDE: ${{ steps.parse.outputs.desde }}
+          HASTA: ${{ steps.parse.outputs.hasta }}
           OWNER: ${{ steps.parse.outputs.owner }}
           OWNER_NAME: ${{ steps.parse.outputs.owner_name }}
         run: |
@@ -83,6 +90,9 @@ jobs:
           if [ -n "$ADULTS" ];    then args+=(--adults "$ADULTS"); fi
           if [ -n "$DEPART" ];    then args+=(--depart "$DEPART"); fi
           if [ -n "$RETURN_DATE" ]; then args+=(--return "$RETURN_DATE"); fi
+          # El tramo en que puedes viajar: "en marzo", "del 3 al 19".
+          if [ -n "$DESDE" ];     then args+=(--desde "$DESDE"); fi
+          if [ -n "$HASTA" ];     then args+=(--hasta "$HASTA"); fi
           # weekend: "no" busca cualquier dia de la semana
           if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
           # Quien la pide entra en el nombre del fichero, asi que la misma

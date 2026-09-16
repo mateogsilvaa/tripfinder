@@ -98,6 +98,47 @@ function hora(ms) {
     : "";
 }
 
+/* Las regiones van ARRIBA del todo y no mezcladas entre los paises: son lo mas
+   ancho que se puede elegir sin irse a un continente entero, y quien abre esto
+   sin un sitio en la cabeza es justo a quien le sirven. Se leen del mismo
+   fichero que el filtro del tablon, que lo escribe el backend desde su unica
+   definicion: si se escribieran aqui a mano, el dia que se añada una region la
+   web ofreceria una que la busqueda no entiende. */
+let REGIONES_LISTA = null;
+
+async function cargarRegiones() {
+  if (REGIONES_LISTA) return REGIONES_LISTA;
+  try {
+    const mapa = await fetchJSON("data/regiones.json");
+    REGIONES_LISTA = Object.entries(mapa)
+      .map(([clave, { n, c }]) => ({ clave, nombre: n, cuantos: Math.floor(c.length / 3) }))
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+  } catch {
+    REGIONES_LISTA = [];
+  }
+  return REGIONES_LISTA;
+}
+
+function regionesHTML(q) {
+  const lista = (REGIONES_LISTA || []).filter(
+    (r) => !q || r.nombre.toLowerCase().includes(q) || r.clave.includes(q)
+  );
+  if (!lista.length) return "";
+  return `
+    <div class="pais regiones">
+      <p class="regiones-rotulo">Regiones</p>
+      <div class="ciudades">
+        ${lista
+          .map(
+            (r) =>
+              `<button type="button" class="ciudad region" data-valor="${esc(r.nombre)}">
+                 ${esc(r.nombre)} <i>${r.cuantos}</i></button>`
+          )
+          .join("")}
+      </div>
+    </div>`;
+}
+
 async function cargarDestinos() {
   if (DESTINOS) return DESTINOS;
   let lista = [];
@@ -148,7 +189,8 @@ function pintarDestinos(filtro = "") {
         </div>`;
     })
     .join("");
-  $("#destList").innerHTML = html || '<p class="meta">Nada con ese nombre.</p>';
+  const todo = regionesHTML(q) + html;
+  $("#destList").innerHTML = todo || '<p class="meta">Nada con ese nombre.</p>';
   $("#destList")
     .querySelectorAll("[data-valor]")
     .forEach((b) => b.addEventListener("click", () => elegirDestino(b.dataset.valor)));
@@ -174,7 +216,9 @@ export function abrirDestinos(para = "fDest") {
     foco: () => $("#destSearch"),
     alCerrar: () => ($("#destModal").hidden = true),
   });
-  cargarDestinos().then(() => pintarDestinos($("#destSearch").value));
+  Promise.all([cargarRegiones(), cargarDestinos()]).then(() =>
+    pintarDestinos($("#destSearch").value)
+  );
 }
 
 function cerrarDestinos() {

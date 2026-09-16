@@ -118,7 +118,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <input type="range" id="price" min="10" max="400" step="5" value="200">
     </div>
     <div class="field">
-      <label for="cont">Continente</label>
+      <label for="cont">Zona</label>
       <select id="cont"><option value="">Todos</option></select>
     </div>
     <div class="field">
@@ -208,6 +208,9 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <span>¿Cuándo?</span>
         <select id="fWhen">
           <option value="weekend">Un finde cualquiera</option>
+          <option value="mes">Un mes entero</option>
+          <option value="mes-finde">Un mes, solo los findes</option>
+          <option value="tramo">Entre dos fechas</option>
           <option value="exact">Fechas exactas</option>
           <option value="anytime">Cualquier fecha</option>
         </select>
@@ -217,8 +220,12 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <button type="button" id="destBtn" class="date-btn">Elegir destino</button>
         <input id="fDest" type="hidden">
       </label>
+      <label class="celda" id="mesWrap" hidden>
+        <span>Mes</span>
+        <select id="fMes"></select>
+      </label>
       <label class="celda" id="departWrap" hidden>
-        <span>Fechas</span>
+        <span id="departRot">Fechas</span>
         <button type="button" id="dateBtn" class="date-btn">Elegir en el calendario</button>
         <input id="fDepart" type="hidden">
         <input id="fReturn" type="hidden">
