@@ -271,15 +271,19 @@
     "ryanair-MAD-KRK-20270115": {
       "price": 91.98,
       "date": "2026-09-14"
+    },
+    "ryanair-MAD-RAK-20270115": {
+      "price": 118.98,
+      "date": "2026-09-17"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-16",
-    "tytus.zasowski@gmail.com": "2026-09-16",
-    "pedrotic.cjn@gmail.com": "2026-09-16"
+    "mateogonsilva@gmail.com": "2026-09-17",
+    "tytus.zasowski@gmail.com": "2026-09-17",
+    "pedrotic.cjn@gmail.com": "2026-09-17"
   },
   "watch_digest": {
     "mateogonsilva@gmail.com": "2026-09-16",
-    "pedrotic.cjn@gmail.com": "2026-09-16"
+    "pedrotic.cjn@gmail.com": "2026-09-17"
   }
 }
