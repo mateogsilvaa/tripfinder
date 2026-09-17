@@ -345,6 +345,41 @@ function abrirPanel() {
   pintarLog();
   // La cola va detras del token: si no hay, no se pide nada y no se dice nada.
   pintarPeticiones();
+  asegurarBuzon();
+}
+
+/* ------------------------------------------------------------------ buzon
+
+   El par de claves por el que llegan las peticiones con su contraseña dentro.
+   Se hace UNA vez y solo hace falta la maestra, que es lo que se acaba de abrir
+   al entrar aquí. Se comprueba en cada apertura del panel porque es lo que
+   convierte "aprobar" en un clic: sin buzón, quien pide la cuenta no tiene
+   dónde meter su contraseña y volvemos a inventárnosla nosotros.
+
+   Si falla no se dice nada a gritos: el panel sigue funcionando como antes y
+   `nuevaCuenta` sigue preguntando la contraseña. */
+async function asegurarBuzon() {
+  if (!MAESTRA) return; // sin token del sitio todavía no hay nada que cerrar
+  let datos;
+  try {
+    datos = await tfLeerUsuarios(true);
+  } catch {
+    return;
+  }
+  const guardado = (datos.admin || {}).buzon || {};
+  // Ya hay uno Y se puede abrir con esta maestra: no se toca. Rehacerlo dejaría
+  // sin abrir las peticiones que ya estuvieran cerradas con el anterior.
+  if (guardado.pub && (await tfAbrirBuzon(MAESTRA, guardado.priv))) return;
+  try {
+    const nuevo = await tfNuevoBuzon();
+    const priv = await tfCerrarBuzon(MAESTRA, nuevo.privRaw);
+    const r = await tfDispatch("admin_buzon", { buzon: { pub: nuevo.pub, priv } });
+    $("#avisoCuentas").textContent = r.ok
+      ? "Buzón de peticiones creado: a partir de ahora quien pida una cuenta elige su contraseña y aprobarla es un clic."
+      : `No se pudo crear el buzón de peticiones (${r.reason}): las cuentas se siguen creando a mano.`;
+  } catch (err) {
+    $("#avisoCuentas").textContent = `No se pudo crear el buzón de peticiones: ${err.message}`;
+  }
 }
 
 /* --------------------------------------------------------- token del sitio
@@ -916,7 +951,22 @@ function leerPeticion(issue) {
     return m ? m[1].trim() : "";
   };
   const mPorque = /^Por qu[eé]:\s*\n([\s\S]*?)(?:\n\s*---|$)/mi.exec(cuerpo);
+  /* El sobre con el correo y la contraseña, si lo trae. Va en un bloque de
+     código para que GitHub no lo desordene y para que quien mire la issue vea
+     de un golpe que eso es una caja cerrada y no un dato suelto. */
+  let sellado = null;
+  const mSobre = /```tf-sobre\s*\n([\s\S]*?)\n```/i.exec(cuerpo);
+  if (mSobre) {
+    try {
+      const caja = JSON.parse(mSobre[1].trim());
+      if (caja && caja.k && caja.iv && caja.data) sellado = caja;
+    } catch {
+      /* alguien lo ha editado a mano: se trata como si no lo trajera */
+    }
+  }
   return {
+    sellado,
+    cuerpo,
     numero: issue.number,
     url: issue.html_url,
     autor: (issue.user || {}).login || "",
@@ -942,6 +992,75 @@ async function pedirAGitHub(ruta, opciones = {}) {
   });
   if (!r.ok) throw new Error(`GitHub contestó ${r.status}`);
   return r.status === 204 ? null : r.json();
+}
+
+/* APROBAR DE UN CLIC. Aquí están por fin las dos mitades: la clave maestra, que
+   se abrió al entrar en el panel, y la contraseña que eligió quien pidió la
+   cuenta, dentro del sobre. Con las dos se hacen el hash del login y su sobre
+   —lo que le deja abrir el token— en el mismo gesto, y la cuenta nace activa.
+
+   Antes esto era: inventar una contraseña, escribirla, mandarla, y salir a
+   decírsela por WhatsApp. */
+async function aprobarPeticion(p, boton) {
+  const aviso = $("#avisoCuentas");
+  if (!MAESTRA) {
+    aviso.textContent =
+      "El panel no tiene abierta la clave maestra: vuelve a entrar con la contraseña del panel.";
+    return;
+  }
+  boton.disabled = true;
+  aviso.textContent = `Abriendo la petición de ${p.nombre || p.user}…`;
+
+  const datos = await tfLeerUsuarios(true);
+  const privada = await tfAbrirBuzon(MAESTRA, ((datos.admin || {}).buzon || {}).priv);
+  const dentro = await tfAbrirSellado(privada, p.sellado);
+  if (!dentro || !dentro.pass) {
+    boton.disabled = false;
+    // Puede pasar de verdad: una petición cerrada con un buzón anterior. Se
+    // dice lo que hay que hacer, que es crearla a mano como toda la vida.
+    aviso.textContent =
+      "No se ha podido abrir el sobre de esa petición (¿es de un buzón anterior?). " +
+      "Créala a mano con «Crear la cuenta» y dale tú la contraseña.";
+    return;
+  }
+
+  aviso.textContent = `Creando la cuenta de ${p.nombre || p.user}…`;
+  const cred = await tfHash(dentro.pass);
+  const sobre = await tfHacerSobre(dentro.pass, MAESTRA);
+  const r = await tfDispatch("user_add", {
+    user: p.user.toLowerCase(),
+    name: p.nombre || p.user,
+    email: dentro.email || "",
+    ...cred,
+    sobre,
+  });
+  if (!r.ok) {
+    boton.disabled = false;
+    aviso.innerHTML = explicarFallo(r);
+    wireToken();
+    return;
+  }
+
+  /* La issue se cierra Y se le quita el sobre. Cerrarla sola dejaría el texto
+     cifrado publicado para siempre; no es legible sin la clave privada, pero lo
+     que no hace falta que siga ahí, no sigue ahí. El historial de ediciones de
+     GitHub lo conserva igual: por eso el sobre lleva SOLO la contraseña y el
+     correo, y nunca nada de la maestra. */
+  try {
+    const limpio = String(p.cuerpo || "").replace(/```tf-sobre\s*\n[\s\S]*?\n```/i, "(sobre abierto y retirado al aprobar la cuenta)");
+    await pedirAGitHub(`/issues/${p.numero}`, {
+      method: "PATCH",
+      body: JSON.stringify({ state: "closed", body: limpio }),
+    });
+  } catch {
+    /* la cuenta ya está creada: que no se pueda cerrar la issue no la deshace */
+  }
+  aviso.textContent =
+    `Cuenta de ${p.nombre || p.user} creada y activa (usuario "${p.user.toLowerCase()}"). ` +
+    "No tienes que darle ninguna contraseña: entra con la que eligió al pedirla. " +
+    "En un par de minutos estará publicada.";
+  pintarPeticiones();
+  pintarCuentas(true);
 }
 
 async function pintarPeticiones() {
@@ -986,7 +1105,12 @@ async function pintarPeticiones() {
         </div>
         <p class="peticion-porque">${esc(p.porque || "(no contó por qué)")}</p>
         <div class="peticion-acc">
-          <button class="btn primary small" type="button" data-crear="${p.numero}">Crear la cuenta</button>
+          ${
+            p.sellado
+              ? `<button class="btn primary small" type="button" data-aprobar="${p.numero}"
+                   title="Crea la cuenta con la contraseña que eligió: no hay que darle nada">Aprobar</button>`
+              : `<button class="btn primary small" type="button" data-crear="${p.numero}">Crear la cuenta</button>`
+          }
           <a class="btn ghost small" href="${esc(p.url)}" target="_blank" rel="noopener">Ver la petición</a>
           <button class="quitar" type="button" data-descartar="${p.numero}">descartar</button>
         </div>
@@ -994,6 +1118,12 @@ async function pintarPeticiones() {
       )
       .join("");
 
+  caja.querySelectorAll("[data-aprobar]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      const p = lista.find((x) => String(x.numero) === b.dataset.aprobar);
+      if (p) await aprobarPeticion(p, b);
+    })
+  );
   caja.querySelectorAll("[data-crear]").forEach((b) =>
     b.addEventListener("click", () => {
       const p = lista.find((x) => String(x.numero) === b.dataset.crear);

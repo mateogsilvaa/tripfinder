@@ -447,9 +447,48 @@ def set_admin(
             "Contrasena del panel cambiada sin rehacer su sobre: hasta que vuelvas "
             "a poner el token desde el panel, la web no podra escribir"
         )
+    # El buzon NO depende de esta contrasena: su privada esta cerrada con la
+    # clave maestra, que no cambia al cambiar la del panel. Si se perdiera aqui,
+    # las peticiones ya cerradas con el se quedarian sin poder abrirse y habria
+    # que volver a pedirlas.
+    if datos.get("admin", {}).get("buzon"):
+        cred["buzon"] = datos["admin"]["buzon"]
     datos["admin"] = cred
     _guardar(datos)
     log.info("Contrasena del panel actualizada")
+
+
+# ------------------------------------------------------------------- buzon
+def set_buzon(buzon: dict[str, Any]) -> None:
+    """El buzon por el que llegan las peticiones de cuenta, sin abrirlas nadie.
+
+    EL PROBLEMA QUE RESUELVE. Para que una cuenta quede activa hacen falta dos
+    cosas que nunca estan en el mismo sitio: la contrasena, que solo sabe quien
+    la pide, y la clave maestra, que solo tiene quien aprueba. De ahi que hasta
+    ahora aprobar una peticion fuera escribir a mano una contrasena e ir a
+    decirsela por otro lado.
+
+    Con esto, quien pide la cuenta cierra su contrasena y su correo con la clave
+    PUBLICA del buzon —que esta publicada, para eso es publica— y el panel los
+    abre con la privada. Aprobar pasa a ser un clic: el panel ya tiene las dos
+    mitades.
+
+    Lo que se guarda aqui: la publica en claro y la privada cifrada con la clave
+    maestra, que es exactamente la misma proteccion que ya tiene el token del
+    sitio. Este modulo no puede abrir ninguna de las dos, y ese es el punto.
+    """
+    datos = _cargar()
+    pub = str(buzon.get("pub") or "")
+    priv = buzon.get("priv") or {}
+    if not pub or not priv.get("data"):
+        raise ValueError("Un buzon necesita su clave publica y la privada cifrada")
+    datos.setdefault("admin", {})["buzon"] = {
+        "pub": pub,
+        "priv": {"iv": str(priv["iv"]), "data": str(priv["data"])},
+        "updated": _ahora(),
+    }
+    _guardar(datos)
+    log.info("Buzon de peticiones guardado")
 
 
 def comprobar_admin(password: str) -> bool:

@@ -13,13 +13,24 @@
    falta cuenta de GitHub— y se dice en la pantalla en vez de descubrirlo al
    final.
 
-   EL EMAIL NO SE PIDE AQUÍ, y eso es apartarse del diseño a propósito. Una
-   issue de un repositorio público la lee cualquiera y la rastrea cualquier bot.
-   Este proyecto ya tiene tomada esa decisión en el otro sentido: `users.json`
-   se publica SIN emails y hay un `grep` en el despliegue que falla si se cuela
-   una arroba. Pedir el email en un formulario que acaba en una issue pública
-   sería saltarse esa misma regla por otra puerta. Se pone luego, desde el
-   panel, cuando ya hay cuenta donde ponerlo. */
+   EL CORREO Y LA CONTRASEÑA VIAJAN CERRADOS. Una issue de un repositorio
+   público la lee cualquiera y la rastrea cualquier bot, y este proyecto ya
+   tiene tomada esa decisión en el otro sentido: `users.json` se publica SIN
+   correos y hay un `grep` en el despliegue que falla si se cuela una arroba.
+   Escribirlos en claro en la issue sería saltarse esa misma regla por otra
+   puerta.
+
+   Pero tampoco pueden faltar, porque sin ellos aprobar una cuenta no es
+   aprobar: es inventar una contraseña, escribirla a mano y salir a decírsela
+   por otro lado. Así que van dentro de un sobre cerrado con la clave PÚBLICA
+   del panel (`admin.buzon`), que está publicada para eso. Cualquiera puede
+   cerrar uno; abrirlo, solo quien tenga la privada, que vive cifrada con la
+   clave maestra. En la issue no hay más que base64.
+
+   Y si todavía no hay buzón publicado —una web recién montada, sin token—, el
+   formulario vuelve a lo de antes: sin correo ni contraseña, y el panel las
+   pregunta al crear la cuenta. Mejor eso que pedir una contraseña y mandarla a
+   una issue pública en claro. */
 
 import { $, esc, fetchJSON, on } from "./base.js";
 
@@ -27,6 +38,21 @@ const REPO = "mateogsilvaa/tripfinder";
 export const MAX_PORQUE = 240;
 
 let USUARIOS = null; // los que ya existen, del fichero publicado
+let BUZON = null; // la clave publica del panel, si la hay
+
+/* La clave con la que se cierra el sobre. Sin ella el formulario sigue
+   funcionando, solo que pidiendo menos: es un modo degradado de verdad, no un
+   error. */
+async function cargarBuzon() {
+  if (BUZON !== null) return BUZON;
+  try {
+    const d = await fetchJSON("data/users.json");
+    BUZON = ((d.admin || {}).buzon || {}).pub || "";
+  } catch {
+    BUZON = "";
+  }
+  return BUZON;
+}
 
 async function cargarUsuarios() {
   if (USUARIOS) return USUARIOS;
@@ -71,19 +97,26 @@ export function alternativas(user, nombre, cogidos) {
 
 /* El cuerpo de la issue. Va en texto plano y ordenado para que quien lo lea en
    el panel —o en GitHub— vea lo mismo en los dos sitios. */
-export function cuerpoPeticion({ nombre, user, porque }) {
-  return [
-    `Nombre: ${nombre}`,
-    `Usuario: ${user}`,
-    "",
-    "Por qué:",
-    porque,
-    "",
-    "---",
-    "Pedida desde la web. El email no se pide aquí a propósito: esta issue es",
-    "pública. Si hace falta para los avisos, se pone desde el panel al crear la",
-    "cuenta.",
-  ].join("\n");
+export function cuerpoPeticion({ nombre, user, porque, sellado = null }) {
+  const cola = sellado
+    ? [
+        "---",
+        "Pedida desde la web. Aquí abajo van el correo y la contraseña que ha",
+        "elegido, cerrados con la clave pública del panel: esta issue es pública",
+        "y en claro no puede ir nada. Solo los abre quien tenga la privada, y con",
+        "eso la cuenta queda activa de un clic, sin contraseñas de ida y vuelta.",
+        "",
+        "```tf-sobre",
+        JSON.stringify(sellado),
+        "```",
+      ]
+    : [
+        "---",
+        "Pedida desde la web. El correo y la contraseña no van aquí: esta issue",
+        "es pública y todavía no hay buzón publicado con el que cerrarlos. Se",
+        "ponen desde el panel al crear la cuenta.",
+      ];
+  return [`Nombre: ${nombre}`, `Usuario: ${user}`, "", "Por qué:", porque, "", ...cola].join("\n");
 }
 
 export function urlPeticion(datos) {
@@ -95,11 +128,14 @@ export function urlPeticion(datos) {
   );
 }
 
-function formHTML() {
+function formHTML(conBuzon) {
   return `
     <p class="pedir-lede">Las cuentas las da a mano quien lleva la web: es un sitio pequeño y
-      el token con el que se escribe es uno solo. Rellena esto y le llega al panel; cuando la
-      apruebe, te pasa la contraseña.</p>
+      el token con el que se escribe es uno solo. ${
+        conBuzon
+          ? "Elige aquí tu contraseña: cuando aprueben la cuenta ya podrás entrar con ella, sin que nadie te tenga que pasar nada."
+          : "Rellena esto y le llega al panel; cuando la apruebe, te pasa la contraseña."
+      }</p>
     <div class="pedir-campos">
       <label class="campo">
         <span>Nombre</span>
@@ -114,6 +150,30 @@ function formHTML() {
           Es con lo que entras.</span>
         <span class="pedir-sugerencias" id="pcSug" hidden></span>
       </label>
+      ${
+        conBuzon
+          ? `
+      <label class="campo">
+        <span>Tu correo <i>(opcional)</i></span>
+        <input id="pcEmail" type="email" placeholder="ana@ejemplo.com" autocomplete="email"
+          maxlength="120" spellcheck="false">
+        <span class="campo-pie">Solo para los avisos de chollos. Puedes dejarlo vacío y ponerlo
+          después desde tu cuenta.</span>
+      </label>
+      <label class="campo">
+        <span>Contraseña</span>
+        <input id="pcPass" type="password" autocomplete="new-password" maxlength="120">
+        <span class="campo-pie">De 8 caracteres o más. La eliges tú y no la ve nadie: viaja
+          cerrada y solo la abre el panel al aprobarte.</span>
+      </label>
+      <label class="campo">
+        <span>Repite la contraseña</span>
+        <input id="pcPass2" type="password" autocomplete="new-password" maxlength="120">
+        <span class="campo-pie" id="pcPassPie">Si no coinciden no se manda: aquí no hay «he
+          olvidado mi contraseña».</span>
+      </label>`
+          : ""
+      }
       <label class="campo">
         <span>Por qué deberían dejarte entrar</span>
         <textarea id="pcPorque" rows="4" maxlength="${MAX_PORQUE}"
@@ -128,13 +188,19 @@ function formHTML() {
       <button class="btn primary" type="button" id="pcMandar">Pedir la cuenta</button>
       <button class="btn ghost" type="button" id="pcEntrar">Ya tengo una: entrar</button>
     </div>
-    <p class="pedir-nota">La contraseña no se pide aquí: la pone quien aprueba la cuenta y te la
-      pasa. Se manda abriendo una issue en GitHub con tu cuenta de GitHub, así que <b>lo que
-      escribas queda publicado</b> junto a las demás peticiones.</p>
+    <p class="pedir-nota">${
+      conBuzon
+        ? `Se manda abriendo una issue en GitHub con tu cuenta de GitHub, así que <b>el nombre, el
+      usuario y el porqué quedan publicados</b> junto a las demás peticiones. El correo y la
+      contraseña <b>no</b>: van cerrados con la clave pública del panel y ahí solo se ve base64.`
+        : `La contraseña no se pide aquí: la pone quien aprueba la cuenta y te la pasa. Se manda
+      abriendo una issue en GitHub con tu cuenta de GitHub, así que <b>lo que escribas queda
+      publicado</b> junto a las demás peticiones.`
+    }</p>
     <p class="pedir-nota" id="pcMsg" role="status"></p>`;
 }
 
-function mandadaHTML(user) {
+function mandadaHTML(user, conPass = false) {
   return `
     <div class="pedir-hecha">
       <h3>Te falta un toque: dale a «Submit new issue».</h3>
@@ -142,8 +208,11 @@ function mandadaHTML(user) {
         cuanto la publiques aparece en el panel de quien lleva la web.</p>
       <p class="meta">No podemos publicarla por ti: para escribir en el repositorio hace falta
         una cuenta, y la tuya es justo la que estás pidiendo.</p>
-      <p class="meta">Cuando la apruebe te pasará la contraseña por donde te haya dicho; esta web
-        no manda correos a quien todavía no tiene cuenta.</p>
+      <p class="meta">${
+        conPass
+          ? "Cuando la apruebe, tu cuenta queda activa con la contraseña que acabas de elegir: no hay que esperar a que nadie te mande nada."
+          : "Cuando la apruebe te pasará la contraseña por donde te haya dicho; esta web no manda correos a quien todavía no tiene cuenta."
+      }</p>
       <div class="pedir-acc">
         <a class="btn primary" href="./">Ver los chollos mientras</a>
         <span class="meta">El tablón se ve sin cuenta: es lo mismo para todo el mundo.</span>
@@ -192,17 +261,37 @@ async function revisarUsuario() {
   );
 }
 
-export function abrirPedirCuenta() {
+export async function abrirPedirCuenta() {
   const caja = $("#pedirCuenta");
   if (!caja) return;
-  $("#pedirBody").innerHTML = formHTML();
+  /* El formulario se pinta DOS veces a propósito: primero el de siempre, para
+     que la ventana se abra al momento, y luego con los campos de contraseña en
+     cuanto se sabe que hay buzón. Esperar a la red con el diálogo en blanco se
+     nota; que aparezcan dos campos más, no. */
+  $("#pedirBody").innerHTML = formHTML(false);
   caja.hidden = false;
   tfAbrirDialogo(caja, {
     foco: () => $("#pcNombre"),
     alCerrar: () => (caja.hidden = true),
   });
   cargarUsuarios();
+  atarForm(caja);
 
+  if (await cargarBuzon()) {
+    const antes = {
+      nombre: $("#pcNombre").value,
+      user: $("#pcUser").value,
+      porque: $("#pcPorque").value,
+    };
+    $("#pedirBody").innerHTML = formHTML(true);
+    $("#pcNombre").value = antes.nombre;
+    $("#pcUser").value = antes.user;
+    $("#pcPorque").value = antes.porque;
+    atarForm(caja);
+  }
+}
+
+function atarForm(caja) {
   $("#pcUser").addEventListener("input", revisarUsuario);
   $("#pcPorque").addEventListener("input", (e) => {
     $("#pcCuenta").textContent = `${e.target.value.length}/${MAX_PORQUE}`;
@@ -228,8 +317,27 @@ async function mandar() {
     return fallo(msg, "Cuenta un poco quién eres: quien aprueba esto conoce a la gente que entra.");
   }
 
-  window.open(urlPeticion({ nombre, user, porque }), "_blank", "noopener");
-  $("#pedirBody").innerHTML = mandadaHTML(user);
+  /* El sobre: correo y contraseña cerrados con la clave pública del panel. Si
+     algo falla aquí NO se manda la petición a medias — una cuenta creada con
+     una contraseña que el que la pidió no conoce es peor que no crearla. */
+  let sellado = null;
+  const pass = $("#pcPass") ? $("#pcPass").value : "";
+  if ($("#pcPass")) {
+    if (pass.length < 8) return fallo(msg, "La contraseña, de 8 caracteres o más.");
+    if (pass !== $("#pcPass2").value) return fallo(msg, "Las dos contraseñas no son la misma.");
+    const email = $("#pcEmail").value.trim();
+    if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return fallo(msg, "Ese correo no parece un correo. Déjalo vacío si no quieres avisos.");
+    }
+    try {
+      sellado = await tfSellar(await cargarBuzon(), { email, pass });
+    } catch (err) {
+      return fallo(msg, `No se ha podido cerrar el sobre (${err.message}). Prueba a recargar.`);
+    }
+  }
+
+  window.open(urlPeticion({ nombre, user, porque, sellado }), "_blank", "noopener");
+  $("#pedirBody").innerHTML = mandadaHTML(user, Boolean(sellado));
 }
 
 function fallo(msg, texto) {

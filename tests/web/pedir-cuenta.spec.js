@@ -53,9 +53,14 @@ test("el formulario pide lo que pide el diseño", async ({ page }) => {
 /* El email NO se pide, y es apartarse del diseño a propósito: la petición acaba
    en una issue pública, y este proyecto ya publica `users.json` sin emails con
    un grep en el despliegue que falla si se cuela una arroba. */
-test("el email no se pide aquí, y se dice por qué", async ({ page }) => {
+/* Estas cuentas de ejemplo no tienen buzón publicado (`admin: {}`), que es el
+   caso de una web recién montada: sin clave maestra no hay con qué cerrar una
+   contraseña, así que no se pide ninguna. Lo que pasa CON buzón —correo y
+   contraseña, cerrados— vive en `buzon.spec.js`. */
+test("sin buzón no se pide ni correo ni contraseña, y se dice por qué", async ({ page }) => {
   await abrir(page);
   await expect(page.locator("#pedirBody")).not.toContainText("Email");
+  await expect(page.locator("#pcPass")).toHaveCount(0);
   await expect(page.locator(".pedir-nota").first()).toContainText("queda publicado");
 });
 
