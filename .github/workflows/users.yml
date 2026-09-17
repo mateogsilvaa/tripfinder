@@ -18,6 +18,7 @@ on:
       - user_remove
       - user_passwd
       - user_prefs
+      - admin_buzon
       - user_enable
       - user_disable
       - admin_password
@@ -61,6 +62,7 @@ jobs:
           SOBRE: ${{ toJSON(github.event.client_payload.sobre) }}
           PREFS: ${{ toJSON(github.event.client_payload.prefs) }}
           TOKEN: ${{ toJSON(github.event.client_payload.token) }}
+          BUZON: ${{ toJSON(github.event.client_payload.buzon) }}
           OWNER: ${{ github.event.client_payload.owner }}
           OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
@@ -89,6 +91,11 @@ jobs:
                 ;;
               site_token)
                 python -m tripfinder users site-token --token "$TOKEN" --sobre "$SOBRE"
+                ;;
+              admin_buzon)
+                # El buzon por el que llegan las peticiones: la clave publica en
+                # claro y la privada cifrada con la maestra. Aqui no se abre nada.
+                python -m tripfinder users buzon --buzon "$BUZON"
                 ;;
               claim)
                 python -m tripfinder claim --owner "$OWNER" --owner-name "$OWNER_NAME"

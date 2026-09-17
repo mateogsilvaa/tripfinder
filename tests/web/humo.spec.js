@@ -997,10 +997,13 @@ test.describe("el panel de administración en un móvil", () => {
     await page.fill("#aPass", "otraclavelarga2");
     await page.click("#formModal button[type=submit]");
     await expect(page.locator("#modalMsg")).toHaveCount(0, { timeout: 25000 });
-    expect(enviados).toHaveLength(1);
-    expect(enviados[0].event_type).toBe("admin_password");
-    expect(enviados[0].client_payload.hash).toBeTruthy();
-    expect(enviados[0].client_payload.sobre.data).toBeTruthy();
+    /* Se busca el encargo por su nombre y no se da por hecho que es el único:
+       al abrir el panel también puede salir el del buzón de peticiones, que es
+       otra cosa y se prueba en `buzon.spec.js`. */
+    const cambio = enviados.find((e) => e.event_type === "admin_password");
+    expect(cambio, `no salió admin_password: ${enviados.map((e) => e.event_type)}`).toBeTruthy();
+    expect(cambio.client_payload.hash).toBeTruthy();
+    expect(cambio.client_payload.sobre.data).toBeTruthy();
   });
 
   /* EL FALLO QUE NO SE VE. `mandar()` escribe el resultado en `#avisoCuentas`,

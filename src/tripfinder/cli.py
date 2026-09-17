@@ -1291,6 +1291,17 @@ def cmd_users(args: argparse.Namespace) -> int:
         print(f"Escrito {destino} sin emails.")
         return 0
 
+    if args.accion == "buzon":
+        # La publica en claro y la privada cifrada con la clave maestra: aqui
+        # nunca hay nada que se pueda abrir, igual que con el token del sitio.
+        caja = _json_arg(args.buzon, "buzon")
+        if not caja or not caja.get("pub") or not (caja.get("priv") or {}).get("data"):
+            print("Hace falta --buzon con la clave publica y la privada cifrada.")
+            return 1
+        U.set_buzon(caja)
+        print("Buzon de peticiones guardado.")
+        return 0
+
     if args.accion == "site-token":
         # Lo que llega es el token ya cifrado por el navegador con la clave
         # maestra. Ni este proceso ni el log de Actions lo ven en claro.
@@ -1475,7 +1486,7 @@ def build_parser() -> argparse.ArgumentParser:
         "accion",
         choices=[
             "add", "list", "remove", "passwd", "prefs",
-            "enable", "disable", "set-admin", "site-token", "publish",
+            "enable", "disable", "set-admin", "site-token", "buzon", "publish",
         ],
     )
     c.add_argument("--out", help="publish: donde escribir el users.json sin emails")
@@ -1490,6 +1501,7 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--sobre", help="JSON: la clave maestra cifrada con su contrasena")
     c.add_argument("--prefs", help="JSON: que correos quiere y cada cuanto")
     c.add_argument("--token", help="JSON: el token del sitio, ya cifrado por el navegador")
+    c.add_argument("--buzon", help="JSON: el buzon de peticiones (publica + privada cifrada)")
     c.set_defaults(func=cmd_users)
 
     m = sub.add_parser("mundo", help="El mapa de paises de una cuenta")

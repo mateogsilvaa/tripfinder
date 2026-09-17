@@ -166,6 +166,90 @@ async function tfCerrarToken(maestraB64, token) {
   return tfCifrar(clave, token);
 }
 
+/* -------------------------------------------------------------------- buzon
+
+   EL PROBLEMA. Para que una cuenta nazca ACTIVA hacen falta dos cosas que nunca
+   estan en el mismo sitio: la contrasena, que solo sabe quien pide la cuenta, y
+   la clave maestra, que solo tiene quien la aprueba. Sin las dos no hay sobre, y
+   sin sobre la cuenta entra en la web pero no puede lanzar ni una busqueda. De
+   ahi que aprobar fuera: inventar una contrasena, escribirla a mano y salir a
+   decirsela por otro lado.
+
+   LA SOLUCION. Un buzon: un par de claves RSA-OAEP. La publica va publicada
+   —para eso es publica— y con ella cualquiera puede CERRAR un sobre para el
+   panel, pero nadie puede abrirlo. Quien pide la cuenta mete ahi dentro su
+   correo y su contrasena; el panel, que tiene la privada, los saca al aprobar y
+   ya puede hacer las dos mitades de una vez. Aprobar es un clic.
+
+   La privada se guarda cifrada con la clave maestra: la misma proteccion que ya
+   tiene el token del sitio, ni mas ni menos.
+
+   Por que hibrido y no RSA a pelo: RSA-2048 cifra 190 bytes y una contrasena
+   larga con un correo largo se acerca demasiado a ese borde. Se cifra con una
+   AES-GCM de usar y tirar y se manda esa clave dentro del RSA, que es lo que
+   hace todo el mundo y no tiene limite practico. */
+const TF_RSA = { name: "RSA-OAEP", hash: "SHA-256" };
+
+async function tfNuevoBuzon() {
+  if (!tfCryptoOK()) throw new Error("Este navegador no puede cifrar aquí (hace falta https).");
+  const par = await crypto.subtle.generateKey(
+    { ...TF_RSA, modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]) },
+    true,
+    ["encrypt", "decrypt"]
+  );
+  return {
+    pub: tfB64(await crypto.subtle.exportKey("spki", par.publicKey)),
+    privRaw: tfB64(await crypto.subtle.exportKey("pkcs8", par.privateKey)),
+  };
+}
+
+/* La privada, cerrada con la clave maestra para poder publicarla sin miedo. */
+async function tfCerrarBuzon(maestraB64, privRaw) {
+  const clave = await crypto.subtle.importKey(
+    "raw", tfDeB64(maestraB64), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]
+  );
+  return tfCifrar(clave, privRaw);
+}
+
+async function tfAbrirBuzon(maestraB64, priv) {
+  if (!maestraB64 || !priv || !priv.data) return null;
+  try {
+    const clave = await crypto.subtle.importKey(
+      "raw", tfDeB64(maestraB64), { name: "AES-GCM" }, false, ["encrypt", "decrypt"]
+    );
+    const pkcs8 = await tfDescifrar(clave, priv);
+    return await crypto.subtle.importKey("pkcs8", tfDeB64(pkcs8), TF_RSA, false, ["decrypt"]);
+  } catch {
+    return null;
+  }
+}
+
+/* Cerrar algo PARA el panel. Lo puede hacer cualquiera: esa es la gracia. */
+async function tfSellar(pubB64, objeto) {
+  if (!tfCryptoOK()) throw new Error("Este navegador no puede cifrar aquí (hace falta https).");
+  const publica = await crypto.subtle.importKey("spki", tfDeB64(pubB64), TF_RSA, false, ["encrypt"]);
+  const sesion = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt"]);
+  const caja = await tfCifrar(sesion, JSON.stringify(objeto));
+  const cruda = await crypto.subtle.exportKey("raw", sesion);
+  return {
+    k: tfB64(await crypto.subtle.encrypt(TF_RSA, publica, cruda)),
+    iv: caja.iv,
+    data: caja.data,
+  };
+}
+
+/* Y abrirlo, que solo puede el panel. Devuelve null si no cuadra. */
+async function tfAbrirSellado(privada, sellado) {
+  if (!privada || !sellado || !sellado.k || !sellado.data) return null;
+  try {
+    const cruda = await crypto.subtle.decrypt(TF_RSA, privada, tfDeB64(sellado.k));
+    const sesion = await crypto.subtle.importKey("raw", cruda, { name: "AES-GCM" }, false, ["decrypt"]);
+    return JSON.parse(await tfDescifrar(sesion, sellado));
+  } catch {
+    return null;
+  }
+}
+
 /* ------------------------------------------------------------- las cuentas */
 let TF_USERS_CACHE = null;
 
