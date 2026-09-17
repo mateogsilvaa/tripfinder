@@ -370,15 +370,29 @@ async function asegurarBuzon() {
   // Ya hay uno Y se puede abrir con esta maestra: no se toca. Rehacerlo dejaría
   // sin abrir las peticiones que ya estuvieran cerradas con el anterior.
   if (guardado.pub && (await tfAbrirBuzon(MAESTRA, guardado.priv))) return;
+  /* Esto pasa SOLO, sin que nadie le haya dado a nada. Así que cuando sale mal
+     no se planta encima de lo que estuvieras leyendo: va al registro, que es
+     donde se miran las cosas que fallaron por su cuenta. Cuando sale bien sí se
+     dice, porque cambia lo que puedes hacer a partir de ahora. */
+  const fallo = (motivo) => {
+    if (typeof tfApuntar === "function") tfApuntar("buzon", "no se pudo crear el buzón", motivo);
+    if (!$("#avisoCuentas").textContent) {
+      $("#avisoCuentas").textContent =
+        `No se pudo crear el buzón de peticiones (${motivo}): las cuentas se siguen creando a mano.`;
+    }
+  };
   try {
     const nuevo = await tfNuevoBuzon();
     const priv = await tfCerrarBuzon(MAESTRA, nuevo.privRaw);
     const r = await tfDispatch("admin_buzon", { buzon: { pub: nuevo.pub, priv } });
-    $("#avisoCuentas").textContent = r.ok
-      ? "Buzón de peticiones creado: a partir de ahora quien pida una cuenta elige su contraseña y aprobarla es un clic."
-      : `No se pudo crear el buzón de peticiones (${r.reason}): las cuentas se siguen creando a mano.`;
+    if (r.ok) {
+      $("#avisoCuentas").textContent =
+        "Buzón de peticiones creado: a partir de ahora quien pida una cuenta elige su contraseña y aprobarla es un clic.";
+    } else {
+      fallo(r.reason);
+    }
   } catch (err) {
-    $("#avisoCuentas").textContent = `No se pudo crear el buzón de peticiones: ${err.message}`;
+    fallo(err.message);
   }
 }
 
