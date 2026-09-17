@@ -925,10 +925,22 @@ test.describe("el panel de administración en un móvil", () => {
     await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
     const d = await page.evaluate(async (clave) => {
       const maestra = "bWFlc3RyYS1kZS1tZW50aXJhLTMyLWJ5dGVzLWFxdWk=";
-      return { cred: await tfHash(clave), sobre: await tfHacerSobre(clave, maestra) };
+      /* Y su buzón, hecho con las funciones de la página igual que el sobre.
+         No es adorno: el panel comprueba al abrirse que hay uno que pueda
+         abrir, y si no lo hay lo crea, lo que manda un encargo a GitHub.
+         Sin esto, ese encargo aparece —o no— a media prueba según lo que
+         tarde en generar una clave RSA, y las de aquí abajo cuentan encargos.
+         Un panel que ya ha estado abierto alguna vez tiene buzón: eso es lo
+         que se imita. */
+      const buzon = await tfNuevoBuzon();
+      return {
+        cred: await tfHash(clave),
+        sobre: await tfHacerSobre(clave, maestra),
+        buzon: { pub: buzon.pub, priv: await tfCerrarBuzon(maestra, buzon.privRaw) },
+      };
     }, CLAVE);
     const users = {
-      admin: { ...d.cred, sobre: d.sobre },
+      admin: { ...d.cred, sobre: d.sobre, buzon: d.buzon },
       site: { token: { iv: "x", data: "y" } },
       users: [{ id: "u-1", user: "mateo", name: "Mateo", active: true, tiene_email: true,
                 prefs: {}, ...d.cred, sobre: d.sobre }],
@@ -1000,6 +1012,8 @@ test.describe("el panel de administración en un móvil", () => {
     /* Se busca el encargo por su nombre y no se da por hecho que es el único:
        al abrir el panel también puede salir el del buzón de peticiones, que es
        otra cosa y se prueba en `buzon.spec.js`. */
+    // Por su nombre, no por ser el único: el panel puede mandar el del buzón
+    // de peticiones al abrirse, que es otra cosa (`buzon.spec.js`).
     const cambio = enviados.find((e) => e.event_type === "admin_password");
     expect(cambio, `no salió admin_password: ${enviados.map((e) => e.event_type)}`).toBeTruthy();
     expect(cambio.client_payload.hash).toBeTruthy();
@@ -1043,7 +1057,8 @@ test.describe("el panel de administración en un móvil", () => {
     await page.fill("#aPass", "otraclavelarga2");
     await page.click("#formModal button[type=submit]");
     await expect(page.locator("#formModal #tokenInput")).toBeVisible({ timeout: 25000 });
-    expect(enviados).toHaveLength(0);
+    // Sin token no sale NADA: ni esto ni el buzón, que el panel ya tiene.
+    expect(enviados.map((e) => e.event_type)).toEqual([]);
 
     await page.fill("#formModal #tokenInput", "ghp_pegado_a_mano");
     await page.click("#formModal #tokenSave");

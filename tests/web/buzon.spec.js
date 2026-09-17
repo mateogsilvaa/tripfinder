@@ -338,6 +338,16 @@ test.describe("el panel", () => {
     return { enviados, parches, buzon };
   }
 
+  test("con un buzón que se puede abrir, el panel no hace otro", async ({ page }) => {
+    /* Rehacerlo dejaría sin abrir las peticiones que ya estuvieran cerradas con
+       el anterior: la contraseña que eligieron se perdería y habría que volver
+       a pedírsela. Y además manda un encargo —un workflow y un commit— cada vez
+       que se abre el panel. */
+    const { enviados } = await conPanel(page);
+    await page.waitForTimeout(3000);
+    expect(enviados.map((e) => e.event_type)).toEqual([]);
+  });
+
   test("la petición con sobre se aprueba, no se rellena a mano", async ({ page }) => {
     await conPanel(page);
     await expect(page.locator("[data-aprobar]")).toBeVisible();
