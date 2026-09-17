@@ -1,0 +1,28 @@
+{
+  "slug": "mad-elsudesteasitico-710-350-20270719-20270831-libre-1p-bccb1f1e",
+  "label": "El Sudeste Asiático · 19 jul → 31 ago · hasta 350 € · 1 pers.",
+  "request": {
+    "destination": "El Sudeste Asiático",
+    "label": "El Sudeste Asiático · 19 jul → 31 ago · hasta 350 € · 1 pers.",
+    "max_price": 350.0,
+    "nights_min": 7,
+    "nights_max": 10,
+    "months": 12,
+    "weekend_only": false,
+    "adults": 1,
+    "origin": "MAD",
+    "depart": "",
+    "return_date": "",
+    "desde": "2027-07-19",
+    "hasta": "2027-08-31",
+    "owner": "u-bccb1f1e",
+    "owner_name": "",
+    "slug": "mad-elsudesteasitico-710-350-20270719-20270831-libre-1p-bccb1f1e"
+  },
+  "generated_at": "2026-09-17",
+  "errors": [],
+  "count": 0,
+  "owner": "u-bccb1f1e",
+  "owner_name": "",
+  "offers": []
+}
