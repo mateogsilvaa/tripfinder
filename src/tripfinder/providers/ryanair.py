@@ -235,10 +235,17 @@ class RyanairProvider(FlightProvider):
         if not arr.get("iataCode") or not out.get("departureDate"):
             return None
 
+        # El total de ida y vuelta lo da Ryanair en `summary`. Cuando no viene,
+        # se suma a mano — y entonces hacen falta LAS DOS MITADES: con un
+        # `.get("value", 0)` para la vuelta, una respuesta sin tramo de regreso
+        # publicaba un viaje de ida y vuelta al precio de la ida. Es el mismo
+        # fallo que se arreglo en Wizz, y el mismo cero silencioso.
         summary_price = (fare.get("summary") or {}).get("price") or {}
         price = summary_price.get("value")
         if price is None:
-            price = (out.get("price") or {}).get("value", 0) + (back.get("price") or {}).get("value", 0)
+            ida = (out.get("price") or {}).get("value")
+            vuelta = (back.get("price") or {}).get("value")
+            price = ida + vuelta if ida and vuelta else None
         if not price:
             return None
 
