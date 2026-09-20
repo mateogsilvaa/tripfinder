@@ -53,6 +53,32 @@ def _nombre(iata: str) -> tuple[str, str]:
     return _mundial(iata)
 
 
+def _importe(vuelo: dict) -> float | None:
+    """Lo que cuesta ese dia, o None si Wizz no da precio.
+
+    AQUI ESTABA EL FALLO QUE HACIA QUE UN VIAJE COSTARA SOLO LA IDA. El
+    `timetable` devuelve TODOS los dias de la ventana, tambien aquellos en los
+    que no vuela o no queda plaza, y esos vienen con el objeto `price` puesto
+    pero con el importe a cero o a nulo. Filtrar por "trae precio" los dejaba
+    pasar, y despues `(ida + (vuelta or 0))` daba un total que era exactamente
+    la tarifa de ida: un viaje de ida y vuelta publicado al precio de la mitad.
+
+    Salia barato, o sea que ganaba el desempate por ruta y se colocaba arriba
+    del tablon. Justo los que mas se miran.
+
+    Por eso esto devuelve None y no 0: un cero se suma sin protestar; un None
+    hay que mirarlo.
+    """
+    precio = vuelo.get("price")
+    if not isinstance(precio, dict):
+        return None
+    try:
+        importe = float(precio.get("amount") or 0)
+    except (TypeError, ValueError):
+        return None
+    return importe if importe > 0 else None
+
+
 def _sesion():
     """Sesion con huella de Chrome. Sin esto Wizz contesta 403."""
     from curl_cffi import requests as cr
@@ -216,9 +242,11 @@ class WizzairProvider(FlightProvider):
             _cache[clave] = ({}, {})
             return {}, {}
 
+        # Solo los dias con un importe de verdad: ver `_importe`. Un dia sin
+        # tarifa no es un dia barato, es un dia en el que no se puede volar.
         salida = (
-            {f["departureDate"][:10]: f for f in datos.get("outboundFlights", []) if f.get("price")},
-            {f["departureDate"][:10]: f for f in datos.get("returnFlights", []) if f.get("price")},
+            {f["departureDate"][:10]: f for f in datos.get("outboundFlights", []) if _importe(f)},
+            {f["departureDate"][:10]: f for f in datos.get("returnFlights", []) if _importe(f)},
         )
         _cache[clave] = salida
         return salida
@@ -280,9 +308,12 @@ class WizzairProvider(FlightProvider):
         # sin multiplicar aqui Wizz salia a mitad de precio que nadie y se
         # comia las primeras posiciones de la lista.
         adultos = max(1, int(self.cfg.get("adults", 1)))
-        precio = ((ida["price"]["amount"] or 0) + (vuelta["price"]["amount"] or 0)) * adultos
-        if not precio:
+        # LAS DOS MITADES O NADA. Sin una de ellas esto no es un viaje de ida y
+        # vuelta mas barato: es medio viaje con el precio de medio viaje.
+        precio_ida, precio_vuelta = _importe(ida), _importe(vuelta)
+        if precio_ida is None or precio_vuelta is None:
             return None
+        precio = (precio_ida + precio_vuelta) * adultos
         ciudad, pais = _nombre(destino)
         return FlightOffer(
             provider="wizzair",
@@ -303,9 +334,15 @@ class WizzairProvider(FlightProvider):
         )
 
     def _casar(self, route: Route, destino: str, idas: dict, vueltas: dict, noches: int) -> list[FlightOffer]:
+        """Cada dia de ida, con el primer dia de vuelta que cierre la escapada.
+
+        La oferta la monta `_oferta`, que es el unico sitio donde se suma un
+        precio de Wizz. Antes esto llevaba su propia copia de esa suma, y una
+        copia es justo lo que deja que dos trozos de codigo dejen de decir lo
+        mismo: el fallo del viaje al precio de la ida vivia en las dos.
+        """
         weekend = self.cfg.get("weekend", {}) or {}
         dia_ida = int(weekend.get("outbound_weekday", 4))
-        adultos = max(1, int(self.cfg.get("adults", 1)))
 
         ofertas: list[FlightOffer] = []
         for iso, ida in idas.items():
@@ -317,31 +354,10 @@ class WizzairProvider(FlightProvider):
                 vuelta = vueltas.get(regreso)
                 if not vuelta:
                     continue
-                # Por persona, igual que en _oferta: hay que multiplicar.
-                precio = (
-                    (ida["price"]["amount"] or 0) + (vuelta["price"]["amount"] or 0)
-                ) * adultos
-                if not precio:
+                oferta = self._oferta(route, destino, iso, regreso, ida, vuelta, n)
+                if oferta is None:
                     continue
-                ofertas.append(
-                    FlightOffer(
-                        provider="wizzair",
-                        origin=route.origin,
-                        origin_name=route.origin_name,
-                        destination=destino,
-                        destination_name=_nombre(destino)[0],
-                        destination_country=_nombre(destino)[1],
-                        depart_date=iso,
-                        return_date=regreso,
-                        nights=n,
-                        price=round(float(precio), 2),
-                        currency=ida["price"].get("currencyCode", "EUR"),
-                        airline="Wizz Air",
-                        stops=0,
-                        adults=adultos,
-                        deep_link=links.wizzair(route.origin, destino, iso, regreso, adultos),
-                                )
-                )
+                ofertas.append(oferta)
                 break  # con la primera duracion que cuadre basta
         # Solo lo mas barato de cada dia de salida, y priorizando los findes.
         ofertas.sort(key=lambda o: (date.fromisoformat(o.depart_date).weekday() != dia_ida, o.price))
