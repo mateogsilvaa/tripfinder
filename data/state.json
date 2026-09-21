@@ -283,15 +283,19 @@
     "ryanair-MAD-RAK-20270312": {
       "price": 110.98,
       "date": "2026-09-20"
+    },
+    "ryanair-MAD-FCO-20261211": {
+      "price": 62.98,
+      "date": "2026-09-21"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-20",
-    "tytus.zasowski@gmail.com": "2026-09-20",
-    "pedrotic.cjn@gmail.com": "2026-09-20"
+    "mateogonsilva@gmail.com": "2026-09-21",
+    "tytus.zasowski@gmail.com": "2026-09-21",
+    "pedrotic.cjn@gmail.com": "2026-09-21"
   },
   "watch_digest": {
     "mateogonsilva@gmail.com": "2026-09-16",
-    "pedrotic.cjn@gmail.com": "2026-09-20"
+    "pedrotic.cjn@gmail.com": "2026-09-21"
   }
 }
