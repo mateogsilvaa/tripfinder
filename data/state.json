@@ -287,12 +287,17 @@
     "ryanair-MAD-FCO-20261211": {
       "price": 62.98,
       "date": "2026-09-21"
+    },
+    "ryanair-MAD-TIA-20261025": {
+      "price": 39.98,
+      "date": "2026-09-22"
     }
   },
   "digest": {
     "mateogonsilva@gmail.com": "2026-09-22",
-    "tytus.zasowski@gmail.com": "2026-09-21",
-    "pedrotic.cjn@gmail.com": "2026-09-21"
+    "tytus.zasowski@gmail.com": "2026-09-22",
+    "pedrotic.cjn@gmail.com": "2026-09-22",
+    "belulaciente@gmail.com": "2026-09-22"
   },
   "watch_digest": {
     "mateogonsilva@gmail.com": "2026-09-16",
