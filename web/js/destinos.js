@@ -1,6 +1,7 @@
 /* destinos.js — La lamina de destinos: cargar el listado, filtrar y elegir. */
 
 import { $, esc, fetchJSON, fmtEUR, on } from "./base.js";
+import { banderaDe } from "./paises.js";
 
 let destinoPara = "fDest";
 
@@ -174,7 +175,11 @@ function pintarDestinos(filtro = "") {
       return `
         <div class="pais">
           <button type="button" class="pais-todo" data-valor="${esc(p.pais)}">
-            <span>${esc(p.pais)}</span>
+            <span>${
+              banderaDe(p.pais)
+                ? `<i class="bandera" aria-hidden="true">${banderaDe(p.pais)}</i>`
+                : ""
+            }${esc(p.pais)}</span>
             <em>todo el país · ${p.aeropuertos.length} aeropuertos</em>
           </button>
           <div class="ciudades">
