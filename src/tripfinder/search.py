@@ -19,6 +19,7 @@ from .config import Config, Route
 from .models import FlightOffer
 from .providers import build_providers
 from .regiones import paises_de
+from .routes import _mundial
 from .scoring import score_offer, useful_hours
 
 log = logging.getLogger("tripfinder")
@@ -36,7 +37,7 @@ class SearchRequest:
     months: int = 12  # hasta cuando buscar
     weekend_only: bool = True
     adults: int = 2
-    origin: str = "MAD"
+    origin: str = "MAD"  # IATA de salida; se normaliza en __post_init__
     depart: str = ""  # fecha exacta de ida (ISO); si esta, manda sobre todo lo demas
     return_date: str = ""
     # La ventana: "en marzo", "entre el 3 y el 19". Es el termino medio entre
@@ -50,6 +51,16 @@ class SearchRequest:
     # Quien la pidio. Vacio = busqueda de antes de las cuentas: la ve todo el mundo.
     owner: str = ""
     owner_name: str = ""
+
+    def __post_init__(self) -> None:
+        """El origen, normalizado. Llega de fuera y acaba en un nombre de fichero.
+
+        Tres letras en mayuscula o no es un aeropuerto. Lo que no lo sea vuelve
+        a Madrid en vez de romper la busqueda: quien la pidio prefiere un
+        resultado desde Madrid a un workflow en rojo y ninguna explicacion.
+        """
+        limpio = str(self.origin or "").strip().upper()
+        self.origin = limpio if re.fullmatch(r"[A-Z]{3}", limpio) else "MAD"
 
     @property
     def slug(self) -> str:
@@ -584,7 +595,10 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
 
     route = Route(
         origin=req.origin,
-        origin_name="Madrid",
+        # De donde sales, con su nombre. Estaba escrito "Madrid" a pelo, que
+        # era verdad mientras solo se pudiera salir de Madrid: buscar desde
+        # Barcelona daba una busqueda titulada "Madrid".
+        origin_name=_mundial(req.origin)[0] or req.origin,
         destinations=destinos,
         max_price=req.max_price or 1e6,
         max_price_weekend=req.max_price or 1e6,

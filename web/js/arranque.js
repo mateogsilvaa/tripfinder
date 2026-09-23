@@ -16,7 +16,6 @@ import { init } from "./ofertas.js";
 import { loadSearches, recogerBusqueda } from "./busqueda.js";
 import { cargarWatches, recogerSeguimiento } from "./seguimientos.js";
 import { marcarFlap } from "./quiz.js";
-import { montarMundo } from "./mundo.js";
 
 init();
 loadSearches();
@@ -40,5 +39,3 @@ marcarFlap();
 // enganchados (#ampliar).
 recogerBusqueda();
 recogerSeguimiento();
-// El mapa del mundo: solo hace algo en su página, y solo con sesión.
-montarMundo();

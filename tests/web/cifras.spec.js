@@ -1,9 +1,9 @@
 /* Las cifras de la cabecera son las de CADA página.
 
-   Las cuatro páginas enseñaban las del tablón de chollos —ofertas vivas, mejor
-   descuento, desde, escapadas de finde— porque el módulo del feed rellenaba
-   `#stats` en todas. En el mapa del mundo eso era, literalmente, decirte
-   cuántas ofertas hay mientras miras cuántos países has pisado. */
+   Todas enseñaban las del tablón de chollos —ofertas vivas, mejor descuento,
+   desde, escapadas de finde— porque el módulo del feed rellenaba `#stats` en
+   todas: en «vuelos que sigues» eso era decirte cuántas ofertas hay mientras
+   miras lo que tienes apuntado. */
 const { test, expect } = require("@playwright/test");
 
 const SESION = { uid: "u-mateo", user: "mateo", name: "Mateo" };
@@ -64,21 +64,6 @@ test("seguimientos separa lo que se revisa solo de lo que has apuntado", async (
   await expect(page.locator("#stats div").nth(1)).toContainText("0");
 });
 
-test("el mundo cuenta países, no chollos", async ({ page }) => {
-  await conCuenta(page);
-  await page.goto("/mapa.html", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("#mundo svg path[data-iso]").first()).toBeVisible({ timeout: 15000 });
-  await expect(rotulos(page).first()).toHaveText("países");
-  await expect(rotulos(page).nth(1)).toHaveText("del mundo");
-  await expect(page.locator("#stats")).not.toContainText("ofertas vivas");
-});
-
-test("sin cuenta, el mapa no inventa cifras de nadie", async ({ page }) => {
-  await page.goto("/mapa.html", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("#mundoPuerta")).toBeVisible();
-  // Lo que no puede salir es el tablón de chollos donde va el mapa.
-  await expect(page.locator("#stats")).not.toContainText("ofertas vivas");
-});
 
 /* Lo que se ve mientras una búsqueda corre fuera. Un barrido «donde sea» son
    ocho minutos: una rueda girando todo ese rato no dice nada. */

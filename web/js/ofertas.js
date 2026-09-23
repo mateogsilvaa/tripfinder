@@ -37,6 +37,7 @@ import {
 import { deltaHTML, favBtn, sincronizarFavs, wireFavs } from "./favoritos.js";
 import { HISTORIA, cargarHistoria, historiaHTML, minimoHTML } from "./historia.js";
 import { cargarCamasHechas, conCama, openStays } from "./alojamiento.js";
+import { banderaDe } from "./paises.js";
 
 export let OFFERS = [];
 /* El día del levantamiento, para el rótulo del chollo. No es la fecha del
@@ -484,7 +485,10 @@ function altsHTML(o) {
    —es lo que se mira primero y lo único que decide— y el desglose de debajo es
    lo que nadie más te da: lo que sale de verdad para los que vais. */
 function heroTicket(o) {
-  const sub = [o.destination_country, o.airline, escalas(o), o.weekend ? "escapada de finde" : ""]
+  const pais = [banderaDe(o.destination_country), o.destination_country]
+    .filter(Boolean)
+    .join(" ");
+  const sub = [pais, o.airline, escalas(o), o.weekend ? "escapada de finde" : ""]
     .filter(Boolean)
     .join(" · ");
   const extra = [o.hidden_city ? AVISO_HIDDEN : "", altsHTML(o)].filter(Boolean).join("");
@@ -555,6 +559,20 @@ function heroTicket(o) {
     </article>`;
 }
 
+/* La bandera del país, delante de su nombre. Se reconoce antes que el nombre, y
+   en una lista de veinte destinos eso es la diferencia entre leer y ojear.
+
+   Va DENTRO de `.country` a propósito, y no en una columna suya: esa rejilla ya
+   se comió el nombre de la ciudad una vez, y el país es justo el elemento que
+   cede primero cuando falta sitio. Así la bandera se encoge con él.
+
+   `aria-hidden`: el país ya está escrito al lado, y un lector de pantalla que
+   diga «bandera de Italia, Italia» sobra. */
+const bandera = (o) => {
+  const b = banderaDe(o.destination_country);
+  return b ? `<i class="bandera" aria-hidden="true">${b}</i>` : "";
+};
+
 /* El resto, como el panel de salidas de un aeropuerto: una línea por vuelo. */
 export function boardRow(o, i) {
   /* Si este vuelo ya tiene la cama buscada se marca, y fuerte: buscarla nueva
@@ -582,7 +600,7 @@ export function boardRow(o, i) {
       <span class="dest-cell">
         <span class="iata ${o.hidden_city ? "hidden" : ""}">${esc(o.destination)}</span>
         <span class="city">${esc(o.destination_name || o.destination)}</span>
-        <span class="country">${esc(o.destination_country || "")}</span>
+        <span class="country">${bandera(o)}${esc(o.destination_country || "")}</span>
       </span>
       <span class="when ${o.weekend ? "weekend" : ""}"><b>${fmtDate(
         o.depart_date,

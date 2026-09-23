@@ -105,10 +105,6 @@ DESCRIPCIONES = {
         "Los viajes que tienes apuntados, revisados cada manana. Te escribe cuando "
         "el precio se mueve o cae dentro de tu tope."
     ),
-    "mapa.html": (
-        "El mapa de los paises en los que has estado. Se marca con un toque y se "
-        "queda en tu navegador, con tu cuenta."
-    ),
 }
 
 # La aplicacion instalable (#22). Solo en las tres paginas publicas: instalar el
@@ -145,7 +141,6 @@ NAV = (
     '        <a href="./"{promos}>Feed</a>\n'
     '        <a href="buscar.html"{buscar}>Buscar</a>\n'
     '        <a href="seguimientos.html"{follows}>Vuelos que sigues</a>\n'
-    '        <a href="mapa.html"{mundo}>El mundo</a>\n'
     '      </nav>\n'
 )
 
@@ -217,20 +212,6 @@ PAGINAS = {
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
     },
-    # El mapa de donde has estado. Va sin `vivo` (no enseña precios) y sin las
-    # hojas de alojamiento, que aqui no pintan nada.
-    "mapa.html": {
-        "base": "",
-        "manifiesto": MANIFIESTO,
-        "nav": NAV,
-        "descubrir": DESCUBRIR,
-        "titulo": "TripFinder · donde has estado",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["mapa.html"]}">',
-        "vivo": "",
-        "zona": "mundo",
-        "nota": NOTA_WEB,
-        "guiones": GUIONES_WEB,
-    },
     # La pagina que sirve Pages cuando la direccion no existe. Lleva el nav
     # (es lo unico util que puedes hacer desde ahi) pero no las hojas de
     # alojamiento, y no se indexa.
@@ -277,9 +258,12 @@ def _zonas(activa: str | None) -> dict[str, str]:
     "seguir"— apuntaban a sendas anclas de la portada: a la herramienta entera
     solo se llegaba rellenando el formulario compacto y enviandolo, porque la
     pagina completa se abria como resultado de usarla. Quien solo queria ver
-    sus busquedas guardadas tenia que lanzar una."""
+    sus busquedas guardadas tenia que lanzar una.
+
+    Y llegaron a ser cuatro nombradas otra vez con el mapamundi; se fue, y con
+    el la zona "mundo"."""
     salida: dict[str, str] = {}
-    for z in ("promos", "buscar", "follows", "mundo"):
+    for z in ("promos", "buscar", "follows"):
         if z == activa:
             salida[z] = f' class="zona activa" data-zona="{z}" aria-current="page"'
         else:
