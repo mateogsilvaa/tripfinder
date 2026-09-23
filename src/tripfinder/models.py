@@ -133,7 +133,12 @@ class StayOffer:
     rating: float | None = None
     reviews: int | None = None
     area: str = ""
+    # La foto de portada y las demas. Nadie elige donde duerme sin ver la casa,
+    # y el scraper ya las traia TODAS: se quedaba con la primera y tiraba el
+    # resto. `image` se mantiene por lo ya guardado en `data/stays/*.json`, y es
+    # siempre la primera de `images`.
     image: str = ""
+    images: list[str] = field(default_factory=list)
     note: str = ""
     # Donde cae, y a cuanto del centro. En una escapada de dos noches, diez
     # kilometros son dos horas de transporte: un estudio barato y lejos no es

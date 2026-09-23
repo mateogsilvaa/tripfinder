@@ -2322,6 +2322,67 @@ h1 em { font-size: 1.3em; }
   align-items: start;
 }
 .stay > div:first-child { min-width: 0; }
+
+/* LAS FOTOS DEL ALOJAMIENTO.
+
+   Con foto, la ficha pasa a tres columnas: la tira de fotos, el texto y el
+   precio. Sin ella se queda como estaba — una ficha con un hueco gris donde
+   debería ir una casa es peor que una ficha sin foto.
+
+   El carrusel es CSS y nada más: `scroll-snap` en una tira horizontal. Con el
+   dedo en el móvil y con la rueda o la barra en el escritorio. Cero JavaScript
+   y cero estado que mantener. */
+.stay.con-foto {
+  grid-template-columns: 132px minmax(0, 1fr) auto;
+}
+.stay-fotos {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  border-radius: calc(var(--r) - 4px);
+  position: relative;
+  /* Sin esto la tira empuja la rejilla al cargar las imágenes. */
+  width: 132px;
+  scrollbar-width: none;
+}
+.stay-fotos::-webkit-scrollbar { display: none; }
+.stay-fotos img {
+  flex: 0 0 100%;
+  width: 132px;
+  /* El hueco, reservado antes de que la foto llegue: si no, la lista salta
+     entera cada vez que carga una. */
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  scroll-snap-align: start;
+  background: var(--surface);
+  display: block;
+}
+/* Cuántas hay, para que se sepa que se puede deslizar. */
+.stay-cuantas {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+  background: var(--code-bg);
+  color: var(--paper);
+  font: 400 var(--fs-meta) var(--font-mono);
+  pointer-events: none;
+}
+
+/* En el móvil el panel es estrecho: la foto va arriba y a todo lo ancho, que
+   es donde de verdad se ve algo. */
+@media (max-width: 560px) {
+  .stay.con-foto { grid-template-columns: minmax(0, 1fr) auto; }
+  .stay-fotos,
+  .stay-fotos img { width: 100%; }
+  .stay-fotos {
+    grid-column: 1 / -1;
+    margin-bottom: 4px;
+  }
+  .stay-fotos img { aspect-ratio: 16 / 9; }
+}
 .stay .amount-s {
   text-align: right;
   font: 600 var(--fs-cifra) var(--font-mono);
