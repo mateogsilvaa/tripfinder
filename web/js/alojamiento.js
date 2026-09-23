@@ -342,6 +342,39 @@ function startPolling(id) {
    una escapada de dos noches es el precio total, de quién es y a qué distancia
    del centro cae; una foto de 300 px de un salón no ayuda a elegir y empuja el
    resto fuera de la pantalla. */
+/* LAS FOTOS. Nadie elige dónde duerme sin ver la casa, y hasta ahora el panel
+   era una lista de texto — con las fotos guardadas en el fichero, sin pintar.
+
+   El carrusel es CSS puro: una tira con `scroll-snap`. Sin JavaScript, sin
+   librería y sin estado que mantener; el dedo en el móvil y la rueda o la barra
+   en el escritorio. Un carrusel con botones y temporizador sería diez veces más
+   código para lo mismo.
+
+   `loading="lazy"` y el hueco reservado con `aspect-ratio`: son hasta seis
+   fotos por alojamiento y dieciocho alojamientos. Sin las dos cosas, abrir el
+   panel se traga la conexión y la lista salta mientras cargan.
+
+   Y si no hay foto no se pinta un hueco gris: la ficha se queda como estaba,
+   que es mejor que una caja rota. */
+function fotos(s) {
+  const lista = (Array.isArray(s.images) && s.images.length ? s.images : [s.image]).filter(
+    (u) => typeof u === "string" && u.startsWith("https://")
+  );
+  if (!lista.length) return "";
+  return `
+    <div class="stay-fotos${lista.length > 1 ? " varias" : ""}">
+      ${lista
+        .map(
+          (u, i) =>
+            `<img src="${escURL(u)}" alt="${
+              i === 0 ? `Foto de ${esc(s.name)}` : ""
+            }" loading="lazy" decoding="async">`
+        )
+        .join("")}
+      ${lista.length > 1 ? `<span class="stay-cuantas">${lista.length} fotos</span>` : ""}
+    </div>`;
+}
+
 function stayRow(s) {
   const meta = [
     s.provider,
@@ -354,7 +387,8 @@ function stayRow(s) {
     .filter(Boolean)
     .join(" · ");
   return `
-    <a class="stay" href="${escURL(s.url)}" target="_blank" rel="noopener">
+    <a class="stay${fotos(s) ? " con-foto" : ""}" href="${escURL(s.url)}" target="_blank" rel="noopener">
+      ${fotos(s)}
       <div>
         <div class="name">${esc(s.name)}</div>
         <div class="meta">${esc(meta)}</div>

@@ -126,6 +126,59 @@ def _coordenadas(item: dict) -> tuple[float | None, float | None]:
     return None, None
 
 
+# Cuantas fotos se guardan por alojamiento. Airbnb devuelve entre cinco y
+# veinte; con seis el carrusel ya cuenta la casa y el fichero no se dispara.
+MAX_FOTOS = 6
+
+
+def _fotos(item: dict) -> list[str]:
+    """Las fotos del anuncio, en orden y sin repetir.
+
+    Estaban ahi desde el principio: el codigo cogia `contextualPictures[0]` y
+    tiraba el resto, asi que el panel ensenaba una lista de texto de algo que
+    se elige mirando.
+    """
+    fotos: list[str] = []
+    for pic in item.get("contextualPictures") or []:
+        if not isinstance(pic, dict):
+            continue
+        url = str(pic.get("picture") or "").strip()
+        # Solo https: una foto por http en una pagina https no la pinta el
+        # navegador y ademas avisa de contenido mixto.
+        if url.startswith("https://") and url not in fotos:
+            fotos.append(url)
+        if len(fotos) >= MAX_FOTOS:
+            break
+    return fotos
+
+
+# Lo que se le quita a un nombre. No es cosmetica: son nombres que llegan con
+# espacios colgando y cortados a mitad de palabra por un `[:120]` a pelo.
+MAX_NOMBRE = 90
+
+
+def _limpiar_nombre(crudo: str) -> str:
+    """El nombre del anuncio, presentable.
+
+    Tres cosas, todas vistas en `data/stays/*.json`: espacios de sobra (dentro
+    y a los lados), entidades HTML que se colaron sin convertir, y el corte a
+    lo bruto que dejaba «Apartamento en el centro de Osl».
+    """
+    import html as _html
+
+    limpio = _html.unescape(str(crudo or ""))
+    limpio = re.sub(r"\s+", " ", limpio).strip(" \t\n·-—|")
+    if not limpio:
+        return "Alojamiento"
+    if len(limpio) <= MAX_NOMBRE:
+        return limpio
+    # Se corta por el ultimo espacio que quepa: una palabra a medias se lee
+    # como un error nuestro, y lo es.
+    recorte = limpio[: MAX_NOMBRE + 1]
+    corte = recorte.rfind(" ")
+    return (recorte[:corte] if corte > MAX_NOMBRE // 2 else limpio[:MAX_NOMBRE]).rstrip(" ,.;:-") + "…"
+
+
 def _rating(item: dict) -> tuple[float | None, int | None]:
     """'4,87 (131)' -> (4.87, 131)."""
     text = item.get("avgRatingLocalized") or ""
@@ -190,19 +243,26 @@ class AirbnbProvider(StayProvider):
                 continue
             vistos.add(lid)
 
-            name = (item.get("nameLocalized") or {}).get(
-                "localizedStringWithTranslationPreference"
-            ) or item.get("title") or "Alojamiento"
+            name = _limpiar_nombre(
+                (item.get("nameLocalized") or {}).get(
+                    "localizedStringWithTranslationPreference"
+                )
+                or item.get("title")
+                or ""
+            )
             total, per_night = _prices(item, req.nights)
             rating, reviews = _rating(item)
-            pics = item.get("contextualPictures") or []
-            image = pics[0].get("picture", "") if pics and isinstance(pics[0], dict) else ""
+            # TODAS las fotos, no la primera. Airbnb las devuelve en una lista
+            # y aqui se cogia `pics[0]` y se tiraba el resto: el carrusel ya
+            # venia en la respuesta, solo habia que no perderlo.
+            fotos = _fotos(item)
+            image = fotos[0] if fotos else ""
             lat, lon = _coordenadas(item)
 
             offers.append(
                 StayOffer(
                     provider="airbnb",
-                    name=str(name)[:120],
+                    name=name,
                     url=(
                         f"https://www.airbnb.es/rooms/{lid}"
                         f"?check_in={req.checkin}&check_out={req.checkout}&adults={req.adults}"
@@ -214,6 +274,7 @@ class AirbnbProvider(StayProvider):
                     reviews=reviews,
                     area=str(item.get("title") or req.city),
                     image=image,
+                    images=fotos,
                     lat=lat,
                     lon=lon,
                 )

@@ -250,9 +250,24 @@ test.describe("la hoja de alojamiento", () => {
     await expect(page.locator(".seguir-buscando")).toContainText("De estos no se saca precio");
   });
 
-  test("la ficha va sin foto: lo que decide es el precio y de quién es", async ({ page }) => {
+  /* ESTA PRUEBA DECÍA LO CONTRARIO. Se llamaba «la ficha va sin foto: lo que
+     decide es el precio y de quién es», y era una decisión defendible: una
+     lista de texto se lee de un vistazo. Pero nadie elige dónde duerme sin ver
+     la casa, así que la foto entra (el carrusel se prueba en `fotos.spec.js`).
+
+     Lo que NO cambia es por qué existía la regla: el precio sigue mandando en
+     la ficha. Eso es lo que se defiende ahora. */
+  test("con foto, el precio y el nombre siguen mandando", async ({ page }) => {
     await abrirCamas(page, [{ ...CAMAS[0], image: "https://ejemplo.com/foto.jpg" }]);
-    expect(await page.locator(".stay img").count()).toBe(0);
+    await expect(page.locator(".stay .amount-s")).toBeVisible();
+    await expect(page.locator(".stay .name")).toBeVisible();
+    // La foto no se come el sitio del texto: la ficha sigue teniendo su columna
+    // de precio a la derecha.
+    const cols = await page
+      .locator(".stay")
+      .first()
+      .evaluate((n) => getComputedStyle(n).gridTemplateColumns.split(" ").length);
+    expect(cols).toBe(3);
   });
 
   test("desde el alojamiento se comparte la escapada con su número real", async ({ page }) => {
