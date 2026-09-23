@@ -291,16 +291,20 @@
     "ryanair-MAD-TIA-20261025": {
       "price": 39.98,
       "date": "2026-09-22"
+    },
+    "ryanair-MAD-PRG-20270226": {
+      "price": 124.98,
+      "date": "2026-09-23"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-22",
-    "tytus.zasowski@gmail.com": "2026-09-22",
-    "pedrotic.cjn@gmail.com": "2026-09-22",
-    "belulaciente@gmail.com": "2026-09-22"
+    "mateogonsilva@gmail.com": "2026-09-23",
+    "tytus.zasowski@gmail.com": "2026-09-23",
+    "pedrotic.cjn@gmail.com": "2026-09-23",
+    "belulaciente@gmail.com": "2026-09-23"
   },
   "watch_digest": {
     "mateogonsilva@gmail.com": "2026-09-16",
-    "pedrotic.cjn@gmail.com": "2026-09-22"
+    "pedrotic.cjn@gmail.com": "2026-09-23"
   }
 }
