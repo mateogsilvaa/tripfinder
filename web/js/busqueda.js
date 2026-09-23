@@ -152,6 +152,71 @@ const HINTS = {
 const CON_MES = new Set(["mes", "mes-finde"]);
 const FLEXIBLES = new Set(["mes", "mes-finde", "tramo"]);
 
+/* DE DÓNDE SALES. Todo el proyecto daba Madrid por hecho: quien vive en
+   Barcelona o vuela desde Sevilla no podía usar la web.
+
+   LA LISTA VA AQUÍ ESCRITA Y NO SE DESCARGA, a propósito. El listado mundial
+   de aeropuertos son 270 KB y hay una decisión tomada —y una prueba que la
+   defiende— de que la portada NO lo pida: se carga solo al abrir el selector
+   de destino, que es donde de verdad hacen falta las 5.000 ciudades del mundo.
+   Para elegir origen bastan los cuarenta y un aeropuertos españoles, que
+   caben en dos kilobytes, no cambian de un año para otro y así siguen estando
+   sin cobertura, como el resto de la web.
+
+   Madrid va primero y por defecto: es de donde sale el barrido diario y lo que
+   espera casi todo el mundo. El resto, por ciudad. */
+const ORIGENES = [
+  ["MAD", "Madrid"],
+  ["ALC", "Alicante"],
+  ["LEI", "Almería"],
+  ["BJZ", "Badajoz"],
+  ["BCN", "Barcelona"],
+  ["BIO", "Bilbao"],
+  ["CDT", "Castellon"],
+  ["LCG", "Culleredo"],
+  ["ODB", "Córdoba"],
+  ["VDE", "El Hierro Island"],
+  ["FUE", "Fuerteventura"],
+  ["GRO", "Girona"],
+  ["LPA", "Gran Canaria"],
+  ["GRX", "Granada"],
+  ["EAS", "Hondarribia"],
+  ["IBZ", "Ibiza"],
+  ["XRY", "Jerez de la Frontera"],
+  ["LEU", "La Seu d'Urgell Pyrenees and Andorra"],
+  ["LEN", "La Virgen del Camino"],
+  ["ACE", "Lanzarote"],
+  ["ILD", "Lleida"],
+  ["MLN", "Melilla"],
+  ["MAH", "Menorca"],
+  ["RMU", "Murcia"],
+  ["AGP", "Málaga"],
+  ["PMI", "Palma"],
+  ["PNA", "Pamplona"],
+  ["OVD", "Ranón"],
+  ["REU", "Reus"],
+  ["SLM", "Salamanca"],
+  ["SDR", "Santander"],
+  ["SCQ", "Santiago"],
+  ["SVQ", "Sevilla"],
+  ["SPC", "Sta Cruz de la Palma, La Palma Island"],
+  ["TFS", "Tenerife"],
+  ["TFN", "Tenerife"],
+  ["VLC", "Valencia"],
+  ["VLL", "Valladolid"],
+  ["VGO", "Vigo"],
+  ["VIT", "Vitoria-Gasteiz"],
+  ["ZAZ", "Zaragoza"],
+];
+
+function llenarOrigenes() {
+  const sel = $("#fOrigen");
+  if (!sel || sel.options.length) return;
+  sel.innerHTML = ORIGENES.map(
+    ([code, ciudad]) => `<option value="${code}">${esc(ciudad)} (${code})</option>`
+  ).join("");
+}
+
 /* Los doce meses que vienen. El valor es `YYYY-MM` y no un nombre suelto:
    «marzo» sin año es de este año o del que viene según cuándo lo mires. */
 function llenarMeses() {
@@ -185,6 +250,7 @@ function syncFinder() {
   const cuando = $("#fWhen").value;
   // Ida y vuelta comparten ya un solo control, asi que #returnWrap no existe.
   $("#destWrap").hidden = donde !== "one";
+  llenarOrigenes();
   if (existe("#mesWrap")) {
     llenarMeses();
     $("#mesWrap").hidden = !CON_MES.has(cuando);
@@ -275,10 +341,13 @@ on("#finderForm", "submit", async (e) => {
       ? `findes · ${$("#fMonths").value || 12} meses`
       : `${$("#fMonths").value || 12} meses`;
 
+  const origen = $("#fOrigen") ? $("#fOrigen").value.trim().toUpperCase() : "";
   const payload = {
     dest,
     label: [
-      dest || "Donde sea",
+      // De dónde sale solo se dice cuando NO es Madrid: ponerlo siempre
+      // alargaría todas las etiquetas para repetir lo de siempre.
+      origen && origen !== "MAD" ? `${dest || "Donde sea"} (desde ${origen})` : dest || "Donde sea",
       cuandoTxt,
       `hasta ${$("#fMax").value} €`,
       personas > 1 ? `${personas} pers.` : "1 pers.",
@@ -289,16 +358,17 @@ on("#finderForm", "submit", async (e) => {
     months: $("#fMonths").value || "12",
     adults: $("#fAdults").value || "2",
     weekend: cuando === "weekend" || cuando === "mes-finde" ? "si" : "no",
-    /* TODAS LAS FECHAS EN UNA SOLA PROPIEDAD. `repository_dispatch` admite
-       diez de primer nivel y con esto eran doce: el encargo no habría salido
-       nunca —lo para `dispatch` antes de la red— y quien buscara un mes se
-       habría quedado mirando. Agrupadas son una, como ya hace el seguimiento
-       con `viaje`.
+    /* EL VIAJE, EN UNA SOLA PROPIEDAD: de dónde sales y cuándo.
+       `repository_dispatch` admite diez de primer nivel y sueltas eran doce —el
+       encargo no habría salido nunca, lo para `dispatch` antes de la red— así
+       que van agrupadas, como ya hace el seguimiento con su `viaje`.
 
-       Y van juntas porque son lo mismo contado con distinto grado de certeza:
-       `depart` es «salgo el 12»; `desde` es «puedo salir entre el 3 y el 19,
-       dime cuál sale mejor». */
-    fechas: {
+       Las fechas van juntas porque son lo mismo contado con distinto grado de
+       certeza: `depart` es «salgo el 12»; `desde` es «puedo salir entre el 3 y
+       el 19, dime cuál sale mejor». Y el origen va aquí y no suelto porque una
+       propiedad más de primer nivel volvería a rozar el tope. */
+    viaje: {
+      origin: $("#fOrigen") ? $("#fOrigen").value.trim().toUpperCase() : "",
       depart: cuando === "exact" ? $("#fDepart").value : "",
       return_date: cuando === "exact" ? $("#fReturn").value : "",
       desde: ventana.desde,

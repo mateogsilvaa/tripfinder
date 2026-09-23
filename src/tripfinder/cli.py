@@ -757,6 +757,7 @@ def cmd_search(args: argparse.Namespace) -> int:
 
     req = SearchRequest(
         destination=args.dest,
+        origin=args.origin or "MAD",
         label=args.label or "",
         max_price=args.max_price,
         nights_min=nmin,
@@ -1394,6 +1395,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     b = sub.add_parser("search", help="Busqueda personalizada a un destino concreto")
     b.add_argument("--dest", default="", help="IATA (FCO) o ciudad (Roma). Vacio = a cualquier sitio")
+    b.add_argument("--origin", default="", help="IATA de salida (MAD, BCN, AGP...). Vacio = MAD")
     b.add_argument("--label", help="Nombre de la busqueda para la web")
     b.add_argument("--max-price", type=float, dest="max_price")
     b.add_argument("--nights", help="2, o un rango como 2-4")

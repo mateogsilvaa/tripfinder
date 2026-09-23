@@ -16,6 +16,7 @@
    aquí, y no se leen del DOM, para que la URL no dependa de en qué orden
    estén los campos ni cambie sola al mover uno. */
 export const CAMPOS_BUSCAR = {
+  origen: "#fOrigen",
   donde: "#fWhere",
   cuando: "#fWhen",
   dest: "#fDest",

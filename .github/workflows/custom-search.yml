@@ -41,18 +41,20 @@ jobs:
         id: parse
         env:
           P_DEST: ${{ github.event.client_payload.dest }}
+          P_ORIGIN: ${{ github.event.client_payload.viaje.origin }}
           P_LABEL: ${{ github.event.client_payload.label }}
           P_MAX: ${{ github.event.client_payload.max_price }}
           P_NIGHTS: ${{ github.event.client_payload.nights }}
           P_MONTHS: ${{ github.event.client_payload.months }}
           P_WEEKEND: ${{ github.event.client_payload.weekend }}
           P_ADULTS: ${{ github.event.client_payload.adults }}
-          # Las fechas van agrupadas: `client_payload` solo admite diez
-          # propiedades de primer nivel y sueltas eran doce.
-          P_DEPART: ${{ github.event.client_payload.fechas.depart }}
-          P_RETURN: ${{ github.event.client_payload.fechas.return_date }}
-          P_DESDE: ${{ github.event.client_payload.fechas.desde }}
-          P_HASTA: ${{ github.event.client_payload.fechas.hasta }}
+          # El viaje va agrupado —de donde sales y cuando— porque
+          # `client_payload` solo admite diez propiedades de primer nivel:
+          # sueltas eran doce, y el origen habria sido la trece.
+          P_DEPART: ${{ github.event.client_payload.viaje.depart }}
+          P_RETURN: ${{ github.event.client_payload.viaje.return_date }}
+          P_DESDE: ${{ github.event.client_payload.viaje.desde }}
+          P_HASTA: ${{ github.event.client_payload.viaje.hasta }}
           P_OWNER: ${{ github.event.client_payload.owner }}
           P_OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
@@ -61,7 +63,7 @@ jobs:
             echo "dest=$P_DEST"; echo "label=$P_LABEL"; echo "max_price=$P_MAX"
             echo "nights=$P_NIGHTS"; echo "months=$P_MONTHS"; echo "weekend=$P_WEEKEND"
             echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
-            echo "desde=$P_DESDE"; echo "hasta=$P_HASTA"
+            echo "desde=$P_DESDE"; echo "hasta=$P_HASTA"; echo "origin=$P_ORIGIN"
             echo "owner=$P_OWNER"; echo "owner_name=$P_OWNER_NAME"
           } >> "$GITHUB_OUTPUT"
 
@@ -70,6 +72,7 @@ jobs:
           PYTHONPATH: src
           SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
           DEST: ${{ steps.parse.outputs.dest }}
+          ORIGIN: ${{ steps.parse.outputs.origin }}
           LABEL: ${{ steps.parse.outputs.label }}
           MAX_PRICE: ${{ steps.parse.outputs.max_price }}
           NIGHTS: ${{ steps.parse.outputs.nights }}
@@ -93,6 +96,9 @@ jobs:
           # El tramo en que puedes viajar: "en marzo", "del 3 al 19".
           if [ -n "$DESDE" ];     then args+=(--desde "$DESDE"); fi
           if [ -n "$HASTA" ];     then args+=(--hasta "$HASTA"); fi
+          # De donde sales. Va dentro de `viaje` por lo mismo que las fechas:
+          # `client_payload` solo admite diez propiedades de primer nivel.
+          if [ -n "$ORIGIN" ];    then args+=(--origin "$ORIGIN"); fi
           # weekend: "no" busca cualquier dia de la semana
           if [ "$WEEKEND" = "no" ]; then args+=(--any-day); fi
           # Quien la pide entra en el nombre del fichero, asi que la misma
