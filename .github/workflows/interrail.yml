@@ -36,15 +36,20 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      - name: Buscar cama en cada parada
+      - name: Buscar los vuelos y la cama en cada parada
         env:
           PYTHONPATH: src
-          # Las paradas llegan como JSON y se validan en Python, no en bash: el
-          # identificador acaba siendo un nombre de fichero y la ciudad una URL.
+          # Las paradas y los vuelos llegan como JSON y se validan en Python, no
+          # en bash: el identificador acaba siendo un nombre de fichero y la
+          # ciudad una URL.
           PARADAS: ${{ toJSON(github.event.client_payload.paradas) }}
+          VUELOS: ${{ toJSON(github.event.client_payload.vuelos) }}
           ADULTS: ${{ github.event.client_payload.adults }}
         run: |
-          python -m tripfinder interrail-stays --paradas "$PARADAS" --adults "${ADULTS:-2}"
+          # Sin vuelos en el encargo, toJSON da "null": se trata como lista vacia.
+          [ "$VUELOS" = "null" ] && VUELOS="[]"
+          python -m tripfinder interrail-stays --paradas "$PARADAS" --vuelos "$VUELOS" \
+            --adults "${ADULTS:-2}"
 
       - name: Publicar
         run: |
@@ -55,20 +60,25 @@ jobs:
           # copian: son derivados y los rehace `reindex` sobre lo que haya en
           # main en ese momento.
           nuevos=$(git status --porcelain data/stays | awk '{print $2}' | grep -v index.json || true)
-          if [ -z "$nuevos" ]; then
-            echo "Ninguna parada trajo cama"
+          vuelos=$(git status --porcelain --untracked-files=all data/interrail \
+            | awk '{print $2}' | grep -v index.json || true)
+          if [ -z "$nuevos" ] && [ -z "$vuelos" ]; then
+            echo "Ni cama ni vuelo"
             exit 0
           fi
-          mkdir -p /tmp/tf/stays
+          mkdir -p /tmp/tf/stays /tmp/tf/interrail
           for f in $nuevos; do cp "$f" /tmp/tf/stays/; done
+          for f in $vuelos; do cp "$f" /tmp/tf/interrail/; done
 
           for intento in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
-            mkdir -p data/stays
-            cp /tmp/tf/stays/*.json data/stays/
+            mkdir -p data/stays data/interrail
+            for f in /tmp/tf/stays/*.json; do [ -e "$f" ] && cp "$f" data/stays/; done
+            for f in /tmp/tf/interrail/*.json; do [ -e "$f" ] && cp "$f" data/interrail/; done
+            # Rehace los derivados, el indice de los vuelos incluido.
             PYTHONPATH=src python -m tripfinder reindex
-            git add data/stays data/camas.json
+            git add data/stays data/camas.json data/interrail
             if git diff --staged --quiet; then
               echo "Sin cambios"
               exit 0

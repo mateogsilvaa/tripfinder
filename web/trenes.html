@@ -121,7 +121,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     <div class="finder-body">
       <div class="kicker-num">05 · con un bono interrail</div>
       <h2 id="irTitulo" class="ir-titulo">Por Europa, con los días del bono.</h2>
-      <p class="finder-lede">Dile cuántos días de viaje tiene tu bono y te da rutas que caben: el vuelo de ida, los trenes, las noches en cada parada y el vuelo de vuelta —que no tiene por qué ser desde la misma ciudad—. Un día de bono es un día de viaje, no un trayecto: coger dos trenes el mismo día gasta uno.</p>
+      <p class="finder-lede">Dile cuántos días de viaje tiene tu bono, desde dónde sales y cuándo, y te da rutas que caben: el vuelo de ida, los trenes, las noches en cada parada, dónde dormir y el vuelo de vuelta —que no tiene por qué ser desde la misma ciudad—, con el total de todo. Cada ruta se puede personalizar: al revés, más o menos noches en cada sitio, o saltarte una parada. Un día de bono es un día de viaje, no un trayecto: coger dos trenes el mismo día gasta uno.</p>
       <form id="irForm" class="finder-form">
         <label for="irDias">
           <span>Días de viaje del bono</span>
@@ -132,6 +132,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
             <option value="10">10 días</option>
             <option value="15">15 días</option>
           </select>
+        </label>
+        <label for="irOrigen">
+          <span>Sales desde</span>
+          <select id="irOrigen"></select>
         </label>
         <label for="irIda">
           <span>Sales el</span>
@@ -166,8 +170,9 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <p class="tren-pie">
         <b>El bono no lo paga todo.</b> Los trenes rápidos de Italia, Francia y
         España, y los nórdicos, exigen una reserva que se paga aparte, y cada
-        ruta la suma. El alojamiento es de verdad: se busca al pedirlo, en
-        pisos y casas enteras, y cada parada se puede cambiar. <small class="ir-apunte">Todos los precios son
+        ruta la suma. Los vuelos y el alojamiento son de verdad: se buscan al
+        pedirlos —los vuelos en Ryanair, de ida sola; las camas en Airbnb y en
+        Holidu, solo pisos y casas enteras— y cada parada se puede cambiar. <small class="ir-apunte">Todos los precios son
         orientativos: el bono, por la tarifa de 2025 en segunda; los billetes
         sueltos, lo normal comprando con unas semanas de antelación. Las
         reservas y los billetes van en horquilla porque cada compañía los pone

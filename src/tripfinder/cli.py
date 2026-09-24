@@ -775,7 +775,13 @@ def _stays_markdown(
 
 MAX_PARADAS = 8
 MAX_NOCHES_PARADA = 14
-ID_PARADA = re.compile(r"^ir-[a-z]{3,12}-[A-Z]{3}-\d{4}-\d{2}-\d{2}-[1-8]$")
+# Ruta, ciudad, dia de llegada, noches y cuantos vais: cambiar cualquiera de las
+# cinco es otra cama y otro precio. Las noches van porque la ruta se puede
+# personalizar: llegar el mismo dia y quedarse una noche mas es otra reserva.
+ID_PARADA = re.compile(r"^ir-[a-z]{3,12}-[A-Z]{3}-\d{4}-\d{2}-\d{2}-\d{1,2}n-[1-8]$")
+# Origen, ciudad, dia y sentido. Sin personas: la tarifa es por persona.
+ID_VUELO = re.compile(r"^ir-vuelo-[A-Z]{3}-[A-Z]{3}-\d{4}-\d{2}-\d{2}-(ida|vuelta)$")
+MAX_AEROPUERTOS = 4
 
 
 def _texto_corto(valor: Any, campo: str, largo: int = 60, vacio: bool = False) -> str:
@@ -828,13 +834,109 @@ def paradas_interrail(crudo: str) -> list[dict[str, str]]:
     return limpias
 
 
+def vuelos_interrail(crudo: str) -> list[dict[str, Any]]:
+    """Los vuelos de entrada y salida de la ruta, validados como las paradas."""
+    try:
+        datos = json.loads(crudo or "[]")
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"los vuelos no son JSON: {exc}") from exc
+    if not isinstance(datos, list) or len(datos) > 4:
+        raise ValueError("como mucho cuatro vuelos")
+    limpios = []
+    for v in datos:
+        if not isinstance(v, dict):
+            raise ValueError("cada vuelo es un objeto")
+        ident = _texto_corto(v.get("id"), "id", 50)
+        if not ID_VUELO.match(ident):
+            raise ValueError(f"id de vuelo no vale: {ident!r}")
+        origen = _texto_corto(v.get("origen"), "origen", 3).upper()
+        if not re.fullmatch(r"[A-Z]{3}", origen):
+            raise ValueError(f"origen no vale: {origen!r}")
+        aeropuertos = v.get("aeropuertos")
+        if (
+            not isinstance(aeropuertos, list)
+            or not 1 <= len(aeropuertos) <= MAX_AEROPUERTOS
+            or not all(isinstance(a, str) and re.fullmatch(r"[A-Z]{3}", a) for a in aeropuertos)
+        ):
+            raise ValueError(f"aeropuertos no validos en {ident}")
+        sentido = v.get("sentido")
+        if sentido not in ("ida", "vuelta") or not ident.endswith(sentido):
+            raise ValueError(f"sentido no vale en {ident}")
+        try:
+            dia = date.fromisoformat(str(v.get("fecha")))
+        except ValueError as exc:
+            raise ValueError(f"fecha no valida en {ident}") from exc
+        limpios.append(
+            {
+                "id": ident,
+                "origen": origen,
+                "aeropuertos": aeropuertos,
+                "fecha": dia.isoformat(),
+                "sentido": sentido,
+            }
+        )
+    return limpios
+
+
+def buscar_vuelo_interrail(v: dict[str, Any], cfg: Config) -> dict[str, Any]:
+    """El vuelo mas barato de ese dia, de ida sola, entre los aeropuertos de la
+    ciudad.
+
+    Solo Ryanair: es el unico proveedor del proyecto que busca IDA SOLA, y un
+    Interrail entra por una ciudad y sale por otra. Google Flights aqui solo
+    sabe de ida y vuelta. Por eso cada ciudad lleva varios aeropuertos —Ryanair
+    no vuela a Amsterdam pero si a Eindhoven, ni a Paris-CDG pero si a
+    Beauvais—: sin ellos casi ninguna ruta tendria precio de vuelo.
+    """
+    from dataclasses import asdict
+
+    proveedores = [p for p in build_providers(["ryanair"], cfg.search) if hasattr(p, "search_oneway")]
+    dia = date.fromisoformat(v["fecha"])
+    ruta = Route(origin=v["origen"], origin_name="")
+    tramos = []
+    for p in proveedores:
+        try:
+            if v["sentido"] == "ida":
+                tramos += p.search_oneway(ruta, dia, destinations=v["aeropuertos"])
+            else:
+                tramos += p.search_oneway(ruta, dia, inbound=True, destinations=v["aeropuertos"])
+        except Exception as exc:  # noqa: BLE001 - sin vuelo, la ruta sigue
+            log.warning("Vuelo %s: %s", v["id"], exc)
+    tramos = sorted((t for t in tramos if t.price and t.currency == "EUR"), key=lambda t: t.price)
+    return {
+        **v,
+        "generated_at": date.today().isoformat(),
+        # Los cinco mas baratos: el primero es el que suma, los otros son para
+        # quien prefiera otra hora.
+        "legs": [asdict(t) for t in tramos[:5]],
+    }
+
+
 def cmd_interrail_stays(args: argparse.Namespace) -> int:
     try:
         paradas = paradas_interrail(args.paradas)
+        vuelos = vuelos_interrail(getattr(args, "vuelos", "") or "[]")
     except ValueError as exc:
         log.error("Peticion de Interrail rechazada: %s", exc)
         return 2
     adultos = max(1, min(8, int(args.adults or 2)))
+
+    # Los vuelos primero: son dos llamadas rapidas, y si el alojamiento tarda o
+    # se cuelga, al menos el precio del vuelo ya esta.
+    if vuelos:
+        cfg: Config = load_config(args.config)
+        store = Store()
+        for v in vuelos:
+            res = buscar_vuelo_interrail(v, cfg)
+            if not args.dry_run:
+                store.save_vuelo_interrail(res)
+            mejor = res["legs"][0] if res["legs"] else None
+            if mejor:
+                print(f"Vuelo {v['id']}: {mejor['price']:.0f} EUR {mejor['origin']}->{mejor['destination']}")
+            else:
+                print(f"Vuelo {v['id']}: sin vuelo")
+        if not args.dry_run:
+            store.save_indice_interrail()
 
     fallidas = []
     for p in paradas:
@@ -996,6 +1098,7 @@ def cmd_reindex(args: argparse.Namespace) -> int:
     # Los dos salen de recorrer `data/stays/*.json`, asi que no hay nada que
     # conservar: se vuelven a destilar.
     camas = store.save_beds()
+    store.save_indice_interrail()
     print(
         f"Indice rehecho con {len(ficheros)} busquedas "
         f"y {len(camas.get('destinos', {}))} destinos con precio de cama."
@@ -1538,6 +1641,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Busca alojamiento entero en cada parada de una ruta de Interrail",
     )
     ir.add_argument("--paradas", required=True, help="JSON con la lista de paradas")
+    ir.add_argument("--vuelos", default="[]", help="JSON con los vuelos de entrada y salida")
     ir.add_argument("--adults", type=int, default=2)
     ir.add_argument("--dry-run", action="store_true")
     ir.set_defaults(func=cmd_interrail_stays)

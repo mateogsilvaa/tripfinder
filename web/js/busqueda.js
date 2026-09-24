@@ -165,7 +165,7 @@ const FLEXIBLES = new Set(["mes", "mes-finde", "tramo"]);
 
    Madrid va primero y por defecto: es de donde sale el barrido diario y lo que
    espera casi todo el mundo. El resto, por ciudad. */
-const ORIGENES = [
+export const ORIGENES = [
   ["MAD", "Madrid"],
   ["ALC", "Alicante"],
   ["LEI", "Almería"],

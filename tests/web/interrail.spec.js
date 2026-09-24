@@ -261,6 +261,6 @@ test.describe("el interrail", () => {
     await page.fill("#irVuelta", "");
     await page.dispatchEvent("#irVuelta", "change");
     await page.waitForTimeout(100);
-    await expect(page.locator("#irRutas .ir-ruta")).toHaveCount(6);
+    await expect(page.locator("#irRutas .ir-ruta")).toHaveCount(12);
   });
 });
