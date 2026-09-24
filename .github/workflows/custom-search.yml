@@ -55,6 +55,7 @@ jobs:
           P_RETURN: ${{ github.event.client_payload.viaje.return_date }}
           P_DESDE: ${{ github.event.client_payload.viaje.desde }}
           P_HASTA: ${{ github.event.client_payload.viaje.hasta }}
+          P_CAMAS: ${{ github.event.client_payload.viaje.camas }}
           P_OWNER: ${{ github.event.client_payload.owner }}
           P_OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
@@ -64,6 +65,7 @@ jobs:
             echo "nights=$P_NIGHTS"; echo "months=$P_MONTHS"; echo "weekend=$P_WEEKEND"
             echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
             echo "desde=$P_DESDE"; echo "hasta=$P_HASTA"; echo "origin=$P_ORIGIN"
+            echo "camas=$P_CAMAS"
             echo "owner=$P_OWNER"; echo "owner_name=$P_OWNER_NAME"
           } >> "$GITHUB_OUTPUT"
 
@@ -108,6 +110,52 @@ jobs:
           python -m tripfinder search \
             --dest "$DEST" --label "$LABEL" "${args[@]}"
 
+      # ORGANIZAR EL FINDE: y ademas donde dormir.
+      #
+      # Va en ESTE job y no en un dispatch aparte por un motivo concreto: el
+      # `GITHUB_TOKEN` de un workflow no puede disparar otro workflow —GitHub lo
+      # impide para que nada se llame a si mismo en bucle—, asi que un
+      # `repository_dispatch` de tipo `stay` desde aqui no arrancaria nada y
+      # nadie se enteraria. Llamando al comando directamente, el mismo run deja
+      # el vuelo y la cama, y el commit de abajo se lleva las dos cosas.
+      #
+      # El alojamiento se pide para el MEJOR vuelo que haya salido: es el que la
+      # web ensena primero y el unico para el que las fechas estan decididas.
+      - name: Y donde dormir
+        if: steps.parse.outputs.camas == 'si'
+        env:
+          PYTHONPATH: src
+          AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
+          AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
+          ADULTS: ${{ steps.parse.outputs.adults }}
+        run: |
+          # El fichero que acaba de escribir la busqueda.
+          fichero=$(git status --porcelain data/searches \
+            | awk '{print $2}' | grep -v index.json | head -1)
+          if [ -z "$fichero" ]; then
+            echo "Sin resultados: no hay viaje al que buscarle cama."
+            exit 0
+          fi
+
+          # El mejor viaje, que es el primero: se guardan ya ordenados por lo
+          # que la web ensena arriba. Sin heredoc a proposito: dentro de un
+          # `run:` indentado, bash no reconoce un terminador que no este en la
+          # columna cero y el paso se cuelga leyendo para siempre.
+          datos=$(python -c 'import json,sys; d=json.load(open(sys.argv[1],encoding="utf-8")); o=(d.get("offers") or [None])[0]; print("\t".join(str(o.get(k) or "") for k in ("id","destination_name","destination_country","destination","depart_date","return_date")) if o else "")' "$fichero")
+          if [ -z "$datos" ]; then
+            echo "La busqueda no encontro ningun viaje."
+            exit 0
+          fi
+          IFS=$'\t' read -r OFFER CIUDAD PAIS IATA IDA VUELTA <<< "$datos"
+          echo "Buscando cama en $CIUDAD del $IDA al $VUELTA"
+          # Si el alojamiento falla, la busqueda de vuelo ya esta hecha y se
+          # publica igual: media respuesta es mejor que ninguna.
+          python -m tripfinder scan-stays \
+            --offer-id "$OFFER" --city "$CIUDAD" --country "$PAIS" --iata "$IATA" \
+            --checkin "$IDA" --checkout "$VUELTA" \
+            ${ADULTS:+--adults "$ADULTS"} \
+            || echo "El alojamiento no salio; el vuelo si esta guardado."
+
       - name: Publicar resultados
         run: |
           git config user.name  "tripfinder-bot"
@@ -122,16 +170,25 @@ jobs:
             echo "La busqueda no genero fichero"
             exit 0
           fi
-          mkdir -p /tmp/tf
-          for f in $nuevos; do cp "$f" /tmp/tf/; done
+          mkdir -p /tmp/tf/searches /tmp/tf/stays
+          for f in $nuevos; do cp "$f" /tmp/tf/searches/; done
+
+          # Y el alojamiento, si el paso anterior lo ha buscado. ESTO ES
+          # NECESARIO: abajo hay un `git reset --hard` que se lo llevaria por
+          # delante, y el viaje se publicaria sin la cama que se acaba de
+          # scrapear. `index.json` y `camas.json` no se copian porque son
+          # derivados: los rehace `reindex`.
+          camas=$(git status --porcelain data/stays | awk '{print $2}' | grep -v index.json || true)
+          for f in $camas; do cp "$f" /tmp/tf/stays/; done
 
           for intento in 1 2 3 4 5; do
             git fetch origin main
             git reset --hard origin/main
-            mkdir -p data/searches
-            for f in /tmp/tf/*.json; do cp "$f" data/searches/; done
+            mkdir -p data/searches data/stays
+            for f in /tmp/tf/searches/*.json; do cp "$f" data/searches/; done
+            for f in /tmp/tf/stays/*.json; do [ -e "$f" ] && cp "$f" data/stays/; done
             PYTHONPATH=src python -m tripfinder reindex
-            git add data/searches
+            git add data/searches data/stays data/camas.json
             if git diff --staged --quiet; then
               echo "Sin cambios"
               exit 0
