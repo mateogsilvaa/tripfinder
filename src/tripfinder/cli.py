@@ -864,7 +864,16 @@ def cmd_reindex(args: argparse.Namespace) -> int:
         (store.searches_dir / "index.json").write_text(
             _json.dumps({"searches": []}, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-    print(f"Indice rehecho con {len(ficheros)} busquedas.")
+    # Y los derivados del alojamiento, que tambien son derivados y tambien se
+    # pierden al rehacer el arbol: `data/stays/index.json` (que vuelos tienen
+    # cama buscada) y `data/camas.json` (lo que cuesta dormir en cada sitio).
+    # Los dos salen de recorrer `data/stays/*.json`, asi que no hay nada que
+    # conservar: se vuelven a destilar.
+    camas = store.save_beds()
+    print(
+        f"Indice rehecho con {len(ficheros)} busquedas "
+        f"y {len(camas.get('destinos', {}))} destinos con precio de cama."
+    )
     return 0
 
 

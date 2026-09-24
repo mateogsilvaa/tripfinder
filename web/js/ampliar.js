@@ -23,6 +23,7 @@ export const CAMPOS_BUSCAR = {
   mes: "#fMes",
   depart: "#fDepart",
   regreso: "#fReturn",
+  camas: "#fCamas",
   noches: "#fNights",
   meses: "#fMonths",
   tope: "#fMax",
@@ -40,6 +41,24 @@ export const CAMPOS_SEGUIR = {
   personas: "#wAdults",
 };
 
+/* UNA CASILLA NO SE LEE CON `.value`. Un `checkbox` tiene `value` («on») pase
+   lo que pase, así que leerlo así llevaba «y búscame dónde dormir» activado
+   SIEMPRE en el viaje de la portada a la herramienta, incluso sin marcarlo. Y
+   al revés, asignarle `.value` no lo marca.
+
+   Dos funciones de tres líneas, y los campos siguen declarándose en una lista
+   plana sin que quien la lea tenga que saber de tipos. */
+const leer = (el) => {
+  if (!el) return "";
+  if (el.type === "checkbox") return el.checked ? "1" : "";
+  return String(el.value == null ? "" : el.value).trim();
+};
+
+const escribir = (el, valor) => {
+  if (el.type === "checkbox") el.checked = valor === "1";
+  else el.value = valor;
+};
+
 /* Si este formulario es el compacto de la portada, se lleva lo escrito a la
    página de la herramienta y devuelve `true` para que el que llama no siga.
    En la propia página de la herramienta no hay `data-ampliar` y devuelve
@@ -51,7 +70,7 @@ export function ampliar(form, campos) {
   const q = new URLSearchParams();
   Object.entries(campos).forEach(([nombre, selector]) => {
     const el = document.querySelector(selector);
-    const valor = el ? String(el.value == null ? "" : el.value).trim() : "";
+    const valor = leer(el);
     if (valor) q.set(nombre, valor);
   });
   // La marca de que esto viene de la portada: sin ella, abrir la página a pelo
@@ -78,7 +97,7 @@ export function recogerAmpliado(campos, form) {
     if (!q.has(nombre)) return;
     const el = document.querySelector(selector);
     if (!el) return;
-    el.value = q.get(nombre);
+    escribir(el, q.get(nombre));
     el.dispatchEvent(new Event("change", { bubbles: true }));
     algo = true;
   });

@@ -266,6 +266,18 @@ function syncFinder() {
     // ventana. Decir «elige la vuelta» ahí es mentir.
     $("#dateBtn").dataset.modo = cuando === "tramo" ? "tramo" : "fechas";
   }
+  /* ORGANIZAR EL FINDE: y ademas dónde dormir. Solo se ofrece con un destino
+     concreto Y fechas exactas, porque el alojamiento se busca para unas fechas
+     y una ciudad: con «donde sea» no hay ciudad, y con fechas flexibles todavía
+     no hay fechas. Ofrecerlo y que no hiciera nada sería peor que no ofrecerlo.
+
+     Se esconde en vez de desactivarse: una casilla apagada invita a pulsarla
+     para averiguar por qué. */
+  const puedeCamas = donde === "one" && cuando === "exact";
+  if (existe("#camasWrap")) {
+    $("#camasWrap").hidden = !puedeCamas;
+    if (!puedeCamas) $("#fCamas").checked = false;
+  }
   $("#nightsWrap").hidden = cuando === "exact";
   // Con ventana, el horizonte sobra: ya has dicho hasta cuándo.
   $("#monthsWrap").hidden = cuando === "exact" || FLEXIBLES.has(cuando);
@@ -373,6 +385,7 @@ on("#finderForm", "submit", async (e) => {
       return_date: cuando === "exact" ? $("#fReturn").value : "",
       desde: ventana.desde,
       hasta: ventana.hasta,
+      camas: $("#fCamas") && $("#fCamas").checked ? "si" : "",
     },
   };
 
@@ -401,7 +414,12 @@ on("#finderForm", "submit", async (e) => {
   if (r.ok) {
     anadirPendiente(payload.label);
     tfOlvidarAnuncio();
-    tfAnunciar(`Búsqueda lanzada: ${payload.label}. Tarda unos minutos.`);
+    tfAnunciar(
+      `Búsqueda lanzada: ${payload.label}. ` +
+        (payload.viaje.camas
+          ? "Tarda unos minutos: primero los vuelos y después el alojamiento del mejor."
+          : "Tarda unos minutos.")
+    );
     loadSearches();
     return;
   }
