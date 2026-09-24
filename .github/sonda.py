@@ -1,13 +1,12 @@
-"""Sonda: que devuelven las webs de alojamiento a un runner de GitHub.
+"""Sonda 2: DONDE guardan Holidu y Vrbo los anuncios dentro de la pagina.
 
-Temporal. Desde el contenedor donde se escribe el codigo no hay red, asi que
-esto se ejecuta en Actions y se lee en su log. No guarda nada ni publica nada:
-imprime, por cada web, si responde, cuanto, y si lo que llega parece una lista
-de alojamientos o un muro antibot.
+Temporal, como la primera. La primera dijo que las dos responden con anuncios;
+esta busca la estructura para escribir el parser contra lo que hay de verdad.
 """
 
 import json
 import re
+from collections import Counter
 
 import requests
 
@@ -17,67 +16,103 @@ UA = (
     "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 )
 
-WEBS = {
-    "booking-enteros": (
-        "https://www.booking.com/searchresults.es.html?ss=Amsterdam"
-        f"&checkin={IDA}&checkout={VUELTA}&group_adults={GENTE}&no_rooms=1"
-        "&nflt=privacy_type%3D3&order=price"
-    ),
-    "hometogo": f"https://www.hometogo.es/amsterdam/?arrival={IDA}&duration=2&persons={GENTE}",
-    "holidu": f"https://www.holidu.es/s/Amsterdam?checkin={IDA}&checkout={VUELTA}&adults={GENTE}",
-    "vrbo": (
-        "https://www.vrbo.com/es-es/search?destination=Amsterdam"
-        f"&startDate={IDA}&endDate={VUELTA}&adults={GENTE}"
-    ),
-    "interhome": f"https://www.interhome.es/search/?q=Amsterdam&arrival={IDA}&duration=2&pax={GENTE}",
-    "casamundo": f"https://www.casamundo.es/search/amsterdam?arrival={IDA}&duration=2&persons={GENTE}",
-    "novasol": f"https://www.novasol.es/search?q=Amsterdam&arrival={IDA}&departure={VUELTA}&adults={GENTE}",
-    "belvilla": f"https://www.belvilla.es/search?q=Amsterdam&arrival={IDA}&departure={VUELTA}&adults={GENTE}",
-    "rentalia": f"https://es.rentalia.com/amsterdam/?llegada={IDA}&salida={VUELTA}&personas={GENTE}",
-    "e-domizil": f"https://www.e-domizil.es/search/amsterdam?arrival={IDA}&duration=2&persons={GENTE}",
-    "plumguide": f"https://www.plumguide.com/s/amsterdam?checkIn={IDA}&checkOut={VUELTA}&guests={GENTE}",
-}
 
-MUROS = ("captcha", "access denied", "cf-chl", "datadome", "px-captcha", "are you a robot",
-         "unusual traffic", "perimeterx", "challenge-platform", "akamai")
+def scripts(html):
+    out = []
+    for m in re.finditer(r"<script([^>]*)>(.*?)</script>", html, re.S | re.I):
+        attrs, cuerpo = m.group(1), m.group(2)
+        out.append((attrs.strip()[:90], len(cuerpo), cuerpo))
+    return out
 
 
-def mirar(nombre, html, estado, via):
-    bajo = html.lower()
-    titulo = re.search(r"<title[^>]*>(.*?)</title>", html, re.S | re.I)
-    ld = re.findall(r'<script[^>]+application/ld\+json[^>]*>(.*?)</script>', html, re.S | re.I)
-    tipos = []
-    for bloque in ld[:20]:
+def recorrer(nodo, claves, tipos, prof=0):
+    if prof > 40:
+        return
+    if isinstance(nodo, dict):
+        for k, v in nodo.items():
+            claves[k] += 1
+            if k == "__typename" and isinstance(v, str):
+                tipos[v] += 1
+            recorrer(v, claves, tipos, prof + 1)
+    elif isinstance(nodo, list):
+        for x in nodo:
+            recorrer(x, claves, tipos, prof + 1)
+
+
+def buscar_json(cuerpo):
+    """El primer objeto JSON grande dentro de un script."""
+    cuerpo = cuerpo.strip()
+    for arranque in ("{", "["):
+        i = cuerpo.find(arranque)
+        if i < 0:
+            continue
         try:
-            d = json.loads(bloque)
+            return json.JSONDecoder().raw_decode(cuerpo[i:])[0]
         except Exception:
             continue
-        for x in d if isinstance(d, list) else [d]:
-            if isinstance(x, dict):
-                tipos.append(str(x.get("@type")))
-    precios = len(re.findall(r"€\s?\d{2,4}|\d{2,4}\s?€", html))
-    print(json.dumps({
-        "web": nombre, "via": via, "estado": estado, "bytes": len(html),
-        "titulo": (titulo.group(1).strip()[:80] if titulo else ""),
-        "next_data": "__NEXT_DATA__" in html,
-        "apollo_o_state": bool(re.search(r"__APOLLO_STATE__|__INITIAL_STATE__|window\.__[A-Z_]+__", html)),
-        "ld_json": len(ld), "ld_tipos": sorted(set(tipos))[:8],
-        "precios_en_texto": precios,
-        "muro": [m for m in MUROS if m in bajo][:4],
-    }, ensure_ascii=False))
+    return None
 
 
-for nombre, url in WEBS.items():
-    try:
-        r = requests.get(url, headers={"User-Agent": UA, "Accept-Language": "es-ES,es;q=0.9"}, timeout=30)
-        mirar(nombre, r.text, r.status_code, "requests")
-    except Exception as exc:
-        print(json.dumps({"web": nombre, "via": "requests", "error": str(exc)[:120]}))
-    try:
-        from scrapling.fetchers import Fetcher
+def muestra(nodo, pistas, max_n=2):
+    """Objetos que tienen a la vez algo de precio y algo de nombre."""
+    halladas = []
 
-        r = Fetcher.get(url, stealthy_headers=True, timeout=30)
-        html = r.html_content if hasattr(r, "html_content") else str(r.body)
-        mirar(nombre, html, getattr(r, "status", "?"), "scrapling")
-    except Exception as exc:
-        print(json.dumps({"web": nombre, "via": "scrapling", "error": str(exc)[:120]}))
+    def ir(n, prof=0):
+        if len(halladas) >= max_n or prof > 40:
+            return
+        if isinstance(n, dict):
+            ks = {k.lower() for k in n}
+            if any(p in " ".join(ks) for p in ("price", "precio")) and any(
+                p in " ".join(ks) for p in pistas
+            ):
+                halladas.append(n)
+                return
+            for v in n.values():
+                ir(v, prof + 1)
+        elif isinstance(n, list):
+            for x in n:
+                ir(x, prof + 1)
+
+    ir(nodo)
+    return halladas
+
+
+def informe(nombre, html):
+    print(f"\n===== {nombre}: {len(html)} bytes")
+    grandes = sorted(scripts(html), key=lambda s: -s[1])[:6]
+    for attrs, largo, cuerpo in grandes:
+        print(f"  script {largo:>8}  [{attrs}]  {cuerpo.strip()[:100]!r}")
+    for attrs, largo, cuerpo in grandes[:4]:
+        datos = buscar_json(cuerpo)
+        if datos is None:
+            continue
+        claves, tipos = Counter(), Counter()
+        recorrer(datos, claves, tipos)
+        print(f"  -- JSON en [{attrs[:50]}]: {sum(claves.values())} claves")
+        print("     claves top:", [k for k, _ in claves.most_common(45)])
+        if tipos:
+            print("     __typename top:", tipos.most_common(25))
+        for i, obj in enumerate(muestra(datos, ("name", "title", "headline", "nombre"))):
+            txt = json.dumps(obj, ensure_ascii=False)
+            print(f"     MUESTRA {i}: {txt[:1500]}")
+        break
+
+
+r = requests.get(
+    f"https://www.holidu.es/s/Amsterdam?checkin={IDA}&checkout={VUELTA}&adults={GENTE}",
+    headers={"User-Agent": UA, "Accept-Language": "es-ES,es;q=0.9"},
+    timeout=30,
+)
+print("holidu url final:", r.url, r.status_code)
+informe("holidu", r.text)
+
+from scrapling.fetchers import Fetcher  # noqa: E402
+
+v = Fetcher.get(
+    f"https://www.vrbo.com/es-es/search?destination=Amsterdam&startDate={IDA}&endDate={VUELTA}&adults={GENTE}",
+    stealthy_headers=True,
+    timeout=40,
+)
+html = v.html_content if hasattr(v, "html_content") else str(v.body)
+print("vrbo estado:", getattr(v, "status", "?"))
+informe("vrbo", html)
