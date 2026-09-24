@@ -1,0 +1,11 @@
+{
+  "id": "ir-vuelo-MAD-CPH-2027-07-19-ida",
+  "origen": "MAD",
+  "aeropuertos": [
+    "CPH"
+  ],
+  "fecha": "2027-07-19",
+  "sentido": "ida",
+  "generated_at": "2026-09-24",
+  "legs": []
+}
