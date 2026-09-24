@@ -3042,6 +3042,12 @@ h1 em { font-size: 1.3em; }
   /* Cerrar. Lo primero que se busca al abrir una hoja, y era el boton mas
      pequeño de la casa. */
   .modal-head button, [data-cerrar] { min-height: var(--tap-min); }
+
+  /* LOS FILTROS DEL TABLON. En movil los nueve controles viven en una hoja que
+     sube desde abajo: es el sitio con mas cosas que tocar por centimetro de
+     toda la web, y sus campos median 35 px. El deslizador del precio tambien:
+     la barra se sigue dibujando fina, lo que crece es la caja que la rodea. */
+  .hoja .field input, .hoja .field select { min-height: var(--tap-min); }
 }
 
 @media (max-width: 420px) {

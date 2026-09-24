@@ -26,7 +26,10 @@ const MOVIL = { width: 390, height: 780 };
 // 360 px es el móvil más estrecho que sigue en la calle.
 const ESTRECHO = { width: 360, height: 740 };
 
-const PAGINAS = ["/index.html", "/buscar.html", "/seguimientos.html", "/tablon.html"];
+/* Las páginas que hay. El tablón no es una página: vive dentro de la portada,
+   y `/tablon.html` es el 404 — que es lo que esta prueba estuvo midiendo hasta
+   que una captura lo enseñó. */
+const PAGINAS = ["/index.html", "/buscar.html", "/seguimientos.html", "/404.html"];
 
 /* Devuelve la lista de lo que se pulsa y no llega, ya con su nombre para que el
    fallo se lea sin abrir el navegador. */
@@ -59,8 +62,10 @@ const pequenos = (page) =>
       if (!b.width && !b.height) return; // escondido
       if (el.type === "hidden" || el.closest("[hidden]")) return;
       if (enUnaFrase(el)) return;
+      // Se redondea a propósito: un objetivo de 43,6 px no es un fallo, es
+      // cómo cae la caja de texto en la rejilla de subpíxeles del navegador.
       const { w, h } = caja(el);
-      if (h < MIN || w < MIN) {
+      if (Math.round(h) < MIN || Math.round(w) < MIN) {
         const que = el.className || el.id || el.tagName.toLowerCase();
         const texto = (el.textContent || el.placeholder || "").trim().slice(0, 24);
         malos.push(`${que} (${Math.round(w)}x${Math.round(h)}) "${texto}"`);
@@ -98,11 +103,13 @@ test.describe("con el dedo, a lo ancho de un móvil", () => {
   });
 
   test("la hoja de filtros del tablón también", async ({ page }) => {
+    // En móvil los nueve controles del tablón viven en una hoja que sube desde
+    // abajo. Es el sitio con más cosas que tocar por centímetro de toda la web.
     await page.setViewportSize(MOVIL);
-    await page.goto("/tablon.html", { waitUntil: "domcontentloaded" });
+    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(900);
-    await page.evaluate(() => document.querySelector("#abrirFiltros")?.click());
-    await page.waitForTimeout(400);
+    await page.locator("#filtrosBtn").click();
+    await expect(page.locator("#filtrosHoja")).toBeVisible();
     expect(await pequenos(page)).toEqual([]);
   });
 
