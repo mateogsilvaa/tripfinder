@@ -4,8 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TripFinder · trazar un viaje</title>
-<meta name="description" content="Dile a donde quieres ir y se recorre finde a finde hasta el año que viene, preguntando a todas las companias y no solo a las low cost.">
+<title>TripFinder · tu Interrail</title>
+<meta name="description" content="Monta tu Interrail: las ciudades por las que quieres pasar, los trenes, los vuelos de ida y vuelta y pisos enteros en el centro, con el total.">
 <meta name="theme-color" content="#100f0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
 <link rel="manifest" href="manifest.webmanifest?v=dev">
@@ -26,8 +26,7 @@
 <link rel="stylesheet" href="styles.css?v=dev">
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
-</head>
-<!-- /tf:parte -->
+</head><!-- /tf:parte -->
 <body>
 <!-- tf:parte capas -->
 <noscript>
@@ -36,8 +35,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     se pintan en tu navegador, así que sin él no hay nada que enseñar. Los
     chollos también llegan por correo, que sí funciona sin nada.
   </p>
-</noscript>
-<!-- /tf:parte -->
+</noscript><!-- /tf:parte -->
 
 <!-- tf:parte barra -->
   <div class="topbar">
@@ -51,104 +49,115 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       </a>
       <nav class="zonas" aria-label="Zonas">
         <a href="./" class="zona" data-zona="promos">Feed</a>
-        <a href="buscar.html" class="zona activa" data-zona="buscar" aria-current="page">Buscar</a>
+        <a href="buscar.html" class="zona" data-zona="buscar">Buscar</a>
         <a href="seguimientos.html" class="zona" data-zona="follows">Vuelos que sigues</a>
         <a href="trenes.html" class="zona" data-zona="tren">En tren</a>
-        <a href="interrail.html" class="zona" data-zona="interrail">Interrail</a>
+        <a href="interrail.html" class="zona activa" data-zona="interrail" aria-current="page">Interrail</a>
       </nav>
       <div class="topbar-hueco"></div>
-      <span class="board-live"><i aria-hidden="true"></i>en vivo</span>
       <span class="flaps" aria-hidden="true"><span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span><button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-cara" aria-hidden="true">?</span></button>
       <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
         <b aria-hidden="true">☀</b><span class="tema-txt">noche</span>
       </button>
     </div>
-  </div>
-<!-- /tf:parte -->
+  </div><!-- /tf:parte -->
 
 <header class="masthead">
   <div>
-    <h1>Dime <em>a dónde</em><br>quieres ir.</h1>
-    <p class="lede">Se recorre finde a finde hasta el año que viene, o para las fechas exactas que le pongas, preguntando a <strong>todas las compañías</strong>: Ryanair, Wizz, Iberia, Vueling, easyJet, ITA, Lufthansa… no solo a las low cost.</p>
+    <h1>Por Europa,<br><em>en tren.</em></h1>
+    <p class="lede">Con el pase Interrail o sin él. Elige las ciudades y te monta el viaje entero: el orden que menos tren gasta, los <b>vuelos de ida y vuelta</b> —que no tienen por qué ser desde la misma ciudad—, <b>pisos enteros en el centro</b> de cada parada y el total de todo.</p>
   </div>
-  <dl class="stats" id="stats"></dl>
 </header>
 
 <main>
-
-<section id="favAviso" class="fav-aviso" hidden aria-live="polite"></section>
-  <section class="herramienta completa">
+  <section class="herramienta completa ir" id="interrail" aria-labelledby="irTitulo">
     <div class="finder-body">
-      <div class="kicker-num">01 · buscar ahora</div>
-      <h3 class="solo-lector">El formulario</h3>
-      <form id="finderForm" class="finder-form">
-        <label for="fOrigen">
-          <span>¿Desde dónde?</span>
-          <select id="fOrigen"></select>
-        </label>
-        <label for="fWhere">
-          <span>¿A dónde?</span>
-          <select id="fWhere">
-            <option value="any">Donde sea</option>
-            <option value="one">Un sitio concreto</option>
-          </select>
-        </label>
-        <label for="fWhen">
-          <span>¿Cuándo?</span>
-          <select id="fWhen">
-            <option value="weekend">Un finde cualquiera</option>
-            <option value="mes">Un mes entero</option>
-            <option value="mes-finde">Un mes, solo los findes</option>
-            <option value="tramo">Entre dos fechas</option>
-            <option value="exact">Fechas exactas</option>
-            <option value="anytime">Cualquier fecha</option>
-          </select>
-        </label>
-        <label class="celda" id="destWrap" hidden>
-          <span>Destino</span>
-          <button type="button" id="destBtn" class="date-btn">Elegir destino</button>
-          <input id="fDest" type="hidden">
-        </label>
-        <label class="celda" id="mesWrap" hidden>
-          <span>Mes</span>
-          <select id="fMes"></select>
-        </label>
-        <label class="celda" id="departWrap" hidden>
-          <span id="departRot">Fechas</span>
-          <button type="button" id="dateBtn" class="date-btn">Elegir en el calendario</button>
-          <input id="fDepart" type="hidden">
-          <input id="fReturn" type="hidden">
-        </label>
-        <label class="switch celda" id="camasWrap" hidden>
-          <input type="checkbox" id="fCamas">
-          <span>Y búscame dónde dormir</span>
-        </label>
-        <div class="party">
-          <label for="fNights" id="nightsWrap">
-            <span>Noches</span>
-            <input id="fNights" class="cifra" value="2-3" size="5">
-          </label>
-          <label for="fMonths" id="monthsWrap">
-            <span>Meses vista</span>
-            <input id="fMonths" class="cifra" type="number" min="1" max="12" value="12">
-          </label>
-          <label for="fMax">
-            <span>Tope €</span>
-            <input id="fMax" class="cifra" type="number" min="20" max="3000" step="1" value="150">
-          </label>
-          <label for="fAdults">
-            <span>Personas</span>
-            <input id="fAdults" class="cifra" type="number" min="1" max="8" value="2">
-          </label>
-        </div>
+      <div class="kicker-num">05 · interrail</div>
+      <h2 id="irTitulo" class="ir-titulo">Tu Interrail, en tres preguntas.</h2>
+
+      <form id="irForm" class="ir-form" novalidate>
+        <fieldset class="ir-bloque">
+          <legend><span class="ir-paso">1</span> El pase</legend>
+          <div class="ir-opciones" role="radiogroup" aria-label="¿Tienes ya el pase?">
+            <label class="ir-opcion"><input type="radio" name="irPase" value="no" checked>
+              <span><b>Todavía no lo tengo</b><small>Te digo si sale a cuenta comprarlo o ir billete a billete.</small></span></label>
+            <label class="ir-opcion"><input type="radio" name="irPase" value="si">
+              <span><b>Ya lo tengo</b><small>No se cuenta en el precio: solo lo que te queda por pagar.</small></span></label>
+          </div>
+          <div class="ir-fila">
+            <label for="irDias" id="irDiasWrap" hidden>
+              <span>¿De cuántos días de viaje?</span>
+              <select id="irDias">
+                <option value="4">4 días</option>
+                <option value="5">5 días</option>
+                <option value="7" selected>7 días</option>
+                <option value="10">10 días</option>
+                <option value="15">15 días</option>
+              </select>
+            </label>
+            <label for="irEdad" id="irEdadWrap">
+              <span>Edad (cambia el precio del pase)</span>
+              <select id="irEdad">
+                <option value="joven">De 12 a 27</option>
+                <option value="adulto" selected>De 28 a 59</option>
+                <option value="senior">60 o más</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="ir-bloque">
+          <legend><span class="ir-paso">2</span> El viaje</legend>
+          <div class="ir-fila">
+            <label for="irOrigen">
+              <span>Sales desde</span>
+              <select id="irOrigen"></select>
+            </label>
+            <label for="irIda">
+              <span>Te vas el</span>
+              <input id="irIda" type="date">
+            </label>
+            <label for="irVuelta">
+              <span>Vuelves el <i>(opcional)</i></span>
+              <input id="irVuelta" type="date">
+            </label>
+            <label for="irPersonas">
+              <span>Personas</span>
+              <select id="irPersonas">
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="ir-bloque">
+          <legend><span class="ir-paso">3</span> ¿Por qué ciudades quieres pasar?</legend>
+          <p class="ir-ayuda">Elige las que quieras, en cualquier orden: la ruta las ordena para gastar
+            el menor tren posible. Si no eliges ninguna, te proponemos rutas hechas.</p>
+          <div class="ir-ciudades" id="irCiudades"></div>
+        </fieldset>
       </form>
-      <div id="cal" class="cal" hidden></div>
-      <p class="hint" id="finderHint"></p>
-      <div><button class="btn primary" type="submit" form="finderForm">Buscar</button></div>
-      <div id="searches" class="searches"></div>
+
+      <p class="hint" id="irHint" role="status"></p>
+      <div class="ir-rutas" id="irRutas"></div>
+
+      <p class="tren-pie">
+        <b>El pase no lo paga todo.</b> Los trenes rápidos de Italia, Francia y España, y los
+        nórdicos y los polacos, exigen una reserva aparte, y cada ruta la suma. Los vuelos y el
+        alojamiento son de verdad: los vuelos, de ida sola en Ryanair; las camas, pisos y casas
+        enteras en Airbnb y en Holidu, a poca distancia a pie del centro. <small class="ir-apunte">El
+        pase, por la tarifa de 2025 en segunda; los billetes sueltos y las reservas, en horquilla,
+        porque cada compañía los pone tren a tren. Los tiempos son del directo más rápido de cada
+        tramo.</small>
+        <a class="btn ghost small" href="https://www.interrail.eu/es" target="_blank" rel="noopener">Abrir Interrail</a>
+      </p>
     </div>
   </section>
-
 </main>
 
 <!-- tf:parte hojas -->
@@ -218,8 +227,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <p class="hoja-nota">Dos eventos, ida y vuelta, con la hora del billete. No caduca ni depende de que esta web siga en pie.</p>
     </div>
   </div>
-</div>
-<!-- /tf:parte -->
+</div><!-- /tf:parte -->
 
 <!-- tf:parte pie -->
 <footer class="foot">
@@ -232,7 +240,6 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 <script src="log.js?v=dev"></script>
 <script src="auth.js?v=dev"></script>
-<script type="module" src="js/tripfinder.js?v=dev"></script>
-<!-- /tf:parte -->
+<script type="module" src="js/tripfinder.js?v=dev"></script><!-- /tf:parte -->
 </body>
 </html>

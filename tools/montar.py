@@ -109,6 +109,10 @@ DESCRIPCIONES = {
         "A donde llega el AVE desde Madrid y en cuanto. Del centro al centro, "
         "sin las tres horas de aeropuerto que se le suman a cualquier vuelo."
     ),
+    "interrail.html": (
+        "Monta tu Interrail: las ciudades por las que quieres pasar, los trenes, "
+        "los vuelos de ida y vuelta y pisos enteros en el centro, con el total."
+    ),
 }
 
 # La aplicacion instalable (#22). Solo en las tres paginas publicas: instalar el
@@ -146,6 +150,7 @@ NAV = (
     '        <a href="buscar.html"{buscar}>Buscar</a>\n'
     '        <a href="seguimientos.html"{follows}>Vuelos que sigues</a>\n'
     '        <a href="trenes.html"{tren}>En tren</a>\n'
+    '        <a href="interrail.html"{interrail}>Interrail</a>\n'
     '      </nav>\n'
 )
 
@@ -232,6 +237,20 @@ PAGINAS = {
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
     },
+    # El Interrail, que vivio debajo de los trenes de Madrid y era otra cosa:
+    # alli no se pide nada a nadie, aqui se buscan vuelos y alojamiento.
+    "interrail.html": {
+        "base": "",
+        "manifiesto": MANIFIESTO,
+        "nav": NAV,
+        "descubrir": DESCUBRIR,
+        "titulo": "TripFinder · tu Interrail",
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["interrail.html"]}">',
+        "vivo": "",
+        "zona": "interrail",
+        "nota": NOTA_WEB,
+        "guiones": GUIONES_WEB,
+    },
     # La pagina que sirve Pages cuando la direccion no existe. Lleva el nav
     # (es lo unico util que puedes hacer desde ahi) pero no las hojas de
     # alojamiento, y no se indexa.
@@ -281,9 +300,10 @@ def _zonas(activa: str | None) -> dict[str, str]:
     Quien solo queria ver sus busquedas guardadas tenia que lanzar una.
 
     Tambien fueron cuatro con el mapamundi; se fue, y con el la zona "mundo".
-    La cuarta de ahora es "tren", que si es una pagina de verdad."""
+    La cuarta de ahora es "tren", que si es una pagina de verdad, y la quinta
+    "interrail", que vivia debajo de ella."""
     salida: dict[str, str] = {}
-    for z in ("promos", "buscar", "follows", "tren"):
+    for z in ("promos", "buscar", "follows", "tren", "interrail"):
         if z == activa:
             salida[z] = f' class="zona activa" data-zona="{z}" aria-current="page"'
         else:

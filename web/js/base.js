@@ -109,6 +109,20 @@ export const stat = (etiqueta, valor, fuerte = false) =>
 export const statPie = (etiqueta, valor) =>
   `<div class="stats-pie"><span>${esc(etiqueta)}</span><b>${esc(valor)}</b></div>`;
 
+/* LA REJILLA DE DOS COLUMNAS DE LOS FORMULARIOS, sin huecos. Las celdas se
+   encienden y apagan según lo que se elija («Donde sea» esconde el destino,
+   «Un finde cualquiera» las fechas…), y con un número impar de celdas a la
+   vista la última se quedaba sola con un hueco al lado que parecía una celda
+   rota. Se le dice que ocupe la fila entera. */
+export function cuadrarRejilla(form) {
+  if (!form) return;
+  const celdas = [...form.children].filter(
+    (c) => !c.hidden && !c.classList.contains("party") && getComputedStyle(c).display !== "none"
+  );
+  form.querySelectorAll(":scope > [data-sola]").forEach((c) => delete c.dataset.sola);
+  if (celdas.length % 2 === 1) celdas[celdas.length - 1].dataset.sola = "1";
+}
+
 export function pintarStats(html) {
   const caja = document.getElementById("stats");
   if (caja) caja.innerHTML = html;

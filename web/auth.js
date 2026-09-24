@@ -537,6 +537,11 @@ function tfModal(html) {
       if (e.target === caja) tfCerrarModal();
     });
   }
+  /* Si ya habia uno abierto, se cierra ANTES de escribir el nuevo. Al reves,
+     `tfAbrirDialogo` cerraba el anterior —que es esta misma caja— y su
+     `alCerrar` vaciaba lo que se acababa de pintar: el login salia en blanco y
+     reventaba en `form.querySelector`. Pasaba al pulsar «Seguir» sin sesion. */
+  if (!caja.hidden && caja.innerHTML) tfCerrarDialogo(caja);
   caja.innerHTML = `<div class="modal-caja estrecha" role="dialog">${html}</div>`;
   caja.hidden = false;
   const cerrar = caja.querySelector("[data-cerrar]");

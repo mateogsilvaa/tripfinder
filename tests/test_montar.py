@@ -65,7 +65,7 @@ def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
     RESULTADO de usarla. Quien solo queria ver sus busquedas guardadas tenia
     que lanzar una."""
     enlaces = re.findall(r'<a href="([^"]+)"\{', montar.NAV)
-    assert enlaces == ["./", "buscar.html", "seguimientos.html", "trenes.html"], enlaces
+    assert enlaces == ["./", "buscar.html", "seguimientos.html", "trenes.html", "interrail.html"], enlaces
     for destino in enlaces[1:]:
         assert (WEB / destino).exists(), f"{destino} no existe"
 
@@ -139,6 +139,9 @@ LLEVAN = {
     # Los trenes no llevan hojas: no hay alojamiento que pedir ni viaje que
     # compartir, porque aqui no se busca nada — el dato ya esta.
     "trenes.html": {"nav": True, "hojas": False},
+    # El Interrail si: sin sesion no busca, y su «Pedir una cuenta» abre la
+    # hoja que va aqui. Sin ella el boton no hacia nada.
+    "interrail.html": {"nav": True, "hojas": True},
     "404.html": {"nav": True, "hojas": False},
     "admin.html": {"nav": False, "hojas": False},
 }

@@ -3,6 +3,7 @@
 import {
   $,
   SEARCH_OFFERS,
+  cuadrarRejilla,
   esc,
   existe,
   fetchJSON,
@@ -53,6 +54,7 @@ function syncWatch() {
   $("#wMonthsWrap").hidden = cuando === "exact";
   if (cuando !== "exact") $("#wCal").hidden = true;
   $("#watchHint").textContent = HINTS_W[`${donde}|${cuando}`] || "";
+  cuadrarRejilla($("#watchForm"));
 }
 ["#wWhere", "#wWhen"].forEach((s) => on(s, "change", syncWatch));
 if (existe("#watchForm")) syncWatch();

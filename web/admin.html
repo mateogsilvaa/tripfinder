@@ -992,6 +992,45 @@ function leerPeticion(issue) {
   };
 }
 
+/* LA PETICIÓN QUE LLEGA POR ENLACE. Quien no tiene GitHub —casi todo el
+   mundo— manda la petición como un enlace a este panel con todo detrás de
+   `#peticion=`: nombre, usuario, porqué y el mismo sobre que iría en la issue.
+   Se lee aquí y entra la primera en la cola, con la misma tarjeta y el mismo
+   «Aprobar». No hay issue que cerrar: al aprobarla o descartarla se borra el
+   `#` de la barra y ya está. */
+function peticionDelEnlace(hash = location.hash) {
+  const m = /[#&]peticion=([A-Za-z0-9_-]+)/.exec(String(hash || ""));
+  if (!m) return null;
+  try {
+    const b64 = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    const bin = atob(b64 + "===".slice((b64.length + 3) % 4));
+    const d = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0))));
+    const user = String(d.u || "").trim().toLowerCase();
+    if (!/^[a-z0-9._-]{3,24}$/.test(user)) return null;
+    const s = d.s;
+    return {
+      sellado: s && s.k && s.iv && s.data ? s : null,
+      cuerpo: "",
+      numero: "enlace",
+      url: "",
+      autor: "",
+      porEnlace: true,
+      cuando: "",
+      nombre: String(d.n || "").slice(0, 60),
+      user,
+      porque: String(d.p || "").slice(0, 400),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function olvidarEnlace() {
+  if (/peticion=/.test(location.hash)) {
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+}
+
 async function pedirAGitHub(ruta, opciones = {}) {
   const token = tfToken();
   if (!token) return null;
@@ -1026,6 +1065,16 @@ async function aprobarPeticion(p, boton) {
   aviso.textContent = `Abriendo la petición de ${p.nombre || p.user}…`;
 
   const datos = await tfLeerUsuarios(true);
+  /* Un usuario que ya existe haría fallar el workflow en silencio: el panel
+     diría «creada» y no se habría creado nada. Pasa de verdad con el enlace,
+     que se puede abrir dos veces. */
+  if (datos.users.some((u) => String(u.user || "").toLowerCase() === p.user.toLowerCase())) {
+    boton.disabled = false;
+    aviso.textContent =
+      `Ya hay una cuenta con el usuario "${p.user.toLowerCase()}". ` +
+      "Si es de otra persona, pídele que la vuelva a pedir con otro nombre.";
+    return;
+  }
   const privada = await tfAbrirBuzon(MAESTRA, ((datos.admin || {}).buzon || {}).priv);
   const dentro = await tfAbrirSellado(privada, p.sellado);
   if (!dentro || !dentro.pass) {
@@ -1060,7 +1109,8 @@ async function aprobarPeticion(p, boton) {
      que no hace falta que siga ahí, no sigue ahí. El historial de ediciones de
      GitHub lo conserva igual: por eso el sobre lleva SOLO la contraseña y el
      correo, y nunca nada de la maestra. */
-  try {
+  if (p.porEnlace) olvidarEnlace();
+  else try {
     const limpio = String(p.cuerpo || "").replace(/```tf-sobre\s*\n[\s\S]*?\n```/i, "(sobre abierto y retirado al aprobar la cuenta)");
     await pedirAGitHub(`/issues/${p.numero}`, {
       method: "PATCH",
@@ -1081,9 +1131,10 @@ async function pintarPeticiones() {
   const caja = $("#peticiones");
   if (!caja) return;
   let lista = [];
+  const delEnlace = peticionDelEnlace();
   try {
     const d = await pedirAGitHub("/issues?state=open&per_page=100&sort=created&direction=desc");
-    if (d === null) return; // sin token: no hay nada que decir todavia
+    if (d === null && !delEnlace) return; // sin token: no hay nada que decir todavia
     /* Se filtra POR EL TITULO y no por la etiqueta. `labels=peticion-cuenta` en
        la direccion con la que se abre la issue solo pinta la etiqueta si ya
        existe en el repositorio: si no, GitHub la ignora sin decir nada y la
@@ -1095,11 +1146,15 @@ async function pintarPeticiones() {
       .filter((i) => !i.pull_request && /^\[cuenta\]/i.test(String(i.title || "")))
       .map(leerPeticion);
   } catch (err) {
-    caja.hidden = false;
-    caja.innerHTML = `<h3 class="watch-head">peticiones de cuenta</h3>
-      <p class="hint">No se pudieron leer: ${esc(err.message)}</p>`;
-    return;
+    // Sin poder leer GitHub, la que llega por enlace se sigue pudiendo aprobar.
+    if (!delEnlace) {
+      caja.hidden = false;
+      caja.innerHTML = `<h3 class="watch-head">peticiones de cuenta</h3>
+        <p class="hint">No se pudieron leer: ${esc(err.message)}</p>`;
+      return;
+    }
   }
+  if (delEnlace) lista.unshift(delEnlace);
   if (!lista.length) {
     caja.hidden = true;
     caja.innerHTML = "";
@@ -1115,7 +1170,11 @@ async function pintarPeticiones() {
         <div class="peticion-quien">
           <span class="peticion-tag">${esc(p.user)}</span>
           <b>${esc(p.nombre || p.user)}</b>
-          <span class="meta">pedida por ${esc(p.autor)} · ${esc((p.cuando || "").slice(0, 10))}</span>
+          <span class="meta">${
+            p.porEnlace
+              ? "llegada por enlace"
+              : `pedida por ${esc(p.autor)} · ${esc((p.cuando || "").slice(0, 10))}`
+          }</span>
         </div>
         <p class="peticion-porque">${esc(p.porque || "(no contó por qué)")}</p>
         ${
@@ -1134,7 +1193,11 @@ async function pintarPeticiones() {
               : `<button class="btn primary small" type="button" data-crear="${p.numero}"
                    title="Esta petición no trae contraseña: la pones tú y se la das">Crear la cuenta a mano</button>`
           }
-          <a class="btn ghost small" href="${esc(p.url)}" target="_blank" rel="noopener">Ver la petición</a>
+          ${
+            p.url
+              ? `<a class="btn ghost small" href="${esc(p.url)}" target="_blank" rel="noopener">Ver la petición</a>`
+              : ""
+          }
           <button class="quitar" type="button" data-descartar="${p.numero}">descartar</button>
         </div>
       </article>`
@@ -1155,6 +1218,11 @@ async function pintarPeticiones() {
   );
   caja.querySelectorAll("[data-descartar]").forEach((b) =>
     b.addEventListener("click", async () => {
+      if (b.dataset.descartar === "enlace") {
+        olvidarEnlace();
+        pintarPeticiones();
+        return;
+      }
       b.disabled = true;
       try {
         await pedirAGitHub(`/issues/${b.dataset.descartar}`, {

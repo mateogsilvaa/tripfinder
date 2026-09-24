@@ -20,6 +20,7 @@ from .providers import build_providers
 from .scoring import is_deal, score_offer, should_notify
 from .stays import StayRequest, build_stay_providers
 from .store import Store
+from .util import clave_buzon, tapar_correos
 
 log = logging.getLogger("tripfinder")
 
@@ -30,6 +31,10 @@ def _setup_logging(verbose: bool) -> None:
         format="%(levelname)s %(message)s",
         stream=sys.stdout,
     )
+    from .util import TaparCorreos
+
+    for manejador in logging.getLogger().handlers:
+        manejador.addFilter(TaparCorreos())
 
 
 def _shortlist(
@@ -444,15 +449,21 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     for destino, (batch, motivo_destino) in reparto.items():
         try:
             used = notify_offers(
-                batch, to=destino, method=cfg.notify.get("method", "resend")
+                batch,
+                to=destino,
+                method=cfg.notify.get("method", "resend"),
+                issue_ok=_es_del_dueno(destino, cfg),
             )
         except Exception as exc:  # noqa: BLE001
             log.error("No se pudo enviar el email a %s: %s", destino, exc)
-            errors.append(f"email {destino}: {exc}")
+            errors.append(tapar_correos(f"email {destino}: {exc}"))
             continue
         enviado_algo = True
-        state.setdefault("digest", {})[destino] = today
-        print(f"Aviso enviado por {used} a {destino} ({len(batch)} ofertas, {motivo_destino}).")
+        state.setdefault("digest", {})[clave_buzon(destino)] = today
+        print(
+            f"Aviso enviado por {used} a {tapar_correos(destino)} "
+            f"({len(batch)} ofertas, {motivo_destino})."
+        )
 
     # El registro de "ya te la mande" es global a proposito: marca la oferta como
     # vista, y quien la reciba depende de las preferencias de cada uno. Solo se
@@ -535,7 +546,7 @@ def _reparto_de_chollos(
             continue
         cubiertos.add(correo.lower())
         frecuencia = str(u.prefs.get("chollos", "cada_vez"))
-        if not _cada_cuanto(frecuencia, ultimos.get(correo, "")):
+        if not _cada_cuanto(frecuencia, ultimos.get(clave_buzon(correo)) or ultimos.get(correo, "")):
             continue
         tope = u.prefs.get("chollos_max_precio")
         fuente = nuevas if frecuencia == "cada_vez" else deals
@@ -635,6 +646,8 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         max_total=args.max_total,
         country=country,
         solo_enteros=bool(getattr(args, "solo_enteros", False)),
+        centro=getattr(args, "centro", None),
+        radio_km=RADIO_INTERRAIL_KM if getattr(args, "centro", None) else None,
     )
 
     stays: list[StayOffer] = []
@@ -778,7 +791,10 @@ MAX_NOCHES_PARADA = 14
 # Ruta, ciudad, dia de llegada, noches y cuantos vais: cambiar cualquiera de las
 # cinco es otra cama y otro precio. Las noches van porque la ruta se puede
 # personalizar: llegar el mismo dia y quedarse una noche mas es otra reserva.
-ID_PARADA = re.compile(r"^ir-[a-z]{3,12}-[A-Z]{3}-\d{4}-\d{2}-\d{2}-\d{1,2}n-[1-8]$")
+# Con la ruta delante (`ir-centro-PRG-…`) era el formato de antes; ahora la cama
+# no depende de la ruta (`ir-PRG-…`): Praga del 3 al 5 es la misma venga uno de
+# donde venga. Se aceptan los dos para no romper lo ya guardado.
+ID_PARADA = re.compile(r"^ir-(?:[a-z]{3,12}-)?[A-Z]{3}-\d{4}-\d{2}-\d{2}-\d{1,2}n-[1-8]$")
 # Origen, ciudad, dia y sentido. Sin personas: la tarifa es por persona.
 ID_VUELO = re.compile(r"^ir-vuelo-[A-Z]{3}-[A-Z]{3}-\d{4}-\d{2}-\d{2}-(ida|vuelta)$")
 MAX_AEROPUERTOS = 4
@@ -793,7 +809,12 @@ def _texto_corto(valor: Any, campo: str, largo: int = 60, vacio: bool = False) -
     return texto
 
 
-def paradas_interrail(crudo: str) -> list[dict[str, str]]:
+# Lo lejos del centro que puede quedar una cama del Interrail: unos treinta
+# minutos andando. Lo mismo que `MAX_KM` en `web/js/interrail.js`.
+RADIO_INTERRAIL_KM = 2.5
+
+
+def paradas_interrail(crudo: str) -> list[dict[str, Any]]:
     """Valida lo que manda la web. Viene de un navegador, asi que no se da
     nada por bueno: el identificador acaba siendo un nombre de fichero y la
     ciudad acaba en una URL de Airbnb."""
@@ -829,9 +850,24 @@ def paradas_interrail(crudo: str) -> list[dict[str, str]]:
                 "iata": iata,
                 "checkin": entra.isoformat(),
                 "checkout": sale.isoformat(),
+                "centro": _centro(p.get("lat"), p.get("lon"), ident),
             }
         )
     return limpias
+
+
+def _centro(lat: Any, lon: Any, ident: str) -> tuple[float, float] | None:
+    """El centro de la parada, si viene. Opcional: sin el se busca por nombre,
+    como antes; con el, en un recuadro alrededor."""
+    if lat is None and lon is None:
+        return None
+    try:
+        la, lo = float(lat), float(lon)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"centro no valido en {ident}") from exc
+    if not (-90 <= la <= 90 and -180 <= lo <= 180):
+        raise ValueError(f"centro fuera del mapa en {ident}")
+    return (round(la, 5), round(lo, 5))
 
 
 def vuelos_interrail(crudo: str) -> list[dict[str, Any]]:
@@ -953,6 +989,7 @@ def cmd_interrail_stays(args: argparse.Namespace) -> int:
             summary_out=None,
             dry_run=args.dry_run,
             solo_enteros=True,
+            centro=p.get("centro"),
         )
         # Una parada que falla no tumba las demas: media ruta con cama es mejor
         # que ninguna, y la web dice cual falta.
@@ -1215,7 +1252,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
         state = store.load_state()
         for destino, parte in _partes_por_dueno(estado, cfg, state).items():
             if _mandar_parte(cfg, parte, destino):
-                state.setdefault("watch_digest", {})[destino] = hoy
+                state.setdefault("watch_digest", {})[clave_buzon(destino)] = hoy
         store.save_state(state)
     return 0
 
@@ -1239,7 +1276,8 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
         if not destino:
             continue
         prefs = cuenta.prefs if cuenta and cuenta.email else {}
-        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimos.get(destino, "")):
+        ultimo = ultimos.get(clave_buzon(destino)) or ultimos.get(destino, "")
+        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimo):
             continue
         partes.setdefault(destino, []).append((w, ofertas))
 
@@ -1254,6 +1292,18 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
         ):
             del partes[correo]
     return partes
+
+
+def _es_del_dueno(correo: str, cfg: Config) -> bool:
+    """Si ese buzon es el del dueño del repositorio.
+
+    El ultimo recurso de los avisos es abrir una issue, y una issue solo le
+    llega a quien lleva el repositorio: para cualquier otra cuenta no avisa a
+    nadie. Con el correo caido salian tres issues identicas por chollo —una por
+    cuenta— que no leia nadie, y encima con su direccion en el log publico.
+    """
+    dueno = (cfg.notify.get("to") or "").strip().lower()
+    return not correo or (bool(dueno) and correo.strip().lower() == dueno)
 
 
 def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
@@ -1272,6 +1322,8 @@ def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
         try:
             if not _configured(candidato):
                 continue
+            if candidato == "github_issue" and not _es_del_dueno(destinatario, cfg):
+                continue
             if candidato == "github_issue":
                 from .notify import github_issue
 
@@ -1284,7 +1336,10 @@ def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
                 from .notify import smtp
 
                 smtp.send_email(asunto, cuerpo, destinatario)
-            print(f"Parte diario enviado por {candidato} a {destinatario or 'el buzon de siempre'}.")
+            print(
+                f"Parte diario enviado por {candidato} a "
+                f"{tapar_correos(destinatario) if destinatario else 'el buzon de siempre'}."
+            )
             return True
         except Exception as exc:  # noqa: BLE001
             log.warning("Parte diario por %s fallo: %s", candidato, exc)
