@@ -29,7 +29,13 @@ const ESTRECHO = { width: 360, height: 740 };
 /* Las páginas que hay. El tablón no es una página: vive dentro de la portada,
    y `/tablon.html` es el 404 — que es lo que esta prueba estuvo midiendo hasta
    que una captura lo enseñó. */
-const PAGINAS = ["/index.html", "/buscar.html", "/seguimientos.html", "/404.html"];
+const PAGINAS = [
+  "/index.html",
+  "/buscar.html",
+  "/seguimientos.html",
+  "/trenes.html",
+  "/404.html",
+];
 
 /* Devuelve la lista de lo que se pulsa y no llega, ya con su nombre para que el
    fallo se lea sin abrir el navegador. */

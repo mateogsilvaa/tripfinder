@@ -3083,6 +3083,68 @@ h1 em { font-size: 1.3em; }
   .hoja .field input, .hoja .field select { min-height: var(--tap-min); }
 }
 
+/* LA PAGINA DE LOS TRENES.
+
+   Reusa el tablon —`.tabla`, `.board-head`, `.brow`— porque es la misma
+   pregunta con otras columnas: una lista ordenada por lo que te importa. Lo
+   unico suyo son las cuatro columnas y que aqui NADA se abre: la fila no lleva
+   `[data-open]`, asi que tampoco lleva chevron ni cursor de mano. */
+.tren-head, .tren-rows .brow {
+  grid-template-columns: 90px minmax(9ch, 1fr) minmax(0, 1.2fr) 88px;
+}
+.tren-rows .brow { cursor: default; }
+.tren-rows .brow:hover { background: none; }
+.tren-tiempo b {
+  font: 600 var(--fs-data) / 1 var(--font-mono);
+  color: var(--deep);
+}
+.tren-estacion { color: var(--muted); font-size: var(--fs-body-s); min-width: 0; }
+.tren-estacion small {
+  display: block;
+  font: 400 var(--fs-meta) var(--font-mono);
+  color: var(--muted);
+  opacity: 0.75;
+}
+.tren-tipo {
+  justify-self: start;
+  padding: 3px 8px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-tag);
+  font: 500 var(--fs-meta) / 1.6 var(--font-mono);
+  color: var(--muted);
+}
+.tren-pie {
+  margin: 18px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--hair);
+  font-size: var(--fs-body-s);
+  line-height: var(--lh-body);
+  color: var(--muted);
+  text-wrap: pretty;
+}
+.tren-pie b { color: var(--ink); font-weight: 600; }
+.tren-pie .btn { margin-left: 8px; vertical-align: middle; }
+
+/* En movil se apila: el tiempo y la ciudad en la primera linea, la estacion y
+   el servicio debajo.
+
+   El `grid-area: auto` NO es decorativo. La maqueta apilada del tablon coloca
+   a los hijos de `.brow` por casillas fijas —`.dest-cell` en 1/1, `.price` en
+   1/2…— y una fila de tren ES un `.brow`, asi que heredaba esas casillas y se
+   le desordenaban las columnas: la ciudad se iba a la izquierda y el tiempo a
+   la derecha, justo al reves de lo que dice la cabecera. */
+@media (max-width: 760px) {
+  .tren-head { display: none; }
+  .tren-rows .brow {
+    grid-template-columns: 90px minmax(0, 1fr);
+    row-gap: 4px;
+  }
+  .tren-rows .brow > .tren-tiempo,
+  .tren-rows .brow > .dest-cell { grid-area: auto; }
+  .tren-rows .brow > .tren-estacion,
+  .tren-rows .brow > .tren-tipo { grid-column: 1 / -1; }
+}
+
 @media (max-width: 420px) {
   .finder-form { grid-template-columns: 1fr; }
   .quiz-billete-top { grid-template-columns: auto minmax(0, 1fr); }

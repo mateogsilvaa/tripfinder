@@ -42,13 +42,13 @@ def test_las_marcas_cierran(fichero):
     assert abre > 0, f"{fichero} no tiene ninguna parte montada"
 
 
-def test_una_sola_edicion_cambia_el_nav_de_las_tres_zonas():
+def test_una_sola_edicion_cambia_el_nav_de_las_zonas():
     """El nav vive DENTRO de la barra, no en una parte suya: en el diseño nuevo
     es una fila de la cabecera pegajosa, no un bloque debajo del título. Sigue
-    escribiéndose una vez y apareciendo en las cuatro páginas que lo llevan."""
+    escribiéndose una vez y apareciendo en las cinco páginas que lo llevan."""
     barra = (WEB / "partes" / "barra.html").read_text(encoding="utf-8")
     assert "{{nav}}" in barra, "la barra deja el nav en un hueco"
-    for hueco in ("{promos}", "{buscar}", "{follows}"):
+    for hueco in ("{promos}", "{buscar}", "{follows}", "{tren}"):
         assert hueco in montar.NAV, hueco
 
     # Y cada página marca la suya, sin marcar dos.
@@ -57,7 +57,7 @@ def test_una_sola_edicion_cambia_el_nav_de_las_tres_zonas():
         assert html.count('aria-current="page"') == (1 if datos["zona"] else 0), fichero
 
 def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
-    """Los tres enlaces del nav son PAGINAS.
+    """Los cuatro enlaces del nav son PAGINAS.
 
     Antes dos de ellos eran anclas de la propia portada (`./#buscar` y
     `./#seguir`): a la herramienta entera solo se llegaba rellenando el
@@ -65,7 +65,7 @@ def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
     RESULTADO de usarla. Quien solo queria ver sus busquedas guardadas tenia
     que lanzar una."""
     enlaces = re.findall(r'<a href="([^"]+)"\{', montar.NAV)
-    assert enlaces == ["./", "buscar.html", "seguimientos.html"], enlaces
+    assert enlaces == ["./", "buscar.html", "seguimientos.html", "trenes.html"], enlaces
     for destino in enlaces[1:]:
         assert (WEB / destino).exists(), f"{destino} no existe"
 
@@ -136,6 +136,9 @@ LLEVAN = {
     "index.html": {"nav": True, "hojas": True},
     "buscar.html": {"nav": True, "hojas": True},
     "seguimientos.html": {"nav": True, "hojas": True},
+    # Los trenes no llevan hojas: no hay alojamiento que pedir ni viaje que
+    # compartir, porque aqui no se busca nada — el dato ya esta.
+    "trenes.html": {"nav": True, "hojas": False},
     "404.html": {"nav": True, "hojas": False},
     "admin.html": {"nav": False, "hojas": False},
 }
