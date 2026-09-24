@@ -1118,12 +1118,21 @@ async function pintarPeticiones() {
           <span class="meta">pedida por ${esc(p.autor)} · ${esc((p.cuando || "").slice(0, 10))}</span>
         </div>
         <p class="peticion-porque">${esc(p.porque || "(no contó por qué)")}</p>
+        ${
+          p.sellado
+            ? ""
+            : `<p class="peticion-vieja">Esta petición es <b>anterior al buzón</b>: llegó sin
+                 contraseña dentro, así que hay que ponerle una a mano y decírsela. Si prefieres
+                 que la elija quien la pidió, dile que <b>vuelva a mandarla</b> desde la web y se
+                 aprobará de un clic.</p>`
+        }
         <div class="peticion-acc">
           ${
             p.sellado
               ? `<button class="btn primary small" type="button" data-aprobar="${p.numero}"
                    title="Crea la cuenta con la contraseña que eligió: no hay que darle nada">Aprobar</button>`
-              : `<button class="btn primary small" type="button" data-crear="${p.numero}">Crear la cuenta</button>`
+              : `<button class="btn primary small" type="button" data-crear="${p.numero}"
+                   title="Esta petición no trae contraseña: la pones tú y se la das">Crear la cuenta a mano</button>`
           }
           <a class="btn ghost small" href="${esc(p.url)}" target="_blank" rel="noopener">Ver la petición</a>
           <button class="quitar" type="button" data-descartar="${p.numero}">descartar</button>

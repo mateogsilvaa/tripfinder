@@ -1686,6 +1686,20 @@ h1 em { font-size: 1.3em; }
   padding: 3px 6px;
   letter-spacing: 0.1em;
 }
+/* Una petición de antes del buzón: llegó sin contraseña dentro y hay que
+   ponerla a mano. El botón distinto era la única pista, y un botón no explica
+   nada por sí solo: quien aprueba se encontraba un formulario pidiéndole una
+   contraseña sin saber por qué unas veces sí y otras no. */
+.peticion-vieja {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 2px solid var(--accent);
+  background: var(--surface2);
+  font-size: var(--fs-body-s);
+  color: var(--muted);
+}
+.peticion-vieja b { color: var(--ink); font-weight: 600; }
+
 .peticion-porque {
   margin: 0;
   font-size: var(--fs-body-s);

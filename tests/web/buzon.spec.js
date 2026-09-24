@@ -361,6 +361,24 @@ test.describe("el panel", () => {
     await expect(page.locator("[data-aprobar]")).toHaveCount(0);
   });
 
+  test("y la tarjeta explica POR QUÉ esa hay que hacerla a mano", async ({ page }) => {
+    /* Un botón distinto no explica nada por sí solo: quien aprueba se
+       encontraba un formulario pidiéndole una contraseña sin saber por qué unas
+       veces sí y otras no. Y lo que de verdad lo arregla —que la vuelva a
+       mandar— tampoco se le ocurre a nadie si no se dice. */
+    await conPanel(page, { sellar: false });
+    const nota = page.locator(".peticion-vieja");
+    await expect(nota).toBeVisible();
+    await expect(nota).toContainText(/anterior al buzón/i);
+    await expect(nota).toContainText(/vuelva a mandarla/i);
+    await expect(page.locator("[data-crear]")).toContainText(/a mano/i);
+  });
+
+  test("y con sobre no se explica nada, porque no hay nada que explicar", async ({ page }) => {
+    await conPanel(page);
+    await expect(page.locator(".peticion-vieja")).toHaveCount(0);
+  });
+
   test("aprobar crea la cuenta con lo que venía dentro del sobre", async ({ page }) => {
     const { enviados } = await conPanel(page);
     await page.locator("[data-aprobar]").click();
