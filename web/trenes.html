@@ -149,13 +149,25 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
             <option value="senior">60 o más</option>
           </select>
         </label>
+        <label for="irPersonas">
+          <span>Personas</span>
+          <select id="irPersonas">
+            <option value="1">1</option>
+            <option value="2" selected>2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+          </select>
+        </label>
       </form>
       <p class="hint" id="irHint"></p>
       <div class="ir-rutas" id="irRutas"></div>
       <p class="tren-pie">
         <b>El bono no lo paga todo.</b> Los trenes rápidos de Italia, Francia y
         España, y los nórdicos, exigen una reserva que se paga aparte, y cada
-        ruta la suma. <small class="ir-apunte">Todos los precios son
+        ruta la suma. El alojamiento es de verdad: se busca al pedirlo, en
+        pisos y casas enteras, y cada parada se puede cambiar. <small class="ir-apunte">Todos los precios son
         orientativos: el bono, por la tarifa de 2025 en segunda; los billetes
         sueltos, lo normal comprando con unas semanas de antelación. Las
         reservas y los billetes van en horquilla porque cada compañía los pone

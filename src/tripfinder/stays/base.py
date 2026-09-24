@@ -27,6 +27,10 @@ class StayRequest:
     adults: int = 2
     max_total: float | None = None
     country: str = ""  # desambigua ciudades homonimas ("Agadir" cae en Canarias sin esto)
+    # Solo pisos y casas enteras: nada de habitaciones, ni privadas, ni
+    # compartidas, ni de hotel. Lo pide el Interrail, donde se duerme una o dos
+    # noches en cada ciudad y lo que se compara es el precio de TENER un sitio.
+    solo_enteros: bool = False
 
     @property
     def nights(self) -> int:

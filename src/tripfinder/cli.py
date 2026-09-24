@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import random
+import re
 import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -633,6 +634,7 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         adults=args.adults or cfg.adults,
         max_total=args.max_total,
         country=country,
+        solo_enteros=bool(getattr(args, "solo_enteros", False)),
     )
 
     stays: list[StayOffer] = []
@@ -649,6 +651,10 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
     # busqueda, que no traen precio, se quedan al final.
     from .stays.ranking import a_pie, ordenar
 
+    if req.solo_enteros:
+        from .stays.enteros import solo_enteros
+
+        stays = solo_enteros(stays)
     stays = ordenar(stays, req)
 
     print(f"\n{req.city} {req.checkin} -> {req.checkout} ({req.nights} noches, {req.adults} adultos)")
@@ -755,6 +761,109 @@ def _stays_markdown(
         lines.append(f"| {total} | {night} | {s.provider} | [{s.name}]({s.url}) |")
     lines += ["", f"Ver en la web: {site_url()}/?offer={offer_id}"]
     return "\n".join(lines)
+
+
+# --------------------------------------------------------------------------- #
+# interrail-stays
+# --------------------------------------------------------------------------- #
+# El Interrail pide cama en CADA parada de la ruta, y lo pide en un solo
+# encargo por una razon de GitHub, no de gusto: los workflows que escriben en
+# `data/` comparten cola, y GitHub solo guarda UNA ejecucion en espera por cola.
+# Cinco encargos seguidos —uno por parada— dejaban correr el primero y el
+# ultimo y cancelaban los del medio sin decir nada. Uno con todas las paradas
+# no tiene ese problema.
+
+MAX_PARADAS = 8
+MAX_NOCHES_PARADA = 14
+ID_PARADA = re.compile(r"^ir-[a-z]{3,12}-[A-Z]{3}-\d{4}-\d{2}-\d{2}-[1-8]$")
+
+
+def _texto_corto(valor: Any, campo: str, largo: int = 60, vacio: bool = False) -> str:
+    texto = str(valor or "").strip()
+    if not texto and not vacio:
+        raise ValueError(f"falta {campo}")
+    if len(texto) > largo or any(ord(c) < 32 for c in texto):
+        raise ValueError(f"{campo} no vale: {texto[:20]!r}")
+    return texto
+
+
+def paradas_interrail(crudo: str) -> list[dict[str, str]]:
+    """Valida lo que manda la web. Viene de un navegador, asi que no se da
+    nada por bueno: el identificador acaba siendo un nombre de fichero y la
+    ciudad acaba en una URL de Airbnb."""
+    try:
+        datos = json.loads(crudo)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"las paradas no son JSON: {exc}") from exc
+    if not isinstance(datos, list) or not 1 <= len(datos) <= MAX_PARADAS:
+        raise ValueError(f"hacen falta entre 1 y {MAX_PARADAS} paradas")
+
+    limpias = []
+    for p in datos:
+        if not isinstance(p, dict):
+            raise ValueError("cada parada es un objeto")
+        ident = _texto_corto(p.get("offer_id"), "offer_id", 40)
+        if not ID_PARADA.match(ident):
+            raise ValueError(f"offer_id no vale: {ident!r}")
+        iata = _texto_corto(p.get("iata"), "iata", 3, vacio=True).upper()
+        if iata and not re.fullmatch(r"[A-Z]{3}", iata):
+            raise ValueError(f"iata no vale: {iata!r}")
+        try:
+            entra = date.fromisoformat(str(p.get("checkin")))
+            sale = date.fromisoformat(str(p.get("checkout")))
+        except ValueError as exc:
+            raise ValueError(f"fechas no validas en {ident}") from exc
+        if not 1 <= (sale - entra).days <= MAX_NOCHES_PARADA:
+            raise ValueError(f"{ident}: la salida tiene que ir de 1 a {MAX_NOCHES_PARADA} noches despues")
+        limpias.append(
+            {
+                "offer_id": ident,
+                "city": _texto_corto(p.get("city"), "city"),
+                "country": _texto_corto(p.get("country"), "country", vacio=True),
+                "iata": iata,
+                "checkin": entra.isoformat(),
+                "checkout": sale.isoformat(),
+            }
+        )
+    return limpias
+
+
+def cmd_interrail_stays(args: argparse.Namespace) -> int:
+    try:
+        paradas = paradas_interrail(args.paradas)
+    except ValueError as exc:
+        log.error("Peticion de Interrail rechazada: %s", exc)
+        return 2
+    adultos = max(1, min(8, int(args.adults or 2)))
+
+    fallidas = []
+    for p in paradas:
+        ns = argparse.Namespace(
+            config=args.config,
+            offer_id=p["offer_id"],
+            city=p["city"],
+            country=p["country"],
+            iata=p["iata"],
+            checkin=p["checkin"],
+            checkout=p["checkout"],
+            adults=adultos,
+            max_total=None,
+            summary_out=None,
+            dry_run=args.dry_run,
+            solo_enteros=True,
+        )
+        # Una parada que falla no tumba las demas: media ruta con cama es mejor
+        # que ninguna, y la web dice cual falta.
+        try:
+            codigo = cmd_scan_stays(ns)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Parada %s: %s", p["offer_id"], exc)
+            codigo = 1
+        if codigo:
+            fallidas.append(p["offer_id"])
+
+    print(f"\nInterrail: {len(paradas) - len(fallidas)} de {len(paradas)} paradas con cama.")
+    return 1 if len(fallidas) == len(paradas) else 0
 
 
 # --------------------------------------------------------------------------- #
@@ -1417,7 +1526,21 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--max-total", type=float, dest="max_total")
     s.add_argument("--summary-out", help="Escribe un resumen en markdown en este fichero")
     s.add_argument("--dry-run", action="store_true")
+    s.add_argument(
+        "--solo-enteros",
+        action="store_true",
+        help="Solo pisos y casas enteras: nada de habitaciones",
+    )
     s.set_defaults(func=cmd_scan_stays)
+
+    ir = sub.add_parser(
+        "interrail-stays",
+        help="Busca alojamiento entero en cada parada de una ruta de Interrail",
+    )
+    ir.add_argument("--paradas", required=True, help="JSON con la lista de paradas")
+    ir.add_argument("--adults", type=int, default=2)
+    ir.add_argument("--dry-run", action="store_true")
+    ir.set_defaults(func=cmd_interrail_stays)
 
     b = sub.add_parser("search", help="Busqueda personalizada a un destino concreto")
     b.add_argument("--dest", default="", help="IATA (FCO) o ciudad (Roma). Vacio = a cualquier sitio")

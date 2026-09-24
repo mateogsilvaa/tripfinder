@@ -3196,6 +3196,61 @@ h1 em { font-size: 1.3em; }
 .ir-precio .gana dt::after { content: " · mejor"; color: var(--deep); }
 .ir-veredicto { margin: 10px 0 0; font-size: var(--fs-body-s); color: var(--ink); }
 .ir-apunte { display: block; margin-top: 6px; font-size: var(--fs-meta); }
+.ir-desglose { margin: 8px 0 0; font: 400 var(--fs-meta) / 1.5 var(--font-mono); color: var(--muted); }
+.ir-desglose b { color: var(--accent-txt); font-weight: 500; }
+
+/* EL ALOJAMIENTO DE CADA PARADA. Va colgado de su ciudad, con la foto, el
+   nombre, de quien es y a cuanto del centro. La que sale es la mejor por
+   precio y cercania; «Cambiar» despliega las demas y elegir una recalcula el
+   total de arriba. */
+.ir-pedir { display: grid; gap: 6px; margin: 0 0 14px; justify-items: start; }
+.ir-pedir small, .ir-buscando { color: var(--muted); font-size: var(--fs-body-s); }
+.ir-buscando { display: flex; gap: 8px; align-items: center; margin: 0 0 14px; }
+.ir-cama { margin: 2px 0 6px 6px; padding-left: 14px; border-left: 1px solid var(--deep); }
+.ir-cama.esperando, .ir-cama.vacia {
+  display: flex; gap: 8px; align-items: center;
+  color: var(--muted); font: 400 var(--fs-meta) var(--font-mono);
+}
+.ir-cama-sel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+/* Sin foto, dos columnas: si no, el texto cae en la columna de la foto y el
+   precio en la del texto, pegado al nombre en vez de a la derecha. */
+.ir-cama-sel.sin-foto { grid-template-columns: minmax(0, 1fr) auto; }
+.ir-cama-sel img { width: 56px; height: 56px; object-fit: cover; border-radius: calc(var(--r) - 4px); }
+.ir-cama-sel a { color: var(--ink); font-weight: 500; overflow-wrap: anywhere; }
+.ir-cama-sel small, .ir-elegir small {
+  display: block;
+  color: var(--muted);
+  font: 400 var(--fs-meta) var(--font-mono);
+}
+.ir-cama-sel b, .ir-elegir b { font: 600 var(--fs-data) var(--font-mono); white-space: nowrap; }
+.ir-otras summary {
+  cursor: pointer;
+  padding: 10px 0;
+  min-height: var(--tap-min);
+  color: var(--deep);
+  font-size: var(--fs-body-s);
+}
+.ir-otras ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+.ir-elegir {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 8px 10px;
+  border: 1px solid var(--hair);
+  border-radius: calc(var(--r) - 4px);
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.ir-elegir:hover, .ir-elegir:focus-visible { border-color: var(--deep); }
 .ir-libre { color: var(--deep); }
 .ir-vuelo {
   display: flex;

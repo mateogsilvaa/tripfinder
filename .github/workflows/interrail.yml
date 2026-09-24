@@ -1,0 +1,90 @@
+name: Interrail - cama en cada parada
+
+# La pagina de trenes pide alojamiento para TODAS las paradas de una ruta de
+# Interrail en un solo encargo. No uno por parada a proposito: los workflows
+# que escriben en `data/` comparten cola, y GitHub solo guarda UNA ejecucion en
+# espera por cola. Cinco encargos seguidos dejaban correr el primero y el
+# ultimo y cancelaban los del medio sin decir nada.
+
+on:
+  repository_dispatch:
+    types: [interrail]
+
+permissions:
+  contents: write
+  actions: write # para lanzar el deploy de Pages
+
+concurrency:
+  # Uno por encargo: dos rutas pedidas a la vez no se cancelan entre si. Los
+  # commits no chocan porque cada parada escribe su fichero y hay reintento.
+  group: interrail-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  camas:
+    runs-on: ubuntu-latest
+    # Unos dos minutos por parada; siete paradas, un cuarto de hora. Mas de
+    # cuarenta es que algo se ha colgado.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Buscar cama en cada parada
+        env:
+          PYTHONPATH: src
+          # Las paradas llegan como JSON y se validan en Python, no en bash: el
+          # identificador acaba siendo un nombre de fichero y la ciudad una URL.
+          PARADAS: ${{ toJSON(github.event.client_payload.paradas) }}
+          ADULTS: ${{ github.event.client_payload.adults }}
+        run: |
+          python -m tripfinder interrail-stays --paradas "$PARADAS" --adults "${ADULTS:-2}"
+
+      - name: Publicar
+        run: |
+          git config user.name  "tripfinder-bot"
+          git config user.email "actions@github.com"
+
+          # Solo los ficheros de ESTA ruta. index.json y camas.json no se
+          # copian: son derivados y los rehace `reindex` sobre lo que haya en
+          # main en ese momento.
+          nuevos=$(git status --porcelain data/stays | awk '{print $2}' | grep -v index.json || true)
+          if [ -z "$nuevos" ]; then
+            echo "Ninguna parada trajo cama"
+            exit 0
+          fi
+          mkdir -p /tmp/tf/stays
+          for f in $nuevos; do cp "$f" /tmp/tf/stays/; done
+
+          for intento in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            mkdir -p data/stays
+            cp /tmp/tf/stays/*.json data/stays/
+            PYTHONPATH=src python -m tripfinder reindex
+            git add data/stays data/camas.json
+            if git diff --staged --quiet; then
+              echo "Sin cambios"
+              exit 0
+            fi
+            git commit -m "data: cama del interrail"
+            if git push; then
+              echo "Publicado al intento $intento"
+              exit 0
+            fi
+            echo "Otra publicacion se adelanto; se reintenta"
+            sleep $((RANDOM % 6 + 2))
+          done
+          exit 1
+
+      - name: Redesplegar la web
+        # Un push con GITHUB_TOKEN no dispara otros workflows: Pages se lanza a mano.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main
