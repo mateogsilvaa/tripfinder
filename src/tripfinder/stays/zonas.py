@@ -47,8 +47,13 @@ def barrio(area: str, ciudad: str) -> str:
     «Apartamento en Monastiraki» -> «Monastiraki».
     «Apartamento en Oslo», estando en Oslo -> "" (eso no dice donde).
     """
+    # Sin «en», no hay barrio. Antes se tomaba el texto entero, y con Airbnb no
+    # se notaba porque siempre escribe «X en Y»; pero Holidu pone solo el tipo
+    # («Apartamento»), y toda la ciudad acababa en una falsa zona llamada así.
     m = EN.search(str(area or ""))
-    sitio = (m.group(1) if m else str(area or "")).strip(" .,")
+    if not m:
+        return ""
+    sitio = m.group(1).strip(" .,")
     if not sitio:
         return ""
     # El nombre de la ciudad no es un barrio. Tampoco «Oslo Centro» cuando la

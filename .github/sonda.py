@@ -1,108 +1,64 @@
-"""Sonda 3: la ruta exacta de los anuncios en Holidu y Vrbo, y uno de muestra.
+"""Sonda 4: el proveedor de Holidu de verdad, contra Holidu de verdad.
 
 Temporal. Se borra en cuanto se lea.
 """
 
 import json
-import re
-from collections import Counter
+import logging
+import subprocess
+import sys
 
-import requests
+sys.path.insert(0, "src")
+logging.basicConfig(level=logging.INFO)
 
-IDA, VUELTA, GENTE = "2026-11-06", "2026-11-08", 2
-UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+from tripfinder.stays import holidu  # noqa: E402
+from tripfinder.stays.base import StayRequest  # noqa: E402
+
+CIUDADES = [
+    ("Ámsterdam", "Países Bajos", "2026-11-06", "2026-11-08"),
+    ("Lucerna", "Suiza", "2026-11-08", "2026-11-10"),
+    ("Roma", "Italia", "2026-11-13", "2026-11-16"),
+    ("Bergen", "Noruega", "2026-11-13", "2026-11-15"),
+    ("Montpellier", "Francia", "2026-11-07", "2026-11-09"),
+]
+
+for ciudad, pais, ida, vuelta in CIUDADES:
+    req = StayRequest(city=ciudad, iata="", checkin=ida, checkout=vuelta, adults=2, country=pais)
+    try:
+        ofertas = holidu.HoliduProvider().search(req)
+    except Exception as exc:
+        print(json.dumps({"ciudad": ciudad, "error": str(exc)[:200]}, ensure_ascii=False))
+        continue
+    print(json.dumps({
+        "ciudad": ciudad,
+        "cuantas": len(ofertas),
+        "con_fotos": sum(1 for s in ofertas if s.images),
+        "con_nota": sum(1 for s in ofertas if s.rating),
+        "fuentes": sorted({s.note for s in ofertas}),
+        "tipos": sorted({s.area for s in ofertas}),
+        "primeras": [
+            {"n": s.name[:50], "t": s.price_total, "noche": s.price_per_night,
+             "lat": s.lat, "nota": s.rating, "fotos": len(s.images)}
+            for s in sorted(ofertas, key=lambda s: s.price_total)[:3]
+        ],
+    }, ensure_ascii=False))
+
+# El valor crudo de la nota, para comprobar que se interpreta bien.
+from tripfinder.util import get_text  # noqa: E402
+
+html = get_text("https://www.holidu.es/s/Roma", params={"checkin": "2026-11-13", "checkout": "2026-11-16", "adults": 2})
+ofertas = (((holidu.estado_inicial(html).get("zustand") or {}).get("offersV2") or {}).get("offers")) or {}
+for o in list(ofertas.values())[:3]:
+    print("NOTA CRUDA:", json.dumps(o.get("rating"), ensure_ascii=False)[:200],
+          "| TIPO:", (o.get("details") or {}).get("apartmentType"))
+
+# Y el flujo entero, como lo corre el Interrail: Airbnb + Holidu, solo enteros.
+print("\n===== scan-stays --solo-enteros --dry-run (Roma)")
+salida = subprocess.run(
+    [sys.executable, "-m", "tripfinder", "scan-stays", "--offer-id", "ir-sonda-ROM-2026-11-13-2",
+     "--city", "Roma", "--country", "Italia", "--checkin", "2026-11-13", "--checkout", "2026-11-16",
+     "--adults", "2", "--solo-enteros", "--dry-run"],
+    capture_output=True, text=True, env={"PYTHONPATH": "src", "PATH": "/usr/bin:/bin"}, timeout=240,
 )
-
-
-def rutas_con(nodo, quiere, ruta="$", out=None, prof=0):
-    """Rutas a dicts que tienen TODAS las claves de `quiere`."""
-    if out is None:
-        out = []
-    if prof > 30 or len(out) > 400:
-        return out
-    if isinstance(nodo, dict):
-        if all(k in nodo for k in quiere):
-            out.append((ruta, nodo))
-        for k, v in nodo.items():
-            rutas_con(v, quiere, f"{ruta}.{k}", out, prof + 1)
-    elif isinstance(nodo, list):
-        for i, x in enumerate(nodo):
-            rutas_con(x, quiere, f"{ruta}[{i}]", out, prof + 1)
-    return out
-
-
-def generalizar(ruta):
-    return re.sub(r"\[\d+\]", "[*]", ruta)
-
-
-def recortar(obj, n=2500):
-    return json.dumps(obj, ensure_ascii=False)[:n]
-
-
-# ------------------------------------------------------------------ holidu
-r = requests.get(
-    f"https://www.holidu.es/s/Amsterdam?checkin={IDA}&checkout={VUELTA}&adults={GENTE}",
-    headers={"User-Agent": UA, "Accept-Language": "es-ES,es;q=0.9"},
-    timeout=30,
-)
-m = re.search(r'<script[^>]*data-key="initial-state"[^>]*>(.*?)</script>', r.text, re.S)
-crudo = m.group(1).strip()
-crudo = re.sub(r"^<!--", "", crudo)
-crudo = re.sub(r"-->$", "", crudo)
-estado = json.loads(crudo)
-print("HOLIDU arriba:", list(estado.keys())[:20])
-print("HOLIDU redux:", list(estado.get("redux", {}).keys())[:40])
-halladas = rutas_con(estado, ("price", "location"))
-print("HOLIDU con price+location:", len(halladas))
-print("  rutas:", Counter(generalizar(p) for p, _ in halladas).most_common(8))
-if halladas:
-    print("  MUESTRA:", recortar(halladas[0][1]))
-    if len(halladas) > 1:
-        print("  MUESTRA 2 (price):", recortar(halladas[1][1].get("price"), 600))
-
-# ------------------------------------------------------------------ vrbo
-from scrapling.fetchers import Fetcher  # noqa: E402
-
-v = Fetcher.get(
-    f"https://www.vrbo.com/es-es/search?destination=Amsterdam&startDate={IDA}&endDate={VUELTA}&adults={GENTE}",
-    stealthy_headers=True,
-    timeout=40,
-)
-html = v.html_content if hasattr(v, "html_content") else str(v.body)
-print("\nVRBO estado:", getattr(v, "status", "?"), "bytes:", len(html), "euros:", html.count("€"))
-i = html.find("window.__APOLLO_STATE__ = JSON.parse(")
-if i < 0:
-    print("VRBO: sin __APOLLO_STATE__")
-else:
-    ini = html.index("(", i) + 1
-    texto, _ = json.JSONDecoder().raw_decode(html[ini:])
-    apollo = json.loads(texto)
-    tipos = Counter()
-
-    def contar(n, prof=0):
-        if prof > 40:
-            return
-        if isinstance(n, dict):
-            t = n.get("__typename")
-            if isinstance(t, str):
-                tipos[t] += 1
-            for x in n.values():
-                contar(x, prof + 1)
-        elif isinstance(n, list):
-            for x in n:
-                contar(x, prof + 1)
-
-    contar(apollo)
-    print("VRBO claves raiz:", list(apollo.keys())[:15])
-    print("VRBO ROOT_QUERY:", [k[:90] for k in apollo.get("ROOT_QUERY", {}).keys()][:15])
-    print("VRBO __typename:", tipos.most_common(40))
-    for quiere in (("headingSection",), ("priceSection",), ("price",), ("name", "id")):
-        h = rutas_con(apollo, quiere)
-        if h:
-            print(f"VRBO con {quiere}: {len(h)}", Counter(generalizar(p) for p, _ in h).most_common(4))
-            print("   MUESTRA:", recortar(h[0][1], 1800))
-    # Y si los anuncios no estan en Apollo, donde aparece el primer precio.
-    j = html.find("€")
-    print("VRBO contexto del primer €:", re.sub(r"\s+", " ", html[max(0, j - 400):j + 100]))
+print(salida.stdout[-3500:])
+print(salida.stderr[-1500:])
