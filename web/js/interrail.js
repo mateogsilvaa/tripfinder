@@ -1,33 +1,36 @@
 /* interrail.js — Con los días del bono, el viaje entero.
 
-   Le dices cuántos días de viaje tiene tu bono y te da rutas que caben: el
-   vuelo de entrada, los trenes, cuántas noches en cada parada y el vuelo de
-   salida — que no tiene por qué ser desde la misma ciudad, y ahí está media
-   gracia de un Interrail.
+   Le dices cuántos días de viaje tiene tu bono, de dónde sales y cuándo, y te
+   da rutas que caben: el vuelo de entrada, los trenes, cuántas noches en cada
+   parada, dónde dormir y el vuelo de salida — que no tiene por qué ser desde
+   la misma ciudad, y ahí está media gracia de un Interrail. Y el total de
+   verdad: bono, reservas, vuelos y alojamiento.
 
    NO ES UN OPTIMIZADOR, y es a propósito. La issue (#145) lo decía antes de
-   escribir una línea: con seis ciudades ya no se puede mirar todo, y los
-   horarios de toda Europa no son gratis. Estas son rutas pensadas, de las que
-   funcionan —en línea, sin volver sobre tus pasos, con trenes directos o casi—,
-   y se filtran por lo que te cabe en el bono. Crecer hacia un optimizador es
-   otra cosa, y esto no lo impide.
+   escribir una línea: con seis ciudades ya no se puede mirar todo. Son rutas
+   pensadas, de las que funcionan —en línea, sin volver sobre tus pasos, con
+   trenes directos o casi—, y cada una SE PUEDE AJUSTAR: al revés, más o menos
+   noches en cada sitio, o saltarse una parada. Así el punto de partida es
+   bueno y el viaje acaba siendo el tuyo.
 
    UN DÍA DE BONO ES UN DÍA DE VIAJE, NO UN TRAYECTO. Encadenar dos trenes el
-   mismo día gasta uno. Como en estas rutas se duerme al menos una noche en
-   cada parada, cada tramo cae en un día distinto: días de bono = tramos.
+   mismo día gasta uno. Como se duerme al menos una noche en cada parada, cada
+   tramo cae en un día distinto: días de bono = tramos. Saltarse una parada
+   junta sus dos tramos en uno, en el mismo día, y gasta un día de bono menos.
 
    LAS RESERVAS OBLIGATORIAS se pagan aparte del bono: los trenes rápidos de
-   Italia, Francia y España, y los nórdicos. Un plan que las ignore miente en el
-   total, así que cada tramo dice si la lleva y la ficha suma una horquilla.
-   Son orientativas —dependen del tren y de cuándo reserves—, y por eso van
-   como horquilla y no como una cifra que parezca exacta.
+   Italia, Francia y España, los nórdicos y los polacos. Un plan que las ignore
+   miente en el total, así que cada tramo dice si la lleva y la ficha suma una
+   horquilla.
 
-   LOS TIEMPOS son del directo más rápido de cada tramo, redondeados. Igual que
-   en los trenes de Madrid: no están contrastados contra la fuente porque desde
-   donde se escribió esto no había salida de red a los operadores. Viven aquí y
-   en ningún otro sitio. */
+   LOS TIEMPOS Y LOS PRECIOS DEL TREN son orientativos, del directo más rápido
+   de cada tramo, redondeados. No están contrastados contra la fuente porque
+   desde donde se escribió esto no había salida de red a los operadores. Viven
+   aquí y en ningún otro sitio. Los de los vuelos y el alojamiento, en cambio,
+   son de verdad: se buscan al pedirlos. */
 
 import { POLL_EVERY_MS, esc, escURL, fetchJSON, fmtDate, parseISO } from "./base.js";
+import { ORIGENES } from "./busqueda.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { edreamsURL } from "./precios.js";
 import { enHoras } from "./trenes.js";
@@ -51,136 +54,340 @@ export const PASES = {
 };
 export const EDADES = ["joven", "adulto", "senior"];
 
+/* DÓNDE SE ATERRIZA EN CADA CIUDAD. El precio de los vuelos lo da Ryanair, que
+   es el único proveedor del proyecto que busca IDA SOLA —un Interrail entra
+   por una ciudad y sale por otra—, y Ryanair casi nunca vuela al aeropuerto
+   principal: no va a Ámsterdam pero sí a Eindhoven, ni a París-CDG pero sí a
+   Beauvais. Sin los de al lado, casi ninguna ruta tendría precio de vuelo. El
+   primero de cada lista es el que se usa para el enlace de eDreams.
+
+   Lucerna e Interlaken no tienen aeropuerto: se llega por Zúrich o Basilea. */
+export const AEROPUERTOS = {
+  AMS: ["AMS", "EIN", "RTM"],
+  BER: ["BER"],
+  PRG: ["PRG"],
+  VIE: ["VIE", "BTS"],
+  BUD: ["BUD"],
+  MIL: ["MXP", "BGY", "LIN"],
+  VCE: ["VCE", "TSF"],
+  FLR: ["FLR", "PSA"],
+  ROM: ["FCO", "CIA"],
+  NAP: ["NAP"],
+  BCN: ["BCN", "GRO", "REU"],
+  MPL: ["MPL"],
+  LYS: ["LYS"],
+  PAR: ["CDG", "ORY", "BVA"],
+  ZRH: ["ZRH", "BSL"],
+  LUC: ["ZRH", "BSL"],
+  INT: ["ZRH", "BSL"],
+  GVA: ["GVA"],
+  CPH: ["CPH"],
+  STO: ["ARN", "NYO", "BMA"],
+  OSL: ["OSL", "TRF"],
+  BGO: ["BGO"],
+  BRU: ["BRU", "CRL"],
+  BRG: ["BRU", "CRL", "OST"],
+  CGN: ["CGN", "DUS", "NRN"],
+  FRA: ["FRA", "HHN"],
+  MUC: ["MUC", "FMM"],
+  SZG: ["SZG"],
+  BTS: ["BTS", "VIE"],
+  ZAG: ["ZAG"],
+  LJU: ["LJU", "TRS"],
+  NCE: ["NCE"],
+  GOA: ["GOA"],
+  SPZ: ["PSA", "GOA"],
+  PSA: ["PSA", "FLR"],
+  POZ: ["POZ"],
+  WAW: ["WAW", "WMI"],
+  KRK: ["KRK"],
+  HAM: ["HAM", "LBC"],
+};
+
 /* Cada parada lleva su país —Airbnb desambigua con él: hay más de una
    Valencia— y un código de tres letras que va en el nombre del fichero de su
-   alojamiento. El `iata` puede ir vacío: Lucerna e Interlaken no tienen
-   aeropuerto, y solo lo usa el buscador de hoteles, que aquí no se consulta.
+   alojamiento y de sus vuelos.
 
    `tramos[i]` va de `paradas[i]` a `paradas[i + 1]`. `reserva` es la horquilla
    en euros por persona; `null` si el tramo no la exige. `billete` es lo que
    suele costar ese tramo SIN bono: segunda, ida, comprado con unas semanas de
-   antelación — el barato y el caro de lo normal. Sirve para una sola cosa,
-   decir si el bono compensa, y por eso se enseña en pequeño. */
+   antelación — el barato y el caro de lo normal. */
+const P = (ciudad, pais, cod, noches) => ({ ciudad, pais, cod, noches });
+const T = (min, reserva, billete) => ({ min, reserva, billete });
+
 export const RUTAS = [
   {
     id: "centro",
     nombre: "Europa central",
     idea: "Cuatro capitales en línea, sin una sola reserva: el bono sin letra pequeña.",
-    entra: { ciudad: "Ámsterdam", iata: "AMS" },
-    sale: { ciudad: "Budapest", iata: "BUD" },
     paradas: [
-      { ciudad: "Ámsterdam", pais: "Países Bajos", cod: "AMS", iata: "AMS", noches: 2 },
-      { ciudad: "Berlín", pais: "Alemania", cod: "BER", iata: "BER", noches: 3 },
-      { ciudad: "Praga", pais: "Chequia", cod: "PRG", iata: "PRG", noches: 2 },
-      { ciudad: "Viena", pais: "Austria", cod: "VIE", iata: "VIE", noches: 2 },
-      { ciudad: "Budapest", pais: "Hungría", cod: "BUD", iata: "BUD", noches: 2 },
+      P("Ámsterdam", "Países Bajos", "AMS", 2),
+      P("Berlín", "Alemania", "BER", 3),
+      P("Praga", "Chequia", "PRG", 2),
+      P("Viena", "Austria", "VIE", 2),
+      P("Budapest", "Hungría", "BUD", 2),
     ],
-    tramos: [
-      { min: 380, reserva: null, billete: [40, 110] },
-      { min: 255, reserva: null, billete: [30, 70] },
-      { min: 240, reserva: null, billete: [20, 50] },
-      { min: 160, reserva: null, billete: [15, 40] },
-    ],
+    tramos: [T(380, null, [40, 110]), T(255, null, [30, 70]), T(240, null, [20, 50]), T(160, null, [15, 40])],
   },
   {
     id: "italia",
     nombre: "Italia de punta a punta",
     idea: "Tramos cortos y rápidos: más ciudad que tren. Todos llevan reserva.",
-    entra: { ciudad: "Milán", iata: "MXP" },
-    sale: { ciudad: "Nápoles", iata: "NAP" },
     paradas: [
-      { ciudad: "Milán", pais: "Italia", cod: "MIL", iata: "MIL", noches: 2 },
-      { ciudad: "Venecia", pais: "Italia", cod: "VCE", iata: "VCE", noches: 2 },
-      { ciudad: "Florencia", pais: "Italia", cod: "FLR", iata: "FLR", noches: 2 },
-      { ciudad: "Roma", pais: "Italia", cod: "ROM", iata: "ROM", noches: 3 },
-      { ciudad: "Nápoles", pais: "Italia", cod: "NAP", iata: "NAP", noches: 2 },
+      P("Milán", "Italia", "MIL", 2),
+      P("Venecia", "Italia", "VCE", 2),
+      P("Florencia", "Italia", "FLR", 2),
+      P("Roma", "Italia", "ROM", 3),
+      P("Nápoles", "Italia", "NAP", 2),
     ],
     tramos: [
-      { min: 145, reserva: [10, 15], billete: [20, 50] },
-      { min: 125, reserva: [10, 15], billete: [20, 50] },
-      { min: 95, reserva: [10, 15], billete: [20, 55] },
-      { min: 70, reserva: [10, 15], billete: [15, 45] },
+      T(145, [10, 15], [20, 50]),
+      T(125, [10, 15], [20, 50]),
+      T(95, [10, 15], [20, 55]),
+      T(70, [10, 15], [15, 45]),
     ],
   },
   {
     id: "francia",
     nombre: "Del Mediterráneo a París",
     idea: "Sales de casa casi andando: Barcelona, la costa y subir hasta París.",
-    entra: { ciudad: "Barcelona", iata: "BCN" },
-    sale: { ciudad: "París", iata: "CDG" },
     paradas: [
-      { ciudad: "Barcelona", pais: "España", cod: "BCN", iata: "BCN", noches: 1 },
-      { ciudad: "Montpellier", pais: "Francia", cod: "MPL", iata: "MPL", noches: 2 },
-      { ciudad: "Lyon", pais: "Francia", cod: "LYS", iata: "LYS", noches: 2 },
-      { ciudad: "París", pais: "Francia", cod: "PAR", iata: "PAR", noches: 3 },
+      P("Barcelona", "España", "BCN", 1),
+      P("Montpellier", "Francia", "MPL", 2),
+      P("Lyon", "Francia", "LYS", 2),
+      P("París", "Francia", "PAR", 3),
     ],
-    tramos: [
-      { min: 180, reserva: [20, 35], billete: [30, 80] },
-      { min: 100, reserva: [10, 20], billete: [25, 70] },
-      { min: 120, reserva: [10, 20], billete: [30, 90] },
-    ],
+    tramos: [T(180, [20, 35], [30, 80]), T(100, [10, 20], [25, 70]), T(120, [10, 20], [30, 90])],
   },
   {
     id: "suiza",
     nombre: "Suiza y los lagos",
     idea: "Trayectos de una o dos horas entre montañas. Sin reservas; Suiza no es barata, el tren sí sale a cuenta.",
-    entra: { ciudad: "Zúrich", iata: "ZRH" },
-    sale: { ciudad: "Ginebra", iata: "GVA" },
     paradas: [
-      { ciudad: "Zúrich", pais: "Suiza", cod: "ZRH", iata: "ZRH", noches: 2 },
-      { ciudad: "Lucerna", pais: "Suiza", cod: "LUC", iata: "", noches: 2 },
-      { ciudad: "Interlaken", pais: "Suiza", cod: "INT", iata: "", noches: 2 },
-      { ciudad: "Ginebra", pais: "Suiza", cod: "GVA", iata: "GVA", noches: 2 },
+      P("Zúrich", "Suiza", "ZRH", 2),
+      P("Lucerna", "Suiza", "LUC", 2),
+      P("Interlaken", "Suiza", "INT", 2),
+      P("Ginebra", "Suiza", "GVA", 2),
     ],
-    tramos: [
-      { min: 45, reserva: null, billete: [15, 30] },
-      { min: 110, reserva: null, billete: [20, 35] },
-      { min: 170, reserva: null, billete: [40, 75] },
-    ],
+    tramos: [T(45, null, [15, 30]), T(110, null, [20, 35]), T(170, null, [40, 75])],
   },
   {
     id: "norte",
     nombre: "Los nórdicos",
     idea: "Tres capitales y el tren de Bergen, que es el viaje en sí.",
-    entra: { ciudad: "Copenhague", iata: "CPH" },
-    sale: { ciudad: "Bergen", iata: "BGO" },
     paradas: [
-      { ciudad: "Copenhague", pais: "Dinamarca", cod: "CPH", iata: "CPH", noches: 2 },
-      { ciudad: "Estocolmo", pais: "Suecia", cod: "STO", iata: "STO", noches: 3 },
-      { ciudad: "Oslo", pais: "Noruega", cod: "OSL", iata: "OSL", noches: 2 },
-      { ciudad: "Bergen", pais: "Noruega", cod: "BGO", iata: "BGO", noches: 2 },
+      P("Copenhague", "Dinamarca", "CPH", 2),
+      P("Estocolmo", "Suecia", "STO", 3),
+      P("Oslo", "Noruega", "OSL", 2),
+      P("Bergen", "Noruega", "BGO", 2),
+    ],
+    tramos: [T(310, [5, 10], [40, 120]), T(360, [5, 10], [30, 90]), T(410, [5, 10], [30, 100])],
+  },
+  {
+    id: "benelux",
+    nombre: "Del Benelux a Berlín",
+    idea: "Canales y catedrales, sin una reserva: de Bruselas a Berlín por Brujas, Ámsterdam y Colonia.",
+    paradas: [
+      P("Bruselas", "Bélgica", "BRU", 2),
+      P("Brujas", "Bélgica", "BRG", 1),
+      P("Ámsterdam", "Países Bajos", "AMS", 2),
+      P("Colonia", "Alemania", "CGN", 1),
+      P("Berlín", "Alemania", "BER", 3),
+    ],
+    tramos: [T(60, null, [15, 20]), T(180, null, [30, 60]), T(160, null, [30, 80]), T(260, null, [30, 100])],
+  },
+  {
+    id: "alpes",
+    nombre: "Del Rin a Viena",
+    idea: "Alemania de norte a sur y los Alpes austriacos. Trenes rápidos y ninguna reserva obligatoria.",
+    paradas: [
+      P("Colonia", "Alemania", "CGN", 1),
+      P("Fráncfort", "Alemania", "FRA", 1),
+      P("Múnich", "Alemania", "MUC", 2),
+      P("Salzburgo", "Austria", "SZG", 2),
+      P("Viena", "Austria", "VIE", 2),
+    ],
+    tramos: [T(65, null, [20, 50]), T(195, null, [30, 90]), T(90, null, [20, 40]), T(150, null, [20, 50])],
+  },
+  {
+    id: "danubio",
+    nombre: "Del Danubio al Adriático",
+    idea: "La más barata de todas: regionales sin reserva y ciudades que cuestan la mitad.",
+    paradas: [
+      P("Viena", "Austria", "VIE", 2),
+      P("Bratislava", "Eslovaquia", "BTS", 1),
+      P("Budapest", "Hungría", "BUD", 2),
+      P("Zagreb", "Croacia", "ZAG", 2),
+      P("Liubliana", "Eslovenia", "LJU", 2),
+    ],
+    tramos: [T(60, null, [10, 15]), T(150, null, [15, 25]), T(390, null, [25, 45]), T(140, null, [10, 20])],
+  },
+  {
+    id: "riviera",
+    nombre: "La Riviera y la Toscana",
+    idea: "Costa hasta Cinque Terre y luego tierra adentro. Todo regional salvo el último tramo.",
+    paradas: [
+      P("Niza", "Francia", "NCE", 2),
+      P("Génova", "Italia", "GOA", 1),
+      P("La Spezia", "Italia", "SPZ", 2),
+      P("Pisa", "Italia", "PSA", 1),
+      P("Florencia", "Italia", "FLR", 2),
+      P("Roma", "Italia", "ROM", 2),
     ],
     tramos: [
-      { min: 310, reserva: [5, 10], billete: [40, 120] },
-      { min: 360, reserva: [5, 10], billete: [30, 90] },
-      { min: 410, reserva: [5, 10], billete: [30, 100] },
+      T(200, null, [20, 45]),
+      T(90, null, [10, 20]),
+      T(55, null, [8, 12]),
+      T(60, null, [8, 12]),
+      T(95, [10, 15], [20, 55]),
     ],
+  },
+  {
+    id: "polonia",
+    nombre: "Polonia",
+    idea: "Barata y con buen tren. Los Intercity polacos piden reserva, pero cuesta poco.",
+    paradas: [
+      P("Berlín", "Alemania", "BER", 2),
+      P("Poznań", "Polonia", "POZ", 1),
+      P("Varsovia", "Polonia", "WAW", 2),
+      P("Cracovia", "Polonia", "KRK", 3),
+    ],
+    tramos: [T(160, [2, 5], [20, 40]), T(170, [2, 5], [15, 30]), T(150, [2, 5], [15, 35])],
+  },
+  {
+    id: "hamburgo",
+    nombre: "De Hamburgo a Oslo",
+    idea: "El norte de Alemania y tres capitales nórdicas, subiendo por la costa.",
+    paradas: [
+      P("Hamburgo", "Alemania", "HAM", 2),
+      P("Copenhague", "Dinamarca", "CPH", 2),
+      P("Estocolmo", "Suecia", "STO", 3),
+      P("Oslo", "Noruega", "OSL", 2),
+    ],
+    tramos: [T(290, [5, 15], [40, 100]), T(310, [5, 10], [40, 120]), T(360, [5, 10], [30, 90])],
   },
   {
     id: "vuelta",
     nombre: "La vuelta grande",
     idea: "De París a Roma dando la vuelta por el centro. Para un bono de siete días.",
-    entra: { ciudad: "París", iata: "CDG" },
-    sale: { ciudad: "Roma", iata: "FCO" },
     paradas: [
-      { ciudad: "París", pais: "Francia", cod: "PAR", iata: "PAR", noches: 2 },
-      { ciudad: "Ámsterdam", pais: "Países Bajos", cod: "AMS", iata: "AMS", noches: 2 },
-      { ciudad: "Berlín", pais: "Alemania", cod: "BER", iata: "BER", noches: 2 },
-      { ciudad: "Praga", pais: "Chequia", cod: "PRG", iata: "PRG", noches: 2 },
-      { ciudad: "Viena", pais: "Austria", cod: "VIE", iata: "VIE", noches: 2 },
-      { ciudad: "Venecia", pais: "Italia", cod: "VCE", iata: "VCE", noches: 2 },
-      { ciudad: "Roma", pais: "Italia", cod: "ROM", iata: "ROM", noches: 2 },
+      P("París", "Francia", "PAR", 2),
+      P("Ámsterdam", "Países Bajos", "AMS", 2),
+      P("Berlín", "Alemania", "BER", 2),
+      P("Praga", "Chequia", "PRG", 2),
+      P("Viena", "Austria", "VIE", 2),
+      P("Venecia", "Italia", "VCE", 2),
+      P("Roma", "Italia", "ROM", 2),
     ],
     tramos: [
-      { min: 200, reserva: [15, 30], billete: [40, 150] },
-      { min: 380, reserva: null, billete: [40, 110] },
-      { min: 255, reserva: null, billete: [30, 70] },
-      { min: 240, reserva: null, billete: [20, 50] },
-      { min: 450, reserva: null, billete: [30, 90] },
-      { min: 225, reserva: [10, 15], billete: [25, 70] },
+      T(200, [15, 30], [40, 150]),
+      T(380, null, [40, 110]),
+      T(255, null, [30, 70]),
+      T(240, null, [20, 50]),
+      T(450, null, [30, 90]),
+      T(225, [10, 15], [25, 70]),
     ],
   },
 ];
+
+/* ------------------------------------------------------------ guardado */
+
+const CLAVE_ELECCION = tfClave("tf_ir_eleccion");
+const CLAVE_PENDIENTES = tfClave("tf_ir_pendientes");
+const CLAVE_AJUSTES = tfClave("tf_ir_ajustes");
+
+const leer = (clave) => {
+  try {
+    return JSON.parse(localStorage.getItem(clave) || "{}") || {};
+  } catch {
+    return {};
+  }
+};
+const guardar = (clave, valor) => {
+  try {
+    localStorage.setItem(clave, JSON.stringify(valor));
+  } catch {
+    /* navegación privada: dura lo que la pestaña */
+  }
+};
+
+/* ------------------------------------------------------ personalizarla
+
+   Cada ruta se puede ajustar sin tocar los datos: se guarda lo que cambiaste
+   —al revés, las noches de cada parada, las que te saltas— y la ruta que se
+   pinta y se cuenta se DERIVA de la original con eso encima. Deshacer es
+   borrar el ajuste. */
+
+export const MIN_NOCHES = 1;
+export const MAX_NOCHES = 7;
+export const MIN_PARADAS = 2;
+
+export const ajusteDe = (id) => leer(CLAVE_AJUSTES)[id] || {};
+
+export function ajustar(id, cambio) {
+  const todos = leer(CLAVE_AJUSTES);
+  const nuevo = cambio({ ...todos[id] });
+  if (!nuevo || !Object.keys(nuevo).length) delete todos[id];
+  else todos[id] = nuevo;
+  guardar(CLAVE_AJUSTES, todos);
+}
+
+const juntarReservas = (a, b) => (a || b ? [(a?.[0] || 0) + (b?.[0] || 0), (a?.[1] || 0) + (b?.[1] || 0)] : null);
+
+/* La puerta de entrada o de salida: ciudad y aeropuertos. */
+const puerta = (p) => ({
+  ciudad: p.ciudad,
+  cod: p.cod,
+  aeropuertos: AEROPUERTOS[p.cod] || [],
+  iata: (AEROPUERTOS[p.cod] || [])[0] || "",
+});
+
+/* La ruta tal como la has dejado. */
+export function ajustada(r, a = ajusteDe(r.id)) {
+  let paradas = r.paradas.map((p) => ({ ...p }));
+  let tramos = r.tramos.map((t) => ({ ...t }));
+  if (a.rev) {
+    paradas = paradas.reverse();
+    tramos = tramos.reverse();
+  }
+  for (const p of paradas) {
+    const n = Number(a.noches?.[p.cod]);
+    if (n >= MIN_NOCHES && n <= MAX_NOCHES) p.noches = n;
+  }
+  // Saltarse una parada junta sus dos tramos: se pasa por ella sin bajarse,
+  // en el mismo día, y se gasta un día de bono menos.
+  const fuera = [];
+  for (const cod of a.fuera || []) {
+    const i = paradas.findIndex((p) => p.cod === cod);
+    if (i < 0 || paradas.length <= MIN_PARADAS) continue;
+    const quitada = paradas[i];
+    if (i === 0) {
+      tramos.shift();
+    } else if (i === paradas.length - 1) {
+      tramos.pop();
+    } else {
+      const [x, y] = [tramos[i - 1], tramos[i]];
+      tramos.splice(i - 1, 2, {
+        min: x.min + y.min,
+        reserva: juntarReservas(x.reserva, y.reserva),
+        billete: [x.billete[0] + y.billete[0], x.billete[1] + y.billete[1]],
+        pasa: [...(x.pasa || []), quitada.ciudad, ...(y.pasa || [])],
+      });
+    }
+    paradas.splice(i, 1);
+    fuera.push(quitada);
+  }
+  return {
+    ...r,
+    paradas,
+    tramos,
+    fuera,
+    rev: !!a.rev,
+    ajustada: !!(a.rev || (a.fuera && a.fuera.length) || (a.noches && Object.keys(a.noches).length)),
+    entra: puerta(paradas[0]),
+    sale: puerta(paradas[paradas.length - 1]),
+  };
+}
 
 /* ------------------------------------------------------------ las cuentas */
 
@@ -206,8 +413,7 @@ export function billetes(r) {
 }
 
 /* El bono más barato que cubre la ruta: si la ruta gasta 4 días, el de 4, aunque
-   tengas pensado uno de 5. Es el que se compraría para ESTE viaje, y es con el
-   que tiene sentido comparar. */
+   tengas pensado uno de 5. Es el que se compraría para ESTE viaje. */
 export function paseQueCubre(r) {
   const dias = diasDeBono(r);
   return BONOS.find((d) => d >= dias) || null;
@@ -222,8 +428,9 @@ export function conBono(r, edad = "adulto") {
   return { dias, pase, total: [pase + rmin, pase + rmax] };
 }
 
-/* Cuál sale mejor. Son horquillas, así que solo se afirma cuando no se pisan;
-   si se pisan, depende de cuándo compres los billetes, y se dice eso. */
+/* Cuál sale mejor. Los vuelos y la cama son los mismos con bono y sin él, así
+   que la comparación es solo del tren. Son horquillas: solo se afirma cuando
+   no se pisan; si se pisan, depende de cuándo compres. */
 export function veredicto(r, edad = "adulto") {
   const sin = billetes(r);
   const con = conBono(r, edad);
@@ -233,22 +440,13 @@ export function veredicto(r, edad = "adulto") {
   return "depende";
 }
 
-/* Las que caben en el bono, de la que más lo aprovecha a la que menos. */
+/* Las que caben en el bono —ya ajustadas—, de la que más lo aprovecha a la
+   que menos. */
 export function caben(dias, maxNoches = Infinity) {
-  return RUTAS.filter((r) => diasDeBono(r) <= dias && noches(r) <= maxNoches).sort(
-    (a, b) => diasDeBono(b) - diasDeBono(a) || noches(a) - noches(b)
-  );
+  return RUTAS.map((r) => ajustada(r))
+    .filter((r) => diasDeBono(r) <= dias && noches(r) <= maxNoches)
+    .sort((a, b) => diasDeBono(b) - diasDeBono(a) || noches(a) - noches(b));
 }
-
-/* LOS VUELOS NO VAN AL BUSCADOR DE LA CASA, y fue lo primero que se probó. El
-   buscador hace ida y vuelta desde un aeropuerto español, y un Interrail entra
-   por una ciudad y sale por otra: «Vuelo de Budapest a Madrid» acababa abriendo
-   una búsqueda Madrid → Budapest de ida y vuelta. Justo lo contrario.
-
-   Van a eDreams de IDA SOLA, que admite cualquier origen y es el mismo enlace
-   que el feed ya usa para «Comparar». Y como se sabe cuántas noches dura la
-   ruta, la fecha del vuelo de vuelta se CALCULA: es la de salida más las noches.
-   Eso es lo que hace que esto sea un plan y no una lista de ciudades. */
 
 /* Fecha ISO + n días, sin que la hora de verano la desplace: se trabaja en la
    fecha local de `parseISO` y se escribe a mano, sin `toISOString` (que pasa a
@@ -278,25 +476,11 @@ export function fechas(r, ida) {
   return { ida, vuelta: sumarDias(ida, noches(r)) };
 }
 
-/* Ida sola, de `desde` a `hasta`, el día `dia`. */
+/* LOS ENLACES DE VUELO van a eDreams de IDA SOLA: el buscador de la casa hace
+   ida y vuelta desde España, y un Interrail entra por una ciudad y sale por
+   otra. */
 export const vueloURL = (desde, hasta, dia, adultos = 1) =>
   edreamsURL({ origin: desde, destination: hasta, depart_date: dia, adults: adultos });
-
-/* ------------------------------------------------------- dónde dormir
-
-   CADA PARADA, SU CAMA, y en un solo encargo para toda la ruta (ver
-   `interrail.yml`: uno por parada perdería los del medio). Cada parada deja su
-   fichero en `data/stays/`, con un nombre que dice ruta, ciudad, día de
-   llegada y cuántos vais: cambiar cualquiera de las cuatro cosas es otro
-   alojamiento y otro precio.
-
-   SOLO SITIOS ENTEROS. Se pide así a Airbnb y el servidor tira además lo que
-   se cuele; aquí se mira otra vez, que es gratis y es la última puerta.
-
-   LA OPCIÓN QUE SALE es la primera de la lista, que ya viene ordenada por
-   precio Y cercanía al centro —un estudio barato a doce kilómetros no es más
-   barato, es otro viaje—. Si eliges otra, se guarda en este navegador y el
-   total se recalcula con la tuya. */
 
 /* Las paradas con sus fechas: la llegada a cada una es la salida de la
    anterior. */
@@ -311,7 +495,32 @@ export function paradasConFechas(r, ida) {
   });
 }
 
-export const idParada = (r, p, adultos) => `ir-${r.id}-${p.cod}-${p.checkin}-${adultos}`;
+/* Ruta, ciudad, día de llegada, noches y cuántos vais: cambiar cualquiera de
+   las cinco es otra cama y otro precio. Las noches van porque la ruta se
+   puede ajustar: llegar el mismo día y quedarse una más es otra reserva. */
+export const idParada = (r, p, adultos) =>
+  `ir-${r.id}-${p.cod}-${p.checkin}-${p.noches}n-${adultos}`;
+
+/* Origen, ciudad, día y sentido. Sin personas: la tarifa es por persona. */
+export const idVuelo = (origen, cod, dia, sentido) => `ir-vuelo-${origen}-${cod}-${dia}-${sentido}`;
+
+/* Los dos vuelos de una ruta, con lo que el servidor necesita para buscarlos. */
+export function vuelosDe(r, ida, origen) {
+  const f = fechas(r, ida);
+  if (!f) return [];
+  return [
+    { id: idVuelo(origen, r.entra.cod, f.ida, "ida"), origen, aeropuertos: r.entra.aeropuertos, fecha: f.ida, sentido: "ida" },
+    { id: idVuelo(origen, r.sale.cod, f.vuelta, "vuelta"), origen, aeropuertos: r.sale.aeropuertos, fecha: f.vuelta, sentido: "vuelta" },
+  ].filter((v) => v.aeropuertos.length);
+}
+
+/* El más barato de un fichero de vuelo: `undefined` si no se ha buscado,
+   `null` si se buscó y no hay. */
+export function mejorVuelo(datos) {
+  if (datos === undefined) return undefined;
+  if (!datos || !Array.isArray(datos.legs) || !datos.legs.length) return null;
+  return datos.legs[0];
+}
 
 const HABITACION = /^(habitaci[oó]n|room in|private room|shared room|hotel room|cama en|bed in)/i;
 
@@ -322,24 +531,6 @@ export function opciones(datos) {
     (s) => s.kind === "stay" && s.price_total && !HABITACION.test(String(s.area || "").trim())
   );
 }
-
-const CLAVE_ELECCION = tfClave("tf_ir_eleccion");
-const CLAVE_PENDIENTES = tfClave("tf_ir_pendientes");
-
-const leer = (clave) => {
-  try {
-    return JSON.parse(localStorage.getItem(clave) || "{}") || {};
-  } catch {
-    return {};
-  }
-};
-const guardar = (clave, valor) => {
-  try {
-    localStorage.setItem(clave, JSON.stringify(valor));
-  } catch {
-    /* navegación privada: la elección dura lo que la pestaña */
-  }
-};
 
 /* La elegida de una parada: la que escogiste, si sigue en la lista; si no,
    la primera. */
@@ -362,34 +553,77 @@ export function alojamiento(r, ida, adultos, camas) {
   let total = 0;
   let faltan = 0;
   for (const p of paradasConFechas(r, ida)) {
-    const s = elegida(idParada(r, p, adultos), camas[idParada(r, p, adultos)]);
+    const id = idParada(r, p, adultos);
+    const s = elegida(id, camas[id]);
     if (s) total += s.price_total;
     else faltan += 1;
   }
   return { total, porPersona: total / adultos, faltan };
 }
 
+/* Los dos vuelos, por persona. `faltan` son los que no se han buscado;
+   `sinVuelo`, los que se buscaron y no hay ninguno ese día. */
+export function vuelosPrecio(r, ida, origen, cache) {
+  let total = 0;
+  let faltan = 0;
+  let sinVuelo = 0;
+  const tramos = {};
+  for (const v of vuelosDe(r, ida, origen)) {
+    const m = mejorVuelo(cache[v.id]);
+    tramos[v.sentido] = m;
+    if (m === undefined) faltan += 1;
+    else if (m === null) sinVuelo += 1;
+    else total += m.price;
+  }
+  return { total, faltan, sinVuelo, tramos };
+}
+
+/* EL TOTAL DEL VIAJE, por persona, con bono y sin él: el tren de cada forma,
+   más los vuelos y la cama, que son iguales en las dos. */
+export function totalViaje(r, { edad, ida, adultos, origen, camas, vuelos }) {
+  const con = conBono(r, edad);
+  const cama = alojamiento(r, ida, adultos, camas);
+  const avion = vuelosPrecio(r, ida, origen, vuelos);
+  const resto = avion.total + cama.porPersona;
+  const sumar = ([a, b]) => [a + resto, b + resto];
+  return {
+    sin: sumar(billetes(r)),
+    con: con ? sumar(con.total) : null,
+    pase: con,
+    cama,
+    avion,
+    completo: !cama.faltan && !avion.faltan && !avion.sinVuelo,
+  };
+}
+
 /* ------------------------------------------------------------ pintarlo */
 
 const eur = (n) => `${Math.round(n)} €`;
 const horquilla = ([a, b]) => (Math.round(a) === Math.round(b) ? eur(a) : `${Math.round(a)}–${eur(b)}`);
-const sumar = ([a, b], x) => [a + x, b + x];
+const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 
-/* Lo que ya se sabe de cada parada: id -> fichero de alojamiento, o null si se
-   ha mirado y no está. Se llena poco a poco y cada vez que llega algo se
-   repinta. */
+/* Lo que ya se sabe: id -> fichero. Se llena poco a poco y cada vez que llega
+   algo se repinta. */
 const CAMAS = {};
-let EXISTEN = null; // ids que dice `data/stays/index.json` que hay
+const VUELOS = {};
+let EXISTEN = null; // ids de alojamiento que dice `data/stays/index.json`
+let EXISTEN_V = null; // ids de vuelo que dice `data/interrail/index.json`
 let sondeo = null;
+/* Qué rutas tienen abierto el panel de personalizar: se repinta todo en cada
+   cambio, y sin esto el panel se cerraría en la cara de quien lo está usando. */
+const ABIERTOS = new Set();
 
-/* Una ruta, si se le buscó cama y todavía no ha llegado toda. Quince minutos
-   no bastan con siete paradas: el workflow tiene cuarenta de tope. */
+/* Una ruta, si se le buscó y todavía no ha llegado todo. El workflow tiene
+   cuarenta minutos de tope. */
 const ESPERA_MAX_MS = 40 * 60 * 1000;
-const claveRuta = (r, ida, adultos) => `${r.id}|${ida}|${adultos}`;
-const pendiente = (r, ida, adultos) => {
-  const desde = leer(CLAVE_PENDIENTES)[claveRuta(r, ida, adultos)];
+const firma = (r) => r.paradas.map((p) => `${p.cod}${p.noches}`).join("");
+const claveRuta = (r, ctx) => `${r.id}|${ctx.ida}|${ctx.adultos}|${ctx.origen}|${firma(r)}`;
+const pendiente = (r, ctx) => {
+  const desde = leer(CLAVE_PENDIENTES)[claveRuta(r, ctx)];
   return desde && Date.now() - desde < ESPERA_MAX_MS ? desde : 0;
 };
+
+const nombreOrigen = (iata) => (ORIGENES.find(([c]) => c === iata) || [iata, iata])[1];
 
 function reservaTxt(t) {
   return t.reserva
@@ -397,11 +631,23 @@ function reservaTxt(t) {
     : `<span class="ir-libre">sin reserva</span>`;
 }
 
-function vuelo(texto, desde, hasta, dia, adultos) {
-  const url = dia ? vueloURL(desde, hasta, dia, adultos) : "";
+/* Un vuelo de la ruta: el enlace para buscar, y el precio si ya se buscó. */
+function vueloHTML(texto, desde, hasta, dia, ctx, m) {
+  const url = dia ? vueloURL(desde, hasta, dia, ctx.adultos) : "";
+  let precio = "";
+  if (m) {
+    const reservar = m.deep_link
+      ? ` · <a href="${escURL(m.deep_link)}" target="_blank" rel="noopener">reservar</a>`
+      : "";
+    precio = `<small class="ir-vuelo-precio"><b>${eur(m.price)}</b> por persona · ${esc(m.airline)} ${esc(
+      m.time || ""
+    )} · ${esc(m.origin)} → ${esc(m.destination)}${reservar}</small>`;
+  } else if (m === null) {
+    precio = `<small class="ir-vuelo-precio sin">Ryanair no vuela ese día: mira otras compañías en el enlace.</small>`;
+  }
   return `<li class="ir-vuelo"><span>✈ ${texto}${
     dia ? ` <b>${esc(fmtDate(dia, true))}</b>` : ""
-  }</span>${
+  }${precio}</span>${
     url
       ? `<a class="btn ghost small" href="${escURL(url)}" target="_blank" rel="noopener">Ver vuelos</a>`
       : ""
@@ -419,8 +665,8 @@ const aPie = (km) => {
 };
 
 /* La cama de una parada, dentro de la ruta. */
-function camaHTML(r, p, adultos, esperando) {
-  const id = idParada(r, p, adultos);
+function camaHTML(r, p, ctx, esperando) {
+  const id = idParada(r, p, ctx.adultos);
   const datos = CAMAS[id];
   if (datos === undefined || datos === null) {
     if (!esperando) return "";
@@ -465,10 +711,6 @@ function camaHTML(r, p, adultos, esperando) {
     </li>`;
 }
 
-/* SIN BONO Y CON BONO, y con la cama cuando la hay. Es la pregunta de verdad
-   —¿me compensa el bono?— y la respuesta depende de la ruta: en tramos cortos
-   y baratos, billete a billete suele salir mejor. Solo se marca un ganador
-   cuando las horquillas no se pisan. */
 const VEREDICTOS = {
   sin: "Billete a billete sale más barato. El bono te da libertad para cambiar de planes, no ahorro.",
   con: "El bono sale a cuenta: comprando cada billete suelto pagarías más.",
@@ -476,78 +718,164 @@ const VEREDICTOS = {
     "Depende de cuándo compres. Con semanas de antelación, billete a billete suele ganar; a última hora, el bono.",
 };
 
-function precioHTML(r, edad, ida, adultos) {
-  const con = conBono(r, edad);
-  if (!con) return "";
-  const v = veredicto(r, edad);
-  const cama = alojamiento(r, ida, adultos, CAMAS);
-  const conCama = cama.total > 0;
-  const sin = conCama ? sumar(billetes(r), cama.porPersona) : billetes(r);
-  const conTotal = conCama ? sumar(con.total, cama.porPersona) : con.total;
-  const titulo = conCama ? "El viaje, por persona" : "El tren, por persona";
-  const desglose = conCama
-    ? `<p class="ir-desglose">Tren + alojamiento ${eur(cama.porPersona)} por persona (${eur(
-        cama.total
-      )} para ${adultos})${
-        cama.faltan ? ` · <b>faltan ${cama.faltan} parada${cama.faltan === 1 ? "" : "s"}</b>` : ""
-      }. Vuelos aparte.</p>`
-    : "";
+/* EL PRECIO. Tren con bono y sin él, y encima los vuelos y la cama cuando se
+   saben. Lo que falta se dice: un total al que le faltan cosas y no lo avisa
+   es peor que ningún total. */
+function precioHTML(r, ctx) {
+  const t = totalViaje(r, { ...ctx, camas: CAMAS, vuelos: VUELOS });
+  if (!t.con) return "";
+  const v = veredicto(r, ctx.edad);
+  const hayCama = t.cama.total > 0;
+  const hayVuelo = t.avion.total > 0;
+  const titulo = hayCama || hayVuelo ? "El viaje, por persona" : "El tren, por persona";
+
+  const piezas = [];
+  if (hayVuelo) {
+    const { ida, vuelta } = t.avion.tramos;
+    const partes = [ida ? `ida ${eur(ida.price)}` : "", vuelta ? `vuelta ${eur(vuelta.price)}` : ""]
+      .filter(Boolean)
+      .join(" + ");
+    piezas.push(`vuelos ${eur(t.avion.total)} (${partes})`);
+  }
+  if (hayCama) {
+    piezas.push(`alojamiento ${eur(t.cama.porPersona)} por persona (${eur(t.cama.total)} para ${ctx.adultos})`);
+  }
+  const avisos = [];
+  if (t.cama.faltan && hayCama) avisos.push(`faltan ${plural(t.cama.faltan, "parada", "paradas")}`);
+  if (t.avion.sinVuelo) avisos.push(`${plural(t.avion.sinVuelo, "vuelo", "vuelos")} sin precio: Ryanair no vuela ese día`);
+  if (t.avion.faltan && (hayCama || hayVuelo)) {
+    // Cuál: si has cambiado las noches, el de ida sigue valiendo y solo se ha
+    // movido la vuelta. «Faltan los vuelos» ahí sería mentir por exceso.
+    const cuales = ["ida", "vuelta"].filter((s) => t.avion.tramos[s] === undefined);
+    avisos.push(
+      cuales.length === 1
+        ? `falta el vuelo de ${cuales[0]}: se busca con el alojamiento`
+        : "faltan los vuelos: se buscan con el alojamiento"
+    );
+  }
+
+  const desglose = piezas.length
+    ? `<p class="ir-desglose">Tren + ${piezas.join(" + ")}${
+        avisos.length ? ` · <b>${esc(avisos.join(" · "))}</b>` : ""
+      }.</p>`
+    : `<p class="ir-desglose">Vuelos y alojamiento aparte: búscalos abajo y se suman aquí.</p>`;
+  const grupo =
+    ctx.adultos > 1 && (hayCama || hayVuelo)
+      ? `<p class="ir-grupo">Para ${ctx.adultos}: ≈ ${horquilla(t.sin.map((x) => x * ctx.adultos))} sin bono ·
+          ≈ ${horquilla(t.con.map((x) => x * ctx.adultos))} con bono</p>`
+      : "";
   return `
-      <div class="ir-precio" data-veredicto="${v}">
+      <div class="ir-precio" data-veredicto="${v}" data-completo="${t.completo ? "si" : "no"}">
         <p class="ir-precio-titulo">${titulo}</p>
         <dl>
-          <div class="${v === "sin" ? "gana" : ""}"><dt>Sin bono</dt><dd>≈ ${horquilla(sin)}</dd>
+          <div class="${v === "sin" ? "gana" : ""}"><dt>Sin bono</dt><dd>≈ ${horquilla(t.sin)}</dd>
             <small>comprando cada billete</small></div>
-          <div class="${v === "con" ? "gana" : ""}"><dt>Con bono</dt><dd>≈ ${horquilla(conTotal)}</dd>
-            <small>pase de ${con.dias} días, ${eur(con.pase)}${
+          <div class="${v === "con" ? "gana" : ""}"><dt>Con bono</dt><dd>≈ ${horquilla(t.con)}</dd>
+            <small>pase de ${t.pase.dias} días, ${eur(t.pase.pase)}${
               reservas(r)[1] ? " + reservas" : ""
             }</small></div>
         </dl>
         ${desglose}
+        ${grupo}
         <p class="ir-veredicto">${esc(VEREDICTOS[v])}</p>
       </div>`;
 }
 
-function botonCamaHTML(r, paradas, adultos, esperando) {
+/* PERSONALIZAR. Al revés, las noches de cada parada, y saltarse las que no
+   quieras. Todo se guarda en este navegador y todo se puede deshacer. */
+function ajustarHTML(r) {
+  const ultima = r.paradas[r.paradas.length - 1].ciudad;
+  const quitables = r.paradas.length > MIN_PARADAS;
+  const filas = r.paradas
+    .map(
+      (p) => `
+        <li>
+          <span class="ir-aj-ciudad">${esc(p.ciudad)}</span>
+          <span class="ir-aj-noches">
+            <button type="button" data-ir-accion="menos" data-ruta="${esc(r.id)}" data-cod="${esc(p.cod)}"
+              aria-label="Una noche menos en ${esc(p.ciudad)}" ${p.noches <= MIN_NOCHES ? "disabled" : ""}>−</button>
+            <b>${plural(p.noches, "noche", "noches")}</b>
+            <button type="button" data-ir-accion="mas" data-ruta="${esc(r.id)}" data-cod="${esc(p.cod)}"
+              aria-label="Una noche más en ${esc(p.ciudad)}" ${p.noches >= MAX_NOCHES ? "disabled" : ""}>+</button>
+          </span>
+          <button type="button" class="ir-aj-quitar" data-ir-accion="quitar" data-ruta="${esc(r.id)}"
+            data-cod="${esc(p.cod)}" ${quitables ? "" : "disabled"}>Saltármela</button>
+        </li>`
+    )
+    .join("");
+  const fuera = r.fuera
+    .map(
+      (p) => `
+        <li class="fuera">
+          <span class="ir-aj-ciudad"><s>${esc(p.ciudad)}</s></span>
+          <button type="button" class="ir-aj-quitar" data-ir-accion="poner" data-ruta="${esc(r.id)}"
+            data-cod="${esc(p.cod)}">Volver a ponerla</button>
+        </li>`
+    )
+    .join("");
+  return `
+      <details class="ir-ajustar" data-ruta="${esc(r.id)}"${ABIERTOS.has(r.id) ? " open" : ""}>
+        <summary>Personalizar la ruta${r.ajustada ? " · <b>cambiada</b>" : ""}</summary>
+        <div class="ir-ajustar-cuerpo">
+          <button type="button" class="btn ghost small" data-ir-accion="rev" data-ruta="${esc(r.id)}">
+            ⇄ Al revés: empezar en ${esc(ultima)}</button>
+          <ul>${filas}${fuera}</ul>
+          ${
+            r.ajustada
+              ? `<button type="button" class="btn ghost small" data-ir-accion="reset" data-ruta="${esc(
+                  r.id
+                )}">Deshacer los cambios</button>`
+              : ""
+          }
+        </div>
+      </details>`;
+}
+
+function botonBuscarHTML(r, ctx, paradas, esperando) {
   if (!paradas.length) return "";
-  const hechas = paradas.filter((p) => CAMAS[idParada(r, p, adultos)]).length;
-  if (hechas === paradas.length) return "";
+  const faltanCamas = paradas.filter((p) => !CAMAS[idParada(r, p, ctx.adultos)]).length;
+  const faltanVuelos = vuelosDe(r, ctx.ida, ctx.origen).filter((v) => VUELOS[v.id] === undefined).length;
+  if (!faltanCamas && !faltanVuelos) return "";
   if (esperando) {
-    return `<p class="ir-buscando"><span class="spin"></span>Buscando alojamiento entero en
-      ${paradas.length} paradas: unos dos minutos por parada. Puedes cerrar la página, el
-      resultado se guarda.</p>`;
+    return `<p class="ir-buscando"><span class="spin"></span>Buscando los vuelos y alojamiento entero
+      en ${plural(paradas.length, "parada", "paradas")}: unos dos minutos por parada. Puedes cerrar
+      la página, el resultado se guarda.</p>`;
   }
+  const nada = faltanCamas === paradas.length && faltanVuelos === 2;
   return `<div class="ir-pedir">
       <button type="button" class="btn deep" data-ir-camas="${esc(r.id)}">
-        Buscar alojamiento en ${hechas ? "las que faltan" : `las ${paradas.length} paradas`}</button>
-      <small>Pisos y casas enteras, nada de habitaciones: las mejores por precio y cercanía
-        al centro. Luego puedes cambiar cada una.</small>
+        ${nada ? `Buscar vuelos y alojamiento de las ${paradas.length} paradas` : "Buscar lo que falta"}</button>
+      <small>Los dos vuelos, de ida sola, y pisos y casas enteras —nada de habitaciones—: los mejores
+        por precio y cercanía al centro. Luego puedes cambiar cada uno.</small>
     </div>`;
 }
 
-function tarjeta(r, dias, ida, edad, libres, adultos) {
+function tarjeta(r, ctx, libres) {
   const [rmin, rmax] = reservas(r);
-  const f = fechas(r, ida);
-  const sobran = dias - diasDeBono(r);
-  const paradas = paradasConFechas(r, ida);
-  const esperando = pendiente(r, ida, adultos);
+  const f = fechas(r, ctx.ida);
+  const sobran = ctx.dias - diasDeBono(r);
+  const paradas = paradasConFechas(r, ctx.ida);
+  const esperando = pendiente(r, ctx);
+  const [vIda, vVuelta] = vuelosDe(r, ctx.ida, ctx.origen);
   const pasos = r.paradas
     .map((p, i) => {
       const conFecha = paradas[i];
-      const parada = `<li class="ir-parada"><b>${esc(p.ciudad)}</b><small>${p.noches} noche${
-        p.noches === 1 ? "" : "s"
-      }${conFecha ? ` · desde el ${esc(fmtDate(conFecha.checkin, true))}` : ""}</small></li>`;
-      const cama = conFecha ? camaHTML(r, conFecha, adultos, esperando) : "";
+      const parada = `<li class="ir-parada"><b>${esc(p.ciudad)}</b><small>${plural(p.noches, "noche", "noches")}${
+        conFecha ? ` · desde el ${esc(fmtDate(conFecha.checkin, true))}` : ""
+      }</small></li>`;
+      const cama = conFecha ? camaHTML(r, conFecha, ctx, esperando) : "";
       const t = r.tramos[i];
       if (!t) return parada + cama;
+      const pasa = t.pasa && t.pasa.length ? ` · pasas por ${esc(t.pasa.join(" y "))} sin parar` : "";
       return `${parada}${cama}<li class="ir-tramo">≈ ${esc(enHoras(t.min))} en tren · ${reservaTxt(
         t
-      )}<small class="ir-billete">billete suelto ≈ ${horquilla(t.billete)}</small></li>`;
+      )}${pasa}<small class="ir-billete">billete suelto ≈ ${horquilla(t.billete)}</small></li>`;
     })
     .join("");
   const huecos = Number.isFinite(libres) ? libres - noches(r) : null;
+  const origen = esc(nombreOrigen(ctx.origen));
   return `
-    <article class="ir-ruta" id="ruta-${esc(r.id)}">
+    <article class="ir-ruta${r.ajustada ? " ajustada" : ""}" id="ruta-${esc(r.id)}">
       <header>
         <h3>${esc(r.nombre)}</h3>
         <p>${esc(r.idea)}</p>
@@ -562,13 +890,16 @@ function tarjeta(r, dias, ida, edad, libres, adultos) {
         <div><dt>En tren</dt><dd>≈ ${esc(enHoras(minutosEnTren(r)))}</dd></div>
         <div><dt>Reservas</dt><dd>${rmax ? `≈ ${horquilla([rmin, rmax])}` : "ninguna"}</dd></div>
       </dl>
-      ${precioHTML(r, edad, ida, adultos)}
-      ${botonCamaHTML(r, paradas, adultos, esperando)}
+      ${precioHTML(r, ctx)}
+      ${ajustarHTML(r)}
+      ${botonBuscarHTML(r, ctx, paradas, esperando)}
       <div class="ir-acceso"></div>
       <ol class="ir-pasos">
-        ${vuelo(`Madrid → ${esc(r.entra.ciudad)}`, "MAD", r.entra.iata, f && f.ida, adultos)}
+        ${vueloHTML(`${origen} → ${esc(r.entra.ciudad)}`, ctx.origen, r.entra.iata, f && f.ida, ctx,
+          vIda ? mejorVuelo(VUELOS[vIda.id]) : undefined)}
         ${pasos}
-        ${vuelo(`${esc(r.sale.ciudad)} → Madrid`, r.sale.iata, "MAD", f && f.vuelta, adultos)}
+        ${vueloHTML(`${esc(r.sale.ciudad)} → ${origen}`, r.sale.iata, ctx.origen, f && f.vuelta, ctx,
+          vVuelta ? mejorVuelo(VUELOS[vVuelta.id]) : undefined)}
       </ol>
     </article>`;
 }
@@ -582,113 +913,123 @@ function estado() {
     vuelta: q("#irVuelta")?.value || "",
     edad: q("#irEdad")?.value || "adulto",
     adultos: Math.min(8, Math.max(1, Number(q("#irPersonas")?.value) || 2)),
+    origen: q("#irOrigen")?.value || "MAD",
   };
 }
 
 function pintar() {
   const caja = document.querySelector("#irRutas");
   if (!caja) return;
-  const { dias, ida, vuelta, edad, adultos } = estado();
-  // Con las dos fechas, solo las rutas que caben entre medias.
-  const libres = nochesEntre(ida, vuelta);
-  const lista = caben(dias, libres ?? Infinity);
+  const ctx = estado();
+  const libres = nochesEntre(ctx.ida, ctx.vuelta);
+  const lista = caben(ctx.dias, libres ?? Infinity);
   const pista = document.querySelector("#irHint");
   if (pista) {
     const donde = libres !== null ? ` y en ${libres} noches` : "";
-    if (vuelta && libres === null) {
+    if (ctx.vuelta && libres === null) {
       pista.textContent = "La vuelta es antes que la ida: cámbiala para ver las rutas.";
     } else {
       pista.textContent = lista.length
-        ? `${lista.length} ruta${lista.length === 1 ? "" : "s"} caben en ${dias} días de bono${donde}.`
-        : `Con ${dias} días de bono${donde} no cabe ninguna de estas rutas.`;
+        ? `${lista.length} ruta${lista.length === 1 ? "" : "s"} caben en ${ctx.dias} días de bono${donde}.`
+        : `Con ${ctx.dias} días de bono${donde} no cabe ninguna de estas rutas.`;
     }
   }
-  caja.innerHTML = lista
-    .map((r) => tarjeta(r, dias, ida, edad, libres ?? undefined, adultos))
-    .join("");
-  cargarCamas(lista, ida, adultos);
+  caja.innerHTML = lista.map((r) => tarjeta(r, ctx, libres ?? undefined)).join("");
+  cargar(lista, ctx);
 }
 
-/* Trae los ficheros de las paradas que existen. Solo los que dice el índice:
-   pedir a ciegas los de las seis rutas serían treinta 404 en cada cambio. */
-async function cargarCamas(lista, ida, adultos) {
-  if (EXISTEN === null) {
-    try {
-      const indice = await fetchJSON("data/stays/index.json");
-      EXISTEN = new Set(Object.keys((indice && indice.viajes) || {}));
-    } catch {
-      EXISTEN = new Set();
-    }
+async function indice(ruta, campo) {
+  try {
+    const datos = await fetchJSON(ruta);
+    return new Set(Array.isArray(datos?.[campo]) ? datos[campo] : Object.keys(datos?.[campo] || {}));
+  } catch {
+    return new Set();
   }
-  const faltan = [];
+}
+
+/* Trae lo que existe de las rutas a la vista. Solo lo que dicen los índices, o
+   lo que se está esperando: pedir a ciegas serían decenas de 404 por cambio. */
+async function cargar(lista, ctx) {
+  if (EXISTEN === null) EXISTEN = await indice("data/stays/index.json", "viajes");
+  if (EXISTEN_V === null) EXISTEN_V = await indice("data/interrail/index.json", "vuelos");
+  const pedir = [];
   for (const r of lista) {
-    for (const p of paradasConFechas(r, ida)) {
-      const id = idParada(r, p, adultos);
-      if (CAMAS[id] === undefined && (EXISTEN.has(id) || pendiente(r, ida, adultos))) {
-        faltan.push(id);
+    const espera = pendiente(r, ctx);
+    for (const p of paradasConFechas(r, ctx.ida)) {
+      const id = idParada(r, p, ctx.adultos);
+      if (CAMAS[id] === undefined && (EXISTEN.has(id) || espera)) {
+        pedir.push([CAMAS, id, `data/stays/${id}.json`]);
+      }
+    }
+    for (const v of vuelosDe(r, ctx.ida, ctx.origen)) {
+      if (VUELOS[v.id] === undefined && (EXISTEN_V.has(v.id) || espera)) {
+        pedir.push([VUELOS, v.id, `data/interrail/${v.id}.json`]);
       }
     }
   }
-  if (!faltan.length) return;
-  let alguna = false;
+  if (!pedir.length) return;
+  let alguno = false;
   await Promise.all(
-    faltan.map(async (id) => {
+    pedir.map(async ([cache, id, ruta]) => {
       try {
-        CAMAS[id] = await fetchJSON(`data/stays/${id}.json`);
-        alguna = true;
+        cache[id] = await fetchJSON(ruta);
+        alguno = true;
       } catch {
         /* todavía no está: se reintenta en el siguiente sondeo */
       }
     })
   );
-  if (alguna) pintar();
+  if (alguno) pintar();
 }
 
-/* Mientras haya una ruta esperando, se mira cada poco si han llegado camas. */
+/* Mientras haya una ruta esperando, se mira cada poco si ha llegado algo. */
 function vigilar() {
   clearInterval(sondeo);
   sondeo = setInterval(() => {
-    const { dias, ida, vuelta, adultos } = estado();
-    const libres = nochesEntre(ida, vuelta);
-    const lista = caben(dias, libres ?? Infinity);
+    const ctx = estado();
+    const libres = nochesEntre(ctx.ida, ctx.vuelta);
+    const lista = caben(ctx.dias, libres ?? Infinity);
     const quedan = lista.some(
       (r) =>
-        pendiente(r, ida, adultos) &&
-        paradasConFechas(r, ida).some((p) => !CAMAS[idParada(r, p, adultos)])
+        pendiente(r, ctx) &&
+        (paradasConFechas(r, ctx.ida).some((p) => !CAMAS[idParada(r, p, ctx.adultos)]) ||
+          vuelosDe(r, ctx.ida, ctx.origen).some((v) => VUELOS[v.id] === undefined))
     );
-    // Nada esperando: se para. Lo que llega ya repinta solo en `cargarCamas`.
+    // Nada esperando: se para. Lo que llega ya repinta solo en `cargar`.
     if (!quedan) {
       clearInterval(sondeo);
       return;
     }
-    cargarCamas(lista, ida, adultos);
+    cargar(lista, ctx);
   }, POLL_EVERY_MS);
 }
 
-async function pedirCamas(r, boton) {
-  const { ida, adultos } = estado();
-  const paradas = paradasConFechas(r, ida).filter((p) => !CAMAS[idParada(r, p, adultos)]);
-  if (!paradas.length) return;
+async function pedir(r, boton) {
+  const ctx = estado();
+  const paradas = paradasConFechas(r, ctx.ida).filter((p) => !CAMAS[idParada(r, p, ctx.adultos)]);
+  const vuelos = vuelosDe(r, ctx.ida, ctx.origen).filter((v) => VUELOS[v.id] === undefined);
+  if (!paradas.length && !vuelos.length) return;
   boton.disabled = true;
-  // Tres propiedades: la lista va anidada en UNA, que GitHub solo admite diez.
+  // Cuatro propiedades: las listas van anidadas, que GitHub solo admite diez.
   const res = await dispatch("interrail", {
     ruta: r.id,
-    adults: String(adultos),
+    adults: String(ctx.adultos),
     paradas: paradas.map((p) => ({
-      offer_id: idParada(r, p, adultos),
+      offer_id: idParada(r, p, ctx.adultos),
       city: p.ciudad,
       country: p.pais,
-      iata: p.iata,
+      iata: (AEROPUERTOS[p.cod] || [])[0] || "",
       checkin: p.checkin,
       checkout: p.checkout,
     })),
+    vuelos,
   });
   if (res.ok) {
     const todas = leer(CLAVE_PENDIENTES);
-    todas[claveRuta(r, ida, adultos)] = Date.now();
+    todas[claveRuta(r, ctx)] = Date.now();
     guardar(CLAVE_PENDIENTES, todas);
     if (typeof tfAnunciar === "function") {
-      tfAnunciar("Buscando alojamiento para la ruta. Tarda unos minutos por parada.");
+      tfAnunciar("Buscando los vuelos y el alojamiento de la ruta. Tarda unos minutos.");
     }
     pintar();
     vigilar();
@@ -706,6 +1047,31 @@ async function pedirCamas(r, boton) {
   }
 }
 
+/* Lo que hace cada botón de «Personalizar». */
+function accion(tipo, rutaId, cod) {
+  const base = RUTAS.find((x) => x.id === rutaId);
+  if (!base) return;
+  const noches0 = (c) => {
+    const actual = ajustada(base).paradas.find((p) => p.cod === c);
+    return actual ? actual.noches : 2;
+  };
+  ajustar(rutaId, (a) => {
+    if (tipo === "reset") return {};
+    if (tipo === "rev") a.rev = !a.rev;
+    if (tipo === "mas" || tipo === "menos") {
+      const n = noches0(cod) + (tipo === "mas" ? 1 : -1);
+      a.noches = { ...a.noches, [cod]: Math.min(MAX_NOCHES, Math.max(MIN_NOCHES, n)) };
+    }
+    if (tipo === "quitar") a.fuera = [...new Set([...(a.fuera || []), cod])];
+    if (tipo === "poner") a.fuera = (a.fuera || []).filter((c) => c !== cod);
+    if (a.fuera && !a.fuera.length) delete a.fuera;
+    if (!a.rev) delete a.rev;
+    return a;
+  });
+  ABIERTOS.add(rutaId);
+  pintar();
+}
+
 const hoyISO = () => {
   const hoy = new Date();
   return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(
@@ -719,6 +1085,12 @@ export function montarInterrail() {
   const sel = document.querySelector("#irDias");
   const caja = document.querySelector("#irRutas");
   if (!sel || !caja) return;
+  const origen = document.querySelector("#irOrigen");
+  if (origen && !origen.options.length) {
+    origen.innerHTML = ORIGENES.map(
+      ([c, n]) => `<option value="${esc(c)}"${c === "MAD" ? " selected" : ""}>${esc(n)} (${esc(c)})</option>`
+    ).join("");
+  }
   const ida = document.querySelector("#irIda");
   const vuelta = document.querySelector("#irVuelta");
   if (ida && !ida.value) {
@@ -734,25 +1106,39 @@ export function montarInterrail() {
       vuelta.min = ida.value;
     });
   }
-  ["#irDias", "#irIda", "#irVuelta", "#irEdad", "#irPersonas"].forEach((s) => {
+  ["#irDias", "#irIda", "#irVuelta", "#irEdad", "#irPersonas", "#irOrigen"].forEach((s) => {
     const el = document.querySelector(s);
     if (el) el.addEventListener("change", pintar);
   });
   // Un solo oyente para toda la caja: las tarjetas se repintan enteras y los
   // botones de dentro nacen y mueren con cada cambio.
   caja.addEventListener("click", (e) => {
-    const pedir = e.target.closest("[data-ir-camas]");
-    if (pedir) {
-      const r = RUTAS.find((x) => x.id === pedir.dataset.irCamas);
-      if (r) pedirCamas(r, pedir);
+    const buscar = e.target.closest("[data-ir-camas]");
+    if (buscar) {
+      const r = caben(Infinity).find((x) => x.id === buscar.dataset.irCamas);
+      if (r) pedir(r, buscar);
       return;
     }
     const otra = e.target.closest(".ir-elegir");
     if (otra) {
       elegir(otra.dataset.parada, otra.dataset.url);
       pintar();
+      return;
     }
+    const boton = e.target.closest("[data-ir-accion]");
+    if (boton) accion(boton.dataset.irAccion, boton.dataset.ruta, boton.dataset.cod);
   });
+  // Recordar qué paneles de personalizar están abiertos.
+  caja.addEventListener(
+    "toggle",
+    (e) => {
+      const d = e.target;
+      if (!d.classList || !d.classList.contains("ir-ajustar")) return;
+      if (d.open) ABIERTOS.add(d.dataset.ruta);
+      else ABIERTOS.delete(d.dataset.ruta);
+    },
+    true
+  );
   pintar();
   vigilar();
 }

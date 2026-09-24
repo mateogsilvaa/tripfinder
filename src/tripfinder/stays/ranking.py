@@ -82,6 +82,16 @@ def medir(ofertas: list[StayOffer], req: StayRequest) -> list[StayOffer]:
     return ofertas
 
 
+# Mas lejos que esto del centro no es un alojamiento en esa ciudad: es que el
+# buscador ha entendido otra. Visto de verdad: pidiendo «Ámsterdam, Países
+# Bajos», Airbnb devolvio dieciocho casas en Brasil y Filipinas, y la mas
+# barata —una cabaña a 8.800 km— salia la primera con el sello de «el mas
+# barato». Cuarenta kilometros deja dentro las afueras de cualquier ciudad y
+# fuera cualquier confusion de nombre. (No confundir con LEJOS_KM, que es donde
+# la nota de cercania deja de bajar.)
+FUERA_DE_LA_CIUDAD_KM = 40.0
+
+
 def ordenar(ofertas: list[StayOffer], req: StayRequest) -> list[StayOffer]:
     """Las mejores primero, y con su sello puesto."""
     conPrecio = [o for o in ofertas if o.price_total]
@@ -90,6 +100,15 @@ def ordenar(ofertas: list[StayOffer], req: StayRequest) -> list[StayOffer]:
         return ofertas
 
     medir(conPrecio, req)
+    fuera = [o for o in conPrecio if o.km_centro is not None and o.km_centro > FUERA_DE_LA_CIUDAD_KM]
+    if fuera:
+        log.warning(
+            "%s: %d alojamientos descartados por estar a mas de %.0f km del centro (el mas lejano, %.0f km)",
+            req.city, len(fuera), FUERA_DE_LA_CIUDAD_KM, max(o.km_centro for o in fuera),
+        )
+        conPrecio = [o for o in conPrecio if o not in fuera]
+        if not conPrecio:
+            return sinPrecio
 
     barato = min(o.price_total for o in conPrecio)
 

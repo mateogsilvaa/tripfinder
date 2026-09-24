@@ -97,6 +97,16 @@ def es_entero(tipo: str, titulo: str = "") -> bool:
     return not any(t in titulo for t in NO_ENTERO_TITULO)
 
 
+# Y el nombre del anuncio, que es lo unico que dice la verdad cuando el tipo y
+# el titulo no: la primera busqueda de verdad en Amsterdam colo «Roomwest
+# Amsterdam - Double room» y «luxury authentic room at Museumplein». Por
+# palabra entera: «bedroom» o «rooftop» son de pisos y tienen que pasar.
+HABITACION_EN_NOMBRE = re.compile(
+    r"\b(room|rooms|habitaci[oó]n|chambre|zimmer|camera|dorm|hostel|b&b|bed and breakfast)\b",
+    re.IGNORECASE,
+)
+
+
 def etiqueta(tipo: str) -> str:
     return ETIQUETAS.get((tipo or "").upper(), "Alojamiento entero")
 
@@ -154,6 +164,8 @@ def a_oferta(oferta: dict, adultos: int = 1) -> StayOffer | None:
         return None
     detalles = oferta.get("details") or {}
     if not es_entero(detalles.get("apartmentType", ""), detalles.get("apartmentTypeTitle", "")):
+        return None
+    if HABITACION_EN_NOMBRE.search(str(detalles.get("name") or "")):
         return None
     try:
         caben = int(detalles.get("guestsCount") or 0)

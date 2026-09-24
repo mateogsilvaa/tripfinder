@@ -3251,6 +3251,54 @@ h1 em { font-size: 1.3em; }
   cursor: pointer;
 }
 .ir-elegir:hover, .ir-elegir:focus-visible { border-color: var(--deep); }
+
+/* EL PRECIO DEL VUELO, debajo de su linea: la cifra y de donde sale. */
+.ir-vuelo-precio {
+  display: block;
+  margin-top: 2px;
+  font: 400 var(--fs-meta) / 1.5 var(--font-mono);
+  color: var(--muted);
+}
+.ir-vuelo-precio b { color: var(--ink); font-weight: 600; }
+.ir-vuelo-precio.sin { color: var(--accent-txt); }
+.ir-grupo { margin: 6px 0 0; font: 500 var(--fs-meta) / 1.5 var(--font-mono); color: var(--ink); }
+
+/* PERSONALIZAR. Plegado por defecto: la ruta tal cual es un buen punto de
+   partida, y el panel no puede tapar lo que se lee primero. */
+.ir-ajustar { margin: 0 0 14px; border: 1px solid var(--hair); border-radius: var(--r); }
+.ir-ajustar > summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  min-height: var(--tap-min);
+  color: var(--deep);
+  font-size: var(--fs-body-s);
+}
+.ir-ajustar > summary b { color: var(--accent-txt); font-weight: 500; }
+.ir-ajustar-cuerpo { padding: 0 14px 14px; display: grid; gap: 10px; justify-items: start; }
+.ir-ajustar ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; width: 100%; }
+.ir-ajustar li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 0;
+  border-top: 1px solid var(--hair);
+}
+.ir-ajustar li.fuera { grid-template-columns: minmax(0, 1fr) auto; color: var(--muted); }
+.ir-aj-noches { display: inline-flex; align-items: center; gap: 6px; }
+.ir-aj-noches b { font: 500 var(--fs-meta) var(--font-mono); min-width: 8ch; text-align: center; }
+.ir-aj-noches button, .ir-aj-quitar {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.ir-aj-quitar { padding: 0 12px; font-size: var(--fs-meta); color: var(--muted); }
+.ir-aj-noches button:disabled, .ir-aj-quitar:disabled { opacity: 0.35; cursor: default; }
+.ir-ruta.ajustada { border-color: var(--deep); }
 .ir-libre { color: var(--deep); }
 .ir-vuelo {
   display: flex;
@@ -3285,6 +3333,10 @@ h1 em { font-size: 1.3em; }
   .tren-rows .brow > .tren-tipo { grid-column: 1 / -1; }
   .ir-cifras { grid-template-columns: 1fr 1fr; }
   .ir-ruta { padding: 14px; }
+  /* El nombre encima y los controles debajo: en fila, «Ámsterdam» se metía
+     debajo del botón de quitar una noche. */
+  .ir-ajustar li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
+  .ir-ajustar li:not(.fuera) .ir-aj-ciudad { grid-column: 1 / -1; font-weight: 500; }
 }
 
 @media (max-width: 420px) {

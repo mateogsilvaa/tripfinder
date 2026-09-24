@@ -13,16 +13,17 @@ const { test, expect } = require("@playwright/test");
 // Europa central saliendo el 6 de noviembre, dos personas.
 const IDA = "2026-11-06";
 const PARADAS = [
-  ["AMS", "2026-11-06"],
-  ["BER", "2026-11-08"],
-  ["PRG", "2026-11-11"],
-  ["VIE", "2026-11-13"],
-  ["BUD", "2026-11-15"],
+  ["AMS", "2026-11-06", 2],
+  ["BER", "2026-11-08", 3],
+  ["PRG", "2026-11-11", 2],
+  ["VIE", "2026-11-13", 2],
+  ["BUD", "2026-11-15", 2],
 ];
-const id = (cod, dia, n = 2) => `ir-centro-${cod}-${dia}-${n}`;
+// Ruta, ciudad, llegada, noches y personas: cambiar una es otra cama.
+const id = (cod, dia, noches, n = 2) => `ir-centro-${cod}-${dia}-${noches}n-${n}`;
 
-const fichero = (cod, dia) => ({
-  offer_id: id(cod, dia),
+const fichero = (cod, dia, noches) => ({
+  offer_id: id(cod, dia, noches),
   generated_at: "2026-10-01",
   summary: {},
   stays: [
@@ -41,7 +42,7 @@ const fichero = (cod, dia) => ({
 
 /* Sirve los ficheros de las paradas que se le digan. */
 const conCamas = async (page, cuales = PARADAS) => {
-  const ids = new Set(cuales.map(([c, d]) => id(c, d)));
+  const ids = new Set(cuales.map(([c, d, n]) => id(c, d, n)));
   await page.route("**/data/stays/index.json*", (r) =>
     r.fulfill({
       contentType: "application/json",
@@ -50,7 +51,7 @@ const conCamas = async (page, cuales = PARADAS) => {
   );
   await page.route("**/data/stays/ir-*.json*", (r) => {
     const nombre = r.request().url().split("/").pop().split(".json")[0];
-    const par = PARADAS.find(([c, d]) => id(c, d) === nombre);
+    const par = PARADAS.find(([c, d, n]) => id(c, d, n) === nombre);
     if (!par || !ids.has(nombre)) return r.fulfill({ status: 404, body: "" });
     return r.fulfill({ contentType: "application/json", body: JSON.stringify(fichero(...par)) });
   });
@@ -88,7 +89,8 @@ test.describe("el alojamiento del interrail", () => {
     await expect(precio.locator(".ir-precio-titulo")).toHaveText("El viaje, por persona");
     await expect(precio.locator(".ir-desglose")).toContainText("500 € por persona");
     await expect(precio.locator(".ir-desglose")).toContainText("1000 € para 2");
-    await expect(precio.locator(".ir-desglose")).toContainText("Vuelos aparte");
+    // Sin vuelos buscados, el total lo dice en vez de callárselo.
+    await expect(precio.locator(".ir-desglose")).toContainText("faltan los vuelos");
     // Y el total de verdad: billetes 105–270 + 500 = 605–770.
     await expect(precio.locator("dl > div:nth-child(1) dd")).toHaveText("≈ 605–770 €");
   });
@@ -131,7 +133,7 @@ test.describe("el alojamiento del interrail", () => {
     await conCamas(page, PARADAS.slice(0, 3));
     await abrir(page);
     await expect(page.locator("#ruta-centro .ir-desglose")).toContainText("faltan 2 paradas");
-    await expect(page.locator("#ruta-centro [data-ir-camas]")).toContainText("las que faltan");
+    await expect(page.locator("#ruta-centro [data-ir-camas]")).toContainText("Buscar lo que falta");
   });
 
   test("otra cantidad de gente es otro alojamiento", async ({ page }) => {
@@ -172,8 +174,14 @@ test.describe("pedir el alojamiento", () => {
     expect(Object.keys(e.client_payload).length).toBeLessThanOrEqual(10);
     expect(e.client_payload.adults).toBe("2");
     expect(e.client_payload.paradas.map((p) => p.offer_id)).toEqual(
-      PARADAS.map(([c, d]) => id(c, d))
+      PARADAS.map(([c, d, n]) => id(c, d, n))
     );
+    // Y los dos vuelos, de ida sola, en el mismo encargo.
+    expect(e.client_payload.vuelos.map((v) => v.id)).toEqual([
+      "ir-vuelo-MAD-AMS-2026-11-06-ida",
+      "ir-vuelo-MAD-BUD-2026-11-17-vuelta",
+    ]);
+    expect(e.client_payload.vuelos[0].aeropuertos).toEqual(["AMS", "EIN", "RTM"]);
     // La salida de cada parada es la llegada a la siguiente.
     expect(e.client_payload.paradas[0]).toMatchObject({
       city: "Ámsterdam",

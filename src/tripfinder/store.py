@@ -379,6 +379,30 @@ class Store:
         self._write("state.json", state)
 
     # -- alojamientos ----------------------------------------------------
+    # -- interrail ---------------------------------------------------------
+    @property
+    def interrail_dir(self) -> Path:
+        d = self.root / "interrail"
+        d.mkdir(parents=True, exist_ok=True)
+        return d
+
+    def save_vuelo_interrail(self, payload: dict[str, Any]) -> Path:
+        """El vuelo de entrada o de salida de una ruta de Interrail."""
+        p = self.interrail_dir / f"{payload['id']}.json"
+        p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        return p
+
+    def save_indice_interrail(self) -> list[str]:
+        """Que vuelos hay buscados. Lo lee la web para no pedir a ciegas un
+        fichero por ruta y comerse un 404 por cada una. Es un derivado: se
+        rehace recorriendo la carpeta."""
+        ids = sorted(f.stem for f in self.interrail_dir.glob("*.json") if f.name != "index.json")
+        (self.interrail_dir / "index.json").write_text(
+            json.dumps({"generated_at": date.today().isoformat(), "vuelos": ids}, indent=2),
+            encoding="utf-8",
+        )
+        return ids
+
     def save_stays(self, offer_id: str, offer: FlightOffer | None, stays: list[StayOffer],
                    checkin: str, checkout: str, errors: list[str] | None = None,
                    summary: dict[str, Any] | None = None) -> Path:
