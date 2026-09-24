@@ -408,6 +408,10 @@ function vuelo(texto, desde, hasta, dia, adultos) {
   }</li>`;
 }
 
+/* De quién es: «airbnb», o «holidu · vía Expedia» cuando llega por el
+   comparador y el piso es de otra web. */
+const fuente = (s) => esc([s.provider, s.note].filter(Boolean).join(" · "));
+
 const aPie = (km) => {
   if (km === null || km === undefined) return "";
   const min = Math.round((km / 4.5) * 60);
@@ -437,7 +441,7 @@ function camaHTML(r, p, adultos, esperando) {
         ${foto}
         <div>
           <a href="${escURL(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>
-          <small>${esc(s.provider)}${aPie(s.km_centro)}</small>
+          <small>${fuente(s)}${aPie(s.km_centro)}</small>
         </div>
         <b>${eur(s.price_total)}</b>
       </div>
@@ -450,7 +454,7 @@ function camaHTML(r, p, adultos, esperando) {
                    (o) => `<li>
                      <button type="button" class="ir-elegir" data-parada="${esc(id)}"
                        data-url="${esc(o.url)}">
-                       <span>${esc(o.name)}<small>${esc(o.provider)}${aPie(o.km_centro)}</small></span>
+                       <span>${esc(o.name)}<small>${fuente(o)}${aPie(o.km_centro)}</small></span>
                        <b>${eur(o.price_total)}</b>
                      </button></li>`
                  )

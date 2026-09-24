@@ -44,6 +44,13 @@ def test_el_nombre_de_la_ciudad_no_es_un_barrio():
     assert barrio("Apartamento en Bérgamo", "Bergamo") == ""
 
 
+def test_sin_en_no_hay_barrio():
+    """Holidu pone en `area` solo el tipo. Tomarlo por barrio metía la ciudad
+    entera en una zona llamada «Apartamento»."""
+    assert barrio("Apartamento", "Ámsterdam") == ""
+    assert barrio("Alojamiento y desayuno", "Ámsterdam") == ""
+
+
 def test_un_area_vacia_no_da_barrio():
     assert barrio("", "Atenas") == ""
     assert barrio(None, "Atenas") == ""

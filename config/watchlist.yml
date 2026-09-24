@@ -36,6 +36,7 @@ providers:
 stays:
   providers:
     - airbnb
+    - holidu         # comparador: pisos enteros de Vrbo, Booking y agencias
     - amadeus_hotels
     - deeplinks      # Booking / Kayak / Google Hotels, sin scraping
   adults: 2
