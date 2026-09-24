@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-22T10:36:26+00:00",
+  "updated": "2026-09-24T18:30:20+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -111,6 +111,29 @@
         "iterations": 210000,
         "iv": "y9ptnVxV7e9Eb5ls",
         "salt": "5zEErptpaZhJSaSiBbciCA=="
+      }
+    },
+    {
+      "id": "u-b94c63ee",
+      "user": "sara",
+      "name": "sarita",
+      "email": "saraserranogarcia11@gmail.com",
+      "salt": "ycpvq+f4DL6N3LVVBiwG2w==",
+      "hash": "Mxb7eg1mymhICtl0ojxuJJHmLvrEScivc5ejSNZ3Z0A=",
+      "iterations": 210000,
+      "created": "2026-09-24T18:30:20+00:00",
+      "active": true,
+      "prefs": {
+        "chollos": "cada_vez",
+        "chollos_max_precio": null,
+        "seguimientos": "diario",
+        "seguimientos_solo_novedades": false
+      },
+      "sobre": {
+        "data": "ygQY8BoN8K9Ji8N1Qt83dg6VZ01FYgTV9PAz2PIL21iWcSx5gpdVq31H7It+43pJ2ZPVgDYs4t117rO+",
+        "iterations": 210000,
+        "iv": "glTlwIHn8UJ9Rraz",
+        "salt": "aiSCMxOTYiLYaIWm0Ip3mA=="
       }
     }
   ],
