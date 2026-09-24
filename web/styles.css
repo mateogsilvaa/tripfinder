@@ -951,7 +951,10 @@ h1 em { font-size: 1.3em; }
   display: grid;
   grid-template-columns: var(--cols);
   gap: 16px;
-  padding: 8px 14px;
+  /* Los 30 px de la derecha son los del chevron de las filas: la cabecera usa
+     la misma rejilla, y sin el mismo hueco sus rotulos quedaban 16 px
+     corridos respecto a las columnas que rotulan. */
+  padding: 8px 30px 8px 14px;
   background: var(--code-bg);
   color: var(--code-ink);
   font: 400 var(--fs-caps) / 1 var(--font-mono);
@@ -973,6 +976,36 @@ h1 em { font-size: 1.3em; }
 }
 .rows .brow:first-child { border-top: none; }
 .brow:hover, .brow:focus-visible { background: var(--surface2); }
+
+/* LA MARCA DE QUE LA FILA SE ABRE.
+
+   La fila tiene el cursor de mano y se ilumina al pasar por encima, pero nada
+   decia que dentro hay cinco botones y los tramos de ida y vuelta: habia que
+   pulsarla para enterarse. Un chevron, que es lo que se reconoce sin que nadie
+   lo explique, y que gira al abrirse.
+
+   Va SOLO en las filas que se abren de verdad (`[data-open]`): el panel de
+   cuentas reusa `.brow` para sus filas y una flecha ahi seria una mentira.
+
+   `top` es un numero fijo y no `50%` a proposito: `.brow-detail` vive DENTRO
+   de la fila, asi que con el detalle desplegado la mitad de la fila cae en
+   mitad del panel abierto y la flecha se iria a pasear ahi. Anclada arriba se
+   queda en su renglon, que es el que se pulsa. */
+.brow[data-open] { position: relative; padding-right: 30px; }
+.brow[data-open]::after {
+  content: "";
+  position: absolute;
+  right: 13px;
+  top: 18px;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  transform: rotate(-45deg);
+  transition: transform var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.brow[data-open]:hover::after { border-color: var(--ink); }
+.brow[data-open].open::after { transform: rotate(45deg); }
 
 /* El botón de seguir un viaje. Va el primero, como en un parte de salidas.
    Antes era un cuadratín de 20 px con un glifo puesto por CSS y el `color` del
