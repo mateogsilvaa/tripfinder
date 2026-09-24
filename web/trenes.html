@@ -70,7 +70,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 </header>
 
 <main>
-  <section class="herramienta completa verde">
+  <section class="herramienta completa verde" id="espana">
     <div class="finder-body">
       <div class="kicker-num">04 · ir en tren</div>
       <h3 class="solo-lector">Cuánto estás dispuesto a viajar</h3>
@@ -107,12 +107,46 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       </div>
 
       <p class="tren-pie">
-        <b>Aquí no hay precios, y es a propósito.</b> Renfe publica sus horarios
+        <b>En esta lista no hay precios, y es a propósito.</b> Renfe publica sus horarios
         en abierto pero no sus tarifas: las que verías serían raspadas de una web
         ajena y se quedarían viejas sin avisar. Un precio viejo es peor que
         ningún precio. El de verdad, y el horario del día que viajes, están en
         Renfe a un clic.
         <a class="btn ghost small" href="https://www.renfe.com/es/es" target="_blank" rel="noopener">Abrir Renfe</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="herramienta completa ir" id="interrail" aria-labelledby="irTitulo">
+    <div class="finder-body">
+      <div class="kicker-num">05 · con un bono interrail</div>
+      <h2 id="irTitulo" class="ir-titulo">Por Europa, con los días del bono.</h2>
+      <p class="finder-lede">Dile cuántos días de viaje tiene tu bono y te da rutas que caben: el vuelo de ida, los trenes, las noches en cada parada y el vuelo de vuelta —que no tiene por qué ser desde la misma ciudad—. Un día de bono es un día de viaje, no un trayecto: coger dos trenes el mismo día gasta uno.</p>
+      <form id="irForm" class="finder-form">
+        <label for="irDias">
+          <span>Días de viaje del bono</span>
+          <select id="irDias">
+            <option value="4">4 días</option>
+            <option value="5" selected>5 días</option>
+            <option value="7">7 días</option>
+            <option value="10">10 días</option>
+            <option value="15">15 días</option>
+          </select>
+        </label>
+        <label for="irIda">
+          <span>Sales el</span>
+          <input id="irIda" type="date">
+        </label>
+      </form>
+      <p class="hint" id="irHint"></p>
+      <div class="ir-rutas" id="irRutas"></div>
+      <p class="tren-pie">
+        <b>El bono no lo paga todo.</b> Los trenes rápidos de Italia, Francia y
+        España, y los nórdicos, exigen una reserva que se paga aparte: cada ruta
+        la suma como horquilla, porque depende del tren y de cuándo reserves.
+        Los tiempos son del directo más rápido de cada tramo. El precio del bono
+        y los horarios del día, en la web de Interrail.
+        <a class="btn ghost small" href="https://www.interrail.eu/es" target="_blank" rel="noopener">Abrir Interrail</a>
       </p>
     </div>
   </section>

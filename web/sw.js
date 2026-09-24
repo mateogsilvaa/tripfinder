@@ -47,6 +47,7 @@ const PIEZAS = [
   "./js/ofertas.js",
   "./js/paises.js",
   "./js/trenes.js",
+  "./js/interrail.js",
   "./js/alojamiento.js",
   "./js/busqueda.js",
   "./js/destinos.js",

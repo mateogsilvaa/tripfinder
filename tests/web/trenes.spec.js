@@ -72,14 +72,19 @@ test.describe("la página de los trenes", () => {
     else expect(pista).toContain("destino");
   });
 
-  test("no hay ni un precio en toda la página, y explica por qué", async ({ page }) => {
+  test("no hay ni un precio en la lista de España, y explica por qué", async ({ page }) => {
+    // Solo la sección de España: la de Interrail, en la misma página, SÍ suma
+    // las reservas obligatorias, porque un plan que las ignore miente en el
+    // total. Son cosas distintas —una tarifa de Renfe que no se puede sacar sin
+    // raspar, y un suplemento conocido que se da como horquilla— y la frase de
+    // abajo dice «en esta lista», no «aquí», para que no se contradigan.
     await abrir(page);
     await page.selectOption("#trenTope", "0");
     await page.waitForTimeout(150);
-    const texto = await page.locator("main").innerText();
+    const texto = await page.locator("#espana").innerText();
     expect(texto).not.toMatch(/\d+\s*€/);
     expect(texto).not.toMatch(/€\s*\d+/);
-    expect(texto).toContain("Aquí no hay precios");
+    expect(texto).toContain("En esta lista no hay precios");
     // Y el enlace a Renfe, que es donde sí está el precio.
     const renfe = page.locator('a[href^="https://www.renfe.com"]');
     await expect(renfe).toHaveAttribute("target", "_blank");
