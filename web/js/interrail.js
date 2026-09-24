@@ -34,8 +34,27 @@ import { enHoras } from "./trenes.js";
 /* Los bonos que se venden: días de viaje dentro de un mes, o de dos. */
 export const BONOS = [4, 5, 7, 10, 15];
 
+/* LO QUE CUESTA EL BONO, en segunda y por persona. Es la tarifa oficial de
+   Interrail Global Pass de 2025, tal como se recordaba al escribir esto: sin
+   red a interrail.eu no se ha podido contrastar, y cambia cada año y con las
+   ofertas. Por eso la ficha lo da con «≈» y enlaza a la web oficial.
+
+   La edad cambia mucho el precio —el de joven (12-27) sale un cuarto más
+   barato—, así que se pregunta. */
+export const PASES = {
+  4: { adulto: 283, joven: 212, senior: 255 },
+  5: { adulto: 323, joven: 242, senior: 291 },
+  7: { adulto: 385, joven: 289, senior: 347 },
+  10: { adulto: 458, joven: 344, senior: 412 },
+  15: { adulto: 562, joven: 422, senior: 506 },
+};
+export const EDADES = ["joven", "adulto", "senior"];
+
 /* `tramos[i]` va de `paradas[i]` a `paradas[i + 1]`. `reserva` es la horquilla
-   en euros por persona; `null` si el tramo no la exige. */
+   en euros por persona; `null` si el tramo no la exige. `billete` es lo que
+   suele costar ese tramo SIN bono: segunda, ida, comprado con unas semanas de
+   antelación — el barato y el caro de lo normal. Sirve para una sola cosa,
+   decir si el bono compensa, y por eso se enseña en pequeño. */
 export const RUTAS = [
   {
     id: "centro",
@@ -51,10 +70,10 @@ export const RUTAS = [
       { ciudad: "Budapest", noches: 2 },
     ],
     tramos: [
-      { min: 380, reserva: null },
-      { min: 255, reserva: null },
-      { min: 240, reserva: null },
-      { min: 160, reserva: null },
+      { min: 380, reserva: null, billete: [40, 110] },
+      { min: 255, reserva: null, billete: [30, 70] },
+      { min: 240, reserva: null, billete: [20, 50] },
+      { min: 160, reserva: null, billete: [15, 40] },
     ],
   },
   {
@@ -71,10 +90,10 @@ export const RUTAS = [
       { ciudad: "Nápoles", noches: 2 },
     ],
     tramos: [
-      { min: 145, reserva: [10, 15] },
-      { min: 125, reserva: [10, 15] },
-      { min: 95, reserva: [10, 15] },
-      { min: 70, reserva: [10, 15] },
+      { min: 145, reserva: [10, 15], billete: [20, 50] },
+      { min: 125, reserva: [10, 15], billete: [20, 50] },
+      { min: 95, reserva: [10, 15], billete: [20, 55] },
+      { min: 70, reserva: [10, 15], billete: [15, 45] },
     ],
   },
   {
@@ -90,9 +109,9 @@ export const RUTAS = [
       { ciudad: "París", noches: 3 },
     ],
     tramos: [
-      { min: 180, reserva: [20, 35] },
-      { min: 100, reserva: [10, 20] },
-      { min: 120, reserva: [10, 20] },
+      { min: 180, reserva: [20, 35], billete: [30, 80] },
+      { min: 100, reserva: [10, 20], billete: [25, 70] },
+      { min: 120, reserva: [10, 20], billete: [30, 90] },
     ],
   },
   {
@@ -108,9 +127,9 @@ export const RUTAS = [
       { ciudad: "Ginebra", noches: 2 },
     ],
     tramos: [
-      { min: 45, reserva: null },
-      { min: 110, reserva: null },
-      { min: 170, reserva: null },
+      { min: 45, reserva: null, billete: [15, 30] },
+      { min: 110, reserva: null, billete: [20, 35] },
+      { min: 170, reserva: null, billete: [40, 75] },
     ],
   },
   {
@@ -126,9 +145,9 @@ export const RUTAS = [
       { ciudad: "Bergen", noches: 2 },
     ],
     tramos: [
-      { min: 310, reserva: [5, 10] },
-      { min: 360, reserva: [5, 10] },
-      { min: 410, reserva: [5, 10] },
+      { min: 310, reserva: [5, 10], billete: [40, 120] },
+      { min: 360, reserva: [5, 10], billete: [30, 90] },
+      { min: 410, reserva: [5, 10], billete: [30, 100] },
     ],
   },
   {
@@ -147,12 +166,12 @@ export const RUTAS = [
       { ciudad: "Roma", noches: 2 },
     ],
     tramos: [
-      { min: 200, reserva: [15, 30] },
-      { min: 380, reserva: null },
-      { min: 255, reserva: null },
-      { min: 240, reserva: null },
-      { min: 450, reserva: null },
-      { min: 225, reserva: [10, 15] },
+      { min: 200, reserva: [15, 30], billete: [40, 150] },
+      { min: 380, reserva: null, billete: [40, 110] },
+      { min: 255, reserva: null, billete: [30, 70] },
+      { min: 240, reserva: null, billete: [20, 50] },
+      { min: 450, reserva: null, billete: [30, 90] },
+      { min: 225, reserva: [10, 15], billete: [25, 70] },
     ],
   },
 ];
@@ -175,9 +194,42 @@ export function reservas(r) {
   );
 }
 
+/* Lo que cuesta el tren comprando billete a billete. */
+export function billetes(r) {
+  return r.tramos.reduce((acc, t) => [acc[0] + t.billete[0], acc[1] + t.billete[1]], [0, 0]);
+}
+
+/* El bono más barato que cubre la ruta: si la ruta gasta 4 días, el de 4, aunque
+   tengas pensado uno de 5. Es el que se compraría para ESTE viaje, y es con el
+   que tiene sentido comparar. */
+export function paseQueCubre(r) {
+  const dias = diasDeBono(r);
+  return BONOS.find((d) => d >= dias) || null;
+}
+
+/* Lo que cuesta el tren con bono: el bono y las reservas, que van aparte. */
+export function conBono(r, edad = "adulto") {
+  const dias = paseQueCubre(r);
+  if (!dias) return null;
+  const pase = PASES[dias][edad] ?? PASES[dias].adulto;
+  const [rmin, rmax] = reservas(r);
+  return { dias, pase, total: [pase + rmin, pase + rmax] };
+}
+
+/* Cuál sale mejor. Son horquillas, así que solo se afirma cuando no se pisan;
+   si se pisan, depende de cuándo compres los billetes, y se dice eso. */
+export function veredicto(r, edad = "adulto") {
+  const sin = billetes(r);
+  const con = conBono(r, edad);
+  if (!con) return "";
+  if (sin[1] < con.total[0]) return "sin";
+  if (sin[0] > con.total[1]) return "con";
+  return "depende";
+}
+
 /* Las que caben en el bono, de la que más lo aprovecha a la que menos. */
-export function caben(dias) {
-  return RUTAS.filter((r) => diasDeBono(r) <= dias).sort(
+export function caben(dias, maxNoches = Infinity) {
+  return RUTAS.filter((r) => diasDeBono(r) <= dias && noches(r) <= maxNoches).sort(
     (a, b) => diasDeBono(b) - diasDeBono(a) || noches(a) - noches(b)
   );
 }
@@ -204,6 +256,16 @@ export function sumarDias(iso, n) {
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
 
+/* Noches que hay entre dos fechas ISO. null si falta alguna o van al revés. */
+export function nochesEntre(ida, vuelta) {
+  const a = parseISO(ida);
+  const b = parseISO(vuelta);
+  if (!a || !b) return null;
+  // Redondeo: el cambio de hora hace que un día dure 23 o 25 horas.
+  const n = Math.round((b - a) / 86400000);
+  return n >= 0 ? n : null;
+}
+
 /* Las dos fechas de vuelo de una ruta que sale el día `ida`. */
 export function fechas(r, ida) {
   if (!parseISO(ida)) return null;
@@ -216,9 +278,12 @@ export const vueloURL = (desde, hasta, dia) =>
 
 /* ------------------------------------------------------------ pintarlo */
 
+const eur = (n) => `${n} €`;
+const horquilla = ([a, b]) => (a === b ? eur(a) : `${a}–${b} €`);
+
 function reservaTxt(t) {
   return t.reserva
-    ? `<span class="ir-reserva">reserva ≈ ${t.reserva[0]}–${t.reserva[1]} €</span>`
+    ? `<span class="ir-reserva">reserva ≈ ${horquilla(t.reserva)}</span>`
     : `<span class="ir-libre">sin reserva</span>`;
 }
 
@@ -233,7 +298,38 @@ function vuelo(texto, desde, hasta, dia) {
   }</li>`;
 }
 
-function tarjeta(r, dias, ida) {
+/* SIN BONO Y CON BONO. Es la pregunta de verdad de un Interrail —¿me compensa
+   el bono?— y la respuesta depende mucho de la ruta: en tramos cortos y
+   baratos, comprando billete a billete con antelación suele salir mejor. Se
+   dice cuál gana solo cuando las horquillas no se pisan. */
+const VEREDICTOS = {
+  sin: "Billete a billete sale más barato. El bono te da libertad para cambiar de planes, no ahorro.",
+  con: "El bono sale a cuenta: comprando cada billete suelto pagarías más.",
+  depende:
+    "Depende de cuándo compres. Con semanas de antelación, billete a billete suele ganar; a última hora, el bono.",
+};
+
+function precioHTML(r, edad) {
+  const sin = billetes(r);
+  const con = conBono(r, edad);
+  if (!con) return "";
+  const v = veredicto(r, edad);
+  return `
+      <div class="ir-precio" data-veredicto="${v}">
+        <p class="ir-precio-titulo">El tren, por persona</p>
+        <dl>
+          <div class="${v === "sin" ? "gana" : ""}"><dt>Sin bono</dt><dd>≈ ${horquilla(sin)}</dd>
+            <small>comprando cada billete</small></div>
+          <div class="${v === "con" ? "gana" : ""}"><dt>Con bono</dt><dd>≈ ${horquilla(con.total)}</dd>
+            <small>pase de ${con.dias} días, ${eur(con.pase)}${
+              reservas(r)[1] ? " + reservas" : ""
+            }</small></div>
+        </dl>
+        <p class="ir-veredicto">${esc(VEREDICTOS[v])}</p>
+      </div>`;
+}
+
+function tarjeta(r, dias, ida, edad, libres) {
   const [rmin, rmax] = reservas(r);
   const f = fechas(r, ida);
   const sobran = dias - diasDeBono(r);
@@ -244,9 +340,13 @@ function tarjeta(r, dias, ida) {
       }</small></li>`;
       const t = r.tramos[i];
       if (!t) return parada;
-      return `${parada}<li class="ir-tramo">≈ ${esc(enHoras(t.min))} en tren · ${reservaTxt(t)}</li>`;
+      return `${parada}<li class="ir-tramo">≈ ${esc(enHoras(t.min))} en tren · ${reservaTxt(
+        t
+      )}<small class="ir-billete">billete suelto ≈ ${horquilla(t.billete)}</small></li>`;
     })
     .join("");
+  // Si pusiste fecha de vuelta, las noches que te quedan libres.
+  const huecos = Number.isFinite(libres) ? libres - noches(r) : null;
   return `
     <article class="ir-ruta" id="ruta-${esc(r.id)}">
       <header>
@@ -257,12 +357,13 @@ function tarjeta(r, dias, ida) {
         <div><dt>Días de bono</dt><dd>${diasDeBono(r)}${
           sobran > 0 ? ` <small>te sobra${sobran === 1 ? "" : "n"} ${sobran}</small>` : ""
         }</dd></div>
-        <div><dt>Noches</dt><dd>${noches(r)}</dd></div>
-        <div><dt>En tren</dt><dd>≈ ${esc(enHoras(minutosEnTren(r)))}</dd></div>
-        <div><dt>Reservas</dt><dd>${
-          rmax ? `≈ ${rmin}–${rmax} €` : "ninguna"
+        <div><dt>Noches</dt><dd>${noches(r)}${
+          huecos > 0 ? ` <small>y ${huecos} libre${huecos === 1 ? "" : "s"}</small>` : ""
         }</dd></div>
+        <div><dt>En tren</dt><dd>≈ ${esc(enHoras(minutosEnTren(r)))}</dd></div>
+        <div><dt>Reservas</dt><dd>${rmax ? `≈ ${horquilla([rmin, rmax])}` : "ninguna"}</dd></div>
       </dl>
+      ${precioHTML(r, edad)}
       <ol class="ir-pasos">
         ${vuelo(`Madrid → ${esc(r.entra.ciudad)}`, "MAD", r.entra.iata, f && f.ida)}
         ${pasos}
@@ -276,35 +377,57 @@ function pintar() {
   if (!caja) return;
   const dias = Number(document.querySelector("#irDias")?.value || 0);
   const ida = document.querySelector("#irIda")?.value || "";
-  const lista = caben(dias);
+  const vuelta = document.querySelector("#irVuelta")?.value || "";
+  const edad = document.querySelector("#irEdad")?.value || "adulto";
+  // Con las dos fechas, solo las rutas que caben entre medias.
+  const libres = nochesEntre(ida, vuelta);
+  const lista = caben(dias, libres ?? Infinity);
   const pista = document.querySelector("#irHint");
   if (pista) {
-    pista.textContent = lista.length
-      ? `${lista.length} ruta${lista.length === 1 ? "" : "s"} caben en ${dias} días de bono.`
-      : `Con ${dias} días no cabe ninguna de estas rutas.`;
+    const donde = libres !== null ? ` y en ${libres} noches` : "";
+    if (vuelta && libres === null) {
+      pista.textContent = "La vuelta es antes que la ida: cámbiala para ver las rutas.";
+    } else {
+      pista.textContent = lista.length
+        ? `${lista.length} ruta${lista.length === 1 ? "" : "s"} caben en ${dias} días de bono${donde}.`
+        : `Con ${dias} días de bono${donde} no cabe ninguna de estas rutas.`;
+    }
   }
-  caja.innerHTML = lista.map((r) => tarjeta(r, dias, ida)).join("");
+  caja.innerHTML = lista
+    .map((r) => tarjeta(r, dias, ida, edad, libres ?? undefined))
+    .join("");
 }
+
+const hoyISO = () => {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(
+    hoy.getDate()
+  ).padStart(2, "0")}`;
+};
 
 /* La puesta en marcha. Se llama desde `arranque.js` y se calla sola si esta
    no es la página de los trenes. */
 export function montarInterrail() {
   const sel = document.querySelector("#irDias");
   if (!sel || !document.querySelector("#irRutas")) return;
-  sel.addEventListener("change", pintar);
   const ida = document.querySelector("#irIda");
-  if (ida) {
+  const vuelta = document.querySelector("#irVuelta");
+  if (ida && !ida.value) {
     // Un mes vista por defecto: da tiempo a sacar el bono y es cuando los
     // vuelos todavía están a precio razonable. Se cambia en un toque.
-    if (!ida.value) {
-      const hoy = new Date();
-      const iso = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(
-        hoy.getDate()
-      ).padStart(2, "0")}`;
-      ida.value = sumarDias(iso, 30);
-      ida.min = iso;
-    }
-    ida.addEventListener("change", pintar);
+    ida.value = sumarDias(hoyISO(), 30);
+    ida.min = hoyISO();
   }
+  // La vuelta se queda vacía: es opcional, y sin ella no se filtra por noches.
+  if (vuelta && ida) vuelta.min = ida.value;
+  if (ida && vuelta) {
+    ida.addEventListener("change", () => {
+      vuelta.min = ida.value;
+    });
+  }
+  ["#irDias", "#irIda", "#irVuelta", "#irEdad"].forEach((s) => {
+    const el = document.querySelector(s);
+    if (el) el.addEventListener("change", pintar);
+  });
   pintar();
 }

@@ -3169,6 +3169,33 @@ h1 em { font-size: 1.3em; }
   font: 400 var(--fs-meta) / 1.6 var(--font-mono);
 }
 .ir-reserva { color: var(--accent-txt); }
+/* El billete suelto va en pequeño y apagado: es el apunte, no el dato. Lo que
+   se lee es el total de abajo. */
+.ir-billete { display: block; opacity: 0.75; }
+
+/* SIN BONO Y CON BONO. Dos cifras lado a lado y la que gana, marcada. Cuando
+   depende, ninguna se marca: marcar una seria afirmar lo que no se sabe. */
+.ir-precio {
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--deep);
+  background: var(--surface2);
+}
+.ir-precio-titulo {
+  margin: 0 0 8px;
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ir-precio dl { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 0; }
+.ir-precio dt { font-size: var(--fs-body-s); color: var(--muted); }
+.ir-precio dd { margin: 2px 0 0; font: 600 var(--fs-data) / 1.2 var(--font-mono); }
+.ir-precio small { display: block; color: var(--muted); font: 400 var(--fs-meta) var(--font-mono); }
+.ir-precio .gana dd { color: var(--deep); }
+.ir-precio .gana dt::after { content: " · mejor"; color: var(--deep); }
+.ir-veredicto { margin: 10px 0 0; font-size: var(--fs-body-s); color: var(--ink); }
+.ir-apunte { display: block; margin-top: 6px; font-size: var(--fs-meta); }
 .ir-libre { color: var(--deep); }
 .ir-vuelo {
   display: flex;

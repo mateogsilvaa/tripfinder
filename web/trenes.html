@@ -137,15 +137,31 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
           <span>Sales el</span>
           <input id="irIda" type="date">
         </label>
+        <label for="irVuelta">
+          <span>Vuelves como tarde</span>
+          <input id="irVuelta" type="date">
+        </label>
+        <label for="irEdad">
+          <span>Edad</span>
+          <select id="irEdad">
+            <option value="joven">De 12 a 27</option>
+            <option value="adulto" selected>De 28 a 59</option>
+            <option value="senior">60 o más</option>
+          </select>
+        </label>
       </form>
       <p class="hint" id="irHint"></p>
       <div class="ir-rutas" id="irRutas"></div>
       <p class="tren-pie">
         <b>El bono no lo paga todo.</b> Los trenes rápidos de Italia, Francia y
-        España, y los nórdicos, exigen una reserva que se paga aparte: cada ruta
-        la suma como horquilla, porque depende del tren y de cuándo reserves.
-        Los tiempos son del directo más rápido de cada tramo. El precio del bono
-        y los horarios del día, en la web de Interrail.
+        España, y los nórdicos, exigen una reserva que se paga aparte, y cada
+        ruta la suma. <small class="ir-apunte">Todos los precios son
+        orientativos: el bono, por la tarifa de 2025 en segunda; los billetes
+        sueltos, lo normal comprando con unas semanas de antelación. Las
+        reservas y los billetes van en horquilla porque cada compañía los pone
+        tren a tren y no los publica en abierto: una fecha concreta no los
+        haría exactos sin consultarlos en su web. Los tiempos son del directo
+        más rápido de cada tramo.</small>
         <a class="btn ghost small" href="https://www.interrail.eu/es" target="_blank" rel="noopener">Abrir Interrail</a>
       </p>
     </div>
