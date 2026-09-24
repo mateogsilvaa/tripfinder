@@ -2337,6 +2337,21 @@ h1 em { font-size: 1.3em; }
 }
 .stay > div:first-child { min-width: 0; }
 
+/* LA ZONA RECOMENDADA. Va arriba del panel, antes de la lista: es lo que se
+   decide primero — en qué barrio te quedas— y después ya se elige la casa. */
+.zona-rec {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--deep);
+  background: var(--surface2);
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-body-s);
+}
+.zona-rec b { color: var(--ink); font-weight: 600; }
+.zona-rec span { color: var(--muted); font-family: var(--font-mono); font-size: var(--fs-meta); }
+.zona-rec small { color: var(--muted); font-size: var(--fs-meta); }
+
 /* LAS FOTOS DEL ALOJAMIENTO.
 
    Con foto, la ficha pasa a tres columnas: la tira de fotos, el texto y el
