@@ -373,10 +373,10 @@ class Store:
 
     # -- estado de notificaciones ---------------------------------------
     def load_state(self) -> dict[str, Any]:
-        return self._read("state.json", {"notified": {}})
+        return _sin_correos(self._read("state.json", {"notified": {}}))
 
     def save_state(self, state: dict[str, Any]) -> None:
-        self._write("state.json", state)
+        self._write("state.json", _sin_correos(state))
 
     # -- alojamientos ----------------------------------------------------
     # -- interrail ---------------------------------------------------------
@@ -425,3 +425,25 @@ class Store:
             encoding="utf-8",
         )
         return p
+
+
+def _sin_correos(state: dict[str, Any]) -> dict[str, Any]:
+    """Las fechas de "ultimo correo" por buzon, con el buzon en hash.
+
+    Los `state.json` viejos llevan la direccion de cada cuenta como clave; se
+    pasan a `clave_buzon` al leerlos y al guardarlos, asi que el siguiente scan
+    ya los deja limpios sin tener que migrar nada a mano.
+    """
+    from .util import clave_buzon
+
+    for campo in ("digest", "watch_digest"):
+        viejo = state.get(campo)
+        if not isinstance(viejo, dict):
+            continue
+        nuevo: dict[str, Any] = {}
+        for k, v in viejo.items():
+            clave = clave_buzon(k) if "@" in str(k) else k
+            # Si convivian las dos formas, gana la fecha mas reciente.
+            nuevo[clave] = max(str(v), str(nuevo.get(clave, "")))
+        state[campo] = nuevo
+    return state

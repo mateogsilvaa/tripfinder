@@ -30,7 +30,16 @@
    Y si todavía no hay buzón publicado —una web recién montada, sin token—, el
    formulario vuelve a lo de antes: sin correo ni contraseña, y el panel las
    pregunta al crear la cuenta. Mejor eso que pedir una contraseña y mandarla a
-   una issue pública en claro. */
+   una issue pública en claro.
+
+   Y NO HACE FALTA GITHUB. Abrir una issue pide tener cuenta de GitHub, que casi
+   nadie de fuera tiene, y además `window.open` después de esperar a la red lo
+   bloquea el navegador del móvil: la pantalla decía «dale a Submit new issue» y
+   no se había abierto nada. Así que la petición sale ahora, sobre incluido,
+   como un ENLACE al panel que se manda por WhatsApp (o por donde sea) a quien
+   lleva la web; al abrirlo con la sesión del panel, aprobarla es el mismo clic.
+   GitHub queda como segunda vía, con un enlace de verdad que se pulsa y no con
+   una ventana que se abre sola. */
 
 import { $, esc, fetchJSON, on } from "./base.js";
 
@@ -128,6 +137,28 @@ export function urlPeticion(datos) {
   );
 }
 
+/* La petición entera dentro de la dirección, en base64 «de URL» para que ni
+   WhatsApp ni el correo la corten por un `+` o un `/`. Va detrás de `#`, que el
+   navegador no manda nunca al servidor: ni Pages ni nadie en medio la ve. */
+export function codificarPeticion({ nombre, user, porque, sellado = null }) {
+  const json = JSON.stringify({ v: 1, n: nombre, u: user, p: porque, s: sellado });
+  const bytes = new TextEncoder().encode(json);
+  let bin = "";
+  bytes.forEach((b) => (bin += String.fromCharCode(b)));
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function enlacePeticion(datos, base = location.href) {
+  return new URL(`admin.html#peticion=${codificarPeticion(datos)}`, base).href;
+}
+
+export function mensajePeticion(datos, enlace) {
+  return (
+    `Hola, soy ${datos.nombre}. Te pido una cuenta en TripFinder con el usuario «${datos.user}». ` +
+    `Ábrelo con tu sesión del panel y es un clic: ${enlace}`
+  );
+}
+
 function formHTML(conBuzon) {
   return `
     <p class="pedir-lede">Las cuentas las da a mano quien lleva la web: es un sitio pequeño y
@@ -190,34 +221,70 @@ function formHTML(conBuzon) {
     </div>
     <p class="pedir-nota">${
       conBuzon
-        ? `Se manda abriendo una issue en GitHub con tu cuenta de GitHub, así que <b>el nombre, el
-      usuario y el porqué quedan publicados</b> junto a las demás peticiones. El correo y la
-      contraseña <b>no</b>: van cerrados con la clave pública del panel y ahí solo se ve base64.`
-        : `La contraseña no se pide aquí: la pone quien aprueba la cuenta y te la pasa. Se manda
-      abriendo una issue en GitHub con tu cuenta de GitHub, así que <b>lo que escribas queda
-      publicado</b> junto a las demás peticiones.`
+        ? `No hace falta GitHub: te damos un enlace con la petición para que se lo mandes por
+      WhatsApp a quien lleva la web. El correo y la contraseña van <b>cerrados</b> con la clave
+      pública del panel: en el enlace solo se ve base64.`
+        : `La contraseña no se pide aquí: la pone quien aprueba la cuenta y te la pasa. No hace
+      falta GitHub: te damos un enlace con la petición para que se lo mandes por WhatsApp.`
     }</p>
     <p class="pedir-nota" id="pcMsg" role="status"></p>`;
 }
 
-function mandadaHTML(user, conPass = false) {
+function mandadaHTML(datos, conPass = false) {
+  const enlace = enlacePeticion(datos);
+  const texto = mensajePeticion(datos, enlace);
   return `
     <div class="pedir-hecha">
-      <h3>Te falta un toque: dale a «Submit new issue».</h3>
-      <p>Te hemos abierto GitHub con la petición escrita, a nombre de <b>${esc(user)}</b>. En
-        cuanto la publiques aparece en el panel de quien lleva la web.</p>
-      <p class="meta">No podemos publicarla por ti: para escribir en el repositorio hace falta
-        una cuenta, y la tuya es justo la que estás pidiendo.</p>
+      <h3>Lista. Ahora mándasela a quien lleva la web.</h3>
+      <p>La petición de <b>${esc(datos.user)}</b> va entera dentro de este enlace. Quien lleva la
+        web lo abre con su sesión del panel y la aprueba de un clic.</p>
+      <div class="pedir-acc pedir-mandar">
+        <a class="btn primary" id="pcWhats" target="_blank" rel="noopener"
+          href="https://wa.me/?text=${encodeURIComponent(texto)}">Mandar por WhatsApp</a>
+        ${
+          typeof navigator.share === "function"
+            ? `<button class="btn ghost" type="button" id="pcCompartir">Compartir…</button>`
+            : ""
+        }
+        <button class="btn ghost" type="button" id="pcCopiar">Copiar el enlace</button>
+      </div>
+      <p class="pedir-nota" id="pcCopiado" role="status"></p>
       <p class="meta">${
         conPass
           ? "Cuando la apruebe, tu cuenta queda activa con la contraseña que acabas de elegir: no hay que esperar a que nadie te mande nada."
           : "Cuando la apruebe te pasará la contraseña por donde te haya dicho; esta web no manda correos a quien todavía no tiene cuenta."
       }</p>
+      <p class="meta">¿Tienes cuenta de GitHub? También puedes
+        <a href="${esc(urlPeticion(datos))}" target="_blank" rel="noopener" id="pcGitHub">dejarla
+        en GitHub</a>, y le sale sola en el panel. Lo que escribas ahí queda publicado, salvo el
+        correo y la contraseña, que van cerrados.</p>
       <div class="pedir-acc">
-        <a class="btn primary" href="./">Ver los chollos mientras</a>
-        <span class="meta">El tablón se ve sin cuenta: es lo mismo para todo el mundo.</span>
+        <a class="btn ghost" href="./">Ver los chollos mientras</a>
       </div>
     </div>`;
+}
+
+function atarMandada(datos) {
+  const enlace = enlacePeticion(datos);
+  const aviso = $("#pcCopiado");
+  const copiar = $("#pcCopiar");
+  if (copiar) {
+    copiar.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(enlace);
+        aviso.textContent = "Copiado. Pégaselo a quien lleva la web.";
+      } catch {
+        // Sin portapapeles (http, permisos): el enlace a la vista para copiarlo a mano.
+        aviso.innerHTML = `Cópialo a mano: <span class="pedir-enlace">${esc(enlace)}</span>`;
+      }
+    });
+  }
+  const compartir = $("#pcCompartir");
+  if (compartir) {
+    compartir.addEventListener("click", () =>
+      navigator.share({ title: "Cuenta en TripFinder", text: mensajePeticion(datos, enlace) }).catch(() => {})
+    );
+  }
 }
 
 async function revisarUsuario() {
@@ -336,8 +403,13 @@ async function mandar() {
     }
   }
 
-  window.open(urlPeticion({ nombre, user, porque, sellado }), "_blank", "noopener");
-  $("#pedirBody").innerHTML = mandadaHTML(user, Boolean(sellado));
+  const datos = { nombre, user, porque, sellado };
+  $("#pedirBody").innerHTML = mandadaHTML(datos, Boolean(sellado));
+  // El formulario es largo y el botón está abajo: sin esto, en el móvil lo
+  // nuevo salía con el título y el «cerrar» por encima del borde.
+  const caja = document.querySelector("#pedirCuenta .modal-caja");
+  if (caja) caja.scrollTop = 0;
+  atarMandada(datos);
 }
 
 function fallo(msg, texto) {

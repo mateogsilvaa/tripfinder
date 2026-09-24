@@ -1812,7 +1812,7 @@ h1 em { font-size: 1.3em; }
 
 /* Pedir una cuenta (2d del diseño). */
 .pedir-caja { max-width: 560px; }
-.pedir-body { padding: 0 22px 24px; display: grid; gap: 16px; }
+.pedir-body { display: grid; gap: 16px; }
 .pedir-lede {
   margin: 0;
   font-size: var(--fs-body-s);
@@ -1855,6 +1855,8 @@ h1 em { font-size: 1.3em; }
 .pedir-hecha h3 { margin: 0; font-size: var(--fs-subhead); letter-spacing: -0.025em; }
 .pedir-hecha p { margin: 0; font-size: var(--fs-body-s); line-height: 1.55; }
 .pedir-hecha .meta { color: var(--muted); }
+.pedir-hecha .meta a { color: var(--accent-txt); }
+.pedir-enlace { display: block; margin-top: 6px; font-family: var(--font-mono); font-size: 12px; word-break: break-all; user-select: all; }
 
 /* La búsqueda que acaba de terminar (2a·3 del diseño). Va donde estaba su
    barra de progreso, encima de las guardadas, porque es donde estabas mirando. */
@@ -2135,6 +2137,16 @@ h1 em { font-size: 1.3em; }
   gap: 16px;
   border-bottom: 1px solid var(--line);
   padding-bottom: 14px;
+}
+/* En un modal que rueda, la cabecera se queda arriba: el «cerrar» tiene que
+   estar a mano sin volver al principio. El -24px es el padding de la caja. */
+.modal-caja > .modal-head {
+  position: sticky;
+  top: -24px;
+  z-index: 2;
+  margin-top: -24px;
+  padding-top: 24px;
+  background: var(--surface);
 }
 .modal-head h2 { font-size: var(--fs-subhead); }
 .modal-head button, [data-cerrar] {

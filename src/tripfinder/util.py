@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from typing import Any
 
@@ -16,6 +17,40 @@ USER_AGENT = (
 )
 
 _last_call: dict[str, float] = {}
+
+# Los registros de Actions de un repositorio publico los lee cualquiera, y aqui
+# se escribian las direcciones de cada cuenta ("Aviso enviado ... a ana@...").
+# Todo correo que salga por el log o por pantalla pasa antes por aqui.
+_CORREO = re.compile(r"([A-Za-z0-9._%+-])[A-Za-z0-9._%+-]*@([A-Za-z0-9.-]+\.[A-Za-z]{2,})")
+
+
+def tapar_correos(texto: object) -> str:
+    """'ana.perez@gmail.com' -> 'a***@gmail.com'. Se sabe a quien, sin publicarlo."""
+    return _CORREO.sub(r"\1***@\2", str(texto))
+
+
+def clave_buzon(correo: str) -> str:
+    """Con que se apunta en `state.json` cuando le toco el ultimo correo a alguien.
+
+    Antes era la direccion tal cual, y `state.json` esta en un repositorio
+    publico y ademas se copiaba a Pages. Un hash corto sirve igual para "¿a este
+    buzon ya le toco hoy?" y no dice a quien.
+    """
+    import hashlib
+
+    limpio = str(correo or "").strip().lower()
+    return "b-" + hashlib.sha256(limpio.encode("utf-8")).hexdigest()[:16] if limpio else ""
+
+
+class TaparCorreos(logging.Filter):
+    """Filtro de log: tapa los correos del mensaje ya formateado, errores incluidos."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        mensaje = record.getMessage()
+        tapado = tapar_correos(mensaje)
+        if tapado != mensaje:
+            record.msg, record.args = tapado, ()
+        return True
 
 
 def throttle(key: str, min_interval: float) -> None:

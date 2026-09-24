@@ -91,17 +91,26 @@ const rellenar = async (page, { pass = "unaclavelarga", pass2 = null, email = "l
   }
 };
 
-/* La petición sale abriendo GitHub: se sella la ventana para poder leer la
-   dirección, que es donde viaja el cuerpo de la issue. */
-async function mandar(page, context) {
-  await context.route("https://github.com/**", (r) =>
-    r.fulfill({ contentType: "text/html", body: "<p>ok</p>" })
-  );
-  const [nueva] = await Promise.all([
-    context.waitForEvent("page"),
-    page.locator("#pcMandar").click(),
-  ]);
-  return decodeURIComponent(nueva.url());
+/* La petición ya no abre nada sola: deja un enlace para WhatsApp y otro para
+   GitHub. Aquí se lee el de GitHub, que es donde viaja el cuerpo de la issue. */
+async function mandar(page) {
+  await page.locator("#pcMandar").click();
+  const enlace = page.locator("#pcGitHub");
+  await expect(enlace).toBeAttached();
+  return decodeURIComponent(await enlace.getAttribute("href"));
+}
+
+/* Y el de WhatsApp, decodificado: la petición entera va detrás de #peticion=. */
+async function mandarPorEnlace(page) {
+  await page.locator("#pcMandar").click();
+  const wa = page.locator("#pcWhats");
+  await expect(wa).toBeVisible();
+  const texto = decodeURIComponent(new URL(await wa.getAttribute("href")).searchParams.get("text"));
+  const url = /https?:\/\/\S+/.exec(texto)[0];
+  const cod = /#peticion=([A-Za-z0-9_-]+)/.exec(url)[1];
+  const b64 = cod.replace(/-/g, "+").replace(/_/g, "/");
+  const bin = Buffer.from(b64, "base64");
+  return { texto, url, datos: JSON.parse(bin.toString("utf8")) };
 }
 
 const sobreDe = (cuerpo) => {
@@ -154,21 +163,21 @@ test.describe("el formulario", () => {
     await expect(page.locator("#pcMsg")).toContainText(/no parece un correo/i);
   });
 
-  test("y el correo puede quedarse vacío", async ({ page, context }) => {
+  test("y el correo puede quedarse vacío", async ({ page }) => {
     const buzon = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page, { email: "" });
-    const url = await mandar(page, context);
+    const url = await mandar(page);
     expect(sobreDe(url)).toBeTruthy();
   });
 });
 
 test.describe("lo que viaja en la issue", () => {
-  test("va el sobre, y ni el correo ni la contraseña en claro", async ({ page, context }) => {
+  test("va el sobre, y ni el correo ni la contraseña en claro", async ({ page }) => {
     const buzon = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page);
-    const url = await mandar(page, context);
+    const url = await mandar(page);
 
     // Lo público sigue siendo público: es lo que quien aprueba tiene que leer.
     expect(url).toContain("[cuenta] lucia");
@@ -180,38 +189,71 @@ test.describe("lo que viaja en la issue", () => {
     expect(sobreDe(url)).toBeTruthy();
   });
 
-  test("y el sobre se abre con la privada, con lo que se escribió dentro", async ({ page, context }) => {
+  test("y el sobre se abre con la privada, con lo que se escribió dentro", async ({ page }) => {
     const buzon = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page);
-    const sellado = sobreDe(await mandar(page, context));
+    const sellado = sobreDe(await mandar(page));
     expect(await abrirSobre(page, buzon.priv, sellado)).toEqual({
       email: "lucia@ejemplo.com",
       pass: "unaclavelarga",
     });
   });
 
-  test("otra clave privada NO lo abre", async ({ page, context }) => {
+  test("otra clave privada NO lo abre", async ({ page }) => {
     // Lo que hace que esto se pueda publicar: cualquiera puede cerrar un sobre
     // para el panel, y nadie más puede abrirlo.
     const buzon = await nuevoBuzon(page);
     const otro = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page);
-    const sellado = sobreDe(await mandar(page, context));
+    const sellado = sobreDe(await mandar(page));
     await expect(abrirSobre(page, otro.priv, sellado)).rejects.toThrow();
   });
 
-  test("dos peticiones iguales no dan el mismo sobre", async ({ page, context }) => {
+  test("sin GitHub: el enlace para WhatsApp lleva la petición y el sobre, y nada en claro",
+    async ({ page }) => {
+      const buzon = await nuevoBuzon(page);
+      await abrirForm(page, buzon);
+      await rellenar(page);
+      const { texto, url, datos } = await mandarPorEnlace(page);
+      expect(url).toContain("/admin.html#peticion=");
+      expect(texto).toContain("lucia");
+      expect(datos.u).toBe("lucia");
+      expect(datos.n).toBe("Lucía Pérez");
+      expect(datos.p).toContain("poder viajar más");
+      // Ni el correo ni la contraseña, ni en el mensaje ni dentro del enlace.
+      expect(texto + JSON.stringify(datos)).not.toContain("lucia@ejemplo.com");
+      expect(texto + JSON.stringify(datos)).not.toContain("unaclavelarga");
+      expect(await abrirSobre(page, buzon.priv, datos.s)).toEqual({
+        email: "lucia@ejemplo.com",
+        pass: "unaclavelarga",
+      });
+    });
+
+  test("y la ventana ya no se abre sola: el navegador del móvil la bloqueaba",
+    async ({ page, context }) => {
+      const buzon = await nuevoBuzon(page);
+      await abrirForm(page, buzon);
+      await rellenar(page);
+      let abiertas = 0;
+      context.on("page", () => abiertas++);
+      await page.locator("#pcMandar").click();
+      await expect(page.locator("#pcWhats")).toBeVisible();
+      await page.waitForTimeout(500);
+      expect(abiertas).toBe(0);
+    });
+
+  test("dos peticiones iguales no dan el mismo sobre", async ({ page }) => {
     // Sin esto, dos sobres idénticos delatarían que dos personas han puesto la
     // misma contraseña. El AES va con IV nuevo cada vez.
     const buzon = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page);
-    const uno = sobreDe(await mandar(page, context));
+    const uno = sobreDe(await mandar(page));
     await abrirForm(page, buzon);
     await rellenar(page);
-    const dos = sobreDe(await mandar(page, context));
+    const dos = sobreDe(await mandar(page));
     expect(uno.data).not.toBe(dos.data);
     expect(uno.iv).not.toBe(dos.iv);
   });
@@ -227,7 +269,10 @@ test.describe("el panel", () => {
   /* Un panel con la maestra abierta y un buzón suyo, que es el estado normal
      de alguien que acaba de entrar. Las dos mitades en la misma pantalla: eso
      es lo que hace que aprobar pueda ser un clic. */
-  async function conPanel(page, { sellar = true, pass = PASS, email = "lucia@ejemplo.com" } = {}) {
+  async function conPanel(
+    page,
+    { sellar = true, pass = PASS, email = "lucia@ejemplo.com", porEnlace = false, existentes = [] } = {}
+  ) {
     await page.goto("/404.html", { waitUntil: "domcontentloaded" });
     const buzon = await nuevoBuzon(page);
 
@@ -279,7 +324,7 @@ test.describe("el panel", () => {
       ...(sellado ? ["```tf-sobre", JSON.stringify(sellado), "```"] : []),
     ].join("\n");
 
-    const issues = [
+    const issues = porEnlace ? [] : [
       {
         number: 12,
         html_url: "https://github.com/mateogsilvaa/tripfinder/issues/12",
@@ -311,7 +356,7 @@ test.describe("el panel", () => {
         body: JSON.stringify({
           updated: "2026-09-17",
           admin: { buzon: { pub: buzon.pub, priv } },
-          users: [],
+          users: existentes.map((u, i) => ({ id: `u-${i}`, user: u, name: u, active: true })),
           site: {},
         }),
       })
@@ -330,7 +375,19 @@ test.describe("el panel", () => {
         sessionStorage.setItem("tf_admin_abierto", String(Date.now()));
       } catch (e) { /* nada */ }
     }, MAESTRA);
-    await page.goto("/admin.html", { waitUntil: "domcontentloaded" });
+    const hash = porEnlace
+      ? "#peticion=" +
+        Buffer.from(
+          JSON.stringify({
+            v: 1,
+            n: "Lucía Pérez",
+            u: "lucia",
+            p: "Soy la hermana de Mateo y volamos juntos casi todos los findes.",
+            s: sellado,
+          })
+        ).toString("base64url")
+      : "";
+    await page.goto(`/admin.html${hash}`, { waitUntil: "domcontentloaded" });
     await page.evaluate(() => {
       document.querySelector("#panelAdmin").hidden = false;
     });
@@ -452,6 +509,31 @@ test.describe("el panel", () => {
     await page.evaluate(() => window.pintarPeticiones());
     await page.locator("[data-aprobar]").click();
     await expect(page.locator("#avisoCuentas")).toContainText(/contraseña del panel/i);
+    expect(enviados).toEqual([]);
+  });
+
+  test("la que llega por enlace sale en la cola y se aprueba igual", async ({ page }) => {
+    const { enviados, parches } = await conPanel(page, { porEnlace: true });
+    const tarjeta = page.locator(".peticion");
+    await expect(tarjeta).toHaveCount(1);
+    await expect(tarjeta).toContainText("Lucía Pérez");
+    await expect(tarjeta).toContainText(/por enlace/i);
+    await page.locator("[data-aprobar]").click();
+    await expect.poll(() => enviados.length, { timeout: 15000 }).toBe(1);
+    const p = enviados[0].client_payload;
+    expect(p.user).toBe("lucia");
+    expect(p.email).toBe("lucia@ejemplo.com");
+    // No hay issue que cerrar, y el enlace se borra de la barra.
+    expect(parches).toEqual([]);
+    await expect.poll(() => page.evaluate(() => location.hash)).toBe("");
+  });
+
+  test("si el usuario ya existe, no se manda nada y se dice", async ({ page }) => {
+    // El enlace se puede abrir dos veces: la segunda, el workflow fallaría en
+    // silencio y el panel habría dicho «creada».
+    const { enviados } = await conPanel(page, { porEnlace: true, existentes: ["lucia"] });
+    await page.locator("[data-aprobar]").click();
+    await expect(page.locator("#avisoCuentas")).toContainText(/ya hay una cuenta/i);
     expect(enviados).toEqual([]);
   });
 });

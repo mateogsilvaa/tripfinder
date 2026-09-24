@@ -48,6 +48,10 @@ jobs:
           rm -rf _site/partes        # las partes son fuente, no pagina
           mkdir -p _site/data
           cp -r data/* _site/data/ 2>/dev/null || true
+          # El estado del cron (que chollos se han avisado y cuando le toco el
+          # ultimo correo a cada buzon) no lo lee la web, y ha llevado las
+          # direcciones de las cuentas como clave: fuera.
+          rm -f _site/data/state.json
           touch _site/.nojekyll
 
       # `data/users.json` lleva el email en claro de cada cuenta, y la copia de
@@ -64,6 +68,13 @@ jobs:
           if grep -q "@" _site/data/users.json; then
             echo "Hay una arroba en el users.json que iba a publicarse:"
             grep -n "@" _site/data/users.json
+            exit 1
+          fi
+          # Y en ningun otro JSON de datos. Solo se dice DONDE, no cual: este
+          # log tambien es publico.
+          # (Lo de las imagenes fuera: "foto@2x.webp" no es un correo.)
+          if grep -rlP --include='*.json' '[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.(?!(?:jpe?g|png|webp|gif|avif|svg)\b)[a-z]{2,}\b' _site/data; then
+            echo "Esos ficheros llevan una direccion de correo y no se publican."
             exit 1
           fi
           echo "Sin direcciones de correo."

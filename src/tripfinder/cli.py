@@ -20,6 +20,7 @@ from .providers import build_providers
 from .scoring import is_deal, score_offer, should_notify
 from .stays import StayRequest, build_stay_providers
 from .store import Store
+from .util import clave_buzon, tapar_correos
 
 log = logging.getLogger("tripfinder")
 
@@ -30,6 +31,10 @@ def _setup_logging(verbose: bool) -> None:
         format="%(levelname)s %(message)s",
         stream=sys.stdout,
     )
+    from .util import TaparCorreos
+
+    for manejador in logging.getLogger().handlers:
+        manejador.addFilter(TaparCorreos())
 
 
 def _shortlist(
@@ -444,15 +449,21 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     for destino, (batch, motivo_destino) in reparto.items():
         try:
             used = notify_offers(
-                batch, to=destino, method=cfg.notify.get("method", "resend")
+                batch,
+                to=destino,
+                method=cfg.notify.get("method", "resend"),
+                issue_ok=_es_del_dueno(destino, cfg),
             )
         except Exception as exc:  # noqa: BLE001
             log.error("No se pudo enviar el email a %s: %s", destino, exc)
-            errors.append(f"email {destino}: {exc}")
+            errors.append(tapar_correos(f"email {destino}: {exc}"))
             continue
         enviado_algo = True
-        state.setdefault("digest", {})[destino] = today
-        print(f"Aviso enviado por {used} a {destino} ({len(batch)} ofertas, {motivo_destino}).")
+        state.setdefault("digest", {})[clave_buzon(destino)] = today
+        print(
+            f"Aviso enviado por {used} a {tapar_correos(destino)} "
+            f"({len(batch)} ofertas, {motivo_destino})."
+        )
 
     # El registro de "ya te la mande" es global a proposito: marca la oferta como
     # vista, y quien la reciba depende de las preferencias de cada uno. Solo se
@@ -535,7 +546,7 @@ def _reparto_de_chollos(
             continue
         cubiertos.add(correo.lower())
         frecuencia = str(u.prefs.get("chollos", "cada_vez"))
-        if not _cada_cuanto(frecuencia, ultimos.get(correo, "")):
+        if not _cada_cuanto(frecuencia, ultimos.get(clave_buzon(correo)) or ultimos.get(correo, "")):
             continue
         tope = u.prefs.get("chollos_max_precio")
         fuente = nuevas if frecuencia == "cada_vez" else deals
@@ -1215,7 +1226,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
         state = store.load_state()
         for destino, parte in _partes_por_dueno(estado, cfg, state).items():
             if _mandar_parte(cfg, parte, destino):
-                state.setdefault("watch_digest", {})[destino] = hoy
+                state.setdefault("watch_digest", {})[clave_buzon(destino)] = hoy
         store.save_state(state)
     return 0
 
@@ -1239,7 +1250,8 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
         if not destino:
             continue
         prefs = cuenta.prefs if cuenta and cuenta.email else {}
-        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimos.get(destino, "")):
+        ultimo = ultimos.get(clave_buzon(destino)) or ultimos.get(destino, "")
+        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimo):
             continue
         partes.setdefault(destino, []).append((w, ofertas))
 
@@ -1254,6 +1266,18 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
         ):
             del partes[correo]
     return partes
+
+
+def _es_del_dueno(correo: str, cfg: Config) -> bool:
+    """Si ese buzon es el del dueño del repositorio.
+
+    El ultimo recurso de los avisos es abrir una issue, y una issue solo le
+    llega a quien lleva el repositorio: para cualquier otra cuenta no avisa a
+    nadie. Con el correo caido salian tres issues identicas por chollo —una por
+    cuenta— que no leia nadie, y encima con su direccion en el log publico.
+    """
+    dueno = (cfg.notify.get("to") or "").strip().lower()
+    return not correo or (bool(dueno) and correo.strip().lower() == dueno)
 
 
 def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
@@ -1272,6 +1296,8 @@ def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
         try:
             if not _configured(candidato):
                 continue
+            if candidato == "github_issue" and not _es_del_dueno(destinatario, cfg):
+                continue
             if candidato == "github_issue":
                 from .notify import github_issue
 
@@ -1284,7 +1310,10 @@ def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
                 from .notify import smtp
 
                 smtp.send_email(asunto, cuerpo, destinatario)
-            print(f"Parte diario enviado por {candidato} a {destinatario or 'el buzon de siempre'}.")
+            print(
+                f"Parte diario enviado por {candidato} a "
+                f"{tapar_correos(destinatario) if destinatario else 'el buzon de siempre'}."
+            )
             return True
         except Exception as exc:  # noqa: BLE001
             log.warning("Parte diario por %s fallo: %s", candidato, exc)

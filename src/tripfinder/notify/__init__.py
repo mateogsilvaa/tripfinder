@@ -42,7 +42,11 @@ def _configured(method: str) -> bool:
 
 
 def notify_offers(
-    offers: list[FlightOffer], to: str, method: str = "smtp", solo: bool = False
+    offers: list[FlightOffer],
+    to: str,
+    method: str = "smtp",
+    solo: bool = False,
+    issue_ok: bool = True,
 ) -> str:
     """Envia el aviso y devuelve el metodo que funciono.
 
@@ -50,11 +54,16 @@ def notify_offers(
     mas un chollo por una via rara que un chollo perdido—, pero para comprobar
     unas credenciales si: si se pregunta "funciona el SMTP?" y contesta que si
     porque ha abierto una issue, la respuesta es peor que no tenerla.
+
+    `issue_ok=False` quita la issue de la cadena: solo le llega al dueño del
+    repositorio, asi que para el aviso de otra cuenta no es un respaldo, es ruido.
     """
     if not offers:
         return ""
 
     candidates = [method] if solo else [method] + [m for m in ORDER if m != method]
+    if not issue_ok:
+        candidates = [m for m in candidates if m != "github_issue"]
     errors: list[str] = []
     for candidate in candidates:
         if not _configured(candidate):

@@ -61,7 +61,7 @@ test("sin buzón no se pide ni correo ni contraseña, y se dice por qué", async
   await abrir(page);
   await expect(page.locator("#pedirBody")).not.toContainText("Email");
   await expect(page.locator("#pcPass")).toHaveCount(0);
-  await expect(page.locator(".pedir-nota").first()).toContainText("queda publicado");
+  await expect(page.locator(".pedir-nota").first()).toContainText("No hace falta GitHub");
 });
 
 test("un usuario cogido se avisa, con alternativas que se pueden pulsar", async ({ page }) => {
@@ -95,36 +95,34 @@ test("no deja mandar media petición", async ({ page }) => {
   await expect(page.locator("#pcMsg")).toContainText("quién eres");
 });
 
-/* Lo que de verdad manda la petición: una issue con el cuerpo ya escrito. */
-test("mandarla abre GitHub con la petición escrita", async ({ page, context }) => {
+/* Lo que de verdad manda la petición: un enlace para WhatsApp, sin GitHub, y la
+   issue de siempre como segunda vía para quien sí lo tenga. */
+test("mandarla da un enlace para WhatsApp, y GitHub queda de segunda vía", async ({ page }) => {
   await abrir(page);
   await page.locator("#pcNombre").fill("Lucía Pérez");
   await page.locator("#pcUser").fill("lucia");
   await page
     .locator("#pcPorque")
     .fill("Me gustaría tener acceso para poder viajar más.");
+  await page.locator("#pcMandar").click();
 
-  // GitHub no se visita desde aquí: se contesta con un sello para poder leer
-  // la dirección a la que se iba, que es lo que comprueba esta prueba.
-  await context.route("https://github.com/**", (r) =>
-    r.fulfill({ contentType: "text/html", body: "<p>ok</p>" })
-  );
+  const wa = page.locator("#pcWhats");
+  await expect(wa).toBeVisible();
+  const texto = decodeURIComponent(new URL(await wa.getAttribute("href")).searchParams.get("text"));
+  expect(texto).toContain("lucia");
+  expect(texto).toContain("admin.html#peticion=");
+  await expect(page.locator("#pcCopiar")).toBeVisible();
 
-  const [nueva] = await Promise.all([
-    context.waitForEvent("page"),
-    page.locator("#pcMandar").click(),
-  ]);
-  const url = nueva.url();
+  const url = decodeURIComponent(await page.locator("#pcGitHub").getAttribute("href"));
   expect(url).toContain("github.com/mateogsilvaa/tripfinder/issues/new");
-  expect(decodeURIComponent(url)).toContain("labels=peticion-cuenta");
-  expect(decodeURIComponent(url)).toContain("[cuenta] lucia");
-  expect(decodeURIComponent(url)).toContain("Usuario: lucia");
-  expect(decodeURIComponent(url)).toContain("poder viajar más");
+  expect(url).toContain("labels=peticion-cuenta");
+  expect(url).toContain("[cuenta] lucia");
+  expect(url).toContain("Usuario: lucia");
+  expect(url).toContain("poder viajar más");
   // Y en el cuerpo no viaja ninguna dirección.
-  expect(decodeURIComponent(url)).not.toMatch(/[\w.]+@[\w.]+/);
+  expect(url).not.toMatch(/[\w.]+@[\w.]+/);
 
-  // Y la pantalla dice lo que falta, sin dar por hecho que ya está pedida.
-  await expect(page.locator("#pedirBody")).toContainText("Submit new issue");
+  await expect(page.locator("#pedirBody")).toContainText("mándasela");
   await expect(page.locator("#pedirBody")).toContainText("lucia");
 });
 
