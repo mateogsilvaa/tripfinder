@@ -1,7 +1,6 @@
-"""Sonda 2: DONDE guardan Holidu y Vrbo los anuncios dentro de la pagina.
+"""Sonda 3: la ruta exacta de los anuncios en Holidu y Vrbo, y uno de muestra.
 
-Temporal, como la primera. La primera dijo que las dos responden con anuncios;
-esta busca la estructura para escribir el parser contra lo que hay de verdad.
+Temporal. Se borra en cuanto se lea.
 """
 
 import json
@@ -17,95 +16,53 @@ UA = (
 )
 
 
-def scripts(html):
-    out = []
-    for m in re.finditer(r"<script([^>]*)>(.*?)</script>", html, re.S | re.I):
-        attrs, cuerpo = m.group(1), m.group(2)
-        out.append((attrs.strip()[:90], len(cuerpo), cuerpo))
+def rutas_con(nodo, quiere, ruta="$", out=None, prof=0):
+    """Rutas a dicts que tienen TODAS las claves de `quiere`."""
+    if out is None:
+        out = []
+    if prof > 30 or len(out) > 400:
+        return out
+    if isinstance(nodo, dict):
+        if all(k in nodo for k in quiere):
+            out.append((ruta, nodo))
+        for k, v in nodo.items():
+            rutas_con(v, quiere, f"{ruta}.{k}", out, prof + 1)
+    elif isinstance(nodo, list):
+        for i, x in enumerate(nodo):
+            rutas_con(x, quiere, f"{ruta}[{i}]", out, prof + 1)
     return out
 
 
-def recorrer(nodo, claves, tipos, prof=0):
-    if prof > 40:
-        return
-    if isinstance(nodo, dict):
-        for k, v in nodo.items():
-            claves[k] += 1
-            if k == "__typename" and isinstance(v, str):
-                tipos[v] += 1
-            recorrer(v, claves, tipos, prof + 1)
-    elif isinstance(nodo, list):
-        for x in nodo:
-            recorrer(x, claves, tipos, prof + 1)
+def generalizar(ruta):
+    return re.sub(r"\[\d+\]", "[*]", ruta)
 
 
-def buscar_json(cuerpo):
-    """El primer objeto JSON grande dentro de un script."""
-    cuerpo = cuerpo.strip()
-    for arranque in ("{", "["):
-        i = cuerpo.find(arranque)
-        if i < 0:
-            continue
-        try:
-            return json.JSONDecoder().raw_decode(cuerpo[i:])[0]
-        except Exception:
-            continue
-    return None
+def recortar(obj, n=2500):
+    return json.dumps(obj, ensure_ascii=False)[:n]
 
 
-def muestra(nodo, pistas, max_n=2):
-    """Objetos que tienen a la vez algo de precio y algo de nombre."""
-    halladas = []
-
-    def ir(n, prof=0):
-        if len(halladas) >= max_n or prof > 40:
-            return
-        if isinstance(n, dict):
-            ks = {k.lower() for k in n}
-            if any(p in " ".join(ks) for p in ("price", "precio")) and any(
-                p in " ".join(ks) for p in pistas
-            ):
-                halladas.append(n)
-                return
-            for v in n.values():
-                ir(v, prof + 1)
-        elif isinstance(n, list):
-            for x in n:
-                ir(x, prof + 1)
-
-    ir(nodo)
-    return halladas
-
-
-def informe(nombre, html):
-    print(f"\n===== {nombre}: {len(html)} bytes")
-    grandes = sorted(scripts(html), key=lambda s: -s[1])[:6]
-    for attrs, largo, cuerpo in grandes:
-        print(f"  script {largo:>8}  [{attrs}]  {cuerpo.strip()[:100]!r}")
-    for attrs, largo, cuerpo in grandes[:4]:
-        datos = buscar_json(cuerpo)
-        if datos is None:
-            continue
-        claves, tipos = Counter(), Counter()
-        recorrer(datos, claves, tipos)
-        print(f"  -- JSON en [{attrs[:50]}]: {sum(claves.values())} claves")
-        print("     claves top:", [k for k, _ in claves.most_common(45)])
-        if tipos:
-            print("     __typename top:", tipos.most_common(25))
-        for i, obj in enumerate(muestra(datos, ("name", "title", "headline", "nombre"))):
-            txt = json.dumps(obj, ensure_ascii=False)
-            print(f"     MUESTRA {i}: {txt[:1500]}")
-        break
-
-
+# ------------------------------------------------------------------ holidu
 r = requests.get(
     f"https://www.holidu.es/s/Amsterdam?checkin={IDA}&checkout={VUELTA}&adults={GENTE}",
     headers={"User-Agent": UA, "Accept-Language": "es-ES,es;q=0.9"},
     timeout=30,
 )
-print("holidu url final:", r.url, r.status_code)
-informe("holidu", r.text)
+m = re.search(r'<script[^>]*data-key="initial-state"[^>]*>(.*?)</script>', r.text, re.S)
+crudo = m.group(1).strip()
+crudo = re.sub(r"^<!--", "", crudo)
+crudo = re.sub(r"-->$", "", crudo)
+estado = json.loads(crudo)
+print("HOLIDU arriba:", list(estado.keys())[:20])
+print("HOLIDU redux:", list(estado.get("redux", {}).keys())[:40])
+halladas = rutas_con(estado, ("price", "location"))
+print("HOLIDU con price+location:", len(halladas))
+print("  rutas:", Counter(generalizar(p) for p, _ in halladas).most_common(8))
+if halladas:
+    print("  MUESTRA:", recortar(halladas[0][1]))
+    if len(halladas) > 1:
+        print("  MUESTRA 2 (price):", recortar(halladas[1][1].get("price"), 600))
 
+# ------------------------------------------------------------------ vrbo
 from scrapling.fetchers import Fetcher  # noqa: E402
 
 v = Fetcher.get(
@@ -114,5 +71,38 @@ v = Fetcher.get(
     timeout=40,
 )
 html = v.html_content if hasattr(v, "html_content") else str(v.body)
-print("vrbo estado:", getattr(v, "status", "?"))
-informe("vrbo", html)
+print("\nVRBO estado:", getattr(v, "status", "?"), "bytes:", len(html), "euros:", html.count("€"))
+i = html.find("window.__APOLLO_STATE__ = JSON.parse(")
+if i < 0:
+    print("VRBO: sin __APOLLO_STATE__")
+else:
+    ini = html.index("(", i) + 1
+    texto, _ = json.JSONDecoder().raw_decode(html[ini:])
+    apollo = json.loads(texto)
+    tipos = Counter()
+
+    def contar(n, prof=0):
+        if prof > 40:
+            return
+        if isinstance(n, dict):
+            t = n.get("__typename")
+            if isinstance(t, str):
+                tipos[t] += 1
+            for x in n.values():
+                contar(x, prof + 1)
+        elif isinstance(n, list):
+            for x in n:
+                contar(x, prof + 1)
+
+    contar(apollo)
+    print("VRBO claves raiz:", list(apollo.keys())[:15])
+    print("VRBO ROOT_QUERY:", [k[:90] for k in apollo.get("ROOT_QUERY", {}).keys()][:15])
+    print("VRBO __typename:", tipos.most_common(40))
+    for quiere in (("headingSection",), ("priceSection",), ("price",), ("name", "id")):
+        h = rutas_con(apollo, quiere)
+        if h:
+            print(f"VRBO con {quiere}: {len(h)}", Counter(generalizar(p) for p, _ in h).most_common(4))
+            print("   MUESTRA:", recortar(h[0][1], 1800))
+    # Y si los anuncios no estan en Apollo, donde aparece el primer precio.
+    j = html.find("€")
+    print("VRBO contexto del primer €:", re.sub(r"\s+", " ", html[max(0, j - 400):j + 100]))
