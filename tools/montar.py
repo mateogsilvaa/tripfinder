@@ -105,6 +105,10 @@ DESCRIPCIONES = {
         "Los viajes que tienes apuntados, revisados cada manana. Te escribe cuando "
         "el precio se mueve o cae dentro de tu tope."
     ),
+    "trenes.html": (
+        "A donde llega el AVE desde Madrid y en cuanto. Del centro al centro, "
+        "sin las tres horas de aeropuerto que se le suman a cualquier vuelo."
+    ),
 }
 
 # La aplicacion instalable (#22). Solo en las tres paginas publicas: instalar el
@@ -141,6 +145,7 @@ NAV = (
     '        <a href="./"{promos}>Feed</a>\n'
     '        <a href="buscar.html"{buscar}>Buscar</a>\n'
     '        <a href="seguimientos.html"{follows}>Vuelos que sigues</a>\n'
+    '        <a href="trenes.html"{tren}>En tren</a>\n'
     '      </nav>\n'
 )
 
@@ -212,6 +217,21 @@ PAGINAS = {
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
     },
+    # La unica pagina que no pide nada a nadie: los tiempos de tren estan en
+    # `web/js/trenes.js` y se pintan al cargar. Lleva GUIONES_WEB igual porque
+    # comparte barra, tema y chip de cuenta con el resto.
+    "trenes.html": {
+        "base": "",
+        "manifiesto": MANIFIESTO,
+        "nav": NAV,
+        "descubrir": DESCUBRIR,
+        "titulo": "TripFinder · de Madrid en tren",
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["trenes.html"]}">',
+        "vivo": "",
+        "zona": "tren",
+        "nota": NOTA_WEB,
+        "guiones": GUIONES_WEB,
+    },
     # La pagina que sirve Pages cuando la direccion no existe. Lleva el nav
     # (es lo unico util que puedes hacer desde ahi) pero no las hojas de
     # alojamiento, y no se indexa.
@@ -254,16 +274,16 @@ MARCA = re.compile(
 def _zonas(activa: str | None) -> dict[str, str]:
     """Los atributos de cada enlace del nav, con el activo marcado.
 
-    Tres, y las tres son PAGINAS. Antes eran cuatro y dos de ellas —"buscar" y
-    "seguir"— apuntaban a sendas anclas de la portada: a la herramienta entera
-    solo se llegaba rellenando el formulario compacto y enviandolo, porque la
-    pagina completa se abria como resultado de usarla. Quien solo queria ver
-    sus busquedas guardadas tenia que lanzar una.
+    Cuatro, y las cuatro son PAGINAS. Antes eran cuatro y dos de ellas
+    —"buscar" y "seguir"— apuntaban a sendas anclas de la portada: a la
+    herramienta entera solo se llegaba rellenando el formulario compacto y
+    enviandolo, porque la pagina completa se abria como resultado de usarla.
+    Quien solo queria ver sus busquedas guardadas tenia que lanzar una.
 
-    Y llegaron a ser cuatro nombradas otra vez con el mapamundi; se fue, y con
-    el la zona "mundo"."""
+    Tambien fueron cuatro con el mapamundi; se fue, y con el la zona "mundo".
+    La cuarta de ahora es "tren", que si es una pagina de verdad."""
     salida: dict[str, str] = {}
-    for z in ("promos", "buscar", "follows"):
+    for z in ("promos", "buscar", "follows", "tren"):
         if z == activa:
             salida[z] = f' class="zona activa" data-zona="{z}" aria-current="page"'
         else:

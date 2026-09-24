@@ -594,7 +594,7 @@ export function boardRow(o, i) {
     : "";
   return `
     <div class="brow${cama ? " con-cama" : ""}" id="offer-${esc(o.id)}"
-         data-open="${esc(o.id)}" role="button" tabindex="0"
+         data-open="${esc(o.id)}" role="button" tabindex="0" aria-expanded="false"
          style="animation-delay:${Math.min(i, 14) * 35}ms">
       ${favBtn(o)}
       <span class="dest-cell">
@@ -677,12 +677,17 @@ function wireDetalle(caja, o) {
   );
 }
 
+/* La fila se anuncia como `role="button"` y se despliega, asi que tiene que
+   decir si esta abierta o cerrada: sin `aria-expanded`, quien la oye recibe un
+   boton sin estado y no sabe si pulsarlo abre algo o lo cierra. El atributo se
+   pone al pintar y se mueve aqui, que es el unico sitio que abre y cierra. */
 function toggleRow(fila) {
   const caja = fila.querySelector(".brow-detail");
   if (!caja) return;
   if (!caja.hidden) {
     caja.hidden = true;
     fila.classList.remove("open");
+    fila.setAttribute("aria-expanded", "false");
     return;
   }
   const o = OFFERS.find((x) => x.id === fila.dataset.open) || SEARCH_OFFERS[fila.dataset.open];
@@ -690,6 +695,7 @@ function toggleRow(fila) {
   caja.innerHTML = detalleHTML(o);
   caja.hidden = false;
   fila.classList.add("open");
+  fila.setAttribute("aria-expanded", "true");
   wireDetalle(caja, o);
   // history.json son 60 kB: se baja una sola vez, la primera fila que se abre
   // lo pide y el detalle se repinta solo cuando llega.

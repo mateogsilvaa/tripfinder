@@ -115,7 +115,7 @@ test.describe("la ventana que se amplía", () => {
   test("el nav lleva a las cuatro páginas, sin tener que lanzar nada", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     const hrefs = await page.locator(".zona").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-    expect(hrefs).toEqual(["./", "buscar.html", "seguimientos.html"]);
+    expect(hrefs).toEqual(["./", "buscar.html", "seguimientos.html", "trenes.html"]);
 
     // Y se llega de verdad: se pulsa y se está en la herramienta completa.
     await page.locator('.zona[href="buscar.html"]').click();
