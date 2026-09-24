@@ -17,6 +17,7 @@ import { loadSearches, recogerBusqueda } from "./busqueda.js";
 import { cargarWatches, recogerSeguimiento } from "./seguimientos.js";
 import { marcarFlap } from "./quiz.js";
 import { montarTrenes } from "./trenes.js";
+import { montarInterrail } from "./interrail.js";
 
 init();
 loadSearches();
@@ -35,6 +36,7 @@ refrescarObservacion();
 // La página de los trenes no pide nada a nadie: el dato está en el módulo y
 // se pinta de una vez. Como el resto, se calla sola si no es su página.
 montarTrenes();
+montarInterrail();
 // El punto en el flap cuando hay un test guardado: es lo unico que el test
 // hace al cargar, todo lo demas espera a que lo abras (#11).
 marcarFlap();

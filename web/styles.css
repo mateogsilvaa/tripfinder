@@ -3125,6 +3125,64 @@ h1 em { font-size: 1.3em; }
 .tren-pie b { color: var(--ink); font-weight: 600; }
 .tren-pie .btn { margin-left: 8px; vertical-align: middle; }
 
+/* INTERRAIL. Una tarjeta por ruta: las cuatro cifras que deciden —dias de
+   bono, noches, horas de tren y reservas— y debajo el viaje en orden, de vuelo
+   a vuelo. Las paradas en tinta y los tramos en gris: lo que se lee de un
+   vistazo es por donde pasas, y como llegas es el detalle. */
+.ir { margin-top: 28px; }
+.ir-titulo { font-size: var(--fs-subhead); margin: 8px 0 0; }
+.ir-rutas { display: grid; gap: 14px; margin-top: 6px; }
+.ir-ruta {
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  padding: 18px;
+}
+.ir-ruta header h3 { font-size: var(--fs-body); margin: 0; }
+.ir-ruta header p { margin: 4px 0 0; color: var(--muted); font-size: var(--fs-body-s); }
+.ir-cifras {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 14px 0;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+}
+.ir-cifras > div { background: var(--surface); padding: 8px 10px; }
+.ir-cifras dt {
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ir-cifras dd { margin: 6px 0 0; font: 600 var(--fs-data) / 1.2 var(--font-mono); }
+.ir-cifras dd small { display: block; font-weight: 400; font-size: var(--fs-meta); color: var(--deep); }
+.ir-pasos { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ir-parada { display: flex; align-items: baseline; gap: 10px; padding: 4px 0; }
+.ir-parada b { font-weight: 600; }
+.ir-parada small { color: var(--muted); font: 400 var(--fs-meta) var(--font-mono); }
+.ir-tramo {
+  margin-left: 6px;
+  padding: 2px 0 2px 14px;
+  border-left: 1px dashed var(--line);
+  color: var(--muted);
+  font: 400 var(--fs-meta) / 1.6 var(--font-mono);
+}
+.ir-reserva { color: var(--accent-txt); }
+.ir-libre { color: var(--deep); }
+.ir-vuelo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  color: var(--muted);
+  font-size: var(--fs-body-s);
+}
+.ir-vuelo:first-child { border-bottom: 1px solid var(--hair); margin-bottom: 4px; }
+.ir-vuelo:last-child { border-top: 1px solid var(--hair); margin-top: 4px; }
+
 /* En movil se apila: el tiempo y la ciudad en la primera linea, la estacion y
    el servicio debajo.
 
@@ -3143,6 +3201,8 @@ h1 em { font-size: 1.3em; }
   .tren-rows .brow > .dest-cell { grid-area: auto; }
   .tren-rows .brow > .tren-estacion,
   .tren-rows .brow > .tren-tipo { grid-column: 1 / -1; }
+  .ir-cifras { grid-template-columns: 1fr 1fr; }
+  .ir-ruta { padding: 14px; }
 }
 
 @media (max-width: 420px) {

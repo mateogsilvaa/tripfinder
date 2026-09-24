@@ -202,14 +202,31 @@ function pintarDestinos(filtro = "") {
 }
 
 function elegirDestino(valor) {
-  if (destinoPara === "wDest") {
-    $("#wDest").value = valor;
-    $("#wDestBtn").textContent = valor;
-  } else {
-    $("#fDest").value = valor;
-    $("#destBtn").textContent = valor;
-  }
+  const campo = destinoPara === "wDest" ? $("#wDest") : $("#fDest");
+  if (!campo) return;
+  campo.value = valor;
+  // El rotulo lo pone el oyente de abajo, no esta funcion: asi hay UN solo
+  // camino entre "el campo vale X" y "el boton dice X".
+  campo.dispatchEvent(new Event("change", { bubbles: true }));
   cerrarDestinos();
+}
+
+/* EL ROTULO SIGUE AL CAMPO, VENGA DE DONDE VENGA LO ELEGIDO.
+
+   El destino no siempre se elige en el dialogo: tambien llega en la URL, que
+   es como viaja de la portada a la herramienta entera (`ampliar.js`) y como lo
+   ponen los enlaces que traen un viaje ya pensado. Ese camino rellena el campo
+   escondido y dispara `change`, pero nadie tocaba el boton — asi que la pagina
+   se abria diciendo "Elegir destino" encima de un formulario que iba a buscar
+   Budapest. Parecia vacio y no lo estaba.
+
+   Con el rotulo colgado del `change` los dos caminos acaban igual. */
+const ROTULO_VACIO = "Elegir destino";
+
+function rotular(campo, boton) {
+  const el = $(campo);
+  const btn = $(boton);
+  if (el && btn) btn.textContent = el.value || ROTULO_VACIO;
 }
 
 /* `para` dice a que campo vuelve lo elegido. Antes era una variable suelta
@@ -229,6 +246,9 @@ export function abrirDestinos(para = "fDest") {
 function cerrarDestinos() {
   tfCerrarDialogo($("#destModal"));
 }
+
+on("#fDest", "change", () => rotular("#fDest", "#destBtn"));
+on("#wDest", "change", () => rotular("#wDest", "#wDestBtn"));
 
 on("#destBtn", "click", () => abrirDestinos("fDest"));
 on("#destClose", "click", cerrarDestinos);
