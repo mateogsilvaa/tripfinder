@@ -121,7 +121,10 @@ function pintarFavs(raiz = document) {
 }
 
 export function wireFavs(raiz = document) {
-  raiz.querySelectorAll("[data-fav]").forEach((b) =>
+  /* Una sola vez por boton: el del hero se ataba dos veces (con el feed y
+     con el hero) y cada pulsacion hacia dos cosas. */
+  raiz.querySelectorAll("[data-fav]:not([data-fav-atado])").forEach((b) => {
+    b.dataset.favAtado = "1";
     b.addEventListener("click", (ev) => {
       ev.stopPropagation();
       ev.preventDefault();
@@ -131,8 +134,8 @@ export function wireFavs(raiz = document) {
       const id = b.dataset.fav;
       const o = OFFERS.find((x) => x.id === id) || SEARCH_OFFERS[id] || FAVS[id];
       if (o) alternar(o);
-    })
-  );
+    });
+  });
 }
 
 /* El corazon del asunto: comparar lo que vale hoy con lo ultimo que se vio.

@@ -25,7 +25,7 @@ from urllib.parse import quote
 
 from ..models import StayOffer
 from ..util import get_text
-from .base import StayProvider, StayRequest, register
+from .base import RECUADROS_KM, StayProvider, StayRequest, recuadro, register
 
 log = logging.getLogger("tripfinder")
 
@@ -49,6 +49,10 @@ STATE_RE = re.compile(r'id="data-deferred-state-0"[^>]*>(\{.*?\})</script>', re.
 NUM_RE = re.compile(r"(\d[\d.,]*)")
 NIGHTS_RE = re.compile(r"(\d+)\s*noche", re.IGNORECASE)
 MAX_RESULTS = 18
+# Lo que acompaña al recuadro para que Airbnb lo tome como «busca en este
+# trozo de mapa» y no como una pista mas. Copiado de lo que manda su web al
+# mover el mapa, y comprobado desde un runner.
+MAPA = {"search_by_map": "true", "search_type": "user_map_move", "zoom": 14, "zoom_level": 14}
 
 
 def sin_tildes(texto: str) -> str:
@@ -218,7 +222,16 @@ class AirbnbProvider(StayProvider):
     def search(self, req: StayRequest) -> list[StayOffer]:
         vistos: set[str] = set()
         todo: list[StayOffer] = []
-        for tipo, extra in PASADAS_ENTEROS if req.solo_enteros else PASADAS:
+        pasadas = PASADAS_ENTEROS if req.solo_enteros else PASADAS
+        if req.centro:
+            # Con el centro, cada pasada se hace en los dos recuadros: el
+            # pequeño trae lo central y el grande lo barato de alrededor.
+            pasadas = tuple(
+                (tipo, {**extra, **recuadro(req.centro, km), **MAPA})
+                for tipo, extra in pasadas
+                for km in RECUADROS_KM
+            )
+        for tipo, extra in pasadas:
             try:
                 todo += self._pasada(req, tipo, extra, vistos)
             except Exception as exc:  # noqa: BLE001 - una pasada fallida no tumba la otra

@@ -52,6 +52,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <a href="buscar.html" class="zona" data-zona="buscar">Buscar</a>
         <a href="seguimientos.html" class="zona" data-zona="follows">Vuelos que sigues</a>
         <a href="trenes.html" class="zona activa" data-zona="tren" aria-current="page">En tren</a>
+        <a href="interrail.html" class="zona" data-zona="interrail">Interrail</a>
       </nav>
       <div class="topbar-hueco"></div>
       <span class="flaps" aria-hidden="true"><span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span><button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-cara" aria-hidden="true">?</span></button>
@@ -116,73 +117,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       </p>
     </div>
   </section>
-
-  <section class="herramienta completa ir" id="interrail" aria-labelledby="irTitulo">
-    <div class="finder-body">
-      <div class="kicker-num">05 · con un bono interrail</div>
-      <h2 id="irTitulo" class="ir-titulo">Por Europa, con los días del bono.</h2>
-      <p class="finder-lede">Dile cuántos días de viaje tiene tu bono, desde dónde sales y cuándo, y te da rutas que caben: el vuelo de ida, los trenes, las noches en cada parada, dónde dormir y el vuelo de vuelta —que no tiene por qué ser desde la misma ciudad—, con el total de todo. Cada ruta se puede personalizar: al revés, más o menos noches en cada sitio, o saltarte una parada. Un día de bono es un día de viaje, no un trayecto: coger dos trenes el mismo día gasta uno.</p>
-      <form id="irForm" class="finder-form">
-        <label for="irDias">
-          <span>Días de viaje del bono</span>
-          <select id="irDias">
-            <option value="4">4 días</option>
-            <option value="5" selected>5 días</option>
-            <option value="7">7 días</option>
-            <option value="10">10 días</option>
-            <option value="15">15 días</option>
-          </select>
-        </label>
-        <label for="irOrigen">
-          <span>Sales desde</span>
-          <select id="irOrigen"></select>
-        </label>
-        <label for="irIda">
-          <span>Sales el</span>
-          <input id="irIda" type="date">
-        </label>
-        <label for="irVuelta">
-          <span>Vuelves como tarde</span>
-          <input id="irVuelta" type="date">
-        </label>
-        <label for="irEdad">
-          <span>Edad</span>
-          <select id="irEdad">
-            <option value="joven">De 12 a 27</option>
-            <option value="adulto" selected>De 28 a 59</option>
-            <option value="senior">60 o más</option>
-          </select>
-        </label>
-        <label for="irPersonas">
-          <span>Personas</span>
-          <select id="irPersonas">
-            <option value="1">1</option>
-            <option value="2" selected>2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-          </select>
-        </label>
-      </form>
-      <p class="hint" id="irHint"></p>
-      <div class="ir-rutas" id="irRutas"></div>
-      <p class="tren-pie">
-        <b>El bono no lo paga todo.</b> Los trenes rápidos de Italia, Francia y
-        España, y los nórdicos, exigen una reserva que se paga aparte, y cada
-        ruta la suma. Los vuelos y el alojamiento son de verdad: se buscan al
-        pedirlos —los vuelos en Ryanair, de ida sola; las camas en Airbnb y en
-        Holidu, solo pisos y casas enteras— y cada parada se puede cambiar. <small class="ir-apunte">Todos los precios son
-        orientativos: el bono, por la tarifa de 2025 en segunda; los billetes
-        sueltos, lo normal comprando con unas semanas de antelación. Las
-        reservas y los billetes van en horquilla porque cada compañía los pone
-        tren a tren y no los publica en abierto: una fecha concreta no los
-        haría exactos sin consultarlos en su web. Los tiempos son del directo
-        más rápido de cada tramo.</small>
-        <a class="btn ghost small" href="https://www.interrail.eu/es" target="_blank" rel="noopener">Abrir Interrail</a>
-      </p>
-    </div>
-  </section>
+  <p class="tren-otra">¿Más lejos, por Europa? <a href="interrail.html">Monta tu Interrail</a>: tren, vuelos y pisos enteros en el centro, con el total.</p>
 </main>
 
 

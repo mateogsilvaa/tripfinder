@@ -34,7 +34,7 @@ from urllib.parse import quote
 from ..models import StayOffer
 from ..util import get_text
 from .airbnb import MAX_FOTOS, _limpiar_nombre
-from .base import StayProvider, StayRequest, register
+from .base import RECUADROS_KM, StayProvider, StayRequest, recuadro, register
 
 log = logging.getLogger("tripfinder")
 
@@ -237,13 +237,30 @@ def ofertas_de(html: str, adultos: int = 1) -> list[StayOffer]:
 @register("holidu")
 class HoliduProvider(StayProvider):
     def search(self, req: StayRequest) -> list[StayOffer]:
-        html = get_text(
-            f"{BASE}/s/{quote(req.city)}",
-            params={"checkin": req.checkin, "checkout": req.checkout, "adults": req.adults},
-            timeout=40,
-            throttle_key="holidu",
-            min_interval=3.0,
+        base = {"checkin": req.checkin, "checkout": req.checkout, "adults": req.adults}
+        # Holidu entiende el mismo recuadro que Airbnb (comprobado: con el, su
+        # propio `viewport` pasa a ser el nuestro y los pisos de Viena quedan a
+        # menos de 1,6 km, cuando por nombre la mediana estaba a 4 km).
+        consultas = (
+            [{**base, **recuadro(req.centro, km)} for km in RECUADROS_KM] if req.centro else [base]
         )
-        ofertas = ofertas_de(html, req.adults)
+        vistos: set[str] = set()
+        ofertas: list[StayOffer] = []
+        for params in consultas:
+            try:
+                html = get_text(
+                    f"{BASE}/s/{quote(req.city)}",
+                    params=params,
+                    timeout=40,
+                    throttle_key="holidu",
+                    min_interval=3.0,
+                )
+            except Exception as exc:  # noqa: BLE001 - un recuadro fallido no tumba el otro
+                log.warning("Holidu %s: %s", req.city, exc)
+                continue
+            for o in ofertas_de(html, req.adults):
+                if o.url not in vistos:
+                    vistos.add(o.url)
+                    ofertas.append(o)
         log.info("Holidu %s: %d alojamientos enteros", req.city, len(ofertas))
         return ofertas

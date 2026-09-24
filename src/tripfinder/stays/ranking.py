@@ -54,9 +54,37 @@ def _nota_precio(precio: float, barato: float) -> float:
     return max(0.0, min(1.0, 1 - de_mas / TOLERANCIA))
 
 
-def _nota_centro(km: float) -> float:
-    """1 en el centro mismo; 0 a `LEJOS_KM` o más."""
-    return max(0.0, min(1.0, 1 - min(km, LEJOS_KM) / LEJOS_KM))
+def _nota_centro(km: float, lejos: float = LEJOS_KM) -> float:
+    """1 en el centro mismo; 0 a `lejos` km o más."""
+    return max(0.0, min(1.0, 1 - min(km, lejos) / lejos))
+
+
+# Con radio, lo minimo que se quiere poder elegir. Si dentro del radio hay
+# menos, se deja entrar lo mas cercano hasta el doble —y la web lo avisa—:
+# una parada sin ninguna cama es peor que una cama a 3 km dicha como tal.
+MIN_DENTRO = 3
+
+
+def _cerca(ofertas: list[StayOffer], radio: float, ciudad: str) -> list[StayOffer]:
+    """Lo que queda a `radio` km del centro o menos; lo que no dice donde esta
+    se queda, porque no es culpa suya."""
+    dentro = [o for o in ofertas if o.km_centro is None or o.km_centro <= radio]
+    medidos = sum(1 for o in dentro if o.km_centro is not None)
+    if medidos >= MIN_DENTRO:
+        fuera = len(ofertas) - len(dentro)
+        if fuera:
+            log.info("%s: %d alojamientos fuera de %.1f km del centro, descartados", ciudad, fuera, radio)
+        return dentro
+    cerca = sorted(
+        (o for o in ofertas if o.km_centro is not None and o.km_centro <= 2 * radio),
+        key=lambda o: o.km_centro,
+    )
+    log.warning(
+        "%s: solo %d alojamientos a menos de %.1f km del centro; se admiten hasta %.1f km",
+        ciudad, medidos, radio, 2 * radio,
+    )
+    sin_medir = [o for o in ofertas if o.km_centro is None]
+    return cerca + sin_medir
 
 
 def a_pie(km: float | None) -> str:
@@ -73,7 +101,9 @@ def medir(ofertas: list[StayOffer], req: StayRequest) -> list[StayOffer]:
     """Pone `km_centro` a lo que tenga coordenadas. Una llamada por ciudad."""
     if not any(o.lat and o.lon for o in ofertas):
         return ofertas
-    centro = coordenadas(req.city, req.country)
+    # Si la peticion ya trae el centro (el Interrail lo manda), ese manda: es
+    # el mismo punto alrededor del que se ha buscado.
+    centro = getattr(req, "centro", None) or coordenadas(req.city, req.country)
     if not centro:
         return ofertas
     for o in ofertas:
@@ -110,6 +140,12 @@ def ordenar(ofertas: list[StayOffer], req: StayRequest) -> list[StayOffer]:
         if not conPrecio:
             return sinPrecio
 
+    radio = getattr(req, "radio_km", None)
+    if radio:
+        conPrecio = _cerca(conPrecio, radio, req.city)
+        if not conPrecio:
+            return sinPrecio
+
     barato = min(o.price_total for o in conPrecio)
 
     kms = [o.km_centro for o in conPrecio if o.km_centro is not None]
@@ -124,7 +160,12 @@ def ordenar(ofertas: list[StayOffer], req: StayRequest) -> list[StayOffer]:
             o.score = round(nota, 4)
             continue
         km = o.km_centro if o.km_centro is not None else medioKm
-        o.score = round(PESO_PRECIO * nota + PESO_CENTRO * _nota_centro(km), 4)
+        if radio:
+            # Con radio, la cercania pesa lo mismo que el precio y la nota se
+            # mide dentro del radio: a 2,4 km no es «casi en el centro».
+            o.score = round(0.5 * nota + 0.5 * _nota_centro(km, 2 * radio), 4)
+        else:
+            o.score = round(PESO_PRECIO * nota + PESO_CENTRO * _nota_centro(km), 4)
 
     conPrecio.sort(key=lambda o: (-o.score, o.price_total))
     _sellar(conPrecio)

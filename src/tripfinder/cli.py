@@ -646,6 +646,8 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         max_total=args.max_total,
         country=country,
         solo_enteros=bool(getattr(args, "solo_enteros", False)),
+        centro=getattr(args, "centro", None),
+        radio_km=RADIO_INTERRAIL_KM if getattr(args, "centro", None) else None,
     )
 
     stays: list[StayOffer] = []
@@ -789,7 +791,10 @@ MAX_NOCHES_PARADA = 14
 # Ruta, ciudad, dia de llegada, noches y cuantos vais: cambiar cualquiera de las
 # cinco es otra cama y otro precio. Las noches van porque la ruta se puede
 # personalizar: llegar el mismo dia y quedarse una noche mas es otra reserva.
-ID_PARADA = re.compile(r"^ir-[a-z]{3,12}-[A-Z]{3}-\d{4}-\d{2}-\d{2}-\d{1,2}n-[1-8]$")
+# Con la ruta delante (`ir-centro-PRG-…`) era el formato de antes; ahora la cama
+# no depende de la ruta (`ir-PRG-…`): Praga del 3 al 5 es la misma venga uno de
+# donde venga. Se aceptan los dos para no romper lo ya guardado.
+ID_PARADA = re.compile(r"^ir-(?:[a-z]{3,12}-)?[A-Z]{3}-\d{4}-\d{2}-\d{2}-\d{1,2}n-[1-8]$")
 # Origen, ciudad, dia y sentido. Sin personas: la tarifa es por persona.
 ID_VUELO = re.compile(r"^ir-vuelo-[A-Z]{3}-[A-Z]{3}-\d{4}-\d{2}-\d{2}-(ida|vuelta)$")
 MAX_AEROPUERTOS = 4
@@ -804,7 +809,12 @@ def _texto_corto(valor: Any, campo: str, largo: int = 60, vacio: bool = False) -
     return texto
 
 
-def paradas_interrail(crudo: str) -> list[dict[str, str]]:
+# Lo lejos del centro que puede quedar una cama del Interrail: unos treinta
+# minutos andando. Lo mismo que `MAX_KM` en `web/js/interrail.js`.
+RADIO_INTERRAIL_KM = 2.5
+
+
+def paradas_interrail(crudo: str) -> list[dict[str, Any]]:
     """Valida lo que manda la web. Viene de un navegador, asi que no se da
     nada por bueno: el identificador acaba siendo un nombre de fichero y la
     ciudad acaba en una URL de Airbnb."""
@@ -840,9 +850,24 @@ def paradas_interrail(crudo: str) -> list[dict[str, str]]:
                 "iata": iata,
                 "checkin": entra.isoformat(),
                 "checkout": sale.isoformat(),
+                "centro": _centro(p.get("lat"), p.get("lon"), ident),
             }
         )
     return limpias
+
+
+def _centro(lat: Any, lon: Any, ident: str) -> tuple[float, float] | None:
+    """El centro de la parada, si viene. Opcional: sin el se busca por nombre,
+    como antes; con el, en un recuadro alrededor."""
+    if lat is None and lon is None:
+        return None
+    try:
+        la, lo = float(lat), float(lon)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"centro no valido en {ident}") from exc
+    if not (-90 <= la <= 90 and -180 <= lo <= 180):
+        raise ValueError(f"centro fuera del mapa en {ident}")
+    return (round(la, 5), round(lo, 5))
 
 
 def vuelos_interrail(crudo: str) -> list[dict[str, Any]]:
@@ -964,6 +989,7 @@ def cmd_interrail_stays(args: argparse.Namespace) -> int:
             summary_out=None,
             dry_run=args.dry_run,
             solo_enteros=True,
+            centro=p.get("centro"),
         )
         # Una parada que falla no tumba las demas: media ruta con cama es mejor
         # que ninguna, y la web dice cual falta.

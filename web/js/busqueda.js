@@ -5,6 +5,7 @@ import {
   MAX_VUELTAS,
   MONTHS,
   POLL_EVERY_MS,
+  cuadrarRejilla,
   SEARCH_OFFERS,
   esc,
   existe,
@@ -287,6 +288,7 @@ function syncFinder() {
   // el original quedaba enganchado dos veces al `change` y corria dos veces por
   // cada cambio. Aqui dentro se hace una sola vez y se lee de corrido.
   if (existe("#cal") && cuando !== "exact" && cuando !== "tramo") $("#cal").hidden = true;
+  cuadrarRejilla($("#finderForm"));
 }
 ["#fWhere", "#fWhen"].forEach((s) => on(s, "change", syncFinder));
 if (existe("#finderForm")) syncFinder();

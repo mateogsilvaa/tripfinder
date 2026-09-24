@@ -1446,6 +1446,8 @@ h1 em { font-size: 1.3em; }
    ver el fondo de la rejilla y parece una celda rota. */
 .finder-form:has(#destWrap[hidden]) #departWrap:not([hidden]),
 .finder-form:has(#departWrap[hidden]) #destWrap:not([hidden]) { grid-column: 1 / -1; }
+/* Y en general: la última celda que se queda sola la marca `cuadrarRejilla`. */
+.finder-form > [data-sola] { grid-column: 1 / -1; }
 
 .finder-form label > span {
   font: 400 var(--fs-caps) / 1 var(--font-mono);
@@ -2877,7 +2879,9 @@ h1 em { font-size: 1.3em; }
   .zonas {
     order: 9;
     flex-basis: 100%;
-    gap: 18px;
+    /* Cinco zonas desde que el Interrail tiene página: con 18 px, «Interrail»
+       se quedaba cortado por el borde en un móvil de 390. */
+    gap: 14px;
     margin: 0 -2px -2px;
     padding: 2px;
     overflow-x: auto;
@@ -3325,6 +3329,119 @@ h1 em { font-size: 1.3em; }
 .ir-vuelo:first-child { border-bottom: 1px solid var(--hair); margin-bottom: 4px; }
 .ir-vuelo:last-child { border-top: 1px solid var(--hair); margin-top: 4px; }
 
+/* EL FORMULARIO DEL INTERRAIL. Tres bloques numerados —el pase, el viaje, las
+   ciudades— porque es el orden en que cambia la cuenta, y cada uno se lee de
+   un vistazo. Los campos van en la misma rejilla que el buscador. */
+.ir-form { display: grid; gap: 14px; margin: 18px 0 10px; }
+.ir-bloque { border: 1px solid var(--hair); border-radius: var(--r); padding: 12px 14px 14px; margin: 0; min-width: 0; }
+.ir-bloque legend { padding: 0 6px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.ir-paso {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--sobre-acento);
+  font: 600 12px var(--font-mono);
+}
+.ir-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 6px 0 10px; }
+.ir-opcion {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  cursor: pointer;
+}
+.ir-opcion:has(input:checked) { border-color: var(--deep); background: color-mix(in srgb, var(--deep) 8%, transparent); }
+.ir-opcion input { margin-top: 3px; accent-color: var(--deep); }
+.ir-opcion span { display: grid; gap: 2px; }
+.ir-opcion small { color: var(--muted); font-size: var(--fs-meta); line-height: 1.4; }
+.ir-fila {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--hair);
+  border: 1px solid var(--hair);
+}
+.ir-fila label { background: var(--field); padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ir-fila label[hidden] { display: none; }
+.ir-fila label > span {
+  font: 400 var(--fs-caps) / 1.2 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ir-fila label > span i { text-transform: none; letter-spacing: 0; font-style: normal; opacity: 0.8; }
+.ir-fila input, .ir-fila select {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: var(--fs-input);
+  font-weight: 600;
+  width: 100%;
+  min-width: 0;
+  color: var(--ink);
+  min-height: 28px;
+}
+.ir-ayuda { margin: 4px 0 10px; color: var(--muted); font-size: var(--fs-body-s); }
+.ir-ciudades { display: grid; gap: 8px; }
+.ir-pais { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ir-pais > span {
+  flex: 0 0 100%;
+  font: 400 var(--fs-caps) / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.ir-chip {
+  min-height: 40px;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font-size: var(--fs-body-s);
+  cursor: pointer;
+}
+.ir-chip:hover { border-color: var(--deep); }
+.ir-chip[aria-pressed="true"] { background: var(--deep); border-color: var(--deep); color: var(--paper); font-weight: 600; }
+.ir-chip[aria-pressed="true"]::before { content: "✓ "; }
+.ir-elegidas { margin: 6px 0 0; font: 400 var(--fs-meta) / 1.5 var(--font-mono); color: var(--muted); }
+.ir-limpiar { border: none; background: none; padding: 4px 0; color: var(--accent-txt); cursor: pointer; font: inherit; text-decoration: underline; }
+.ir-etiqueta {
+  margin: 0 0 2px !important;
+  font: 400 var(--fs-caps) / 1 var(--font-mono) !important;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--deep) !important;
+}
+.ir-ruta.elegida { border-color: var(--deep); }
+.ir-problema {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-left: 3px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  font-size: var(--fs-body-s);
+}
+.ir-otras-titulo { margin: 18px 0 0; font-size: var(--fs-body); }
+.ir-cortas { display: grid; gap: 8px; }
+.ir-ruta.corta { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; }
+.ir-ruta.corta h3 { margin: 0; font-size: var(--fs-body); }
+.ir-corta-paradas { margin: 2px 0; font-size: var(--fs-body-s); }
+.ir-ruta.corta .meta { margin: 0; font: 400 var(--fs-meta) / 1.4 var(--font-mono); color: var(--muted); }
+.ir-ruta.corta .btn { flex: none; }
+.ir-largo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; color: var(--accent-txt); }
+.ir-lejos { color: var(--accent-txt); }
+.ir-cama-aviso { margin: 0 0 4px; font-size: var(--fs-meta); color: var(--accent-txt); }
+.ir-sin-sesion { margin: 0 0 14px; }
+.ir-roto { color: var(--accent-txt); }
+.tren-otra { max-width: var(--ancho); margin: 0 auto 28px; padding: 0 var(--pad-page); color: var(--muted); }
+.tren-otra a { color: var(--accent-txt); }
+
 /* En movil se apila: el tiempo y la ciudad en la primera linea, la estacion y
    el servicio debajo.
 
@@ -3349,6 +3466,9 @@ h1 em { font-size: 1.3em; }
      debajo del botón de quitar una noche. */
   .ir-ajustar li { grid-template-columns: minmax(0, 1fr) auto; row-gap: 6px; }
   .ir-ajustar li:not(.fuera) .ir-aj-ciudad { grid-column: 1 / -1; font-weight: 500; }
+  .ir-opciones { grid-template-columns: 1fr; }
+  .ir-ruta.corta { flex-direction: column; align-items: stretch; }
+  .ir-ruta.corta .btn { align-self: flex-start; }
 }
 
 @media (max-width: 420px) {

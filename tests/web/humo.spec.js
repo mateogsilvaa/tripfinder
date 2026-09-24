@@ -95,10 +95,11 @@ test.describe("el armazón que comparten las páginas", () => {
     ["/buscar.html", "Buscar"],
     ["/seguimientos.html", "Vuelos que sigues"],
     ["/trenes.html", "En tren"],
+    ["/interrail.html", "Interrail"],
   ]) {
     test(`${pagina} monta cabecera, zonas y pie`, async ({ page }) => {
       await page.goto(pagina);
-      await expect(page.locator(".zona")).toHaveCount(4);
+      await expect(page.locator(".zona")).toHaveCount(5);
       await expect(page.locator(".zona.activa")).toHaveText(activa);
       await expect(page.locator("#tema")).toBeVisible();
       await expect(page.locator(".foot .build")).toBeVisible();

@@ -31,6 +31,12 @@ class StayRequest:
     # compartidas, ni de hotel. Lo pide el Interrail, donde se duerme una o dos
     # noches en cada ciudad y lo que se compara es el precio de TENER un sitio.
     solo_enteros: bool = False
+    # El centro de la ciudad (lat, lon), cuando se sabe de antemano. Con el, los
+    # buscadores miran un recuadro alrededor en vez de la ciudad entera, y lo
+    # que quede a mas de `radio_km` se descarta. Lo manda el Interrail: por
+    # nombre de ciudad salian pisos a 3 y 4 km, a tres cuartos de hora andando.
+    centro: tuple[float, float] | None = None
+    radio_km: float | None = None
 
     @property
     def nights(self) -> int:
@@ -45,6 +51,30 @@ class StayRequest:
     @property
     def query(self) -> str:
         return f"{self.city}, {self.country}" if self.country else self.city
+
+
+# Los dos recuadros que se miran alrededor del centro. Medido el 24 de
+# septiembre desde un runner con Roma, Amsterdam, Praga y Viena: por nombre de
+# ciudad la mediana quedaba entre 1,8 y 3,2 km del centro (y en Viena solo 3 de
+# 18 pisos a menos de 2,5 km); con el recuadro de 1,5 km, los dieciocho dentro
+# y la mediana a 1-1,5 km. El de 2,5 km trae los mas baratos de alrededor.
+RECUADROS_KM = (1.5, 2.5)
+
+
+def recuadro(centro: tuple[float, float], km: float) -> dict[str, float]:
+    """Los parametros `ne_lat/ne_lng/sw_lat/sw_lng` de un cuadrado de `km` de
+    medio lado. Airbnb y Holidu entienden los mismos nombres."""
+    import math
+
+    lat, lon = centro
+    dlat = km / 111.0
+    dlon = km / (111.0 * max(0.2, math.cos(math.radians(lat))))
+    return {
+        "ne_lat": round(lat + dlat, 5),
+        "ne_lng": round(lon + dlon, 5),
+        "sw_lat": round(lat - dlat, 5),
+        "sw_lng": round(lon - dlon, 5),
+    }
 
 
 def register(name: str) -> Callable[[type], type]:
