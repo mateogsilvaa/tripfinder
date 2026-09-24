@@ -1,0 +1,11 @@
+{
+  "id": "ir-vuelo-MAD-BGO-2027-03-29-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "BGO"
+  ],
+  "fecha": "2027-03-29",
+  "sentido": "vuelta",
+  "generated_at": "2026-09-24",
+  "legs": []
+}
