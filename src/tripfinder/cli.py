@@ -670,6 +670,23 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
             f"+ alojamiento {resumen['stay']:.0f}"
         )
 
+    # Y EN QUE ZONA. Es la pregunta que se hace al organizar un viaje y que no
+    # contestaba nadie: el barrio venia dentro del `area` de cada anuncio
+    # («Apartamento en Monastiraki») y solo se usaba como texto suelto.
+    #
+    # Se guarda en el resumen porque es un derivado de lo scrapeado: calcularlo
+    # aqui una vez es mejor que recalcularlo en cada navegador que abra el
+    # panel, y ademas queda en el fichero para quien lo lea a mano.
+    from .stays.zonas import recomendar as recomendar_zona
+
+    zona = recomendar_zona(stays, req.city)
+    if zona:
+        resumen = {**(resumen or {}), "zona": zona}
+        print(
+            f"Zona recomendada: {zona['zona']} — {zona['cuantos']} sitios"
+            + (f", a {zona['km']:.1f} km del centro" if zona.get("km") is not None else "")
+        )
+
     path = store.save_stays(
         args.offer_id, offer, stays, req.checkin, req.checkout, errors, summary=resumen
     )

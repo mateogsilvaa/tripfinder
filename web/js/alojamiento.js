@@ -442,6 +442,34 @@ export function desde(iso) {
    `summary`. Esta funcion se llamaba desde renderStays y no existia, asi que
    en cuanto llegaban resultados de alojamiento el panel reventaba entero con
    "tripTotal is not defined" y no se veia ni un hotel. */
+/* EN QUÉ ZONA DORMIR. La pregunta que se hace al organizar un viaje y que no
+   contestaba nadie: el barrio venía dentro del `area` de cada anuncio
+   («Apartamento en Monastiraki») y solo salía como texto suelto de la ficha.
+
+   Lo calcula el backend (`stays/zonas.py`) juntando precio Y cercanía, que es
+   el mismo criterio con el que ya se ordena la lista. Aquí solo se pinta.
+
+   LO QUE NO SE HACE: recomendar cuando no hay con qué. Si solo hay UNA zona
+   con varios sitios, se dice que es la única y no que es la mejor — una
+   comparación de uno no es una comparación. Y sin zona no se pinta nada. */
+function zonaHTML(zona) {
+  if (!zona || !zona.zona) return "";
+  const cerca =
+    zona.km === null || zona.km === undefined ? "" : ` · ${aPie(zona.km)}`;
+  const comparado =
+    zona.de > 1
+      ? `la que mejor junta precio y centro de ${zona.de} zonas`
+      : "la única zona con varios sitios donde elegir";
+  return `
+    <p class="zona-rec">
+      <b>Dónde dormir: ${esc(zona.zona)}</b>
+      <span>${zona.cuantos} sitio${zona.cuantos === 1 ? "" : "s"} · desde ${fmtEUR(
+        zona.desde
+      )}${cerca}</span>
+      <small>${esc(comparado)}.</small>
+    </p>`;
+}
+
 function tripTotal(resumen) {
   if (!resumen || !resumen.total) return "";
   const filas = [
@@ -478,6 +506,7 @@ function renderStays(data) {
 
   $("#panelBody").innerHTML = `
     ${tripTotal(data.summary)}
+    ${zonaHTML(data.summary && data.summary.zona)}
     <div class="rescan">
       <span>${priced.length} alojamientos · buscado ${esc(desde(data.generated_at))}${
         data.summary?.party ? ` para ${data.summary.party}` : ""
