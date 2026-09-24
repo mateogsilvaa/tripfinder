@@ -186,3 +186,24 @@ def test_cada_tipo_con_su_etiqueta_y_lo_desconocido_como_entero():
     assert holidu.etiqueta("HOUSEBOAT") == "Casa flotante"
     assert holidu.etiqueta("VILLA") == "Villa"
     assert holidu.etiqueta("ALGO_NUEVO") == "Alojamiento entero"
+
+
+def test_una_habitacion_con_el_nombre_en_ingles_no_entra():
+    """De la primera búsqueda de verdad en Ámsterdam: tipo de piso, título de
+    piso, y el nombre decía la verdad."""
+    malos = []
+    for i, nombre in enumerate(["Roomwest Amsterdam - Double room", "Rembrandt - luxury authentic room at Museumplein"]):
+        o = anuncio(str(i))
+        o["details"]["name"] = nombre
+        malos.append(o)
+    assert holidu.ofertas_de(pagina(*malos), adultos=2) == []
+
+
+def test_bedroom_y_rooftop_son_de_pisos_y_pasan():
+    buenos = []
+    for i, nombre in enumerate(["2 bedroom apartment in Jordaan", "Rooftop loft near Dam", "Showroom-style studio"]):
+        o = anuncio(str(i))
+        o["details"]["name"] = nombre
+        buenos.append(o)
+    assert len(holidu.ofertas_de(pagina(*buenos), adultos=2)) == 3
+
