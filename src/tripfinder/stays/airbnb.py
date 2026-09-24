@@ -18,6 +18,7 @@ import binascii
 import json
 import logging
 import re
+import unicodedata
 from collections.abc import Iterator
 from typing import Any
 from urllib.parse import quote
@@ -48,6 +49,25 @@ STATE_RE = re.compile(r'id="data-deferred-state-0"[^>]*>(\{.*?\})</script>', re.
 NUM_RE = re.compile(r"(\d[\d.,]*)")
 NIGHTS_RE = re.compile(r"(\d+)\s*noche", re.IGNORECASE)
 MAX_RESULTS = 18
+
+
+def sin_tildes(texto: str) -> str:
+    """El nombre sin tildes, que es como lo entiende Airbnb.
+
+    Con tildes, Airbnb no encuentra la ciudad y devuelve casas de cualquier
+    parte del mundo. Medido desde un runner de GitHub el 24 de septiembre, con
+    dieciocho anuncios por ciudad:
+
+        «Ámsterdam, Países Bajos»   0 de 18 cerca, mediana a 9.586 km
+        «Amsterdam, Paises Bajos»  18 de 18 cerca, mediana a 3,4 km
+
+    y lo mismo con Múnich, Zúrich o Bélgica. Solo acertaba en las ciudades sin
+    tilde, así que el fallo se veía poco y llevaba ahí desde el principio.
+    Quitar el país tampoco vale: «Roma» a secas se iba a 10.000 km.
+    """
+    return "".join(
+        c for c in unicodedata.normalize("NFKD", texto or "") if not unicodedata.combining(c)
+    )
 
 
 def _walk(node: Any) -> Iterator[dict]:
@@ -207,9 +227,9 @@ class AirbnbProvider(StayProvider):
         return todo
 
     def _pasada(self, req: StayRequest, tipo: str, extra: dict, vistos: set[str]) -> list[StayOffer]:
-        url = SEARCH.format(place=quote(req.slug))
+        url = SEARCH.format(place=quote(sin_tildes(req.slug)))
         params = {
-            "query": req.query,  # sin esto Airbnb a veces ignora la ciudad de la ruta
+            "query": sin_tildes(req.query),  # sin esto Airbnb a veces ignora la ciudad de la ruta
             "checkin": req.checkin,
             "checkout": req.checkout,
             "adults": req.adults,

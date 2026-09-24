@@ -54,3 +54,31 @@ def test_no_se_confunde_con_la_nota_de_cercania():
     """Ya habia un LEJOS_KM de 8 km para la nota; el filtro nuevo no lo pisa."""
     assert ranking.LEJOS_KM == 8.0
     assert ranking.FUERA_DE_LA_CIUDAD_KM == 40.0
+
+
+def test_airbnb_pregunta_sin_tildes(monkeypatch):
+    """Con tildes, Airbnb no encuentra la ciudad: «Ámsterdam, Países Bajos»
+    daba 0 de 18 casas cerca; sin tildes, 18 de 18."""
+    from tripfinder.stays import airbnb
+
+    pedido = {}
+
+    def falso(url, params=None, **kw):
+        pedido.update(url=url, params=params)
+        return ""
+
+    monkeypatch.setattr(airbnb, "get_text", falso)
+    req = StayRequest(city="Ámsterdam", iata="AMS", checkin="2026-11-06", checkout="2026-11-08", country="Países Bajos")
+    airbnb.AirbnbProvider()._pasada(req, "stay", {}, set())
+    assert pedido["url"] == "https://www.airbnb.es/s/Amsterdam--Paises-Bajos/homes"
+    assert pedido["params"]["query"] == "Amsterdam, Paises Bajos"
+
+
+def test_sin_tildes_no_toca_lo_demas():
+    from tripfinder.stays.airbnb import sin_tildes
+
+    assert sin_tildes("Múnich--Alemania") == "Munich--Alemania"
+    assert sin_tildes("Kraków") == "Krakow"
+    assert sin_tildes("Roma") == "Roma"
+    assert sin_tildes("") == ""
+
