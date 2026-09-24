@@ -273,14 +273,16 @@ export function rutaPropia(cods, libres = null, ajuste = {}) {
   const orden = ordenar(cods);
   if (orden.length < MIN_PARADAS) return null;
   const noches = nochesPorDefecto(orden, libres);
-  const nombres = orden.map((c) => CIUDADES[c].ciudad);
-  return construir({
+  const base = {
     id: "tuya",
     propia: true,
-    nombre: "Tu ruta",
-    idea: `${nombres.slice(0, -1).join(", ")} y ${nombres[nombres.length - 1]}, en el orden que menos tren gasta.`,
+    nombre: "",
+    idea: "En el orden que menos tren gasta, y por el camino más corto entre cada dos.",
     paradas: orden.map((c, i) => [c, noches[i]]),
-  }, ajuste);
+  };
+  // El nombre, de la ruta ya hecha: si la has dado la vuelta, también él.
+  const r = construir(base, ajuste);
+  return { ...r, nombre: r.paradas.map((p) => p.ciudad).join(" → ") };
 }
 
 export const rutaHecha = (r) => construir(r);
