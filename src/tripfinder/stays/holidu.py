@@ -64,9 +64,41 @@ def estado_inicial(html: str) -> dict:
     return datos if isinstance(datos, dict) else {}
 
 
-def es_entero(tipo: str) -> bool:
+# Y lo mismo mirando el titulo en español, que es lo que se lee: la primera
+# prueba de verdad trajo en Montpellier una «Casa de huespedes» —habitaciones—
+# con un tipo interno que no lo decia.
+NO_ENTERO_TITULO = ("habitaci", "hotel", "hostal", "albergue", "desayuno", "huesped", "huésped", "b&b")
+
+# La etiqueta que se guarda en `area`, fija y en español. NO el titulo que
+# trae Holidu: a veces es el subtitulo que el anfitrion se inventa, en su idioma
+# («Le Cosy, T3 en Duplex, Centre historique»), y con un «en» dentro
+# `zonas.py` tomaria «Duplex…» por un barrio.
+ETIQUETAS = {
+    "APARTMENT": "Apartamento",
+    "STUDIO": "Estudio",
+    "LOFT": "Loft",
+    "HOUSE": "Casa",
+    "HOLIDAY_HOME": "Casa",
+    "COTTAGE": "Casa",
+    "FARMHOUSE": "Casa rural",
+    "VILLA": "Villa",
+    "CHALET": "Chalet",
+    "BUNGALOW": "Bungalow",
+    "CABIN": "Cabaña",
+    "HOUSEBOAT": "Casa flotante",
+}
+
+
+def es_entero(tipo: str, titulo: str = "") -> bool:
     tipo = (tipo or "").upper()
-    return bool(tipo) and not any(t in tipo for t in NO_ENTERO)
+    if not tipo or any(t in tipo for t in NO_ENTERO):
+        return False
+    titulo = (titulo or "").lower()
+    return not any(t in titulo for t in NO_ENTERO_TITULO)
+
+
+def etiqueta(tipo: str) -> str:
+    return ETIQUETAS.get((tipo or "").upper(), "Alojamiento entero")
 
 
 def _fotos(oferta: dict) -> list[str]:
@@ -94,7 +126,8 @@ def _nota(oferta: dict) -> float | None:
         return None
     if v <= 0:
         return None
-    # Holidu da notas sobre 10 o sobre 100 segun la fuente; el resto del
+    # En crudo llega sobre 100 —`{"value": 86, "count": 98}`, visto en Roma—,
+    # pero se admite sobre 10 por si alguna fuente la da asi. El resto del
     # proyecto las guarda sobre 5.
     if v > 10:
         v = v / 20
@@ -120,7 +153,7 @@ def a_oferta(oferta: dict, adultos: int = 1) -> StayOffer | None:
     if not isinstance(oferta, dict) or oferta.get("isAvailable") is False:
         return None
     detalles = oferta.get("details") or {}
-    if not es_entero(detalles.get("apartmentType", "")):
+    if not es_entero(detalles.get("apartmentType", ""), detalles.get("apartmentTypeTitle", "")):
         return None
     try:
         caben = int(detalles.get("guestsCount") or 0)
@@ -158,10 +191,10 @@ def a_oferta(oferta: dict, adultos: int = 1) -> StayOffer | None:
         price_per_night=round(noche, 2) if noche else None,
         rating=_nota(oferta),
         reviews=_resenas(oferta),
-        # Solo el tipo, sin «en …»: la `location.name` de Holidu es la comarca
-        # («Costa Holandesa»), no el barrio, y `zonas.py` la tomaria por uno y
+        # Solo el tipo, y sin «en …». La `location.name` de Holidu es la
+        # comarca («Costa Holandesa»), no el barrio: si fuera aqui, `zonas.py`
         # agruparia la ciudad entera en una sola «zona».
-        area=str(detalles.get("apartmentTypeTitle") or ""),
+        area=etiqueta(detalles.get("apartmentType", "")),
         image=fotos[0] if fotos else "",
         images=fotos,
         note=f"vía {fuente}" if fuente else "",

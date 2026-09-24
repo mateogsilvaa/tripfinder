@@ -132,6 +132,8 @@ def test_la_comarca_no_se_cuela_como_barrio():
 
 def test_las_notas_se_pasan_a_escala_de_cinco():
     assert holidu._nota({"rating": {"value": 9.2, "count": 40}}) == 4.6
+    # Así llega de verdad (Roma, 24 sep): sobre 100.
+    assert holidu._nota({"rating": {"count": 98, "value": 86}}) == 4.3
     assert holidu._nota({"rating": {"value": 92}}) == 4.6
     assert holidu._nota({"rating": {"value": 4.8}}) == 4.8
     assert holidu._nota({"rating": None}) is None
@@ -156,3 +158,31 @@ def test_el_proveedor_pide_la_ciudad_y_las_fechas(monkeypatch):
     assert pedido["url"] == "https://www.holidu.es/s/%C3%81msterdam"
     assert pedido["params"] == {"checkin": "2026-11-06", "checkout": "2026-11-08", "adults": 2}
     assert [s.name for s in ofertas] == ["Piso 1"]
+
+
+def test_casa_de_huespedes_no_entra_aunque_su_tipo_no_lo_diga():
+    """Lo trajo la primera prueba de verdad, en Montpellier: una «Casa de
+    huéspedes» —habitaciones— con un tipo interno que no lo decía."""
+    raro = anuncio("1", tipo="HOLIDAY_HOME")
+    raro["details"]["apartmentTypeTitle"] = "Casa de huéspedes"
+    desayuno = anuncio("2", tipo="APARTMENT")
+    desayuno["details"]["apartmentTypeTitle"] = "Alojamiento y desayuno"
+    assert holidu.ofertas_de(pagina(raro, desayuno), adultos=2) == []
+
+
+def test_un_subtitulo_en_frances_no_se_cuela_como_barrio():
+    """También de Montpellier: el `apartmentTypeTitle` a veces es el subtítulo
+    que se inventa el anfitrión, en su idioma, y con un «en» dentro."""
+    from tripfinder.stays.zonas import barrio
+
+    o = anuncio("1", tipo="APARTMENT")
+    o["details"]["apartmentTypeTitle"] = "Le Cosy, T3 en Duplex, Centre historique"
+    [s] = holidu.ofertas_de(pagina(o), adultos=2)
+    assert s.area == "Apartamento"
+    assert barrio(s.area, "Montpellier") == ""
+
+
+def test_cada_tipo_con_su_etiqueta_y_lo_desconocido_como_entero():
+    assert holidu.etiqueta("HOUSEBOAT") == "Casa flotante"
+    assert holidu.etiqueta("VILLA") == "Villa"
+    assert holidu.etiqueta("ALGO_NUEVO") == "Alojamiento entero"
