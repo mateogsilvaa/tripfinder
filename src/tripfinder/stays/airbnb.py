@@ -39,6 +39,11 @@ PASADAS = (
     ("stay", {}),
     ("hotel", {"room_types[]": "Hotel room"}),
 )
+# Y cuando solo valen alojamientos enteros, una sola pasada y filtrada POR
+# AIRBNB. Pedirlo todo y filtrar aqui dejaba en cuatro o cinco pisos lo que
+# eran dieciocho anuncios mezclados con habitaciones: se tiraba lo que se habia
+# ido a buscar.
+PASADAS_ENTEROS = (("stay", {"room_types[]": "Entire home/apt"}),)
 STATE_RE = re.compile(r'id="data-deferred-state-0"[^>]*>(\{.*?\})</script>', re.DOTALL)
 NUM_RE = re.compile(r"(\d[\d.,]*)")
 NIGHTS_RE = re.compile(r"(\d+)\s*noche", re.IGNORECASE)
@@ -193,7 +198,7 @@ class AirbnbProvider(StayProvider):
     def search(self, req: StayRequest) -> list[StayOffer]:
         vistos: set[str] = set()
         todo: list[StayOffer] = []
-        for tipo, extra in PASADAS:
+        for tipo, extra in PASADAS_ENTEROS if req.solo_enteros else PASADAS:
             try:
                 todo += self._pasada(req, tipo, extra, vistos)
             except Exception as exc:  # noqa: BLE001 - una pasada fallida no tumba la otra
