@@ -6,11 +6,6 @@
       "muestras": 3,
       "nombre": "Lanzarote"
     },
-    "AGA": {
-      "noche": 28.0,
-      "muestras": 3,
-      "nombre": "Agadir"
-    },
     "ATH": {
       "noche": 19.5,
       "muestras": 3,
@@ -51,8 +46,8 @@
       "muestras": 3
     },
     "Marruecos": {
-      "noche": 27.5,
-      "muestras": 6
+      "noche": 27.0,
+      "muestras": 3
     },
     "Noruega": {
       "noche": 89.67,

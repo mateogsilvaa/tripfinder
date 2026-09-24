@@ -299,16 +299,20 @@
     "ryanair-MAD-SOF-20261120": {
       "price": 74.79,
       "date": "2026-09-23"
+    },
+    "ryanair-MAD-MAN-20270122": {
+      "price": 85.98,
+      "date": "2026-09-24"
     }
   },
   "digest": {
-    "mateogonsilva@gmail.com": "2026-09-23",
-    "tytus.zasowski@gmail.com": "2026-09-23",
-    "pedrotic.cjn@gmail.com": "2026-09-23",
-    "belulaciente@gmail.com": "2026-09-23"
+    "mateogonsilva@gmail.com": "2026-09-24",
+    "tytus.zasowski@gmail.com": "2026-09-24",
+    "pedrotic.cjn@gmail.com": "2026-09-24",
+    "belulaciente@gmail.com": "2026-09-24"
   },
   "watch_digest": {
     "mateogonsilva@gmail.com": "2026-09-16",
-    "pedrotic.cjn@gmail.com": "2026-09-23"
+    "pedrotic.cjn@gmail.com": "2026-09-24"
   }
 }
