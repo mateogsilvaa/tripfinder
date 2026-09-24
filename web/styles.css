@@ -2241,6 +2241,18 @@ h1 em { font-size: 1.3em; }
   cursor: pointer;
 }
 .ver-clave:hover { color: var(--ink); border-color: var(--ink); }
+/* La pildora de "ver" mide 28 px de alto y tiene que seguir midiendo eso: es un
+   detalle dentro del campo, no un boton de la pagina. Lo que se agranda es el
+   area de toque, con el mismo truco que `.fav` y `.flap-boton` — un `::after`
+   invisible de 44 px centrado encima. */
+.ver-clave::after {
+  content: "";
+  position: absolute;
+  top: 50%; left: 50%;
+  width: max(100%, var(--tap-min));
+  height: max(100%, var(--tap-min));
+  transform: translate(-50%, -50%);
+}
 
 .dest-list { overflow-y: auto; padding-bottom: 4px; }
 .pais { border-top: 1px solid var(--hair); padding: 12px 0; }
@@ -2978,6 +2990,58 @@ h1 em { font-size: 1.3em; }
   .stats { grid-template-columns: 1fr 1fr; }
   .modal-caja { padding: 18px; }
   .panel { width: 100%; border-left: none; }
+}
+
+/* LO QUE SE PULSA CON EL DEDO.
+
+   `--tap-min: 44px` estaba desde el primer dia, con el comentario «area tactil
+   minima, aunque se vea mas pequeño», y estaba puesto donde se penso para el
+   pulgar: los chips, las ciudades del selector, los favoritos. Pero no en la
+   barra de arriba ni en los formularios, que es por donde se entra.
+
+   Medido a 390 px: los desplegables de buscar, 21 px de alto; el campo de la
+   cifra, 23; los enlaces del nav, 28; el boton de cerrar un panel, 32; el del
+   tema, 38; la cuenta, 42. Ninguno llegaba, y son justo los seis sitios que se
+   pulsan primero.
+
+   Solo en movil. En un escritorio con raton los 44 px no hacen falta y
+   convertirian el formulario compacto de la portada en un formulario alto:
+   los campos siguen siendo la linea fina de siempre. Lo vigila
+   `tests/web/dedo.spec.js`, que recorre todo lo pulsable de cada pagina. */
+@media (max-width: 760px) {
+  /* La marca es un enlace a la portada. No crece la barra: la fila ya mide 44
+     por la cuenta y el tema. */
+  .marca { padding: 8px 0; }
+
+  /* EL NAV. Pasa de 28 a 44 y la barra crece nueve pixeles, contando que se le
+     quitan los siete de abajo que ahora pone el propio enlace. Es lo que vale
+     no fallar el tiro en la unica puerta a las dos herramientas. «Feed» mide 33
+     px de ancho, de ahi el `min-width`. */
+  .topbar-in { padding-bottom: 0; }
+  .zona {
+    padding: 12px 0;
+    min-width: var(--tap-min);
+    text-align: center;
+  }
+
+  .tema { width: var(--tap-min); height: var(--tap-min); }
+  .cuenta, #tfCuenta { min-height: var(--tap-min); }
+
+  /* LOS CAMPOS DE BUSCAR Y SEGUIR. La celda ya medía 54 px —rotulo, hueco y
+     campo— pero el campo ocupaba solo los 21 de abajo: el resto de la celda no
+     hacia nada al tocarlo. Con `flex: 1` el campo se estira hasta llenar su
+     celda, asi que se toca donde se ve. El texto no se mueve: un `select` y un
+     `input` centran su contenido en la caja. */
+  .finder-form input,
+  .finder-form select,
+  .finder-form .date-btn {
+    flex: 1;
+    min-height: var(--tap-min);
+  }
+
+  /* Cerrar. Lo primero que se busca al abrir una hoja, y era el boton mas
+     pequeño de la casa. */
+  .modal-head button, [data-cerrar] { min-height: var(--tap-min); }
 }
 
 @media (max-width: 420px) {
