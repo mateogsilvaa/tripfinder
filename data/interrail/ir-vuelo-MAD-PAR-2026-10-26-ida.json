@@ -1,0 +1,28 @@
+{
+  "id": "ir-vuelo-MAD-PAR-2026-10-26-ida",
+  "origen": "MAD",
+  "aeropuertos": [
+    "CDG",
+    "ORY",
+    "BVA"
+  ],
+  "fecha": "2026-10-26",
+  "sentido": "ida",
+  "generated_at": "2026-09-26",
+  "legs": [
+    {
+      "provider": "ryanair",
+      "airline": "Ryanair",
+      "origin": "MAD",
+      "destination": "BVA",
+      "date": "2026-10-26",
+      "time": "13:20",
+      "price": 49.42,
+      "currency": "EUR",
+      "destination_name": "París",
+      "destination_country": "Francia",
+      "origin_name": "",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-10-26&dateIn=&originIata=MAD&destinationIata=BVA&isReturn=false&discount=0"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "id": "ir-vuelo-MAD-ROM-2026-11-09-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "FCO",
+    "CIA"
+  ],
+  "fecha": "2026-11-09",
+  "sentido": "vuelta",
+  "generated_at": "2026-09-26",
+  "legs": [
+    {
+      "provider": "ryanair",
+      "airline": "Ryanair",
+      "origin": "FCO",
+      "destination": "MAD",
+      "date": "2026-11-09",
+      "time": "06:00",
+      "price": 81.99,
+      "currency": "EUR",
+      "destination_name": "Roma",
+      "destination_country": "Italia",
+      "origin_name": "",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-09&dateIn=&originIata=FCO&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  ]
+}

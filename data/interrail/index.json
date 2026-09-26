@@ -1,9 +1,11 @@
 {
-  "generated_at": "2026-09-24",
+  "generated_at": "2026-09-26",
   "vuelos": [
     "ir-vuelo-MAD-BGO-2027-03-29-vuelta",
     "ir-vuelo-MAD-BGO-2027-07-28-vuelta",
     "ir-vuelo-MAD-CPH-2027-03-20-ida",
-    "ir-vuelo-MAD-CPH-2027-07-19-ida"
+    "ir-vuelo-MAD-CPH-2027-07-19-ida",
+    "ir-vuelo-MAD-PAR-2026-10-26-ida",
+    "ir-vuelo-MAD-ROM-2026-11-09-vuelta"
   ]
 }
