@@ -31,11 +31,19 @@
 import { POLL_EVERY_MS, esc, escURL, fetchJSON, fmtDate, parseISO } from "./base.js";
 import { ORIGENES } from "./busqueda.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso, wireEntrar } from "./disparador.js";
-import { CIUDADES, CONEXIONES, RUTAS, ZONAS } from "./interrail-datos.js";
+import { CIUDADES, CONEXIONES, ESTACIONES, NOCTURNOS, RUTAS, ZONAS } from "./interrail-datos.js";
+import { comoFechaICS, descargar, evento, finDeTramo } from "./compartir.js";
 import { edreamsURL } from "./precios.js";
-import { enHoras } from "./trenes.js";
 
-export { CIUDADES, RUTAS };
+export { CIUDADES, NOCTURNOS, RUTAS };
+
+/* «2 h 21», «50 min». Sin ceros a la izquierda y sin decir «0 h». */
+export function enHoras(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (!h) return `${m} min`;
+  return m ? `${h} h ${String(m).padStart(2, "0")}` : `${h} h`;
+}
 
 /* Los pases que se venden: días de viaje dentro de un mes, o de dos. */
 export const BONOS = [4, 5, 7, 10, 15];
@@ -120,6 +128,12 @@ export function camino(desde, hasta) {
   tramo.pasa = tramo.pasaCods.map((c) => CIUDADES[c].ciudad);
   CAMINOS.set(clave, tramo);
   return tramo;
+}
+
+/* El tren nocturno directo entre dos ciudades, en ese sentido, o null. */
+export function nocturno(a, b) {
+  const n = NOCTURNOS.find(([x, y]) => (x === a && y === b) || (x === b && y === a));
+  return n ? { sale: n[2], llega: n[3], litera: n[4] } : null;
 }
 
 /* Todas las permutaciones, con la primera fija o no. Con ocho ciudades son
@@ -252,7 +266,17 @@ export function construir(base, a = ajusteDe(base.id)) {
   }
   const tramos = [];
   for (let i = 0; i < paradas.length - 1; i++) {
-    tramos.push(camino(paradas[i].cod, paradas[i + 1].cod));
+    const [x, y] = [paradas[i].cod, paradas[i + 1].cod];
+    const t = camino(x, y);
+    const n = nocturno(x, y);
+    /* DE NOCHE. Se sale la última noche que tocaba dormir en la ciudad y se
+       llega por la mañana: esa noche no hay cama que pagar, pero sí litera. Las
+       fechas de lo que viene detrás no se mueven. */
+    if (t && n && (a.noche?.[`${x}>${y}`] || a.noche?.[`${y}>${x}`])) {
+      tramos.push({ ...t, noche: n, reserva: n.litera, billete: [n.litera[0] + 40, n.litera[1] + 110], pasa: [], pasaCods: [] });
+    } else {
+      tramos.push(t ? { ...t, nocturnoPosible: n } : t);
+    }
   }
   return {
     ...base,
@@ -261,7 +285,12 @@ export function construir(base, a = ajusteDe(base.id)) {
     fuera,
     rev: !!a.rev,
     roto: tramos.some((t) => !t),
-    ajustada: !!(a.rev || a.fuera?.length || (a.noches && Object.keys(a.noches).length)),
+    ajustada: !!(
+      a.rev ||
+      a.fuera?.length ||
+      (a.noches && Object.keys(a.noches).length) ||
+      (a.noche && Object.keys(a.noche).length)
+    ),
     entra: puerta(paradas[0]),
     sale: puerta(paradas[paradas.length - 1]),
   };
@@ -374,21 +403,30 @@ export function fechas(r, ida) {
 export const vueloURL = (desde, hasta, dia, adultos = 1) =>
   edreamsURL({ origin: desde, destination: hasta, depart_date: dia, adults: adultos });
 
+/* Cada parada con su llegada y su salida. `camaNoches` son las que se duermen
+   en cama: una menos si se sale de ella en tren nocturno. */
 export function paradasConFechas(r, ida) {
   if (!parseISO(ida)) return [];
   let dia = ida;
-  return r.paradas.map((p) => {
+  return r.paradas.map((p, i) => {
+    const deNoche = !!(r.tramos[i] && r.tramos[i].noche);
+    const camaNoches = deNoche ? p.noches - 1 : p.noches;
     const sale = sumarDias(dia, p.noches);
-    const out = { ...p, checkin: dia, checkout: sale };
+    const out = { ...p, checkin: dia, checkout: sumarDias(dia, camaNoches), sale, camaNoches, deNoche };
     dia = sale;
     return out;
   });
 }
 
+/* Las paradas donde hay que buscar cama (una de una noche que se deja en
+   tren nocturno no la tiene: se llega por la mañana y se sale por la noche). */
+export const conCama = (paradas) => paradas.filter((p) => p.camaNoches > 0);
+
 /* La cama de una parada depende de la ciudad, la llegada, las noches y
    cuántos vais. NO de la ruta: Praga del 3 al 5 es la misma cama venga uno de
    Berlín o de Viena, y así lo que ya se buscó sirve para cualquier ruta. */
-export const idParada = (p, adultos) => `ir-${p.cod}-${p.checkin}-${p.noches}n-${adultos}`;
+export const idParada = (p, adultos) =>
+  `ir-${p.cod}-${p.checkin}-${p.camaNoches ?? p.noches}n-${adultos}`;
 
 export const idVuelo = (origen, cod, dia, sentido) => `ir-vuelo-${origen}-${cod}-${dia}-${sentido}`;
 
@@ -408,14 +446,50 @@ export function mejorVuelo(datos) {
 }
 
 const HABITACION = /^(habitaci[oó]n|room in|private room|shared room|hotel room|cama en|bed in)/i;
+/* Y en el nombre, por palabra entera: la primera ruta de verdad trajo «Numa |
+   Habitación estándar con balcón» en Berlín con un `area` de apartamento.
+   «bedroom» o «rooftop» son de pisos y pasan. Es la misma lista que
+   `stays/enteros.py`; aquí también porque los ficheros ya guardados no pasan
+   por el servidor otra vez. */
+const HABITACION_EN_NOMBRE =
+  /\b(room|rooms|habitaci[oó]n|habitaciones|chambre|zimmer|camera|camere|dorm|hostel|hostal|albergue|b&b|bed and breakfast|pensi[oó]n)\b/i;
+
+/* El mismo anuncio con otra consulta en la dirección es el mismo anuncio. */
+const claveCama = (s) => {
+  try {
+    const u = new URL(s.url);
+    return `${s.provider}|${u.host}${u.pathname}`.toLowerCase();
+  } catch {
+    return `${s.provider}|${s.url}`;
+  }
+};
+
+/* Por debajo de un 30 % de la mediana de la parada no es un piso entero: en
+   Ámsterdam, un barco hotel a 50 € dos noches con los pisos entre 300 y 800. */
+export function sinImposibles(lista) {
+  const precios = lista.map((s) => s.price_total).sort((a, b) => a - b);
+  if (precios.length < 4) return lista;
+  const mitad = Math.floor(precios.length / 2);
+  const mediana = precios.length % 2 ? precios[mitad] : (precios[mitad - 1] + precios[mitad]) / 2;
+  return lista.filter((s) => s.price_total >= mediana * 0.3);
+}
 
 /* Lo que se puede elegir en una parada: sitios enteros, con precio y cerca
-   del centro. Lo que no dice dónde está se queda (no es culpa suya), pero va
-   detrás de lo que sí. Si NADA queda cerca, se enseña lo más cercano que haya
-   hasta el doble de la distancia, y la tarjeta lo avisa. */
+   del centro, sin repetir. Lo que no dice dónde está se queda (no es culpa
+   suya), pero va detrás de lo que sí. Si NADA queda cerca, se enseña lo más
+   cercano que haya hasta el doble de la distancia, y la tarjeta lo avisa. */
 export function opciones(datos) {
-  const enteras = ((datos && datos.stays) || []).filter(
-    (s) => s.kind === "stay" && s.price_total && !HABITACION.test(String(s.area || "").trim())
+  const vistas = new Set();
+  const enteras = sinImposibles(
+    ((datos && datos.stays) || []).filter((s) => {
+      if (s.kind !== "stay" || !s.price_total) return false;
+      if (HABITACION.test(String(s.area || "").trim())) return false;
+      if (HABITACION_EN_NOMBRE.test(String(s.name || ""))) return false;
+      const k = claveCama(s);
+      if (vistas.has(k)) return false;
+      vistas.add(k);
+      return true;
+    })
   );
   const km = (s) => (Number.isFinite(s.km_centro) ? s.km_centro : null);
   const cerca = enteras.filter((s) => km(s) === null || km(s) <= MAX_KM);
@@ -442,7 +516,7 @@ export function elegir(id, url) {
 export function alojamiento(r, ida, adultos, camas) {
   let total = 0;
   let faltan = 0;
-  for (const p of paradasConFechas(r, ida)) {
+  for (const p of conCama(paradasConFechas(r, ida))) {
     const id = idParada(p, adultos);
     const s = elegida(id, camas[id]);
     if (s) total += s.price_total;
@@ -505,7 +579,7 @@ const ABIERTOS = new Set();
 const AUTO_FALLIDAS = new Set();
 
 const ESPERA_MAX_MS = 40 * 60 * 1000;
-const firma = (r) => r.paradas.map((p) => `${p.cod}${p.noches}`).join("");
+const firma = (r) => r.paradas.map((p, i) => `${p.cod}${p.noches}${r.tramos[i]?.noche ? "n" : ""}`).join("");
 const claveRuta = (r, ctx) => `${ctx.ida}|${ctx.adultos}|${ctx.origen}|${firma(r)}`;
 const pendiente = (r, ctx) => {
   const desde = leer(CLAVE_PENDIENTES)[claveRuta(r, ctx)];
@@ -520,27 +594,81 @@ function reservaTxt(t) {
     : `<span class="ir-libre">sin reserva</span>`;
 }
 
-function vueloHTML(texto, desde, hasta, dia, ctx, m, buscando) {
+const fechaCorta = (iso) => (iso ? fmtDate(iso, true) : "");
+
+/* ------------------------------------------------ los vuelos, flexibles
+
+   El fichero de cada vuelo trae, además del día exacto, el más barato de cada
+   día entre tres antes y tres después (Ryanair y Wizz). Si moverse sale a
+   cuenta —diez euros o más por persona, o que ese día no haya vuelo— se
+   propone, y un toque lo hace: la ida mueve el viaje entero; la vuelta, las
+   noches de la última parada. */
+const AHORRO_MINIMO = 10;
+
+export function otrosDias(datos, dia, precioActual) {
+  const dias = (datos && datos.dias) || {};
+  return Object.entries(dias)
+    .filter(([d, v]) => d !== dia && v && Number.isFinite(v.price))
+    .filter(([, v]) => !Number.isFinite(precioActual) || v.price <= precioActual - AHORRO_MINIMO)
+    .sort((a, b) => a[1].price - b[1].price)
+    .slice(0, 3)
+    .map(([d, v]) => ({ dia: d, vuelo: v, ahorro: Number.isFinite(precioActual) ? precioActual - v.price : null }));
+}
+
+/* Cuántos días se mueve la vuelta, y si la última parada lo aguanta. */
+function vueltaPosible(r, delta) {
+  const ultima = r.paradas[r.paradas.length - 1];
+  const n = ultima.noches + delta;
+  return n >= MIN_NOCHES && n <= MAX_NOCHES;
+}
+
+function vueloHTML(sentido, r, ctx, v, buscando) {
+  const origen = esc(nombreOrigen(ctx.origen));
+  const titulo =
+    sentido === "ida" ? `${origen} → ${esc(r.entra.ciudad)}` : `${esc(r.sale.ciudad)} → ${origen}`;
+  const [desde, hasta] = sentido === "ida" ? [ctx.origen, r.entra.iata] : [r.sale.iata, ctx.origen];
+  const dia = v ? v.fecha : "";
+  const datos = v ? VUELOS[v.id] : undefined;
+  const m = v ? mejorVuelo(datos) : undefined;
   const url = dia ? vueloURL(desde, hasta, dia, ctx.adultos) : "";
-  let precio = "";
+  let estado = "";
   if (m) {
     const reservar = m.deep_link
       ? ` · <a href="${escURL(m.deep_link)}" target="_blank" rel="noopener">reservar</a>`
       : "";
-    precio = `<small class="ir-vuelo-precio"><b>${eur(m.price)}</b> por persona · ${esc(m.airline)} ${esc(
-      m.time || ""
-    )} · ${esc(m.origin)} → ${esc(m.destination)}${reservar}</small>`;
+    estado = `<p class="ir-ev-meta"><b>${eur(m.price)}</b> por persona · ${esc(m.airline)} ${esc(m.time || "")} ·
+      ${esc(m.origin)} → ${esc(m.destination)}${reservar}</p>`;
   } else if (m === null) {
-    precio = `<small class="ir-vuelo-precio sin">Ryanair no vuela ese día: mira otras compañías en el enlace.</small>`;
+    estado = `<p class="ir-ev-meta sin">Ni Ryanair ni Wizz vuelan ese día: mira otros días abajo o en el enlace.</p>`;
   } else if (buscando) {
-    precio = `<small class="ir-vuelo-precio"><span class="spin"></span>buscando el vuelo…</small>`;
+    estado = `<p class="ir-ev-meta"><span class="spin"></span>buscando el vuelo…</p>`;
   }
-  return `<li class="ir-vuelo"><span>✈ ${texto}${
-    dia ? ` <b>${esc(fmtDate(dia, true))}</b>` : ""
-  }${precio}</span>${
-    url ? `<a class="btn ghost small" href="${escURL(url)}" target="_blank" rel="noopener">Ver vuelos</a>` : ""
-  }</li>`;
+  const otros = otrosDias(datos, dia, m ? m.price : NaN).filter(
+    (o) => sentido === "ida" || vueltaPosible(r, nochesEntre(dia, o.dia) ?? -nochesEntre(o.dia, dia))
+  );
+  const chips = otros.length
+    ? `<div class="ir-otros-dias"><span>${m ? "Más barato otro día:" : "Hay vuelo otros días:"}</span>${otros
+        .map(
+          (o) => `<button type="button" class="ir-dia-chip" data-ir-mover="${sentido}" data-dia="${esc(o.dia)}">
+            ${esc(fechaCorta(o.dia))} · <b>${eur(o.vuelo.price)}</b>${
+              o.ahorro ? ` <small>−${eur(o.ahorro)}</small>` : ""
+            }</button>`
+        )
+        .join("")}</div>`
+    : "";
+  return `<li class="ir-ev ir-ev-vuelo">
+      <span class="ir-ev-dia">${esc(fechaCorta(dia))}</span>
+      <span class="ir-ev-ico" aria-hidden="true">✈</span>
+      <div class="ir-ev-cuerpo">
+        <p class="ir-ev-titulo">${titulo}</p>
+        ${estado}
+        ${chips}
+      </div>
+      ${url ? `<a class="btn ghost small ir-ev-accion" href="${escURL(url)}" target="_blank" rel="noopener">Ver vuelos</a>` : ""}
+    </li>`;
 }
+
+/* ------------------------------------------------------------- la cama */
 
 const fuente = (s) => esc([s.provider, s.note].filter(Boolean).join(" · "));
 
@@ -553,31 +681,38 @@ export function aPie(km) {
   return ` · <span class="ir-lejos">a ${km.toFixed(1).replace(".", ",")} km del centro</span>`;
 }
 
+const nota = (s) =>
+  Number.isFinite(s.rating) ? ` · ★ ${String(s.rating).replace(".", ",")}${s.reviews ? ` (${s.reviews})` : ""}` : "";
+
 function camaHTML(p, ctx, buscando) {
+  if (!p.camaNoches) {
+    return `<div class="ir-cama vacia">Sin cama: llegas por la mañana y sales esa noche en tren nocturno.</div>`;
+  }
   const id = idParada(p, ctx.adultos);
   const datos = CAMAS[id];
   if (datos === undefined || datos === null) {
     if (!buscando) return "";
-    return `<li class="ir-cama esperando"><span class="spin"></span>buscando pisos enteros cerca del centro…</li>`;
+    return `<div class="ir-cama esperando"><span class="spin"></span>buscando pisos enteros cerca del centro…</div>`;
   }
   const lista = opciones(datos);
   const s = elegida(id, datos);
-  if (!s) return `<li class="ir-cama vacia">Sin pisos enteros cerca del centro para esas fechas.</li>`;
+  if (!s) return `<div class="ir-cama vacia">Sin pisos enteros cerca del centro para esas fechas.</div>`;
   const lejos = Number.isFinite(s.km_centro) && s.km_centro > MAX_KM;
   const otras = lista.filter((x) => x.url !== s.url);
   const foto = s.image
-    ? `<img src="${escURL(s.image)}" alt="" loading="lazy" decoding="async" width="56" height="56">`
+    ? `<img src="${escURL(s.image)}" alt="" loading="lazy" decoding="async" width="88" height="66">`
     : "";
+  const porNoche = p.camaNoches ? s.price_total / p.camaNoches : null;
   return `
-    <li class="ir-cama" data-parada="${esc(id)}">
+    <div class="ir-cama" data-parada="${esc(id)}">
       ${lejos ? `<p class="ir-cama-aviso">No quedaba nada libre más cerca del centro para esas fechas.</p>` : ""}
       <div class="ir-cama-sel${foto ? "" : " sin-foto"}">
         ${foto}
         <div>
           <a href="${escURL(s.url)}" target="_blank" rel="noopener">${esc(s.name)}</a>
-          <small>${fuente(s)}${aPie(s.km_centro)}</small>
+          <small>${fuente(s)}${aPie(s.km_centro)}${nota(s)}</small>
         </div>
-        <b>${eur(s.price_total)}</b>
+        <b>${eur(s.price_total)}<small>${porNoche ? `${eur(porNoche)}/noche` : ""}</small></b>
       </div>
       ${
         otras.length
@@ -587,7 +722,7 @@ function camaHTML(p, ctx, buscando) {
                  .map(
                    (o) => `<li>
                      <button type="button" class="ir-elegir" data-parada="${esc(id)}" data-url="${esc(o.url)}">
-                       <span>${esc(o.name)}<small>${fuente(o)}${aPie(o.km_centro)}</small></span>
+                       <span>${esc(o.name)}<small>${fuente(o)}${aPie(o.km_centro)}${nota(o)}</small></span>
                        <b>${eur(o.price_total)}</b>
                      </button></li>`
                  )
@@ -595,8 +730,99 @@ function camaHTML(p, ctx, buscando) {
              </details>`
           : ""
       }
+    </div>`;
+}
+
+/* ------------------------------------------------------------- el tren */
+
+/* Los horarios de verdad, del día que toca: el planificador de la Deutsche
+   Bahn cubre casi toda Europa. De día desde las ocho; de noche, desde la hora
+   del nocturno. */
+export function horariosURL(a, b, dia, hora = "08:00") {
+  const so = encodeURIComponent(ESTACIONES[a] || CIUDADES[a]?.ciudad || a);
+  const zo = encodeURIComponent(ESTACIONES[b] || CIUDADES[b]?.ciudad || b);
+  return `https://int.bahn.de/en/buchung/fahrplan/suche#sts=true&so=${so}&zo=${zo}&hd=${dia}T${hora}:00&kl=2`;
+}
+
+function tramoHTML(r, i, p, siguiente) {
+  const t = r.tramos[i];
+  const dia = p.checkout && p.deNoche ? p.checkout : p.sale;
+  if (!t) {
+    return `<li class="ir-ev ir-ev-tren ir-roto"><span class="ir-ev-dia"></span><span class="ir-ev-ico" aria-hidden="true">!</span>
+      <div class="ir-ev-cuerpo"><p class="ir-ev-titulo">No hay tren entre ${esc(p.ciudad)} y ${esc(siguiente.ciudad)} en el mapa.</p></div></li>`;
+  }
+  const clave = `${p.cod}>${siguiente.cod}`;
+  const horas = t.noche
+    ? `de noche: sales ≈ ${esc(t.noche.sale)}, llegas ≈ ${esc(t.noche.llega)} · ${reservaTxt(t)} (litera)`
+    : `≈ ${esc(enHoras(t.min))} · ${reservaTxt(t)}`;
+  const pasa = !t.noche && t.pasa.length ? `<p class="ir-ev-meta">Pasas por ${esc(t.pasa.join(", "))} sin parar.</p>` : "";
+  const largo =
+    !t.noche && t.min > TRAMO_LARGO_MIN && t.pasaCods.length
+      ? `<div class="ir-largo"><span>Es un día largo de tren.</span>${t.pasaCods
+          .map(
+            (c) =>
+              `<button type="button" class="btn ghost small" data-ir-parar="${esc(c)}">Parar en ${esc(
+                CIUDADES[c].ciudad
+              )}</button>`
+          )
+          .join("")}</div>`
+      : "";
+  const n = t.noche || t.nocturnoPosible;
+  const nocturno = n
+    ? t.noche
+      ? `<div class="ir-nocturno"><span>🌙 Noche en el tren: una noche menos de piso.</span>
+           <button type="button" class="btn ghost small" data-ir-noche="${esc(clave)}">Mejor de día</button></div>`
+      : p.noches > 0
+        ? `<div class="ir-nocturno"><span>🌙 Hay tren nocturno (sale ≈ ${esc(n.sale)}, llega ≈ ${esc(n.llega)}):
+             te ahorras una noche de piso; litera con el pase ≈ ${horquilla(n.litera)}.</span>
+           <button type="button" class="btn ghost small" data-ir-noche="${esc(clave)}">Ir de noche</button></div>`
+        : ""
+    : "";
+  return `<li class="ir-ev ir-ev-tren${t.noche ? " de-noche" : ""}">
+      <span class="ir-ev-dia">${esc(fechaCorta(p.deNoche ? p.checkout : p.sale))}</span>
+      <span class="ir-ev-ico" aria-hidden="true">${t.noche ? "🌙" : "🚆"}</span>
+      <div class="ir-ev-cuerpo">
+        <p class="ir-ev-titulo">${esc(p.ciudad)} → ${esc(siguiente.ciudad)}</p>
+        <p class="ir-ev-meta">${horas} · billete suelto ≈ ${horquilla(t.billete)}</p>
+        ${pasa}
+        ${largo}
+        ${nocturno}
+      </div>
+      ${
+        dia
+          ? `<a class="btn ghost small ir-ev-accion" href="${escURL(
+              horariosURL(p.cod, siguiente.cod, dia, t.noche ? t.noche.sale : "08:00")
+            )}" target="_blank" rel="noopener">Horarios</a>`
+          : ""
+      }
     </li>`;
 }
+
+/* ------------------------------------------------- el viaje, día a día */
+
+function itinerarioHTML(r, ctx, esperando) {
+  const paradas = paradasConFechas(r, ctx.ida);
+  const [vIda, vVuelta] = vuelosDe(r, ctx.ida, ctx.origen);
+  const partes = [vueloHTML("ida", r, ctx, vIda, esperando)];
+  r.paradas.forEach((p0, i) => {
+    const p = paradas[i] || { ...p0, camaNoches: p0.noches };
+    const hasta = p.sale ? ` → ${esc(fechaCorta(p.deNoche ? p.checkout : p.sale))}` : "";
+    partes.push(`<li class="ir-ev ir-ev-ciudad">
+        <span class="ir-ev-dia">${esc(fechaCorta(p.checkin))}</span>
+        <span class="ir-ev-ico" aria-hidden="true">●</span>
+        <div class="ir-ev-cuerpo">
+          <p class="ir-ev-titulo ir-parada"><b>${esc(p.ciudad)}</b>
+            <small>${plural(p.noches, "noche", "noches")}${p.checkin ? ` · ${esc(fechaCorta(p.checkin))}${hasta}` : ""}</small></p>
+          ${paradas[i] ? camaHTML(p, ctx, esperando) : ""}
+        </div>
+      </li>`);
+    if (i < r.paradas.length - 1) partes.push(tramoHTML(r, i, p, r.paradas[i + 1]));
+  });
+  partes.push(vueloHTML("vuelta", r, ctx, vVuelta, esperando));
+  return `<ol class="ir-itinerario">${partes.join("")}</ol>`;
+}
+
+/* ------------------------------------------------------------- el precio */
 
 const VEREDICTOS = {
   sin: "Billete a billete sale más barato. El pase te da libertad para cambiar de planes, no ahorro.",
@@ -605,36 +831,44 @@ const VEREDICTOS = {
     "Depende de cuándo compres. Con semanas de antelación, billete a billete suele ganar; a última hora, el pase.",
 };
 
-/* EL PRECIO. Lo que falta se dice: un total al que le faltan cosas y no lo
-   avisa es peor que ningún total. */
+/* El número grande: lo que cuesta el viaje por persona de la mejor forma. */
+function mejorTotal(r, ctx, t) {
+  if (ctx.tengoPase) return t.yaPagado;
+  if (!t.con) return t.sin;
+  const v = veredicto(r, ctx.edad);
+  if (v === "con") return t.con;
+  if (v === "sin") return t.sin;
+  return [Math.min(t.sin[0], t.con[0]), Math.min(t.sin[1], t.con[1])];
+}
+
+function avisosDe(t) {
+  const avisos = [];
+  if (t.cama.faltan) avisos.push(`falta el alojamiento de ${plural(t.cama.faltan, "parada", "paradas")}`);
+  if (t.avion.sinVuelo) avisos.push(`${plural(t.avion.sinVuelo, "vuelo", "vuelos")} sin precio ese día`);
+  if (t.avion.faltan) {
+    const cuales = ["ida", "vuelta"].filter((s) => t.avion.tramos[s] === undefined);
+    avisos.push(cuales.length === 1 ? `falta el vuelo de ${cuales[0]}` : "faltan los vuelos");
+  }
+  return avisos;
+}
+
 function precioHTML(r, ctx) {
   const t = totalViaje(r, { ...ctx, camas: CAMAS, vuelos: VUELOS });
-  const hayCama = t.cama.total > 0;
-  const hayVuelo = t.avion.total > 0;
-
   const piezas = [];
-  if (hayVuelo) {
+  if (t.avion.total > 0) {
     const { ida, vuelta } = t.avion.tramos;
     const partes = [ida ? `ida ${eur(ida.price)}` : "", vuelta ? `vuelta ${eur(vuelta.price)}` : ""]
       .filter(Boolean)
       .join(" + ");
     piezas.push(`vuelos ${eur(t.avion.total)} (${partes})`);
   }
-  if (hayCama) {
+  if (t.cama.total > 0) {
     piezas.push(`alojamiento ${eur(t.cama.porPersona)} por persona (${eur(t.cama.total)} para ${ctx.adultos})`);
   }
-  const avisos = [];
-  if (t.cama.faltan) avisos.push(`falta el alojamiento de ${plural(t.cama.faltan, "parada", "paradas")}`);
-  if (t.avion.sinVuelo) avisos.push(`${plural(t.avion.sinVuelo, "vuelo", "vuelos")} sin precio: Ryanair no vuela ese día`);
-  if (t.avion.faltan) {
-    const cuales = ["ida", "vuelta"].filter((s) => t.avion.tramos[s] === undefined);
-    avisos.push(cuales.length === 1 ? `falta el vuelo de ${cuales[0]}` : "faltan los vuelos");
-  }
-  const desglose = `<p class="ir-desglose">${
-    ctx.tengoPase ? "Reservas del tren" : "Tren"
-  }${piezas.length ? ` + ${piezas.join(" + ")}` : ""}${
-    avisos.length ? ` · <b>${esc(avisos.join(" · "))}</b>` : ""
-  }.</p>`;
+  const avisos = avisosDe(t);
+  const desglose = `<p class="ir-desglose">${ctx.tengoPase ? "Reservas del tren" : "Tren"}${
+    piezas.length ? ` + ${piezas.join(" + ")}` : ""
+  }${avisos.length ? ` · <b>${esc(avisos.join(" · "))}</b>` : ""}.</p>`;
 
   if (ctx.tengoPase) {
     const grupo =
@@ -652,7 +886,6 @@ function precioHTML(r, ctx) {
         ${grupo}
       </div>`;
   }
-
   if (!t.con) return "";
   const v = veredicto(r, ctx.edad);
   const grupo =
@@ -662,7 +895,7 @@ function precioHTML(r, ctx) {
       : "";
   return `
     <div class="ir-precio" data-pase="no" data-veredicto="${v}" data-completo="${t.completo ? "si" : "no"}">
-      <p class="ir-precio-titulo">El viaje, por persona</p>
+      <p class="ir-precio-titulo">¿Pase o billetes sueltos? Por persona</p>
       <dl>
         <div class="${v === "con" ? "gana" : ""}"><dt>Comprando el pase</dt><dd>≈ ${horquilla(t.con)}</dd>
           <small>pase de ${t.pase.dias} días, ${eur(t.pase.pase)}${reservas(r)[1] ? " + reservas" : ""}</small></div>
@@ -673,6 +906,49 @@ function precioHTML(r, ctx) {
       ${grupo}
       <p class="ir-veredicto">${esc(VEREDICTOS[v])}</p>
     </div>`;
+}
+
+/* EL RESUMEN, arriba del todo: qué viaje es, cuánto cuesta y cómo va la
+   búsqueda, sin tener que bajar. */
+function resumenHTML(r, ctx, libres, esperando) {
+  const t = totalViaje(r, { ...ctx, camas: CAMAS, vuelos: VUELOS });
+  const total = mejorTotal(r, ctx, t);
+  const f = fechas(r, ctx.ida);
+  const avisos = avisosDe(t);
+  const [rmin, rmax] = reservas(r);
+  const sobran = ctx.tengoPase ? ctx.dias - diasDeBono(r) : 0;
+  const huecos = Number.isFinite(libres) ? libres - noches(r) : 0;
+  const estadoTxt = t.completo
+    ? "Con vuelos y alojamiento de verdad."
+    : esperando
+      ? "Buscando lo que falta…"
+      : `Sin contar lo que falta: ${avisos.join(", ")}.`;
+  return `
+    <header class="ir-resumen">
+      <div class="ir-res-cab">
+        <p class="ir-etiqueta">${r.propia ? "tu ruta" : "la ruta elegida"}</p>
+        <h3>${esc(r.nombre)}</h3>
+        <p class="ir-res-idea">${esc(r.idea)}</p>
+        <ul class="ir-res-datos">
+          ${f ? `<li>${esc(fechaCorta(f.ida))} → ${esc(fechaCorta(f.vuelta))}</li>` : ""}
+          <li>${plural(noches(r), "noche", "noches")}${huecos > 0 ? ` <small>(te sobran ${huecos})</small>` : ""}</li>
+          <li>${plural(r.paradas.length, "ciudad", "ciudades")}</li>
+          <li>≈ ${esc(enHoras(minutosEnTren(r)))} de tren</li>
+          <li>${plural(diasDeBono(r), "día", "días")} de pase${sobran > 0 ? ` <small>(te sobra${sobran === 1 ? "" : "n"} ${sobran})</small>` : ""}</li>
+          <li>${rmax ? `reservas ≈ ${horquilla([rmin, rmax])}` : "sin reservas"}</li>
+        </ul>
+      </div>
+      <div class="ir-res-total" data-completo="${t.completo ? "si" : "no"}">
+        <span>${ctx.tengoPase ? "Te queda por pagar" : "El viaje entero"}, por persona</span>
+        <b>≈ ${horquilla(total)}</b>
+        ${ctx.adultos > 1 ? `<small>para ${ctx.adultos}: ≈ ${horquilla(total.map((x) => x * ctx.adultos))}</small>` : ""}
+        <small class="ir-res-estado">${esc(estadoTxt)}</small>
+      </div>
+      <div class="ir-res-acciones">
+        <button type="button" class="btn ghost small" data-ir-compartir>Compartir el plan</button>
+        <button type="button" class="btn ghost small" data-ir-calendario ${f ? "" : "disabled"}>Al calendario</button>
+      </div>
+    </header>`;
 }
 
 function ajustarHTML(r) {
@@ -725,7 +1001,7 @@ function ajustarHTML(r) {
 
 /* Lo que falta por buscar de una ruta. */
 function faltanDe(r, ctx) {
-  const paradas = paradasConFechas(r, ctx.ida).filter((p) => !CAMAS[idParada(p, ctx.adultos)]);
+  const paradas = conCama(paradasConFechas(r, ctx.ida)).filter((p) => !CAMAS[idParada(p, ctx.adultos)]);
   const vuelos = vuelosDe(r, ctx.ida, ctx.origen).filter((v) => VUELOS[v.id] === undefined);
   return { paradas, vuelos, nada: !paradas.length && !vuelos.length };
 }
@@ -740,8 +1016,8 @@ function estadoBusquedaHTML(r, ctx, esperando) {
   if (f.nada) return "";
   if (esperando) {
     return `<p class="ir-buscando"><span class="spin"></span>Buscando los vuelos y pisos enteros en el centro
-      de ${plural(r.paradas.length, "parada", "paradas")}: un par de minutos por parada. Puedes cerrar la página,
-      el resultado se guarda.</p>`;
+      de ${plural(conCama(paradasConFechas(r, ctx.ida)).length, "parada", "paradas")}: un par de minutos por
+      parada. Puedes cerrar la página, el resultado se guarda.</p>`;
   }
   if (!haySesion()) {
     const caja = cajaAcceso({ reason: "sin-cuenta" });
@@ -752,63 +1028,6 @@ function estadoBusquedaHTML(r, ctx, esperando) {
       <small>Los dos vuelos, de ida sola, y pisos y casas enteras —nada de habitaciones— a poca distancia a pie
         del centro. Luego puedes cambiar cada uno.</small>
     </div>`;
-}
-
-function pasosHTML(r, ctx, esperando) {
-  const paradas = paradasConFechas(r, ctx.ida);
-  const f = fechas(r, ctx.ida);
-  const [vIda, vVuelta] = vuelosDe(r, ctx.ida, ctx.origen);
-  const origen = esc(nombreOrigen(ctx.origen));
-  const pasos = r.paradas
-    .map((p, i) => {
-      const conFecha = paradas[i];
-      const bloque = `<li class="ir-parada"><b>${esc(p.ciudad)}</b><small>${plural(p.noches, "noche", "noches")}${
-        conFecha ? ` · desde el ${esc(fmtDate(conFecha.checkin, true))}` : ""
-      }</small></li>`;
-      const cama = conFecha ? camaHTML(conFecha, ctx, esperando) : "";
-      const t = r.tramos[i];
-      if (i === r.paradas.length - 1) return bloque + cama;
-      if (!t) return `${bloque}${cama}<li class="ir-tramo ir-roto">No hay tren entre estas dos en el mapa.</li>`;
-      const pasa = t.pasa.length ? ` · pasas por ${esc(t.pasa.join(", "))} sin parar` : "";
-      const largo =
-        t.min > TRAMO_LARGO_MIN && t.pasaCods.length
-          ? `<span class="ir-largo">Es un día largo de tren. ${t.pasaCods
-              .map(
-                (c) =>
-                  `<button type="button" class="btn ghost small" data-ir-parar="${esc(c)}">Parar en ${esc(
-                    CIUDADES[c].ciudad
-                  )}</button>`
-              )
-              .join(" ")}</span>`
-          : "";
-      return `${bloque}${cama}<li class="ir-tramo">≈ ${esc(enHoras(t.min))} en tren · ${reservaTxt(
-        t
-      )}${pasa}<small class="ir-billete">billete suelto ≈ ${horquilla(t.billete)}</small>${largo}</li>`;
-    })
-    .join("");
-  return `<ol class="ir-pasos">
-      ${vueloHTML(`${origen} → ${esc(r.entra.ciudad)}`, ctx.origen, r.entra.iata, f && f.ida, ctx,
-        vIda ? mejorVuelo(VUELOS[vIda.id]) : undefined, esperando)}
-      ${pasos}
-      ${vueloHTML(`${esc(r.sale.ciudad)} → ${origen}`, r.sale.iata, ctx.origen, f && f.vuelta, ctx,
-        vVuelta ? mejorVuelo(VUELOS[vVuelta.id]) : undefined, esperando)}
-    </ol>`;
-}
-
-function cifrasHTML(r, ctx, libres) {
-  const [rmin, rmax] = reservas(r);
-  const sobran = ctx.tengoPase ? ctx.dias - diasDeBono(r) : 0;
-  const huecos = Number.isFinite(libres) ? libres - noches(r) : null;
-  return `<dl class="ir-cifras">
-      <div><dt>Días de pase</dt><dd>${diasDeBono(r)}${
-        sobran > 0 ? ` <small>te sobra${sobran === 1 ? "" : "n"} ${sobran}</small>` : ""
-      }</dd></div>
-      <div><dt>Noches</dt><dd>${noches(r)}${
-        huecos > 0 ? ` <small>y ${huecos} libre${huecos === 1 ? "" : "s"}</small>` : ""
-      }</dd></div>
-      <div><dt>En tren</dt><dd>≈ ${esc(enHoras(minutosEnTren(r)))}</dd></div>
-      <div><dt>Reservas</dt><dd>${rmax ? `≈ ${horquilla([rmin, rmax])}` : "ninguna"}</dd></div>
-    </dl>`;
 }
 
 /* Lo que impide hacer esta ruta tal cual, dicho antes que nada. */
@@ -828,24 +1047,20 @@ function problemasHTML(r, ctx, libres) {
   return p.length ? `<p class="ir-problema">${p.map(esc).join(" ")}</p>` : "";
 }
 
-/* LA RUTA ELEGIDA, entera: precio, personalizar, estado de la búsqueda y el
-   recorrido con los vuelos y la cama de cada parada. */
+/* LA RUTA ELEGIDA, entera: el resumen, lo que la impide, el precio,
+   personalizar, la búsqueda y el viaje día a día. */
 function tarjeta(r, ctx, libres) {
   const esperando = pendiente(r, ctx);
   return `
     <article class="ir-ruta elegida${r.ajustada ? " ajustada" : ""}${r.propia ? " propia" : ""}" id="ruta-${esc(r.id)}">
-      <header>
-        <p class="ir-etiqueta">${r.propia ? "tu ruta" : "la ruta elegida"}</p>
-        <h3>${esc(r.nombre)}</h3>
-        <p>${esc(r.idea)}</p>
-      </header>
+      ${resumenHTML(r, ctx, libres, esperando)}
       ${problemasHTML(r, ctx, libres)}
-      ${cifrasHTML(r, ctx, libres)}
       ${precioHTML(r, ctx)}
       ${ajustarHTML(r)}
       ${estadoBusquedaHTML(r, ctx, esperando)}
       <div class="ir-acceso"></div>
-      ${pasosHTML(r, ctx, esperando)}
+      <h4 class="ir-itinerario-titulo">Día a día</h4>
+      ${itinerarioHTML(r, ctx, esperando)}
     </article>`;
 }
 
@@ -896,6 +1111,75 @@ function laElegida(lista) {
   return lista.find((r) => r.id === id) || lista[0] || null;
 }
 
+/* ------------------------------------------------------------- el mapa
+
+   Las ciudades en su sitio y las líneas de tren entre ellas, y encima la ruta
+   elegida. Se toca una ciudad para añadirla o quitarla: elegir por dónde pasar
+   mirando Europa se entiende solo, y en una lista de 48 nombres no. La lista
+   sigue debajo, para quien prefiera escribir o use lector de pantalla.
+
+   La proyección es la más simple que no engaña a esta escala: longitud por el
+   coseno de 50° y latitud tal cual. */
+const LON0 = -2;
+const LAT1 = 61.2;
+const ESCALA = 34;
+const COS = Math.cos((50 * Math.PI) / 180);
+const px = (lon) => Math.round((lon - LON0) * COS * ESCALA);
+const py = (lat) => Math.round((LAT1 - lat) * ESCALA);
+const ANCHO_MAPA = px(22.5);
+const ALTO_MAPA = py(40.2);
+
+/* Por dónde pasa de verdad la ruta: las paradas y, entre cada dos, las
+   ciudades que el tren atraviesa sin parar. */
+function trazado(r) {
+  if (!r) return [];
+  const cods = [];
+  r.paradas.forEach((p, i) => {
+    cods.push(p.cod);
+    const t = r.tramos[i];
+    if (t && i < r.paradas.length - 1) cods.push(...t.pasaCods);
+  });
+  return cods;
+}
+
+export function mapaSVG(elegidasSet, ruta) {
+  const enRuta = new Set(ruta ? ruta.paradas.map((p) => p.cod) : []);
+  const lineas = CONEXIONES.map(([a, b]) => {
+    const [ca, cb] = [CIUDADES[a], CIUDADES[b]];
+    return `<line x1="${px(ca.lon)}" y1="${py(ca.lat)}" x2="${px(cb.lon)}" y2="${py(cb.lat)}"/>`;
+  }).join("");
+  const camino = trazado(ruta)
+    .map((c) => `${px(CIUDADES[c].lon)},${py(CIUDADES[c].lat)}`)
+    .join(" ");
+  const nodos = Object.entries(CIUDADES)
+    .map(([cod, c]) => {
+      const x = px(c.lon);
+      const y = py(c.lat);
+      const sel = elegidasSet.has(cod);
+      const parada = enRuta.has(cod);
+      const menor = c.pequena && !sel && !parada;
+      return `<g class="ir-nodo${sel ? " sel" : ""}${parada ? " parada" : ""}" data-ir-ciudad="${esc(cod)}"
+          role="button" tabindex="0" aria-pressed="${sel}" aria-label="${esc(c.ciudad)}">
+        <circle class="ir-nodo-toque" cx="${x}" cy="${y}" r="13"/>
+        <circle class="ir-nodo-punto" cx="${x}" cy="${y}" r="${sel || parada ? 6 : 4}"/>
+        <text x="${x + 8}" y="${y + 4}"${menor ? ' class="menor"' : ""}>${esc(c.ciudad)}</text>
+      </g>`;
+    })
+    .join("");
+  return `<svg class="ir-mapa-svg" viewBox="0 0 ${ANCHO_MAPA} ${ALTO_MAPA}" role="group"
+      aria-label="Mapa de ciudades: toca una para añadirla o quitarla">
+      <g class="ir-mapa-lineas">${lineas}</g>
+      ${camino ? `<polyline class="ir-mapa-ruta" points="${camino}"/>` : ""}
+      ${nodos}
+    </svg>`;
+}
+
+function pintarMapa(ruta) {
+  const caja = document.querySelector("#irMapa");
+  if (!caja) return;
+  caja.innerHTML = mapaSVG(new Set(elegidas()), ruta);
+}
+
 function pintarCiudades() {
   const caja = document.querySelector("#irCiudades");
   if (!caja) return;
@@ -912,16 +1196,14 @@ function pintarCiudades() {
       .join("")}</div>`;
   }).join("");
   const n = mias.size;
-  caja.insertAdjacentHTML(
-    "beforeend",
-    `<p class="ir-elegidas">${
-      n
-        ? `${plural(n, "ciudad elegida", "ciudades elegidas")}${
-            n === 1 ? ": elige al menos otra para montar tu ruta" : ""
-          } · <button type="button" class="ir-limpiar" data-ir-limpiar>Quitar todas</button>`
-        : "Ninguna elegida: abajo tienes rutas hechas."
-    }</p>`
-  );
+  const resumen = document.querySelector("#irElegidas");
+  if (resumen) {
+    resumen.innerHTML = n
+      ? `<b>${[...mias].map((c) => esc(CIUDADES[c].ciudad)).join(", ")}</b>${
+          n === 1 ? " · elige al menos otra para montar tu ruta" : ""
+        } · <button type="button" class="ir-limpiar" data-ir-limpiar>Quitar todas</button>`
+      : "Toca las ciudades en el mapa. Si no eliges ninguna, abajo tienes rutas hechas.";
+  }
 }
 
 function pintar() {
@@ -936,10 +1218,12 @@ function pintar() {
   if (ctx.vuelta && libres === null) {
     if (pista) pista.textContent = "La vuelta es antes que la ida: cámbiala para ver las rutas.";
     caja.innerHTML = "";
+    pintarMapa(null);
     return;
   }
   const lista = rutasDe(ctx, libres);
   const elegida = laElegida(lista);
+  pintarMapa(elegida);
   if (pista) {
     if (!lista.length) {
       pista.textContent = ctx.ciudades.length
@@ -961,11 +1245,14 @@ function pintar() {
     return;
   }
   const resto = lista.filter((r) => r !== elegida);
+  const abierta = document.querySelector("#irRutas .ir-mas")?.open;
   caja.innerHTML =
     tarjeta(elegida, ctx, libres) +
     (resto.length
-      ? `<h3 class="ir-otras-titulo">${elegida.propia ? "Rutas hechas que pasan por ahí" : "Otras rutas"}</h3>
-         <div class="ir-cortas">${resto.map((r) => tarjetaCorta(r, ctx)).join("")}</div>`
+      ? `<details class="ir-mas"${abierta ? " open" : ""}>
+           <summary>${elegida.propia ? "Rutas hechas que pasan por ahí" : "Otras rutas"} · ${resto.length}</summary>
+           <div class="ir-cortas">${resto.map((r) => tarjetaCorta(r, ctx)).join("")}</div>
+         </details>`
       : "");
   wireEntrar(caja);
   cargar(lista, ctx);
@@ -987,7 +1274,7 @@ async function cargar(lista, ctx) {
   const pedir = [];
   for (const r of lista) {
     const espera = pendiente(r, ctx);
-    for (const p of paradasConFechas(r, ctx.ida)) {
+    for (const p of conCama(paradasConFechas(r, ctx.ida))) {
       const id = idParada(p, ctx.adultos);
       if (CAMAS[id] === undefined && (EXISTEN.has(id) || espera)) pedir.push([CAMAS, id, `data/stays/${id}.json`]);
     }
@@ -1120,12 +1407,203 @@ function accion(tipo, rutaId, cod) {
     }
     if (tipo === "quitar") a.fuera = [...new Set([...(a.fuera || []), cod])];
     if (tipo === "poner") a.fuera = (a.fuera || []).filter((c) => c !== cod);
+    if (tipo === "noche") {
+      // `cod` aquí es el tramo, «VIE>VCE». De noche o de día, por tramo.
+      const [x, y] = cod.split(">");
+      const puesta = a.noche?.[cod] || a.noche?.[`${y}>${x}`];
+      const resto = { ...a.noche };
+      delete resto[cod];
+      delete resto[`${y}>${x}`];
+      a.noche = puesta ? resto : { ...resto, [cod]: true };
+      if (!Object.keys(a.noche).length) delete a.noche;
+    }
     if (a.fuera && !a.fuera.length) delete a.fuera;
     if (!a.rev) delete a.rev;
     return a;
   });
   ABIERTOS.add(rutaId);
   pintar();
+}
+
+/* Mover el vuelo a otro día que sale más barato. La ida mueve el viaje entero;
+   la vuelta, las noches de la última parada. */
+function moverVuelo(sentido, dia) {
+  const ctx = estado();
+  const libres = nochesEntre(ctx.ida, ctx.vuelta);
+  const r = laElegida(rutasDe(ctx, libres));
+  if (!r) return;
+  if (sentido === "ida") {
+    const ida = document.querySelector("#irIda");
+    if (!ida) return;
+    ida.value = dia;
+    // La vuelta que hubiera puesta se mueve con ella: si no, las noches libres
+    // cambian y la ruta podría dejar de caber por un día.
+    const vuelta = document.querySelector("#irVuelta");
+    if (vuelta && vuelta.value && libres !== null) vuelta.value = sumarDias(dia, libres);
+    ida.dispatchEvent(new Event("change", { bubbles: true }));
+    return;
+  }
+  const f = fechas(r, ctx.ida);
+  if (!f) return;
+  const delta = nochesEntre(f.vuelta, dia) ?? -nochesEntre(dia, f.vuelta);
+  const ultima = r.paradas[r.paradas.length - 1];
+  const n = ultima.noches + delta;
+  if (n < MIN_NOCHES || n > MAX_NOCHES) return;
+  ajustar(r.id, (a) => ({ ...a, noches: { ...a.noches, [ultima.cod]: n } }));
+  pintar();
+}
+
+/* ------------------------------------------------ compartir y calendario */
+
+/* El plan en la dirección: las ciudades (o la ruta hecha), las fechas, el pase
+   y lo que le hayas cambiado. Quien lo abre ve el mismo viaje. */
+export function enlacePlan(ctx, r) {
+  const q = new URLSearchParams();
+  if (r.propia) q.set("c", ctx.ciudades.join(","));
+  else q.set("r", r.id);
+  if (ctx.ida) q.set("ida", ctx.ida);
+  if (ctx.vuelta) q.set("v", ctx.vuelta);
+  q.set("p", String(ctx.adultos));
+  q.set("o", ctx.origen);
+  if (ctx.tengoPase) {
+    q.set("pase", "si");
+    q.set("d", String(ctx.dias));
+  } else {
+    q.set("e", ctx.edad);
+  }
+  const a = ajusteDe(r.id);
+  if (Object.keys(a).length) q.set("aj", JSON.stringify(a));
+  return `${location.origin}${location.pathname}?${q.toString()}`;
+}
+
+/* Y al revés: lo que trae la dirección manda sobre lo guardado. */
+function leerPlanDeLaDireccion() {
+  const q = new URLSearchParams(location.search);
+  if (!q.has("c") && !q.has("r")) return;
+  const poner = (sel, v) => {
+    const el = document.querySelector(sel);
+    if (el && v) el.value = v;
+  };
+  if (q.get("ida") && q.get("ida") >= hoyISO()) poner("#irIda", q.get("ida"));
+  if (q.get("v")) poner("#irVuelta", q.get("v"));
+  poner("#irPersonas", q.get("p"));
+  poner("#irOrigen", q.get("o"));
+  poner("#irEdad", q.get("e"));
+  poner("#irDias", q.get("d"));
+  const radio = document.querySelector(`input[name="irPase"][value="${q.get("pase") === "si" ? "si" : "no"}"]`);
+  if (radio) radio.checked = true;
+  const id = q.has("c") ? "tuya" : q.get("r");
+  if (q.has("c")) guardarElegidas(q.get("c").split(",").filter((c) => CIUDADES[c]));
+  guardar(CLAVE_RUTA, id);
+  try {
+    const aj = JSON.parse(q.get("aj") || "{}");
+    ajustar(id, () => (aj && typeof aj === "object" ? aj : {}));
+  } catch {
+    ajustar(id, () => ({}));
+  }
+  recordarFormulario();
+}
+
+async function compartirPlan(boton) {
+  const ctx = estado();
+  const r = laElegida(rutasDe(ctx, nochesEntre(ctx.ida, ctx.vuelta)));
+  if (!r) return;
+  const url = enlacePlan(ctx, r);
+  const texto = `Mi Interrail: ${r.paradas.map((p) => p.ciudad).join(" → ")}`;
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title: "Interrail", text: texto, url });
+      return;
+    } catch {
+      /* cancelado: se copia */
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    boton.textContent = "Enlace copiado";
+  } catch {
+    boton.textContent = "No se pudo copiar";
+  }
+  setTimeout(() => (boton.textContent = "Compartir el plan"), 2500);
+}
+
+/* El viaje en el calendario: los dos vuelos con su hora, cada ciudad como los
+   días que estás en ella, y cada tren el día que toca. */
+export function calendarioPlan(r, ctx) {
+  const paradas = paradasConFechas(r, ctx.ida);
+  const f = fechas(r, ctx.ida);
+  if (!f) return "";
+  const sello = `${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z`;
+  const base = `ir-${r.id}-${ctx.ida}`;
+  const lineas = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TripFinder//ES", "CALSCALE:GREGORIAN"];
+  const [vIda, vVuelta] = vuelosDe(r, ctx.ida, ctx.origen);
+  const vuelo = (v, titulo, n) => {
+    const m = v ? mejorVuelo(VUELOS[v.id]) : null;
+    const inicio = comoFechaICS(v ? v.fecha : "", m ? m.time : "");
+    if (!inicio) return;
+    lineas.push(
+      ...evento({
+        uid: `${base}-vuelo${n}@tripfinder`,
+        sello,
+        inicio,
+        fin: finDeTramo(v.fecha, m ? m.time : "", "") || inicio,
+        titulo,
+        detalle: m ? `${m.airline} · ${m.origin} → ${m.destination} · ${Math.round(m.price)} €\n${m.deep_link || ""}` : "",
+      })
+    );
+  };
+  vuelo(vIda, `Vuelo ${nombreOrigen(ctx.origen)} → ${r.entra.ciudad}`, 1);
+  paradas.forEach((p, i) => {
+    const s = p.camaNoches ? elegida(idParada(p, ctx.adultos), CAMAS[idParada(p, ctx.adultos)]) : null;
+    const inicio = comoFechaICS(p.checkin, "");
+    const fin = comoFechaICS(p.sale, "");
+    if (inicio && fin) {
+      lineas.push(
+        ...evento({
+          uid: `${base}-${p.cod}@tripfinder`,
+          sello,
+          inicio,
+          fin,
+          titulo: `${p.ciudad} · ${plural(p.noches, "noche", "noches")}`,
+          detalle: s ? `${s.name}\n${s.url}` : "",
+          sitio: p.ciudad,
+        })
+      );
+    }
+    const t = r.tramos[i];
+    const siguiente = r.paradas[i + 1];
+    if (t && siguiente) {
+      const dia = p.deNoche ? p.checkout : p.sale;
+      const ini = comoFechaICS(dia, t.noche ? t.noche.sale : "");
+      if (ini) {
+        lineas.push(
+          ...evento({
+            uid: `${base}-tren${i}@tripfinder`,
+            sello,
+            inicio: ini,
+            fin: t.noche ? finDeTramo(dia, t.noche.sale, t.noche.llega) : finDeTramo(dia, "", ""),
+            titulo: `${t.noche ? "Tren nocturno" : "Tren"} ${p.ciudad} → ${siguiente.ciudad}`,
+            detalle: `≈ ${enHoras(t.min)}${t.reserva ? ` · reserva ≈ ${horquilla(t.reserva)}` : ""}\n${horariosURL(
+              p.cod,
+              siguiente.cod,
+              dia
+            )}`,
+          })
+        );
+      }
+    }
+  });
+  vuelo(vVuelta, `Vuelo ${r.sale.ciudad} → ${nombreOrigen(ctx.origen)}`, 2);
+  lineas.push("END:VCALENDAR");
+  return lineas.join("\r\n");
+}
+
+function alCalendarioPlan() {
+  const ctx = estado();
+  const r = laElegida(rutasDe(ctx, nochesEntre(ctx.ida, ctx.vuelta)));
+  if (!r || !parseISO(ctx.ida)) return;
+  descargar(`interrail-${ctx.ida}.ics`, calendarioPlan(r, ctx));
+  if (typeof tfAnunciar === "function") tfAnunciar("Viaje descargado para tu calendario.");
 }
 
 const hoyISO = () => {
@@ -1169,6 +1647,20 @@ function restaurarFormulario() {
   if (f.vuelta && f.ida && f.vuelta >= f.ida && f.ida >= hoyISO()) poner("#irVuelta", f.vuelta);
 }
 
+/* Tocar una ciudad, en el mapa o en la lista. */
+function alternarCiudad(cod) {
+  if (!CIUDADES[cod]) return;
+  const lista = elegidas();
+  if (lista.includes(cod)) guardarElegidas(lista.filter((c) => c !== cod));
+  else if (lista.length < MAX_ELEGIDAS) guardarElegidas([...lista, cod]);
+  // Con ciudades nuevas, la tuya pasa a ser la elegida y sus ajustes (de otras
+  // ciudades) ya no valen.
+  ajustar("tuya", () => ({}));
+  guardar(CLAVE_RUTA, "tuya");
+  pintarCiudades();
+  pintar();
+}
+
 /* La puesta en marcha. Se llama desde `arranque.js` y se calla sola si esta
    no es la página del Interrail. */
 export function montarInterrail() {
@@ -1190,6 +1682,7 @@ export function montarInterrail() {
     ida.min = hoyISO();
   }
   restaurarFormulario();
+  leerPlanDeLaDireccion();
   if (vuelta && ida) vuelta.min = ida.value;
   if (ida && vuelta) {
     ida.addEventListener("change", () => {
@@ -1202,31 +1695,35 @@ export function montarInterrail() {
   });
   form.addEventListener("submit", (e) => e.preventDefault());
 
-  const ciudades = document.querySelector("#irCiudades");
-  if (ciudades) {
-    ciudades.addEventListener("click", (e) => {
-      const chip = e.target.closest("[data-ir-ciudad]");
-      if (chip) {
-        const cod = chip.dataset.irCiudad;
-        const lista = elegidas();
-        if (lista.includes(cod)) guardarElegidas(lista.filter((c) => c !== cod));
-        else if (lista.length < MAX_ELEGIDAS) guardarElegidas([...lista, cod]);
-        // Con ciudades nuevas, la tuya pasa a ser la elegida y sus ajustes
-        // (de otras ciudades) ya no valen.
-        ajustar("tuya", () => ({}));
-        guardar(CLAVE_RUTA, "tuya");
-        pintarCiudades();
-        pintar();
-        return;
-      }
-      if (e.target.closest("[data-ir-limpiar]")) {
-        guardarElegidas([]);
-        ajustar("tuya", () => ({}));
-        pintarCiudades();
-        pintar();
-      }
-    });
+  const alTocar = (e) => {
+    const nodo = e.target.closest("[data-ir-ciudad]");
+    if (nodo) {
+      alternarCiudad(nodo.dataset.irCiudad);
+      return true;
+    }
+    if (e.target.closest("[data-ir-limpiar]")) {
+      guardarElegidas([]);
+      ajustar("tuya", () => ({}));
+      pintarCiudades();
+      pintar();
+      return true;
+    }
+    return false;
+  };
+  for (const sel of ["#irCiudades", "#irMapa", "#irElegidas"]) {
+    const el = document.querySelector(sel);
+    if (el) el.addEventListener("click", alTocar);
   }
+  // En el mapa las ciudades son botones de verdad también con el teclado.
+  document.querySelector("#irMapa")?.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const nodo = e.target.closest("[data-ir-ciudad]");
+    if (!nodo) return;
+    e.preventDefault();
+    const cod = nodo.dataset.irCiudad;
+    alternarCiudad(cod);
+    document.querySelector(`#irMapa [data-ir-ciudad="${cod}"]`)?.focus();
+  });
 
   caja.addEventListener("click", (e) => {
     const buscar = e.target.closest("[data-ir-camas]");
@@ -1257,6 +1754,27 @@ export function montarInterrail() {
       guardar(CLAVE_RUTA, "tuya");
       pintarCiudades();
       pintar();
+      return;
+    }
+    const mover = e.target.closest("[data-ir-mover]");
+    if (mover) {
+      moverVuelo(mover.dataset.irMover, mover.dataset.dia);
+      return;
+    }
+    const noche = e.target.closest("[data-ir-noche]");
+    if (noche) {
+      const ctx = estado();
+      const r = laElegida(rutasDe(ctx, nochesEntre(ctx.ida, ctx.vuelta)));
+      if (r) accion("noche", r.id, noche.dataset.irNoche);
+      return;
+    }
+    const comp = e.target.closest("[data-ir-compartir]");
+    if (comp) {
+      compartirPlan(comp);
+      return;
+    }
+    if (e.target.closest("[data-ir-calendario]")) {
+      alCalendarioPlan();
       return;
     }
     const otra = e.target.closest(".ir-elegir");

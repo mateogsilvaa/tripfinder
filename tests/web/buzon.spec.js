@@ -271,7 +271,14 @@ test.describe("el panel", () => {
      es lo que hace que aprobar pueda ser un clic. */
   async function conPanel(
     page,
-    { sellar = true, pass = PASS, email = "lucia@ejemplo.com", porEnlace = false, existentes = [] } = {}
+    {
+      sellar = true,
+      pass = PASS,
+      email = "lucia@ejemplo.com",
+      porEnlace = false,
+      existentes = [],
+      tokenPegado = true,
+    } = {}
   ) {
     await page.goto("/404.html", { waitUntil: "domcontentloaded" });
     const buzon = await nuevoBuzon(page);
@@ -335,12 +342,26 @@ test.describe("el panel", () => {
       },
     ];
 
+    // El token del sitio, cerrado con la maestra: es como está en `users.json`.
+    const tokenSitio = await page.evaluate(
+      async ([maestra]) => {
+        const b64 = (b) => btoa(String.fromCharCode(...new Uint8Array(b)));
+        const deB64 = (x) => Uint8Array.from(atob(x), (c) => c.charCodeAt(0));
+        const clave = await crypto.subtle.importKey("raw", deB64(maestra), { name: "AES-GCM" }, false, ["encrypt"]);
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const datos = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, clave, new TextEncoder().encode("ghp_del_sitio"));
+        return { iv: b64(iv), data: b64(datos) };
+      },
+      [MAESTRA]
+    );
     const enviados = [];
+    const cabeceras = [];
     const parches = [];
     await page.route("https://api.github.com/**", (r) => {
       const req = r.request();
       const cuerpoReq = req.postData() || "";
       if (req.method() === "POST" && req.url().includes("/dispatches")) {
+        cabeceras.push(req.headers()["authorization"]);
         enviados.push(JSON.parse(cuerpoReq));
         return r.fulfill({ status: 204, body: "" });
       }
@@ -357,7 +378,7 @@ test.describe("el panel", () => {
           updated: "2026-09-17",
           admin: { buzon: { pub: buzon.pub, priv } },
           users: existentes.map((u, i) => ({ id: `u-${i}`, user: u, name: u, active: true })),
-          site: {},
+          site: { token: tokenSitio },
         }),
       })
     );
@@ -365,16 +386,19 @@ test.describe("el panel", () => {
     // El panel solo recupera la maestra de `sessionStorage` cuando se da por
     // abierto: sin la marca, entra pero sin clave, que es justo el caso que
     // prueba la última de aquí abajo.
-    await page.addInitScript((m) => {
-      try {
-        sessionStorage.setItem("tf_token_abierto", "token-de-mentira");
-        // `tfDispatch` mira el de localStorage: sin él no llega a la red y el
-        // panel contesta que falta el token, que es verdad pero no es el caso.
-        localStorage.setItem("tf_token", "token-de-mentira");
-        sessionStorage.setItem("tf_maestra", m);
-        sessionStorage.setItem("tf_admin_abierto", String(Date.now()));
-      } catch (e) { /* nada */ }
-    }, MAESTRA);
+    await page.addInitScript(
+      ([m, pegado]) => {
+        try {
+          if (pegado) {
+            sessionStorage.setItem("tf_token_abierto", "token-de-mentira");
+            localStorage.setItem("tf_token", "token-de-mentira");
+          }
+          sessionStorage.setItem("tf_maestra", m);
+          sessionStorage.setItem("tf_admin_abierto", String(Date.now()));
+        } catch (e) { /* nada */ }
+      },
+      [MAESTRA, tokenPegado]
+    );
     const hash = porEnlace
       ? "#peticion=" +
         Buffer.from(
@@ -392,7 +416,7 @@ test.describe("el panel", () => {
       document.querySelector("#panelAdmin").hidden = false;
     });
     await page.evaluate(() => window.pintarPeticiones());
-    return { enviados, parches, buzon };
+    return { enviados, parches, buzon, cabeceras };
   }
 
   test("con un buzón que se puede abrir, el panel no hace otro", async ({ page }) => {
@@ -535,5 +559,16 @@ test.describe("el panel", () => {
     await page.locator("[data-aprobar]").click();
     await expect(page.locator("#avisoCuentas")).toContainText(/ya hay una cuenta/i);
     expect(enviados).toEqual([]);
+  });
+
+  test("desde otro navegador (el de WhatsApp), sin token pegado, se aprueba igual", async ({ page }) => {
+    /* El enlace de la petición llega por WhatsApp y se abre en SU navegador,
+       donde nunca se pegó el token del panel. Antes «Aprobar» se quedaba ahí,
+       pidiendo pegarlo. Ahora el panel abre el token del sitio con la maestra. */
+    const { enviados, cabeceras } = await conPanel(page, { porEnlace: true, tokenPegado: false });
+    await page.evaluate(() => window.abrirPanel && window.abrirPanel());
+    await page.locator("[data-aprobar]").click();
+    await expect.poll(() => enviados.length, { timeout: 15000 }).toBe(1);
+    expect(cabeceras[0]).toBe("Bearer ghp_del_sitio");
   });
 });

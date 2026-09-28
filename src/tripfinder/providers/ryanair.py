@@ -20,6 +20,54 @@ log = logging.getLogger("tripfinder")
 
 API = "https://services-api.ryanair.com/farfnd/v4/roundTripFares"
 API_ONEWAY = "https://services-api.ryanair.com/farfnd/v4/oneWayFares"
+# El calendario de precios: la tarifa mas barata de CADA DIA de un mes, en un
+# sentido. Es lo que ensena su web encima del buscador.
+API_POR_DIA = "https://services-api.ryanair.com/farfnd/v4/oneWayFares/{origen}/{destino}/cheapestPerDay"
+
+
+def _meses(desde: date, hasta: date) -> list[date]:
+    """El dia 1 de cada mes que toca la ventana."""
+    salida, d = [], desde.replace(day=1)
+    while d <= hasta:
+        salida.append(d)
+        d = (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+    return salida
+
+
+def precios_por_dia(
+    origen: str, destino: str, desde: date, hasta: date, min_interval: float = 2
+) -> dict[str, dict]:
+    """{dia: {price, time, origin, destination, airline, deep_link}} entre dos
+    fechas, solo los dias con vuelo y precio. Un mes por llamada."""
+    salida: dict[str, dict] = {}
+    for mes in _meses(desde, hasta):
+        try:
+            datos = get_json(
+                API_POR_DIA.format(origen=origen, destino=destino),
+                params={"outboundMonthOfDate": mes.isoformat(), "currency": "EUR"},
+                throttle_key="ryanair",
+                min_interval=min_interval,
+            )
+        except Exception as exc:  # noqa: BLE001 - sin calendario, se sigue con el dia exacto
+            log.debug("Ryanair calendario %s-%s %s: %s", origen, destino, mes, exc)
+            continue
+        tarifas = ((datos or {}).get("outbound") or {}).get("fares") or []
+        for t in tarifas:
+            dia = str(t.get("day") or "")[:10]
+            precio = (t.get("price") or {}).get("value")
+            if not dia or not precio or t.get("unavailable") or t.get("soldOut"):
+                continue
+            if not (desde.isoformat() <= dia <= hasta.isoformat()):
+                continue
+            salida[dia] = {
+                "price": round(float(precio), 2),
+                "time": str(t.get("departureDate") or "")[11:16],
+                "origin": origen,
+                "destination": destino,
+                "airline": "Ryanair",
+                "deep_link": links.ryanair(origen, destino, dia),
+            }
+    return salida
 
 # La API rechaza cualquier limit > 20 con {"code": "InvalidLimit"}; hay que paginar.
 PAGE_SIZE = 20

@@ -18,6 +18,35 @@ USER_AGENT = (
 
 _last_call: dict[str, float] = {}
 
+# EL CAMBIO A EUROS. Wizz da cada vuelo en la moneda del pais de SALIDA: la ida
+# desde Madrid en euros y la vuelta desde Budapest en forintos. Visto desde un
+# runner el 28 de septiembre: Budapest -> Madrid «22790.0», que sumado como
+# euros hacia de cualquier vuelta de Wizz desde fuera del euro un precio
+# imposible, y el viaje se tiraba. Se pasa con el cambio del dia del BCE
+# (frankfurter.app, sin clave); si no se puede, ese precio no vale (None), que
+# es mejor que sumar forintos como si fueran euros.
+_CAMBIOS: dict[str, float] = {}
+CAMBIOS_URL = "https://api.frankfurter.app/latest"
+
+
+def a_euros(importe: float | None, moneda: str | None) -> float | None:
+    """El importe en euros, o None si no se sabe pasar."""
+    if importe is None:
+        return None
+    moneda = (moneda or "EUR").upper()
+    if moneda == "EUR":
+        return float(importe)
+    if not _CAMBIOS:
+        try:
+            datos = get_json(CAMBIOS_URL, params={"from": "EUR"}, throttle_key="cambios", min_interval=0)
+            _CAMBIOS.update({k.upper(): float(v) for k, v in (datos.get("rates") or {}).items()})
+            _CAMBIOS.setdefault("_", 1.0)  # marca de que ya se pregunto, haya salido o no
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Sin cambio de moneda (%s): los precios en otra moneda no cuentan", exc)
+            _CAMBIOS["_"] = 1.0
+    tasa = _CAMBIOS.get(moneda)
+    return round(float(importe) / tasa, 2) if tasa else None
+
 # Los registros de Actions de un repositorio publico los lee cualquiera, y aqui
 # se escribian las direcciones de cada cuenta ("Aviso enviado ... a ana@...").
 # Todo correo que salga por el log o por pantalla pasa antes por aqui.

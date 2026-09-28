@@ -35,6 +35,7 @@ from ..models import StayOffer
 from ..util import get_text
 from .airbnb import MAX_FOTOS, _limpiar_nombre
 from .base import RECUADROS_KM, StayProvider, StayRequest, recuadro, register
+from .enteros import clave
 
 log = logging.getLogger("tripfinder")
 
@@ -90,8 +91,12 @@ ETIQUETAS = {
 
 
 def es_entero(tipo: str, titulo: str = "") -> bool:
+    """Solo los tipos que se sabe que son sitios enteros. Antes era al reves
+    —todo menos lo que sonaba a habitacion— y en Amsterdam se colo un barco
+    hotel («AmicitiA», 50 € dos noches) con un tipo que no estaba en ninguna
+    lista y salia como «Alojamiento entero»."""
     tipo = (tipo or "").upper()
-    if not tipo or any(t in tipo for t in NO_ENTERO):
+    if not tipo or any(t in tipo for t in NO_ENTERO) or tipo not in ETIQUETAS:
         return False
     titulo = (titulo or "").lower()
     return not any(t in titulo for t in NO_ENTERO_TITULO)
@@ -259,8 +264,11 @@ class HoliduProvider(StayProvider):
                 log.warning("Holidu %s: %s", req.city, exc)
                 continue
             for o in ofertas_de(html, req.adults):
-                if o.url not in vistos:
-                    vistos.add(o.url)
+                # Por el anuncio y no por la direccion entera: cada busqueda
+                # le pone un `searchId` distinto y el mismo piso salia dos veces.
+                k = clave(o)
+                if k not in vistos:
+                    vistos.add(k)
                     ofertas.append(o)
         log.info("Holidu %s: %d alojamientos enteros", req.city, len(ofertas))
         return ofertas

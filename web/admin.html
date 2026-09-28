@@ -336,7 +336,22 @@ function wireToken(raiz = document) {
   });
 }
 
-function abrirPanel() {
+/* EL TOKEN DEL SITIO, ABIERTO CON LA CONTRASEÑA DEL PANEL. Antes el panel solo
+   escribía con el token pegado a mano en ESE navegador: abriendo una petición
+   de cuenta desde WhatsApp (que usa su propio navegador) o desde otro móvil,
+   «Aprobar» se quedaba sin token y pedía pegarlo. Pero el token ya está en
+   `users.json`, cerrado con la clave maestra, y la maestra es justo lo que
+   abre la contraseña del panel. Se saca de ahí y vive en sessionStorage, como
+   el de las cuentas: al cerrar la pestaña, desaparece. */
+async function abrirTokenDelSitio() {
+  if (!MAESTRA || tfToken()) return;
+  const datos = await tfLeerUsuarios();
+  const token = await tfAbrirToken(MAESTRA, datos.site);
+  if (token) tfGuardarTokenSesion(token);
+}
+
+async function abrirPanel() {
+  await abrirTokenDelSitio();
   $("#puerta").hidden = true;
   $("#panelAdmin").hidden = false;
   $("#lede").textContent =

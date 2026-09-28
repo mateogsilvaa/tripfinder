@@ -105,10 +105,6 @@ DESCRIPCIONES = {
         "Los viajes que tienes apuntados, revisados cada manana. Te escribe cuando "
         "el precio se mueve o cae dentro de tu tope."
     ),
-    "trenes.html": (
-        "A donde llega el AVE desde Madrid y en cuanto. Del centro al centro, "
-        "sin las tres horas de aeropuerto que se le suman a cualquier vuelo."
-    ),
     "interrail.html": (
         "Monta tu Interrail: las ciudades por las que quieres pasar, los trenes, "
         "los vuelos de ida y vuelta y pisos enteros en el centro, con el total."
@@ -149,7 +145,6 @@ NAV = (
     '        <a href="./"{promos}>Feed</a>\n'
     '        <a href="buscar.html"{buscar}>Buscar</a>\n'
     '        <a href="seguimientos.html"{follows}>Vuelos que sigues</a>\n'
-    '        <a href="trenes.html"{tren}>En tren</a>\n'
     '        <a href="interrail.html"{interrail}>Interrail</a>\n'
     '      </nav>\n'
 )
@@ -222,23 +217,7 @@ PAGINAS = {
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
     },
-    # La unica pagina que no pide nada a nadie: los tiempos de tren estan en
-    # `web/js/trenes.js` y se pintan al cargar. Lleva GUIONES_WEB igual porque
-    # comparte barra, tema y chip de cuenta con el resto.
-    "trenes.html": {
-        "base": "",
-        "manifiesto": MANIFIESTO,
-        "nav": NAV,
-        "descubrir": DESCUBRIR,
-        "titulo": "TripFinder · de Madrid en tren",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["trenes.html"]}">',
-        "vivo": "",
-        "zona": "tren",
-        "nota": NOTA_WEB,
-        "guiones": GUIONES_WEB,
-    },
-    # El Interrail, que vivio debajo de los trenes de Madrid y era otra cosa:
-    # alli no se pide nada a nadie, aqui se buscan vuelos y alojamiento.
+    # El Interrail: la ruta por Europa en tren, con vuelos y alojamiento.
     "interrail.html": {
         "base": "",
         "manifiesto": MANIFIESTO,
@@ -300,10 +279,10 @@ def _zonas(activa: str | None) -> dict[str, str]:
     Quien solo queria ver sus busquedas guardadas tenia que lanzar una.
 
     Tambien fueron cuatro con el mapamundi; se fue, y con el la zona "mundo".
-    La cuarta de ahora es "tren", que si es una pagina de verdad, y la quinta
-    "interrail", que vivia debajo de ella."""
+    Luego fue "tren" (de Madrid en tren), que se quito: la cuarta es ahora el
+    Interrail."""
     salida: dict[str, str] = {}
-    for z in ("promos", "buscar", "follows", "tren", "interrail"):
+    for z in ("promos", "buscar", "follows", "interrail"):
         if z == activa:
             salida[z] = f' class="zona activa" data-zona="{z}" aria-current="page"'
         else:

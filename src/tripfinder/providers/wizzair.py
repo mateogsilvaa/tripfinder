@@ -31,7 +31,7 @@ from datetime import date, timedelta
 
 from ..config import Route
 from ..models import FlightOffer
-from ..util import get_text, throttle
+from ..util import a_euros, get_text, throttle
 from . import links
 from .base import FlightProvider, register
 
@@ -76,7 +76,11 @@ def _importe(vuelo: dict) -> float | None:
         importe = float(precio.get("amount") or 0)
     except (TypeError, ValueError):
         return None
-    return importe if importe > 0 else None
+    if importe <= 0:
+        return None
+    # Y EN EUROS. Wizz da el precio en la moneda del pais de salida: la vuelta
+    # desde Budapest llegaba en forintos («22790.0») y se sumaba como euros.
+    return a_euros(importe, precio.get("currencyCode"))
 
 
 def _sesion():
@@ -154,6 +158,41 @@ def destinos_desde(origen: str) -> list[str]:
             return destinos
     _cache[clave] = []
     return []
+
+
+def precios_por_dia(
+    origen: str, destino: str, desde: date, hasta: date, cfg: dict | None = None
+) -> dict[str, dict]:
+    """{dia: {price, time, origin, destination, airline, deep_link}}, en el
+    sentido origen -> destino, solo los dias con precio de verdad. Lo usa el
+    Interrail, que entra por una ciudad y sale por otra: Wizz vuela de Madrid a
+    Budapest, Viena o Roma, y sin el ahi solo quedaba Ryanair.
+
+    Solo si Wizz vuela esa ruta (su mapa lo dice): preguntar por una que no
+    existe es una llamada perdida y, con esta API, una sesion envenenada."""
+    try:
+        if destino not in destinos_desde(origen):
+            return {}
+    except Exception as exc:  # noqa: BLE001 - sin mapa no se pregunta
+        log.debug("Wizz mapa %s: %s", origen, exc)
+        return {}
+    prov = WizzairProvider(cfg or {})
+    idas, _ = prov._ventana(Route(origin=origen), destino, desde.isoformat(), hasta.isoformat())
+    salida: dict[str, dict] = {}
+    for dia, vuelo in idas.items():
+        precio = _importe(vuelo)
+        if precio is None or not (desde.isoformat() <= dia <= hasta.isoformat()):
+            continue
+        horas = vuelo.get("departureDates") or []
+        salida[dia] = {
+            "price": round(precio, 2),
+            "time": str(horas[0])[11:16] if horas else "",
+            "origin": origen,
+            "destination": destino,
+            "airline": "Wizz Air",
+            "deep_link": links.wizzair(origen, destino, dia),
+        }
+    return salida
 
 
 @register("wizzair")
@@ -326,7 +365,8 @@ class WizzairProvider(FlightProvider):
             return_date=regreso,
             nights=noches,
             price=round(float(precio), 2),
-            currency=ida["price"].get("currencyCode", "EUR"),
+            # `_importe` ya lo ha pasado todo a euros.
+            currency="EUR",
             airline="Wizz Air",
             stops=0,
             adults=adultos,

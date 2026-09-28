@@ -295,6 +295,14 @@ const tfToken = () => {
   }
 };
 
+const tfTokenDeSesion = () => {
+  try {
+    return sessionStorage.getItem(TF_TOKEN_SESION) || "";
+  } catch {
+    return "";
+  }
+};
+
 const tfGuardarTokenSesion = (token) => {
   try {
     if (token) sessionStorage.setItem(TF_TOKEN_SESION, token);
@@ -307,7 +315,9 @@ const tfGuardarTokenSesion = (token) => {
 async function tfDispatch(evento, payload) {
   // Lanzar un scraper escribe en el repo y lo que escribe lleva tu nombre: sin
   // cuenta no hay a quien apuntarselo, asi que no se manda.
-  if (!tfSesion() && !localStorage.getItem(TF_TOKEN_KEY)) {
+  // El panel no tiene sesión de cuenta, pero sí el token que abre con su
+  // contraseña (va en sessionStorage): con él también se puede escribir.
+  if (!tfSesion() && !localStorage.getItem(TF_TOKEN_KEY) && !tfTokenDeSesion()) {
     return { ok: false, reason: "sin-cuenta" };
   }
   const token = tfToken();

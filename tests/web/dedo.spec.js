@@ -33,7 +33,6 @@ const PAGINAS = [
   "/index.html",
   "/buscar.html",
   "/seguimientos.html",
-  "/trenes.html",
   "/404.html",
 ];
 

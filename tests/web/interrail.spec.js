@@ -74,9 +74,17 @@ const abrir = async (page, { ida = IDA } = {}) => {
   }
 };
 
+/* Se eligen en el mapa, tocando el círculo de cada ciudad. */
 const elegir = async (page, ...cods) => {
-  for (const c of cods) await page.locator(`[data-ir-ciudad="${c}"]`).click();
+  for (const c of cods) await page.locator(`#irMapa [data-ir-ciudad="${c}"] .ir-nodo-toque`).click();
 };
+/* Las otras rutas van plegadas: se abre y se elige. */
+const otraRuta = async (page, id) => {
+  const mas = page.locator("#irRutas details.ir-mas");
+  if (!(await mas.evaluate((d) => d.open))) await mas.locator("summary").click();
+  await page.locator(`[data-ir-elegir-ruta="${id}"]`).click();
+};
+const chip = (page, c) => page.locator(`#irCiudades [data-ir-ciudad="${c}"]`);
 
 const paradas = (page) => page.locator(".ir-ruta.elegida .ir-parada b").allTextContents();
 
@@ -101,10 +109,9 @@ test.describe("dos páginas", () => {
     await expect(page.locator("#trenForm")).toHaveCount(0);
   });
 
-  test("y la de los trenes de Madrid ya no lo lleva debajo, pero enlaza", async ({ page }) => {
-    await page.goto("/trenes.html");
-    await expect(page.locator("#interrail, #irForm")).toHaveCount(0);
-    await expect(page.locator('.tren-otra a[href="interrail.html"]')).toBeVisible();
+  test("y la de los trenes de Madrid ya no existe", async ({ page }) => {
+    await page.goto("/interrail.html");
+    await expect(page.locator('.zona[href="trenes.html"]')).toHaveCount(0);
   });
 });
 
@@ -137,7 +144,7 @@ test.describe("el pase", () => {
     // Suiza no tiene ni una reserva: con el pase, el tren sale a cero.
     await abrir(page);
     await page.locator('input[name="irPase"][value="si"]').check();
-    await page.locator('[data-ir-elegir-ruta="suiza"]').click();
+    await otraRuta(page, "suiza");
     await expect(page.locator(".ir-ruta.elegida .ir-precio dd")).toHaveText("≈ 0 €");
   });
 
@@ -177,18 +184,26 @@ test.describe("las ciudades por las que quieres pasar", () => {
     // Elegidas en el peor orden posible.
     await elegir(page, "ROM", "BER", "PRG");
     await expect(page.locator(".ir-ruta.elegida .ir-etiqueta")).toHaveText("tu ruta");
-    expect(await paradas(page)).toEqual(["Berlín", "Praga", "Roma"]);
+    // Las tres, con Roma en una punta: con el mapa de ahora, Praga → Berlín
+    // → Roma gasta menos que Berlín → Praga → Roma (se baja por Núremberg,
+    // Innsbruck y Verona). El orden exacto lo decide el mapa, no la prueba.
+    const orden = await paradas(page);
+    expect([...orden].sort()).toEqual(["Berlín", "Praga", "Roma"]);
+    expect(orden[orden.length - 1]).toBe("Roma");
   });
 
   test("entre dos lejanas, dice por dónde pasa y deja parar", async ({ page }) => {
     await abrir(page);
     await elegir(page, "PRG", "ROM");
-    const tramo = page.locator(".ir-ruta.elegida .ir-tramo").first();
-    await expect(tramo).toContainText("pasas por");
+    const tramo = page.locator(".ir-ruta.elegida .ir-ev-tren").first();
+    await expect(tramo).toContainText(/pasas por/i);
     await expect(tramo).toContainText("Es un día largo de tren");
-    await tramo.locator('[data-ir-parar="VIE"]').click();
-    expect(await paradas(page)).toContain("Viena");
-    await expect(page.locator('[data-ir-ciudad="VIE"]')).toHaveAttribute("aria-pressed", "true");
+    const boton = tramo.locator("[data-ir-parar]").first();
+    const cod = await boton.getAttribute("data-ir-parar");
+    const ciudad = (await boton.textContent()).replace("Parar en", "").trim();
+    await boton.click();
+    expect(await paradas(page)).toContain(ciudad);
+    await expect(chip(page, cod)).toHaveAttribute("aria-pressed", "true");
   });
 
   test("quitar una ciudad de tu ruta la desmarca", async ({ page }) => {
@@ -196,14 +211,14 @@ test.describe("las ciudades por las que quieres pasar", () => {
     await elegir(page, "AMS", "BER", "PRG");
     await page.locator(".ir-ruta.elegida .ir-ajustar summary").click();
     await page.locator('.ir-ruta.elegida [data-ir-accion="quitar"][data-cod="BER"]').click();
-    await expect(page.locator('[data-ir-ciudad="BER"]')).toHaveAttribute("aria-pressed", "false");
+    await expect(chip(page, "BER")).toHaveAttribute("aria-pressed", "false");
     expect(await paradas(page)).toEqual(["Ámsterdam", "Praga"]);
   });
 
   test("con una sola, pide otra y enseña las rutas hechas que pasan por ella", async ({ page }) => {
     await abrir(page);
     await elegir(page, "LUC");
-    await expect(page.locator("#irCiudades .ir-elegidas")).toContainText("elige al menos otra");
+    await expect(page.locator("#irElegidas")).toContainText("elige al menos otra");
     await expect(page.locator(".ir-ruta.elegida")).toHaveAttribute("id", "ruta-suiza");
   });
 
@@ -211,7 +226,7 @@ test.describe("las ciudades por las que quieres pasar", () => {
     await abrir(page);
     await elegir(page, "ROM", "FLR");
     await page.reload();
-    await expect(page.locator('[data-ir-ciudad="FLR"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(chip(page, "FLR")).toHaveAttribute("aria-pressed", "true");
     expect(await paradas(page)).toEqual(["Roma", "Florencia"]);
   });
 
@@ -220,8 +235,7 @@ test.describe("las ciudades por las que quieres pasar", () => {
     await page.fill("#irVuelta", "2026-11-16");
     await page.dispatchEvent("#irVuelta", "change");
     await elegir(page, "PAR", "AMS");
-    const noches = await page.locator(".ir-ruta.elegida .ir-cifras div").nth(1).locator("dd").textContent();
-    expect(noches.trim().startsWith("10")).toBe(true);
+    await expect(page.locator(".ir-ruta.elegida .ir-res-datos")).toContainText("10 noches");
   });
 
   test("el camino más corto sale del mapa, y se sabe cuándo no hay", async ({ page }) => {
@@ -344,7 +358,7 @@ test.describe("la cama, en el centro", () => {
     await elegir(page, "VIE", "BUD");
     const cama = page.locator(`.ir-cama[data-parada="${ID}"]`);
     await expect(cama.locator(".ir-cama-sel a")).toHaveText(/Piso (en el centro|a un paseo)/);
-    await expect(cama.locator(".ir-cama-sel small")).toContainText("min andando del centro");
+    await expect(cama.locator(".ir-cama-sel > div small")).toContainText("min andando del centro");
     await expect(cama).not.toContainText("Habitación barata");
     await expect(cama).not.toContainText("Piso a 7 km");
     await expect(cama).not.toContainText("Piso a 43 min");
@@ -409,10 +423,10 @@ test.describe("el total", () => {
     await servir(page, { camas, vuelos: { ...vuelos, "ir-vuelo-MAD-BUD-2026-11-10-vuelta": [] } });
     await abrir(page);
     await elegir(page, "VIE", "BUD");
-    const ida = page.locator(".ir-ruta.elegida .ir-vuelo").first();
+    const ida = page.locator(".ir-ruta.elegida .ir-ev-vuelo").first();
     await expect(ida).toContainText("40 €");
     await expect(ida).toContainText("MAD → BTS");
-    await expect(page.locator(".ir-ruta.elegida .ir-vuelo").last()).toContainText("Ryanair no vuela ese día");
+    await expect(page.locator(".ir-ruta.elegida .ir-ev-vuelo").last()).toContainText("Ni Ryanair ni Wizz vuelan ese día");
     await expect(page.locator(".ir-ruta.elegida .ir-precio")).toHaveAttribute("data-completo", "no");
   });
 });
@@ -424,7 +438,7 @@ test.describe("las fechas", () => {
     // El 25 de octubre de 2026 se atrasa la hora en España.
     await abrir(page, { ida: "2026-10-23" });
     await elegir(page, "VIE", "BUD");
-    const vuelta = page.locator(".ir-ruta.elegida .ir-vuelo").last().locator("a.btn");
+    const vuelta = page.locator(".ir-ruta.elegida .ir-ev-vuelo").last().locator("a.btn");
     await expect(vuelta).toHaveAttribute("href", /dep=2026-10-27/);
     await expect(vuelta).toHaveAttribute("href", /from=BUD/);
     await expect(vuelta).toHaveAttribute("href", /to=MAD/);
@@ -440,7 +454,7 @@ test.describe("las fechas", () => {
   test("sale con una fecha puesta, para que se vea entero sin tocar nada", async ({ page }) => {
     await page.goto("/interrail.html");
     await expect(page.locator("#irIda")).not.toHaveValue("");
-    await expect(page.locator(".ir-ruta.elegida .ir-vuelo a.btn").first()).toBeVisible();
+    await expect(page.locator(".ir-ruta.elegida .ir-ev-vuelo a.btn").first()).toBeVisible();
   });
 });
 
@@ -450,28 +464,173 @@ test.describe("las rutas hechas", () => {
   test("hay doce, y se puede elegir otra", async ({ page }) => {
     await abrir(page);
     await expect(page.locator("#irRutas .ir-ruta")).toHaveCount(12);
-    await page.locator('[data-ir-elegir-ruta="italia"]').click();
+    await otraRuta(page, "italia");
     await expect(page.locator(".ir-ruta.elegida")).toHaveAttribute("id", "ruta-italia");
     expect((await paradas(page))[0]).toBe("Milán");
   });
 
   test("al revés, más noches, saltarse una y deshacer", async ({ page }) => {
     await abrir(page);
-    await page.locator('[data-ir-elegir-ruta="centro"]').click();
+    await otraRuta(page, "centro");
     const r = page.locator("#ruta-centro");
     await r.locator(".ir-ajustar summary").click();
     await r.locator('[data-ir-accion="rev"]').click();
     expect((await paradas(page))[0]).toBe("Budapest");
     await r.locator('[data-ir-accion="quitar"][data-cod="PRG"]').click();
     expect(await paradas(page)).not.toContain("Praga");
-    await expect(r.locator(".ir-tramo").filter({ hasText: "pasas por Praga" })).toHaveCount(1);
+    await expect(r.locator(".ir-ev-tren").filter({ hasText: "Pasas por Praga" })).toHaveCount(1);
     await r.locator('[data-ir-accion="reset"]').click();
     expect(await paradas(page)).toEqual(["Ámsterdam", "Berlín", "Praga", "Viena", "Budapest"]);
   });
 
   test("las reservas obligatorias se dicen", async ({ page }) => {
     await abrir(page);
-    await page.locator('[data-ir-elegir-ruta="italia"]').click();
+    await otraRuta(page, "italia");
     await expect(page.locator("#ruta-italia .ir-reserva").first()).toContainText("reserva ≈");
+  });
+});
+
+/* ------------------------------------------------------- lo de esta ronda */
+
+test.describe("el mapa", () => {
+  test("se eligen las ciudades tocándolas, y la ruta se dibuja encima", async ({ page }) => {
+    await abrir(page);
+    await elegir(page, "VIE", "BUD");
+    await expect(page.locator('#irMapa [data-ir-ciudad="VIE"]')).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#irMapa .ir-mapa-ruta")).toHaveCount(1);
+    await expect(page.locator("#irElegidas")).toContainText("Viena");
+    // Y otra vez la quita.
+    await elegir(page, "BUD");
+    await expect(page.locator('#irMapa [data-ir-ciudad="BUD"]')).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("con el teclado también", async ({ page }) => {
+    await abrir(page);
+    await page.locator('#irMapa [data-ir-ciudad="PRG"]').focus();
+    await page.keyboard.press("Enter");
+    await expect(page.locator('#irMapa [data-ir-ciudad="PRG"]')).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+test.describe("el tren nocturno", () => {
+  test("ir de noche ahorra una noche de piso sin mover las fechas de después", async ({ page }) => {
+    await conSesion(page);
+    const enviados = await contarEncargos(page);
+    await servir(page);
+    await abrir(page);
+    await elegir(page, "VCE", "VIE");
+    const tren = page.locator(".ir-ruta.elegida .ir-ev-tren").first();
+    await expect(tren.locator(".ir-nocturno")).toContainText("Hay tren nocturno");
+    await tren.locator("[data-ir-noche]").click();
+    await expect(page.locator(".ir-ruta.elegida .ir-ev-tren.de-noche")).toHaveCount(1);
+    await expect.poll(() => enviados.length, { timeout: 8000 }).toBe(1);
+    const ids = enviados[0].client_payload.paradas.map((p) => p.offer_id);
+    // Venecia: dos noches de viaje, una en cama. Viena llega el mismo día.
+    expect(ids).toEqual(["ir-VCE-2026-11-06-1n-2", "ir-VIE-2026-11-08-2n-2"]);
+    // La litera se suma como reserva.
+    await expect(tren).toContainText("litera");
+  });
+
+  test("y se deshace", async ({ page }) => {
+    await abrir(page);
+    await elegir(page, "VCE", "VIE");
+    await page.locator(".ir-ruta.elegida [data-ir-noche]").click();
+    await page.locator(".ir-ruta.elegida .ir-ev-tren.de-noche [data-ir-noche]").click();
+    await expect(page.locator(".ir-ruta.elegida .ir-ev-tren.de-noche")).toHaveCount(0);
+  });
+});
+
+test.describe("los vuelos, otros días", () => {
+  const dias = (extra) => ({
+    "2026-11-06": { price: 60, airline: "Ryanair" },
+    "2026-11-04": { price: 23, airline: "Wizz Air", origin: "MAD", destination: "VIE" },
+    ...extra,
+  });
+
+  test("si otro día sale más barato, se propone y un toque mueve el viaje", async ({ page }) => {
+    await page.route("**/data/interrail/ir-vuelo-MAD-VIE-2026-11-06-ida.json*", (r) =>
+      r.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ legs: [{ price: 60, airline: "Ryanair", origin: "MAD", destination: "VIE" }], dias: dias() }),
+      })
+    );
+    await page.route("**/data/interrail/index.json*", (r) =>
+      r.fulfill({ contentType: "application/json", body: JSON.stringify({ vuelos: ["ir-vuelo-MAD-VIE-2026-11-06-ida"] }) })
+    );
+    await abrir(page);
+    await elegir(page, "VIE", "BUD");
+    const chip = page.locator('.ir-ruta.elegida [data-ir-mover="ida"]');
+    await expect(chip).toHaveCount(1);
+    await expect(chip).toContainText("23 €");
+    await chip.click();
+    await expect(page.locator("#irIda")).toHaveValue("2026-11-04");
+  });
+
+  test("la vuelta se mueve con las noches de la última parada", async ({ page }) => {
+    await page.route("**/data/interrail/ir-vuelo-MAD-BUD-2026-11-10-vuelta.json*", (r) =>
+      r.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({
+          legs: [{ price: 90, airline: "Ryanair", origin: "BUD", destination: "MAD" }],
+          dias: { "2026-11-11": { price: 40, airline: "Wizz Air", origin: "BUD", destination: "MAD" } },
+        }),
+      })
+    );
+    await page.route("**/data/interrail/index.json*", (r) =>
+      r.fulfill({ contentType: "application/json", body: JSON.stringify({ vuelos: ["ir-vuelo-MAD-BUD-2026-11-10-vuelta"] }) })
+    );
+    await abrir(page);
+    await elegir(page, "VIE", "BUD");
+    await page.locator('.ir-ruta.elegida [data-ir-mover="vuelta"]').click();
+    // Budapest pasa de dos noches a tres, y la vuelta al 11.
+    await expect(page.locator(".ir-ruta.elegida .ir-ev-ciudad").last()).toContainText("3 noches");
+    await expect(page.locator(".ir-ruta.elegida .ir-res-datos")).toContainText("mié 11 nov");
+  });
+});
+
+test.describe("los horarios, compartir y el calendario", () => {
+  test("cada tren enlaza a los horarios de ese día", async ({ page }) => {
+    await abrir(page);
+    await elegir(page, "VIE", "BUD");
+    const enlace = page.locator(".ir-ruta.elegida .ir-ev-tren a.ir-ev-accion");
+    await expect(enlace).toHaveAttribute("href", /int\.bahn\.de/);
+    await expect(enlace).toHaveAttribute("href", /hd=2026-11-08T08:00/);
+    await expect(enlace).toHaveAttribute("href", /Wien%20Hbf/);
+  });
+
+  test("el enlace del plan abre el mismo viaje en otro navegador", async ({ page, browser }) => {
+    await abrir(page);
+    await elegir(page, "PRG", "VIE");
+    await page.locator('input[name="irPase"][value="si"]').check();
+    const url = await page.evaluate(async () => {
+      const m = await import("./js/interrail.js");
+      return m.enlacePlan(
+        { ciudades: ["PRG", "VIE"], ida: "2026-11-06", vuelta: "", adultos: 3, origen: "BCN", tengoPase: true, dias: 5, edad: "adulto" },
+        { propia: true, id: "tuya" }
+      );
+    });
+    const otro = await (await browser.newContext({ timezoneId: "Europe/Madrid" })).newPage();
+    await otro.goto(url.replace(/^https?:\/\/[^/]+/, "http://localhost:4173"));
+    await expect(otro.locator(".ir-ruta.elegida .ir-etiqueta")).toHaveText("tu ruta");
+    expect(await paradas(otro)).toEqual(["Praga", "Viena"]);
+    await expect(otro.locator("#irPersonas")).toHaveValue("3");
+    await expect(otro.locator("#irOrigen")).toHaveValue("BCN");
+    await expect(otro.locator('input[name="irPase"][value="si"]')).toBeChecked();
+  });
+
+  test("el calendario lleva los vuelos, cada ciudad y cada tren", async ({ page }) => {
+    await abrir(page);
+    await elegir(page, "VIE", "BUD");
+    const ics = await page.evaluate(async () => {
+      const m = await import("./js/interrail.js");
+      const r = m.rutaPropia(["VIE", "BUD"]);
+      return m.calendarioPlan(r, { ida: "2026-11-06", adultos: 2, origen: "MAD", ciudades: ["VIE", "BUD"] });
+    });
+    expect(ics).toContain("BEGIN:VCALENDAR");
+    expect(ics).toContain("SUMMARY:Viena · 2 noches");
+    expect(ics).toContain("SUMMARY:Tren Viena → Budapest");
+    expect(ics).toContain("SUMMARY:Vuelo Madrid → Viena");
+    expect(ics).toContain("SUMMARY:Vuelo Budapest → Madrid");
+    expect(ics).toContain("DTSTART;VALUE=DATE:20261106");
   });
 });
