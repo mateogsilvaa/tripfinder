@@ -31,7 +31,7 @@ from datetime import date, timedelta
 
 from ..config import Route
 from ..models import FlightOffer
-from ..util import get_text, throttle
+from ..util import a_euros, get_text, throttle
 from . import links
 from .base import FlightProvider, register
 
@@ -76,7 +76,11 @@ def _importe(vuelo: dict) -> float | None:
         importe = float(precio.get("amount") or 0)
     except (TypeError, ValueError):
         return None
-    return importe if importe > 0 else None
+    if importe <= 0:
+        return None
+    # Y EN EUROS. Wizz da el precio en la moneda del pais de salida: la vuelta
+    # desde Budapest llegaba en forintos («22790.0») y se sumaba como euros.
+    return a_euros(importe, precio.get("currencyCode"))
 
 
 def _sesion():
@@ -361,7 +365,8 @@ class WizzairProvider(FlightProvider):
             return_date=regreso,
             nights=noches,
             price=round(float(precio), 2),
-            currency=ida["price"].get("currencyCode", "EUR"),
+            # `_importe` ya lo ha pasado todo a euros.
+            currency="EUR",
             airline="Wizz Air",
             stops=0,
             adults=adultos,

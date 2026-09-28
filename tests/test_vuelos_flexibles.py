@@ -114,3 +114,21 @@ def test_wizz_no_pregunta_por_rutas_que_no_vuela(monkeypatch):
     monkeypatch.setattr(wizzair.WizzairProvider, "_ventana", lambda self, *a: llamadas.append(a) or ({}, {}))
     assert wizzair.precios_por_dia("MAD", "EIN", DIA, DIA) == {}
     assert llamadas == []
+
+
+def test_wizz_en_forintos_se_pasa_a_euros(monkeypatch):
+    """La vuelta de Wizz desde Budapest llega en forintos: «22790.0» sumado como
+    euros hacía imposible cualquier vuelta desde fuera del euro."""
+    from tripfinder import util
+
+    monkeypatch.setattr(util, "_CAMBIOS", {"HUF": 380.0, "_": 1.0})
+    vuelo_huf = {"price": {"amount": 22790.0, "currencyCode": "HUF"}}
+    assert wizzair._importe(vuelo_huf) == round(22790 / 380, 2)
+    assert wizzair._importe({"price": {"amount": 49.99, "currencyCode": "EUR"}}) == 49.99
+
+
+def test_sin_cambio_de_moneda_el_precio_no_cuenta(monkeypatch):
+    from tripfinder import util
+
+    monkeypatch.setattr(util, "_CAMBIOS", {"_": 1.0})
+    assert wizzair._importe({"price": {"amount": 22790.0, "currencyCode": "HUF"}}) is None
