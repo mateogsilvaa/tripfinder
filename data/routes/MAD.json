@@ -1,6 +1,6 @@
 {
  "origen": "MAD",
- "generado": "2026-09-14T21:17:50+00:00",
+ "generado": "2026-09-28T22:52:11+00:00",
  "destinos": {
   "ACE": [
    "Lanzarote",
@@ -17,6 +17,10 @@
   "AMM": [
    "Amman",
    "Jordania"
+  ],
+  "ARW": [
+   "",
+   ""
   ],
   "BBU": [
    "",
