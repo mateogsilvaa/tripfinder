@@ -939,13 +939,63 @@ def buscar_vuelo_interrail(v: dict[str, Any], cfg: Config) -> dict[str, Any]:
         except Exception as exc:  # noqa: BLE001 - sin vuelo, la ruta sigue
             log.warning("Vuelo %s: %s", v["id"], exc)
     tramos = sorted((t for t in tramos if t.price and t.currency == "EUR"), key=lambda t: t.price)
+    legs = [asdict(t) for t in tramos[:5]]
+
+    # LOS DIAS DE ALREDEDOR. Un dia antes o despues el mismo vuelo puede costar
+    # la mitad, o existir cuando ese dia no hay. Se guarda el mas barato de cada
+    # dia de la semana que rodea la fecha, de Ryanair y de Wizz, para que la web
+    # proponga moverse si sale a cuenta.
+    dias = calendario_interrail(v, cfg)
+    # Si Wizz tiene el dia exacto mas barato que Ryanair (o Ryanair no vuela),
+    # entra tambien como opcion de ese dia.
+    exacto = dias.get(v["fecha"])
+    if exacto and exacto["airline"] != "Ryanair" and (not legs or exacto["price"] < legs[0]["price"]):
+        legs.insert(0, {**exacto, "provider": "wizzair", "date": v["fecha"], "currency": "EUR"})
     return {
         **v,
         "generated_at": date.today().isoformat(),
         # Los cinco mas baratos: el primero es el que suma, los otros son para
         # quien prefiera otra hora.
-        "legs": [asdict(t) for t in tramos[:5]],
+        "legs": legs[:5],
+        "dias": dias,
     }
+
+
+# Cuantos dias a cada lado de la fecha se miran.
+DIAS_ALREDEDOR = 3
+
+
+def calendario_interrail(v: dict[str, Any], cfg: Config) -> dict[str, dict]:
+    """{dia: el vuelo mas barato de ese dia} entre fecha-3 y fecha+3, de todos
+    los aeropuertos de la ciudad, en el sentido del vuelo. Nunca antes de
+    mañana: no se propone salir ayer."""
+    from .providers import ryanair, wizzair
+
+    dia = date.fromisoformat(v["fecha"])
+    desde = max(date.today() + timedelta(days=1), dia - timedelta(days=DIAS_ALREDEDOR))
+    hasta = dia + timedelta(days=DIAS_ALREDEDOR)
+    if desde > hasta:
+        return {}
+    intervalo = float((cfg.search or {}).get("min_interval_seconds", 2))
+    mejores: dict[str, dict] = {}
+    for aeropuerto in v["aeropuertos"]:
+        origen, destino = (
+            (v["origen"], aeropuerto) if v["sentido"] == "ida" else (aeropuerto, v["origen"])
+        )
+        fuentes = []
+        try:
+            fuentes.append(ryanair.precios_por_dia(origen, destino, desde, hasta, intervalo))
+        except Exception as exc:  # noqa: BLE001
+            log.debug("Calendario Ryanair %s-%s: %s", origen, destino, exc)
+        try:
+            fuentes.append(wizzair.precios_por_dia(origen, destino, desde, hasta, cfg.search))
+        except Exception as exc:  # noqa: BLE001
+            log.debug("Calendario Wizz %s-%s: %s", origen, destino, exc)
+        for precios in fuentes:
+            for d, vuelo in precios.items():
+                if d not in mejores or vuelo["price"] < mejores[d]["price"]:
+                    mejores[d] = vuelo
+    return dict(sorted(mejores.items()))
 
 
 def cmd_interrail_stays(args: argparse.Namespace) -> int:

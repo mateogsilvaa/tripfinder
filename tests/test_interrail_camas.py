@@ -227,6 +227,14 @@ def test_sin_vuelos_es_una_lista_vacia():
     assert cli.vuelos_interrail("") == []
 
 
+@pytest.fixture(autouse=True)
+def sin_calendario(monkeypatch):
+    """El calendario de los dias de alrededor va a la red (Ryanair y Wizz):
+    aqui no se prueba eso, y sin cortarlo cada prueba se quedaba esperando.
+    Lo suyo vive en `test_vuelos_flexibles.py`."""
+    monkeypatch.setattr(cli, "calendario_interrail", lambda v, cfg: {})
+
+
 class Ryanair:
     """Falso: devuelve lo que se le diga y apunta lo que le piden."""
 

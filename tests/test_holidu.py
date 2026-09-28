@@ -101,10 +101,17 @@ def test_nada_de_habitaciones_ni_hoteles_ni_hostales():
     assert holidu.ofertas_de(pagina(*ofertas), adultos=2) == []
 
 
-def test_lo_entero_si_entra_aunque_sea_un_tipo_nuevo():
-    tipos = ["APARTMENT", "HOUSE", "VILLA", "CHALET", "HOUSEBOAT", "LOFT_NUEVO"]
+def test_los_tipos_enteros_conocidos_entran():
+    tipos = ["APARTMENT", "HOUSE", "VILLA", "CHALET", "HOUSEBOAT", "STUDIO", "LOFT"]
     ofertas = [anuncio(str(i), tipo=t) for i, t in enumerate(tipos)]
     assert len(holidu.ofertas_de(pagina(*ofertas), adultos=2)) == len(tipos)
+
+
+def test_un_tipo_que_no_se_conoce_no_se_da_por_entero():
+    """En Amsterdam se colo un barco hotel, «AmicitiA», a 50 € dos noches: su
+    tipo no estaba en ninguna lista y salia como «Alojamiento entero»."""
+    ofertas = [anuncio("barco", tipo="HOTEL_SHIP"), anuncio("raro", tipo="LOFT_NUEVO")]
+    assert holidu.ofertas_de(pagina(*ofertas), adultos=2) == []
 
 
 def test_lo_que_no_vale_se_queda_fuera():
