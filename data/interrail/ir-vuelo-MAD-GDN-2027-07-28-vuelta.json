@@ -1,0 +1,81 @@
+{
+  "id": "ir-vuelo-MAD-GDN-2027-07-28-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "GDN"
+  ],
+  "fecha": "2027-07-28",
+  "sentido": "vuelta",
+  "generated_at": "2026-09-28",
+  "legs": [
+    {
+      "price": 72.95,
+      "time": "06:20",
+      "origin": "GDN",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/GDN/MAD/2027-07-28/null/1/0/0/null",
+      "provider": "wizzair",
+      "date": "2027-07-28",
+      "currency": "EUR"
+    }
+  ],
+  "dias": {
+    "2027-07-25": {
+      "price": 137.99,
+      "time": "10:00",
+      "origin": "GDN",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-25&dateIn=&originIata=GDN&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-26": {
+      "price": 35.99,
+      "time": "06:20",
+      "origin": "GDN",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/GDN/MAD/2027-07-26/null/1/0/0/null"
+    },
+    "2027-07-27": {
+      "price": 113.99,
+      "time": "06:00",
+      "origin": "GDN",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-27&dateIn=&originIata=GDN&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-28": {
+      "price": 72.95,
+      "time": "06:20",
+      "origin": "GDN",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/GDN/MAD/2027-07-28/null/1/0/0/null"
+    },
+    "2027-07-29": {
+      "price": 113.99,
+      "time": "09:50",
+      "origin": "GDN",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-29&dateIn=&originIata=GDN&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-30": {
+      "price": 130.12,
+      "time": "06:20",
+      "origin": "GDN",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/GDN/MAD/2027-07-30/null/1/0/0/null"
+    },
+    "2027-07-31": {
+      "price": 137.99,
+      "time": "16:35",
+      "origin": "GDN",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-31&dateIn=&originIata=GDN&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  }
+}
