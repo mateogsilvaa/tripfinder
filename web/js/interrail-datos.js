@@ -73,6 +73,14 @@ export const CIUDADES = {
   POZ: C("Poznań", "Polonia", 52.4064, 16.9252, ["POZ"], true),
   WAW: C("Varsovia", "Polonia", 52.2297, 21.0122, ["WAW", "WMI"]),
   KRK: C("Cracovia", "Polonia", 50.0614, 19.9366, ["KRK"]),
+  DRS: C("Dresde", "Alemania", 51.0504, 13.7373, ["DRS", "BER", "PRG"], true),
+  NUE: C("Núremberg", "Alemania", 49.4521, 11.0767, ["NUE", "MUC"], true),
+  BLQ: C("Bolonia", "Italia", 44.4949, 11.3426, ["BLQ"]),
+  VRN: C("Verona", "Italia", 45.4384, 10.9916, ["VRN", "BGY"], true),
+  INN: C("Innsbruck", "Austria", 47.2692, 11.4041, ["INN", "MUC"], true),
+  SXB: C("Estrasburgo", "Francia", 48.5734, 7.7521, ["SXB", "BSL"], true),
+  GDN: C("Gdansk", "Polonia", 54.352, 18.6466, ["GDN"]),
+  BOD: C("Burdeos", "Francia", 44.8378, -0.5792, ["BOD"]),
 };
 
 /* Cómo se agrupan en el formulario. Por países eran catorce filas —en el
@@ -83,6 +91,48 @@ export const ZONAS = [
   ["Italia", ["Italia"]],
   ["Centro y este", ["Chequia", "Polonia", "Eslovaquia", "Hungría", "Eslovenia", "Croacia"]],
   ["Nórdicos", ["Dinamarca", "Suecia", "Noruega"]],
+];
+
+/* LA ESTACIÓN PRINCIPAL de cada ciudad, como la busca el planificador de la
+   Deutsche Bahn: es el que cubre casi toda Europa con horarios de verdad, y
+   cada tramo enlaza a él con la fecha puesta. */
+export const ESTACIONES = {
+  AMS: "Amsterdam Centraal", BRU: "Bruxelles-Midi", BRG: "Brugge", PAR: "Paris",
+  LYS: "Lyon Part-Dieu", MPL: "Montpellier Saint-Roch", MRS: "Marseille St-Charles",
+  NCE: "Nice Ville", BCN: "Barcelona Sants", BER: "Berlin Hbf", HAM: "Hamburg Hbf",
+  CGN: "Köln Hbf", FRA: "Frankfurt(Main)Hbf", MUC: "München Hbf", PRG: "Praha hl.n.",
+  VIE: "Wien Hbf", SZG: "Salzburg Hbf", BTS: "Bratislava hl.st.", BUD: "Budapest-Keleti",
+  ZAG: "Zagreb Glavni kolodvor", LJU: "Ljubljana", ZRH: "Zürich HB", LUC: "Luzern",
+  INT: "Interlaken Ost", GVA: "Genève", MIL: "Milano Centrale", VCE: "Venezia Santa Lucia",
+  FLR: "Firenze S.M.N.", PSA: "Pisa Centrale", SPZ: "La Spezia Centrale",
+  GOA: "Genova Piazza Principe", ROM: "Roma Termini", NAP: "Napoli Centrale",
+  CPH: "København H", STO: "Stockholm Central", OSL: "Oslo S", BGO: "Bergen",
+  POZ: "Poznań Główny", WAW: "Warszawa Centralna", KRK: "Kraków Główny",
+  DRS: "Dresden Hbf", NUE: "Nürnberg Hbf", BLQ: "Bologna Centrale", VRN: "Verona Porta Nuova",
+  INN: "Innsbruck Hbf", SXB: "Strasbourg", GDN: "Gdańsk Główny", BOD: "Bordeaux St-Jean",
+};
+
+/* LOS TRENES NOCTURNOS directos entre dos ciudades del mapa: [a, b, sale,
+   llega, litera]. La litera es lo que cuesta la reserva con el pase, por
+   persona, en compartimento de seis. De memoria, como el resto: las horas y
+   los precios cambian con cada horario, y en la tarjeta va dicho. Coger uno
+   ahorra una noche de alojamiento y medio día de viaje. */
+export const NOCTURNOS = [
+  ["VIE", "VCE", "21:30", "08:30", [30, 60]],
+  ["VIE", "ROM", "19:20", "10:30", [30, 70]],
+  ["MUC", "ROM", "20:30", "09:30", [30, 70]],
+  ["MUC", "VCE", "23:30", "08:30", [30, 60]],
+  ["ZRH", "PRG", "20:40", "08:50", [30, 60]],
+  ["AMS", "VIE", "19:30", "10:00", [30, 70]],
+  ["AMS", "MUC", "19:30", "08:30", [30, 70]],
+  ["BRU", "BER", "19:20", "07:00", [40, 80]],
+  ["AMS", "BER", "20:40", "07:00", [40, 80]],
+  ["BER", "PRG", "22:00", "08:00", [30, 60]],
+  ["VIE", "KRK", "22:30", "06:30", [25, 50]],
+  ["VIE", "WAW", "21:30", "07:30", [25, 50]],
+  ["BUD", "ZRH", "21:00", "08:30", [30, 60]],
+  ["STO", "HAM", "18:00", "07:30", [40, 80]],
+  ["PAR", "VIE", "19:40", "10:15", [30, 70]],
 ];
 
 /* [a, b, minutos, reserva, billete]. Van en los dos sentidos. */
@@ -149,6 +199,26 @@ export const CONEXIONES = [
   ["CPH", "STO", 310, R(5, 10), [40, 120]],
   ["STO", "OSL", 360, R(5, 10), [30, 90]],
   ["OSL", "BGO", 410, R(5, 10), [30, 100]],
+  ["DRS", "BER", 115, null, [20, 50]],
+  ["DRS", "PRG", 140, null, [15, 30]],
+  ["NUE", "MUC", 70, null, [20, 50]],
+  ["NUE", "FRA", 125, null, [25, 60]],
+  ["NUE", "BER", 200, null, [30, 80]],
+  ["BLQ", "FLR", 40, R(10, 15), [15, 35]],
+  ["BLQ", "MIL", 65, R(10, 15), [20, 45]],
+  ["BLQ", "VCE", 90, R(10, 15), [15, 35]],
+  ["BLQ", "VRN", 90, null, [10, 15]],
+  ["VRN", "MIL", 75, R(10, 15), [15, 30]],
+  ["VRN", "VCE", 70, null, [10, 15]],
+  ["VRN", "INN", 210, null, [25, 50]],
+  ["INN", "MUC", 110, null, [20, 45]],
+  ["INN", "SZG", 110, null, [20, 40]],
+  ["INN", "ZRH", 210, null, [30, 70]],
+  ["SXB", "PAR", 110, R(15, 30), [30, 90]],
+  ["SXB", "FRA", 120, null, [25, 50]],
+  ["GDN", "WAW", 170, R(2, 5), [15, 35]],
+  ["GDN", "POZ", 210, R(2, 5), [15, 30]],
+  ["BOD", "PAR", 125, R(15, 30), [30, 90]],
 ];
 
 /* LAS RUTAS HECHAS. Paradas y noches; los tramos salen del mapa. Son las que

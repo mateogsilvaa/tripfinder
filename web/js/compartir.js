@@ -24,7 +24,7 @@ import { esc, escURL, fmtDate } from "./base.js";
    alguien en el aeropuerto a la hora equivocada. */
 const zPad = (n) => String(n).padStart(2, "0");
 
-function comoFechaICS(iso, hora) {
+export function comoFechaICS(iso, hora) {
   const dia = String(iso || "").slice(0, 10).replace(/-/g, "");
   if (!dia) return null;
   if (!hora) return { valor: dia, entero: true };
@@ -47,7 +47,7 @@ function diaSiguiente(yyyymmdd) {
 /* Los saltos de linea de un `.ics` son CRLF y el texto lleva escapadas propias:
    una coma sin escapar parte el campo y el evento entra sin la mitad del
    titulo. */
-const textoICS = (s) =>
+export const textoICS = (s) =>
   String(s ?? "")
     .replace(/\\/g, "\\\\")
     .replace(/;/g, "\\;")
@@ -57,7 +57,7 @@ const textoICS = (s) =>
 /* El final de un tramo. Un vuelo que sale a las 21:55 y aterriza a las 00:30 lo
    hace AL DIA SIGUIENTE: sin esto el evento terminaria antes de empezar, y un
    `.ics` con DTEND anterior a DTSTART no lo abre ningun calendario. */
-function finDeTramo(iso, sale, llega) {
+export function finDeTramo(iso, sale, llega) {
   const inicio = comoFechaICS(iso, sale);
   if (!inicio) return null;
   if (inicio.entero) return { valor: diaSiguiente(inicio.valor), entero: true };
@@ -69,7 +69,7 @@ function finDeTramo(iso, sale, llega) {
   return fin;
 }
 
-function evento({ uid, sello, inicio, fin, titulo, detalle, sitio }) {
+export function evento({ uid, sello, inicio, fin, titulo, detalle, sitio }) {
   const fecha = (f, etiqueta) =>
     f.entero ? `${etiqueta};VALUE=DATE:${f.valor}` : `${etiqueta}:${f.valor}`;
   return [
@@ -142,7 +142,7 @@ export function calendarioICS(o) {
   return lineas.join("\r\n");
 }
 
-function descargar(nombre, texto) {
+export function descargar(nombre, texto) {
   const blob = new Blob([texto], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

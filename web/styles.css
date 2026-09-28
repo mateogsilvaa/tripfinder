@@ -3411,6 +3411,111 @@ h1 em { font-size: 1.3em; }
 .ir-sin-sesion { margin: 0 0 14px; }
 .ir-roto { color: var(--accent-txt); }
 
+/* EL MAPA DEL INTERRAIL. Las líneas de tren en gris, la ruta elegida encima en
+   verde, y las ciudades como botones: el círculo grande e invisible es la zona
+   de toque, que en un móvil un punto de ocho píxeles no se acierta. */
+.ir-mapa { margin: 4px 0 8px; border: 1px solid var(--hair); border-radius: var(--r); background: var(--field); }
+.ir-mapa-svg { display: block; width: 100%; height: auto; max-height: 70vh; }
+.ir-mapa-lineas line { stroke: var(--line); stroke-width: 1.2; opacity: 0.45; }
+.ir-mapa-ruta { fill: none; stroke: var(--deep); stroke-width: 3.5; stroke-linejoin: round; stroke-linecap: round; opacity: 0.9; }
+.ir-nodo { cursor: pointer; outline: none; }
+.ir-nodo-toque { fill: transparent; }
+.ir-nodo-punto { fill: var(--muted); stroke: var(--field); stroke-width: 1.5; transition: r 0.15s; }
+.ir-nodo text { pointer-events: none; font: 500 11px var(--font-sans, system-ui); fill: var(--muted); paint-order: stroke; stroke: var(--field); stroke-width: 3px; }
+.ir-nodo:hover .ir-nodo-punto, .ir-nodo:focus-visible .ir-nodo-punto { fill: var(--ink); }
+.ir-nodo:focus-visible .ir-nodo-toque { stroke: var(--accent); stroke-width: 2; }
+.ir-nodo text.menor { font-size: 9px; opacity: 0.85; }
+.ir-nodo.parada .ir-nodo-punto { fill: var(--deep); }
+.ir-nodo.parada text { fill: var(--ink); }
+.ir-nodo.sel .ir-nodo-punto { fill: var(--accent); }
+.ir-nodo.sel text { fill: var(--ink); font-weight: 700; }
+#irElegidas { margin: 0 0 6px; font-size: var(--fs-body-s); color: var(--muted); }
+#irElegidas b { color: var(--ink); }
+.ir-lista > summary { cursor: pointer; color: var(--deep); font-size: var(--fs-body-s); padding: 8px 0; min-height: var(--tap-min); }
+
+/* EL RESUMEN: lo que es el viaje a la izquierda, lo que cuesta a la derecha. */
+.ir-resumen {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px 20px;
+  align-items: start;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--hair);
+  margin-bottom: 14px;
+}
+.ir-resumen h3 { margin: 2px 0 0; font-size: var(--fs-subhead); letter-spacing: -0.02em; }
+.ir-res-idea { margin: 4px 0 0; color: var(--muted); font-size: var(--fs-body-s); }
+.ir-res-datos {
+  list-style: none; margin: 10px 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 6px 14px;
+  font: 400 var(--fs-meta) / 1.4 var(--font-mono); color: var(--ink);
+}
+.ir-res-datos small { color: var(--muted); }
+.ir-res-total { display: grid; justify-items: end; text-align: right; gap: 2px; }
+.ir-res-total > span { font: 400 var(--fs-caps) / 1.2 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.ir-res-total > b { font: 600 clamp(26px, 5vw, 36px) / 1.05 var(--font-mono); color: var(--ink); letter-spacing: -0.02em; }
+.ir-res-total[data-completo="si"] > b { color: var(--deep); }
+.ir-res-total small { color: var(--muted); font: 400 var(--fs-meta) var(--font-mono); }
+.ir-res-estado { max-width: 30ch; }
+.ir-res-acciones { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* EL VIAJE DÍA A DÍA: la fecha a la izquierda, un icono en la raya del
+   tiempo y lo que pasa ese día. */
+.ir-itinerario-titulo { margin: 18px 0 8px; font-size: var(--fs-body); }
+.ir-itinerario { list-style: none; margin: 0; padding: 0; display: grid; }
+.ir-ev {
+  display: grid;
+  grid-template-columns: 76px 22px minmax(0, 1fr) auto;
+  gap: 0 10px;
+  align-items: start;
+  padding: 10px 0;
+  position: relative;
+}
+.ir-ev + .ir-ev { border-top: 1px dashed var(--hair); }
+.ir-ev-dia { font: 400 var(--fs-meta) / 1.4 var(--font-mono); color: var(--muted); padding-top: 2px; }
+.ir-ev-ico { text-align: center; line-height: 1.4; }
+.ir-ev-ciudad .ir-ev-ico { color: var(--deep); }
+.ir-ev-cuerpo { min-width: 0; display: grid; gap: 6px; }
+.ir-ev-titulo { margin: 0; font-weight: 600; }
+.ir-ev-titulo small { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); margin-left: 8px; }
+.ir-ev-meta { margin: 0; font: 400 var(--fs-meta) / 1.5 var(--font-mono); color: var(--muted); }
+.ir-ev-meta b { color: var(--ink); }
+.ir-ev-meta.sin { color: var(--accent-txt); }
+.ir-ev-accion { align-self: start; }
+.ir-ev-tren.de-noche .ir-ev-titulo { color: var(--deep); }
+.ir-ev .ir-cama { margin: 0; padding: 10px; border: 1px solid var(--hair); border-left: 3px solid var(--deep); border-radius: var(--r); background: var(--field); }
+.ir-ev .ir-cama.esperando, .ir-ev .ir-cama.vacia { border-left-color: var(--line); }
+.ir-cama-sel img { width: 88px; height: 66px; }
+.ir-cama-sel b { display: grid; justify-items: end; }
+.ir-cama-sel b small { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); }
+.ir-otros-dias { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: var(--fs-meta); color: var(--muted); }
+.ir-dia-chip {
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 1px solid var(--deep);
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--ink);
+  font: 400 var(--fs-meta) var(--font-mono);
+  cursor: pointer;
+}
+.ir-dia-chip small { color: var(--deep); }
+.ir-dia-chip:hover { background: color-mix(in srgb, var(--deep) 12%, transparent); }
+.ir-nocturno {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  padding: 8px 10px; border-radius: var(--r);
+  background: color-mix(in srgb, var(--deep) 8%, transparent);
+  font-size: var(--fs-body-s);
+}
+.ir-largo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--accent-txt); font-size: var(--fs-body-s); }
+.ir-mas { margin-top: 18px; }
+.ir-mas > summary {
+  cursor: pointer; padding: 12px 14px; min-height: var(--tap-min);
+  border: 1px solid var(--line); border-radius: var(--r);
+  font-weight: 600;
+}
+.ir-mas[open] > summary { margin-bottom: 10px; }
+
 /* El Interrail en el movil. */
 @media (max-width: 760px) {
   .ir-cifras { grid-template-columns: 1fr 1fr; }
@@ -3422,6 +3527,13 @@ h1 em { font-size: 1.3em; }
   .ir-opciones { grid-template-columns: 1fr; }
   .ir-ruta.corta { flex-direction: column; align-items: stretch; }
   .ir-ruta.corta .btn { align-self: flex-start; }
+  .ir-resumen { grid-template-columns: 1fr; }
+  .ir-res-total { justify-items: start; text-align: left; }
+  .ir-ev { grid-template-columns: 22px minmax(0, 1fr); }
+  .ir-ev-dia { grid-column: 2; order: -1; padding: 0; }
+  .ir-ev-ico { grid-row: 1 / span 3; }
+  .ir-ev-accion { grid-column: 2; justify-self: start; margin-top: 6px; }
+  .ir-cama-sel img { width: 64px; height: 48px; }
 }
 
 @media (max-width: 420px) {

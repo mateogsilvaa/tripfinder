@@ -134,11 +134,16 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
           </div>
         </fieldset>
 
-        <fieldset class="ir-bloque">
+        <fieldset class="ir-bloque ir-bloque-mapa">
           <legend><span class="ir-paso">3</span> ¿Por qué ciudades quieres pasar?</legend>
-          <p class="ir-ayuda">Elige las que quieras, en cualquier orden: la ruta las ordena para gastar
-            el menor tren posible. Si no eliges ninguna, te proponemos rutas hechas.</p>
-          <div class="ir-ciudades" id="irCiudades"></div>
+          <p class="ir-ayuda">Tócalas en el mapa, en cualquier orden: la ruta las ordena para gastar el menor
+            tren posible. Si no eliges ninguna, te proponemos rutas hechas.</p>
+          <div class="ir-mapa" id="irMapa"></div>
+          <p class="ir-elegidas" id="irElegidas" role="status"></p>
+          <details class="ir-lista">
+            <summary>O elígelas de una lista</summary>
+            <div class="ir-ciudades" id="irCiudades"></div>
+          </details>
         </fieldset>
       </form>
 
@@ -148,7 +153,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <p class="tren-pie">
         <b>El pase no lo paga todo.</b> Los trenes rápidos de Italia, Francia y España, y los
         nórdicos y los polacos, exigen una reserva aparte, y cada ruta la suma. Los vuelos y el
-        alojamiento son de verdad: los vuelos, de ida sola en Ryanair; las camas, pisos y casas
+        alojamiento son de verdad: los vuelos, de ida sola en Ryanair y Wizz, mirando también los días de alrededor; las camas, pisos y casas
         enteras en Airbnb y en Holidu, a poca distancia a pie del centro. <small class="ir-apunte">El
         pase, por la tarifa de 2025 en segunda; los billetes sueltos y las reservas, en horquilla,
         porque cada compañía los pone tren a tren. Los tiempos son del directo más rápido de cada
