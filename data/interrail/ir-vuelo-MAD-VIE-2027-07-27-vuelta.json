@@ -1,0 +1,85 @@
+{
+  "id": "ir-vuelo-MAD-VIE-2027-07-27-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "VIE",
+    "BTS"
+  ],
+  "fecha": "2027-07-27",
+  "sentido": "vuelta",
+  "generated_at": "2026-09-28",
+  "legs": [
+    {
+      "provider": "ryanair",
+      "airline": "Ryanair",
+      "origin": "VIE",
+      "destination": "MAD",
+      "date": "2027-07-27",
+      "time": "06:05",
+      "price": 128.99,
+      "currency": "EUR",
+      "destination_name": "Viena",
+      "destination_country": "Austria",
+      "origin_name": "",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-27&dateIn=&originIata=VIE&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  ],
+  "dias": {
+    "2027-07-24": {
+      "price": 128.99,
+      "time": "18:15",
+      "origin": "VIE",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-24&dateIn=&originIata=VIE&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-25": {
+      "price": 117.99,
+      "time": "05:55",
+      "origin": "VIE",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-25&dateIn=&originIata=VIE&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-26": {
+      "price": 141.99,
+      "time": "05:50",
+      "origin": "VIE",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-26&dateIn=&originIata=VIE&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-27": {
+      "price": 128.99,
+      "time": "06:05",
+      "origin": "VIE",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-27&dateIn=&originIata=VIE&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-28": {
+      "price": 154.99,
+      "time": "06:10",
+      "origin": "VIE",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-28&dateIn=&originIata=VIE&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-29": {
+      "price": 141.99,
+      "time": "05:45",
+      "origin": "VIE",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-29&dateIn=&originIata=VIE&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2027-07-30": {
+      "price": 141.99,
+      "time": "16:55",
+      "origin": "VIE",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-30&dateIn=&originIata=VIE&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  }
+}

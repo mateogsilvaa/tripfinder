@@ -1,0 +1,14 @@
+{
+  "id": "ir-vuelo-MAD-CGN-2027-07-19-ida",
+  "origen": "MAD",
+  "aeropuertos": [
+    "CGN",
+    "DUS",
+    "NRN"
+  ],
+  "fecha": "2027-07-19",
+  "sentido": "ida",
+  "generated_at": "2026-09-28",
+  "legs": [],
+  "dias": {}
+}
