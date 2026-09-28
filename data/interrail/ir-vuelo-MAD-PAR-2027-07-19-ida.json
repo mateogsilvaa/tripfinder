@@ -1,0 +1,70 @@
+{
+  "id": "ir-vuelo-MAD-PAR-2027-07-19-ida",
+  "origen": "MAD",
+  "aeropuertos": [
+    "CDG",
+    "ORY",
+    "BVA"
+  ],
+  "fecha": "2027-07-19",
+  "sentido": "ida",
+  "generated_at": "2026-09-28",
+  "legs": [
+    {
+      "provider": "ryanair",
+      "airline": "Ryanair",
+      "origin": "MAD",
+      "destination": "BVA",
+      "date": "2027-07-19",
+      "time": "06:55",
+      "price": 72.99,
+      "currency": "EUR",
+      "destination_name": "París",
+      "destination_country": "Francia",
+      "origin_name": "",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-19&dateIn=&originIata=MAD&destinationIata=BVA&isReturn=false&discount=0"
+    }
+  ],
+  "dias": {
+    "2027-07-16": {
+      "price": 63.99,
+      "time": "05:50",
+      "origin": "MAD",
+      "destination": "BVA",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-16&dateIn=&originIata=MAD&destinationIata=BVA&isReturn=false&discount=0"
+    },
+    "2027-07-17": {
+      "price": 63.99,
+      "time": "18:00",
+      "origin": "MAD",
+      "destination": "BVA",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-17&dateIn=&originIata=MAD&destinationIata=BVA&isReturn=false&discount=0"
+    },
+    "2027-07-19": {
+      "price": 72.99,
+      "time": "06:55",
+      "origin": "MAD",
+      "destination": "BVA",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-19&dateIn=&originIata=MAD&destinationIata=BVA&isReturn=false&discount=0"
+    },
+    "2027-07-20": {
+      "price": 63.99,
+      "time": "10:55",
+      "origin": "MAD",
+      "destination": "BVA",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-20&dateIn=&originIata=MAD&destinationIata=BVA&isReturn=false&discount=0"
+    },
+    "2027-07-21": {
+      "price": 63.99,
+      "time": "14:35",
+      "origin": "MAD",
+      "destination": "BVA",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-07-21&dateIn=&originIata=MAD&destinationIata=BVA&isReturn=false&discount=0"
+    }
+  }
+}

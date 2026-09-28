@@ -1,0 +1,96 @@
+{
+  "id": "ir-vuelo-MAD-ROM-2027-08-02-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "FCO",
+    "CIA"
+  ],
+  "fecha": "2027-08-02",
+  "sentido": "vuelta",
+  "generated_at": "2026-09-28",
+  "legs": [
+    {
+      "price": 35.34,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2027-08-02/null/1/0/0/null",
+      "provider": "wizzair",
+      "date": "2027-08-02",
+      "currency": "EUR"
+    },
+    {
+      "provider": "ryanair",
+      "airline": "Ryanair",
+      "origin": "FCO",
+      "destination": "MAD",
+      "date": "2027-08-02",
+      "time": "10:00",
+      "price": 165.99,
+      "currency": "EUR",
+      "destination_name": "Roma",
+      "destination_country": "Italia",
+      "origin_name": "",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-08-02&dateIn=&originIata=FCO&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  ],
+  "dias": {
+    "2027-07-30": {
+      "price": 54.89,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2027-07-30/null/1/0/0/null"
+    },
+    "2027-07-31": {
+      "price": 51.29,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2027-07-31/null/1/0/0/null"
+    },
+    "2027-08-01": {
+      "price": 43.84,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2027-08-01/null/1/0/0/null"
+    },
+    "2027-08-02": {
+      "price": 35.34,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2027-08-02/null/1/0/0/null"
+    },
+    "2027-08-03": {
+      "price": 35.34,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2027-08-03/null/1/0/0/null"
+    },
+    "2027-08-04": {
+      "price": 54.89,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2027-08-04/null/1/0/0/null"
+    },
+    "2027-08-05": {
+      "price": 54.89,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2027-08-05/null/1/0/0/null"
+    }
+  }
+}
