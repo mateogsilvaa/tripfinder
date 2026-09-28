@@ -33,9 +33,16 @@ import { ORIGENES } from "./busqueda.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso, wireEntrar } from "./disparador.js";
 import { CIUDADES, CONEXIONES, RUTAS, ZONAS } from "./interrail-datos.js";
 import { edreamsURL } from "./precios.js";
-import { enHoras } from "./trenes.js";
 
 export { CIUDADES, RUTAS };
+
+/* «2 h 21», «50 min». Sin ceros a la izquierda y sin decir «0 h». */
+export function enHoras(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (!h) return `${m} min`;
+  return m ? `${h} h ${String(m).padStart(2, "0")}` : `${h} h`;
+}
 
 /* Los pases que se venden: días de viaje dentro de un mes, o de dos. */
 export const BONOS = [4, 5, 7, 10, 15];
@@ -408,14 +415,50 @@ export function mejorVuelo(datos) {
 }
 
 const HABITACION = /^(habitaci[oó]n|room in|private room|shared room|hotel room|cama en|bed in)/i;
+/* Y en el nombre, por palabra entera: la primera ruta de verdad trajo «Numa |
+   Habitación estándar con balcón» en Berlín con un `area` de apartamento.
+   «bedroom» o «rooftop» son de pisos y pasan. Es la misma lista que
+   `stays/enteros.py`; aquí también porque los ficheros ya guardados no pasan
+   por el servidor otra vez. */
+const HABITACION_EN_NOMBRE =
+  /\b(room|rooms|habitaci[oó]n|habitaciones|chambre|zimmer|camera|camere|dorm|hostel|hostal|albergue|b&b|bed and breakfast|pensi[oó]n)\b/i;
+
+/* El mismo anuncio con otra consulta en la dirección es el mismo anuncio. */
+const claveCama = (s) => {
+  try {
+    const u = new URL(s.url);
+    return `${s.provider}|${u.host}${u.pathname}`.toLowerCase();
+  } catch {
+    return `${s.provider}|${s.url}`;
+  }
+};
+
+/* Por debajo de un 30 % de la mediana de la parada no es un piso entero: en
+   Ámsterdam, un barco hotel a 50 € dos noches con los pisos entre 300 y 800. */
+export function sinImposibles(lista) {
+  const precios = lista.map((s) => s.price_total).sort((a, b) => a - b);
+  if (precios.length < 4) return lista;
+  const mitad = Math.floor(precios.length / 2);
+  const mediana = precios.length % 2 ? precios[mitad] : (precios[mitad - 1] + precios[mitad]) / 2;
+  return lista.filter((s) => s.price_total >= mediana * 0.3);
+}
 
 /* Lo que se puede elegir en una parada: sitios enteros, con precio y cerca
-   del centro. Lo que no dice dónde está se queda (no es culpa suya), pero va
-   detrás de lo que sí. Si NADA queda cerca, se enseña lo más cercano que haya
-   hasta el doble de la distancia, y la tarjeta lo avisa. */
+   del centro, sin repetir. Lo que no dice dónde está se queda (no es culpa
+   suya), pero va detrás de lo que sí. Si NADA queda cerca, se enseña lo más
+   cercano que haya hasta el doble de la distancia, y la tarjeta lo avisa. */
 export function opciones(datos) {
-  const enteras = ((datos && datos.stays) || []).filter(
-    (s) => s.kind === "stay" && s.price_total && !HABITACION.test(String(s.area || "").trim())
+  const vistas = new Set();
+  const enteras = sinImposibles(
+    ((datos && datos.stays) || []).filter((s) => {
+      if (s.kind !== "stay" || !s.price_total) return false;
+      if (HABITACION.test(String(s.area || "").trim())) return false;
+      if (HABITACION_EN_NOMBRE.test(String(s.name || ""))) return false;
+      const k = claveCama(s);
+      if (vistas.has(k)) return false;
+      vistas.add(k);
+      return true;
+    })
   );
   const km = (s) => (Number.isFinite(s.km_centro) ? s.km_centro : null);
   const cerca = enteras.filter((s) => km(s) === null || km(s) <= MAX_KM);

@@ -101,10 +101,9 @@ test.describe("dos páginas", () => {
     await expect(page.locator("#trenForm")).toHaveCount(0);
   });
 
-  test("y la de los trenes de Madrid ya no lo lleva debajo, pero enlaza", async ({ page }) => {
-    await page.goto("/trenes.html");
-    await expect(page.locator("#interrail, #irForm")).toHaveCount(0);
-    await expect(page.locator('.tren-otra a[href="interrail.html"]')).toBeVisible();
+  test("y la de los trenes de Madrid ya no existe", async ({ page }) => {
+    await page.goto("/interrail.html");
+    await expect(page.locator('.zona[href="trenes.html"]')).toHaveCount(0);
   });
 });
 
