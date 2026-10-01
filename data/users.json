@@ -1,5 +1,5 @@
 {
-  "updated": "2026-09-24T18:30:20+00:00",
+  "updated": "2026-10-01T08:46:26+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -134,6 +134,29 @@
         "iterations": 210000,
         "iv": "glTlwIHn8UJ9Rraz",
         "salt": "aiSCMxOTYiLYaIWm0Ip3mA=="
+      }
+    },
+    {
+      "id": "u-1721a23c",
+      "user": "choco",
+      "name": "Héctor",
+      "email": "eruptin07@gmail.com",
+      "salt": "3dtE8r3g44ANmDlRPbXb8w==",
+      "hash": "HmMK+hk+dXyrEA/NWo3hDWKrvS4BSkcGTvZCLp+k99s=",
+      "iterations": 210000,
+      "created": "2026-10-01T08:46:26+00:00",
+      "active": true,
+      "prefs": {
+        "chollos": "cada_vez",
+        "chollos_max_precio": null,
+        "seguimientos": "diario",
+        "seguimientos_solo_novedades": false
+      },
+      "sobre": {
+        "data": "fFOPuntxQIDl5stfNaclTYOcbvXJblYfjbpCPsLHqUjDE8lzjyoG/9nQ7+kH8J3ZR9/tDOP4zKBEJPJU",
+        "iterations": 210000,
+        "iv": "EqyyMxU+8bffTaG/",
+        "salt": "3d6QKC8kikZBlDrx9CjFMQ=="
       }
     }
   ],
