@@ -48,7 +48,11 @@ export const esMio = (x) => !!x && !!x.owner && x.owner === tfUid();
 /* Los tres motivos por los que un encargo no sale, y todos se arreglan igual:
    entrando con una cuenta que tenga acceso. */
 export const esFaltaDeAcceso = (r) =>
-  r.reason === "sin-cuenta" || r.reason === "sin-token" || r.reason === "token-invalido";
+  r.reason === "sin-cuenta" ||
+  r.reason === "sin-token" ||
+  r.reason === "token-invalido" ||
+  r.reason === "pendiente" ||
+  r.reason === "bloqueada";
 
 /* Lo que se enseña cuando no hay nada que enseñar: o no has entrado, o has
    entrado y todavia no tienes nada tuyo. Sin esto la caja se queda en blanco y
@@ -144,15 +148,25 @@ export function wireEntrar(raiz = document) {
    abre con su contraseña al entrar. Aquí solo queda decir qué falta. */
 export function cajaAcceso(r) {
   const sinCuenta = r.reason === "sin-cuenta";
+  // Con Firebase la cuenta existe pero puede estar a la espera de que la aprueben.
+  const aprobacion = r.reason === "pendiente" || r.reason === "bloqueada";
   return {
     html: `
       <div class="token-box">
-        <strong>${sinCuenta ? "Hace falta una cuenta." : "Tu cuenta no puede lanzar esto."}</strong>
+        <strong>${
+          sinCuenta ? "Hace falta una cuenta." : aprobacion ? "Tu cuenta aún no puede lanzar esto." : "Tu cuenta no puede lanzar esto."
+        }</strong>
         ${
           sinCuenta
             ? `Los chollos del día los ve todo el mundo, pero buscar, seguir un viaje
                o pedir alojamiento se guarda a tu nombre. Entra y lo lanzamos.`
-            : `No tiene acceso para escribir: pídele al administrador que te ponga
+            : aprobacion
+              ? r.reason === "bloqueada"
+                ? "Tu cuenta está bloqueada."
+                : `Tu cuenta está pendiente de aprobación. En cuanto quien lleva la web la
+                   apruebe podrás buscar, seguir viajes y pedir alojamiento. Vuelve a
+                   intentarlo luego: no hace falta que hagas nada más.`
+              : `No tiene acceso para escribir: pídele al administrador que te ponga
                una contraseña nueva desde el panel y vuelve a entrar.`
         }
         ${sinCuenta ? '<button class="btn primary small" data-entrar type="button">Entrar</button>' : ""}

@@ -4,3 +4,5 @@ python-dotenv>=1.0
 # Fetcher sigiloso (TLS y cabeceras de Chrome real) para las paginas que
 # bloquean scripts. Opcional: si falla la instalacion, todo sigue con requests.
 scrapling[fetchers]>=0.4
+# La base de datos (Firebase) y la cola de encargos: src/tripfinder/nube.py.
+google-cloud-firestore>=2.19

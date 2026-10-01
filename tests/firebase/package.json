@@ -1,0 +1,14 @@
+{
+  "name": "tripfinder-firebase-tests",
+  "private": true,
+  "description": "Pruebas de las reglas de Firestore y del puente de encargos contra el emulador. Aparte del package.json de la web para que su CI no baje firebase-tools.",
+  "scripts": {
+    "reglas": "firebase emulators:exec --config ../../firebase.json --only firestore --project demo-tripfinder \"node --test reglas.test.js\"",
+    "todo": "firebase emulators:exec --config ../../firebase.json --only auth,firestore --project demo-tripfinder \"bash pruebas.sh\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.0",
+    "firebase": "^12.0.0",
+    "firebase-tools": "^15.0.0"
+  }
+}

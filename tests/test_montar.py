@@ -204,6 +204,11 @@ def test_todos_los_modulos_cuelgan_de_la_puerta():
         # casi nadie abre —pedir una cuenta— y cargarlas solo al pulsar es lo
         # correcto. Sin esta linea, el modulo parecia huerfano.
         importados |= {m.group(1) for m in re.finditer(r'import\("\./([\w-]+\.js)"\)', texto)}
+    # El panel (`admin.html`) es una pagina y no un modulo, y carga el suyo con
+    # un `import()` dinamico desde su script: tambien cuenta.
+    for pagina in WEB.glob("*.html"):
+        texto = pagina.read_text(encoding="utf-8")
+        importados |= {m.group(1) for m in re.finditer(r'import\("\./js/([\w-]+\.js)"\)', texto)}
     huerfanos = set(_modulos()) - importados - {"tripfinder.js"}
     assert not huerfanos, f"nadie importa: {sorted(huerfanos)}"
 

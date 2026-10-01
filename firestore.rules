@@ -1,0 +1,93 @@
+rules_version = '2';
+
+/* Quien puede leer y escribir qué en la base de datos.
+
+   Esto es lo único que separa los datos de cada persona, porque el repo y la
+   web son públicos y la clave de la API de Firebase va en el HTML a la vista de
+   todos. La clave no es un secreto: abre la puerta, y estas reglas deciden qué
+   hay detrás. Por eso se prueban contra el emulador en CI (tests/firebase).
+
+   Lo que no aparece aquí está PROHIBIDO para el navegador. Lo que escriben los
+   scrapers y los workflows entra con la cuenta de servicio, que se salta estas
+   reglas, así que no hace falta abrirles nada.
+
+     usuarios/{uid}        la ficha de cada cuenta: nombre, correo, estado
+     encargos/{id}         lo que se le pide a un scraper (la cola)
+
+   El estado manda: una cuenta recién registrada es `pendiente` y no puede
+   hacer nada hasta que el administrador la pase a `aprobado`. */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function entra() {
+      return request.auth != null;
+    }
+
+    function ficha(uid) {
+      return get(/databases/$(database)/documents/usuarios/$(uid)).data;
+    }
+
+    function aprobado() {
+      return entra()
+        && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid))
+        && ficha(request.auth.uid).estado == 'aprobado';
+    }
+
+    // El administrador es una cuenta aprobada con `admin: true`. Ese campo solo
+    // se pone con la cuenta de servicio (`tripfinder nube-admin`): ninguna
+    // regla de abajo deja escribirlo desde el navegador.
+    function admin() {
+      return aprobado() && ficha(request.auth.uid).get('admin', false) == true;
+    }
+
+    match /usuarios/{uid} {
+      allow get: if entra() && (request.auth.uid == uid || admin());
+      allow list: if admin();
+
+      // Registrarse. La ficha nace `pendiente`, a nombre del correo con el que
+      // se ha entrado, y sin `admin`: nadie se da permisos al crearla.
+      allow create: if entra()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nombre', 'correo', 'estado', 'creado', 'prefs'])
+        && request.resource.data.keys().hasAll(['nombre', 'correo', 'estado', 'creado'])
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.correo == request.auth.token.email
+        && request.resource.data.creado == request.time
+        && request.resource.data.nombre is string
+        && request.resource.data.nombre.size() > 0
+        && request.resource.data.nombre.size() <= 40;
+
+      allow update: if entra() && (
+        // Cada cual, su nombre y sus preferencias. Ni el estado ni el correo.
+        (request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'prefs'])
+          && request.resource.data.nombre is string
+          && request.resource.data.nombre.size() > 0
+          && request.resource.data.nombre.size() <= 40)
+        // El administrador, el estado de las demás. No el suyo propio, para no
+        // dejar la web sin nadie al mando por un clic.
+        || (admin()
+          && request.auth.uid != uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado'])
+          && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado'])
+      );
+    }
+
+    match /encargos/{id} {
+      // Pedir algo a un scraper: solo cuentas aprobadas, a su nombre, y con las
+      // mismas diez propiedades como mucho que admite GitHub en un dispatch.
+      allow create: if aprobado()
+        && request.resource.data.keys().hasOnly(['tipo', 'owner', 'payload', 'estado', 'creado'])
+        && request.resource.data.keys().hasAll(['tipo', 'owner', 'payload', 'estado', 'creado'])
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.estado == 'pendiente'
+        && request.resource.data.creado == request.time
+        && request.resource.data.tipo in ['search', 'stay', 'interrail', 'watch', 'unwatch', 'delete_search']
+        && request.resource.data.payload is map
+        && request.resource.data.payload.size() <= 10;
+
+      // Ver cómo van los tuyos. Las consultas tienen que filtrar por `owner`.
+      allow get, list: if entra() && (resource.data.owner == request.auth.uid || admin());
+    }
+  }
+}

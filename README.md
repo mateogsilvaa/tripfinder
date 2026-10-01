@@ -224,6 +224,52 @@ que **tenga cuenta** puede, si se lo propone, usarlo para escribir en él. Está
 pensado para gente que se conoce; si un día alguien sobra, desactiva su cuenta,
 revoca el token en GitHub y pega uno nuevo en el panel.
 
+## Firebase: cuentas y base de datos
+
+El repo es público y las issues también, así que ahí no se puede guardar nada que sea de
+alguien. **Firebase** pone ese sitio: *Authentication* para entrar y *Firestore* para guardar,
+con unas reglas (`firestore.rules`) que dejan a cada persona ver solo lo suyo. La web sigue
+siendo estática y sin build: habla con Firebase por REST, sin SDK (`web/nube.js`).
+
+Mientras `NUBE_CONFIG` esté vacío en `web/nube.js`, **no cambia nada** y la web sigue con las
+cuentas de `data/users.json`. En cuanto lo rellenas, pasa a funcionar así:
+
+- **Registrarse:** correo, contraseña y nombre. La cuenta nace `pendiente`: puede mirar la
+  web, no lanzar nada. Hay «¿Olvidaste la contraseña?» y lo manda Firebase.
+- **Aprobar:** quien lleva la web entra en `/admin.html` con su cuenta y pulsa *Aprobar* o
+  *Bloquear*. Los correos están en Firebase, no en el repo.
+- **Lanzar búsquedas:** el navegador no lleva ya ningún token de GitHub. Apunta un *encargo*
+  en Firestore y `encargos.yml` lo recoge cada cinco minutos y levanta el workflow que toque,
+  **a nombre de la cuenta que lo pidió** (lo lee de su ficha, no del encargo). Una búsqueda
+  tarda en empezar lo que tarde ese cron, que con carga en GitHub son de unos minutos a un
+  cuarto de hora. A cambio no hace falta tarjeta en Firebase.
+
+### Ponerlo en marcha (una vez)
+
+1. En la [consola de Firebase](https://console.firebase.google.com): *Añadir proyecto*.
+2. *Authentication → Método de acceso → Correo/contraseña → Activar*. En *Configuración →
+   Dominios autorizados* añade `mateogsilvaa.github.io`.
+3. *Firestore Database → Crear base de datos* (modo producción, ubicación `eur3`). Después, en
+   la pestaña *Reglas*, pega el contenido de `firestore.rules` y publica.
+4. *Configuración del proyecto → Tus apps → Web (`</>`)*: copia `apiKey` y `projectId` a
+   `NUBE_CONFIG` en `web/nube.js`. No son secretos: el HTML los publica. Conviene restringir la
+   clave a `https://mateogsilvaa.github.io/*` en la consola de Google Cloud (*Credenciales*).
+5. *Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada*. El JSON
+   entero va en un secreto de GitHub llamado **`FIREBASE_SERVICE_ACCOUNT`**. Esa clave se salta
+   las reglas y abre todo: no se pega en ningún chat, ni en una issue, ni se imprime en un log.
+6. Regístrate en la web. Después, en la consola de Firestore, abre `usuarios`, busca tu ficha y
+   pon `estado: aprobado` y `admin: true`. Es la única vez que se hace a mano: a partir de ahí
+   apruebas a los demás desde el panel.
+
+### Probarlo en local
+
+Las reglas, la cola de encargos y la web entera registrando, aprobando y lanzando se prueban
+contra los **emuladores** de Firebase, sin tocar el proyecto de verdad (hace falta Java 21):
+
+```bash
+cd tests/firebase && npm ci && npm run todo
+```
+
 ## Buscador personalizado
 
 Los chollos automaticos responden a "que hay barato ahora". El buscador responde a

@@ -32,9 +32,16 @@ class Store:
         except json.JSONDecodeError:
             return default
 
-    def _write(self, name: str, payload: Any) -> None:
+    def _write(self, name: str, payload: Any, compacto: bool = False) -> None:
         p = self.root / name
-        p.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        # Compacto = sin sangrias: lo que pide la portada, que se baja entero.
+        # Con ellas `offers.json` pesaba un 25 % mas, solo en espacios.
+        texto = (
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+            if compacto
+            else json.dumps(payload, ensure_ascii=False, indent=2)
+        )
+        p.write_text(texto, encoding="utf-8")
 
     # -- ofertas ---------------------------------------------------------
     def load_offers(self) -> list[FlightOffer]:
@@ -63,6 +70,10 @@ class Store:
                 "fuentes": fuentes or {},
                 "offers": [o.to_dict() for o in offers],
             },
+            # La portada se baja este fichero entero y la prueba de los 200 KB
+            # lo mide en bytes crudos: con 120 ofertas y Wizz de vuelta, la
+            # version con sangrias ya se pasaba sin haber mas datos.
+            compacto=True,
         )
 
     # -- continentes -----------------------------------------------------

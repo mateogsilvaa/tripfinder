@@ -313,6 +313,9 @@ const tfGuardarTokenSesion = (token) => {
 };
 
 async function tfDispatch(evento, payload) {
+  // Con Firebase no hay token que valga: el encargo se apunta en Firestore y lo
+  // recoge `encargos.yml` (web/nube.js).
+  if (typeof nubeActiva === "function" && nubeActiva()) return nubeEncargar(evento, payload);
   // Lanzar un scraper escribe en el repo y lo que escribe lleva tu nombre: sin
   // cuenta no hay a quien apuntarselo, asi que no se manda.
   // El panel no tiene sesión de cuenta, pero sí el token que abre con su
@@ -470,6 +473,7 @@ async function tfEntrar(usuario, password) {
 }
 
 function tfSalir() {
+  if (typeof nubeSalir === "function") nubeSalir();
   try {
     localStorage.removeItem(TF_SESION_KEY);
   } catch {
@@ -479,7 +483,10 @@ function tfSalir() {
 }
 
 /* Si la web puede escribir ahora mismo: hay cuenta dentro y token abierto. */
-const tfPuedeEscribir = () => !!tfToken() && (!!tfSesion() || !!localStorage.getItem(TF_TOKEN_KEY));
+const tfPuedeEscribir = () =>
+  typeof nubeActiva === "function" && nubeActiva()
+    ? (tfSesion() || {}).estado === "aprobado"
+    : !!tfToken() && (!!tfSesion() || !!localStorage.getItem(TF_TOKEN_KEY));
 
 /* La primera vez que alguien entra en un navegador que ya tenia favoritos sin
    cuenta, se los queda. Si no, al crear la cuenta parecia que se habian
@@ -617,6 +624,9 @@ function tfOcupado(boton, si, textoOcupado = "Comprobando…") {
 }
 
 async function tfAbrirLogin() {
+  if (typeof nubeActiva === "function" && nubeActiva()) {
+    return (await import("./js/nube-ui.js")).abrirLogin();
+  }
   const datos = await tfLeerUsuarios(true);
   const hay = datos.users.some((u) => u.active !== false);
   const caja = tfModal(`
@@ -748,6 +758,9 @@ const tfOpciones = (lista, elegido) =>
 async function tfAbrirCuenta() {
   const s = tfSesion();
   if (!s) return tfAbrirLogin();
+  if (typeof nubeActiva === "function" && nubeActiva()) {
+    return (await import("./js/nube-ui.js")).abrirCuenta();
+  }
   // Del fichero, no de la sesion: si lo cambiaste desde otro sitio, manda lo
   // publicado, no lo que se guardo en este navegador el dia que entraste.
   const datos = await tfLeerUsuarios(true);
@@ -959,6 +972,8 @@ function tfCambiarMiClave(caja, sesion, yo) {
 /* El mismo mensaje en todos los sitios donde algo no se puede lanzar. */
 function tfExplicarFallo(r) {
   if (r.reason === "sin-cuenta") return "Para esto hay que entrar con una cuenta.";
+  if (r.reason === "pendiente") return "Tu cuenta todavía está pendiente de aprobación.";
+  if (r.reason === "bloqueada") return "Tu cuenta está bloqueada.";
   if (r.reason === "sin-token" || r.reason === "token-invalido") {
     return "Esta cuenta no tiene acceso para escribir: pídele al administrador una contraseña nueva.";
   }
