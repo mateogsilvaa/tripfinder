@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-01T08:46:26+00:00",
+  "updated": "2026-10-01T08:59:28+00:00",
   "admin": {
     "salt": "X2/eqeqFIOJYVVxQlO88cg==",
     "hash": "LpXYtQRHAqXF5wWFhSeYSDumrgQ3CURq9XynP7i4U/U=",
@@ -157,6 +157,29 @@
         "iterations": 210000,
         "iv": "EqyyMxU+8bffTaG/",
         "salt": "3d6QKC8kikZBlDrx9CjFMQ=="
+      }
+    },
+    {
+      "id": "u-72a6ba0e",
+      "user": "germanofilo",
+      "name": "German",
+      "email": "germangarmor@gmail.com",
+      "salt": "FD2mlrT/w+txcfA9BQaWGQ==",
+      "hash": "1a/2rPr8sCymse/LQ4Jv9wgV+KA754GvX6/VWi5ow/I=",
+      "iterations": 210000,
+      "created": "2026-10-01T08:59:28+00:00",
+      "active": true,
+      "prefs": {
+        "chollos": "cada_vez",
+        "chollos_max_precio": null,
+        "seguimientos": "diario",
+        "seguimientos_solo_novedades": false
+      },
+      "sobre": {
+        "data": "uT2280X4Q6DpLzZg3ByP8i/tzXKBy2gn+E4poEfha0ZtpMVg3DReAFpSObrn5tM+YM8COIFEBp5AtCSy",
+        "iterations": 210000,
+        "iv": "zICr/aQLy17lbLX4",
+        "salt": "dBLqKSHYoI0hRhgUkg/kfw=="
       }
     }
   ],
