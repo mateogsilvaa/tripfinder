@@ -1702,6 +1702,31 @@ def cmd_encargos(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_migrar_issues(args: argparse.Namespace) -> int:
+    """Pasa las issues a Firestore. Sin --escribir solo cuenta y comprueba la conexion.
+
+    Solo imprime recuentos: el log de un workflow de un repo publico lo lee cualquiera
+    y una peticion de cuenta lleva un nombre y un usuario.
+    """
+    from . import issues_a_nube
+
+    r = issues_a_nube.ejecutar(escribir=args.escribir)
+    por_tipo = ", ".join(f"{n} {t}" for t, n in r["por_tipo"].items()) or "ninguna"
+    print(f"Issues leidas: {r['issues']} ({por_tipo}), con {r['comentarios']} comentarios.")
+    if "firestore" in r:
+        print(f"Firestore: {r['firestore']}, {r['ya_guardadas']} issues ya guardadas.")
+    if not args.escribir:
+        print("Simulacro: no se ha escrito nada. Repite con --escribir para guardarlas.")
+        return 0
+    guardado = ", ".join(f"{n} {t}" for t, n in r["guardado_por_tipo"].items())
+    print(f"Escritas: {r['escritas']}. En Firestore ahora: {guardado}.")
+    if not r["ok"]:
+        print("ERROR: lo guardado no cuadra con lo enviado.")
+        return 1
+    print("Comprobado: lo guardado cuadra con lo enviado.")
+    return 0
+
+
 def _json_arg(crudo: str | None, que: str) -> dict | None:
     """Un argumento que viaja como JSON. Si viene roto, se dice y se sigue."""
     if not crudo:
@@ -1856,6 +1881,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "encargos", help="Recoge los encargos de Firestore y levanta el workflow de cada uno"
     ).set_defaults(func=cmd_encargos)
+
+    mi = sub.add_parser("migrar-issues", help="Pasa las issues a Firestore (sin escribir, cuenta)")
+    mi.add_argument("--escribir", action="store_true", help="Guarda de verdad en Firestore")
+    mi.set_defaults(func=cmd_migrar_issues)
 
     sub.add_parser("reindex", help="Rehace el indice de busquedas").set_defaults(func=cmd_reindex)
 

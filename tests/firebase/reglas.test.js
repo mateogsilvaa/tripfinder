@@ -251,3 +251,17 @@ test("lo que no tiene regla está cerrado, también para el administrador", asyn
     await assertFails(setDoc(doc(db, "historial/MAD-ROM"), { precios: [] }));
   }
 });
+
+/* Las issues pasadas a Firestore llevan nombres y usuarios de quien pidió una
+   cuenta: solo entran y salen con la cuenta de servicio. */
+test("las issues copiadas no las lee ni las escribe nadie desde el navegador", async () => {
+  await entorno.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "issues/125"), { tipo: "peticion_cuenta", titulo: "[cuenta] x" });
+  });
+  for (const db of [anonimo(), como("ana", "ana@x.es"), como("jefe", "jefe@x.es")]) {
+    await assertFails(getDoc(doc(db, "issues/125")));
+    await assertFails(getDocs(collection(db, "issues")));
+    await assertFails(setDoc(doc(db, "issues/126"), { tipo: "tarea" }));
+    await assertFails(deleteDoc(doc(db, "issues/125")));
+  }
+});
