@@ -24,7 +24,13 @@ async function registrarse(page, { nombre = "Dani", correo = E.correoNuevo(), pa
   await page.locator("#nubePass").fill(pass);
   await page.locator("#nubeForm button[type=submit]").click();
   // El registro son tres llamadas seguidas: hasta que no hay sesión no ha acabado.
-  if (espera) await page.waitForFunction(() => localStorage.getItem("tf_sesion"));
+  // La de Firebase (`nube`): puede haber una de las cuentas de antes ya guardada.
+  if (espera) {
+    await page.waitForFunction(() => {
+      const s = JSON.parse(localStorage.getItem("tf_sesion") || "null");
+      return s && s.nube;
+    });
+  }
   return correo;
 }
 
@@ -360,4 +366,52 @@ test("buscar con la cuenta aprobada apunta el encargo con lo que sale del formul
   expect(e).toMatchObject({ tipo: "search", owner: s.uid, estado: "pendiente" });
   expect(Object.keys(e.payload).length).toBeLessThanOrEqual(10);
   expect(e.payload.viaje).toBeTruthy();
+});
+
+/* ------------------------------------------------- venir de las cuentas de antes */
+test("una sesión de las cuentas de antes no cuenta como haber entrado", async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-viejo", user: "vieja", name: "Vieja" }));
+  });
+  await page.goto("/index.html");
+  expect(await page.evaluate(() => tfSesion())).toBeNull();
+  expect(await page.evaluate(() => tfUid())).toBe("");
+  // Sale como quien no ha entrado, y no como «pendiente de aprobación».
+  await expect(page.locator("#tfCuenta")).toContainText("entrar");
+  const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD" }));
+  expect(r).toMatchObject({ ok: false, reason: "sin-cuenta" });
+});
+
+test("al entrar con Firebase se llevan los favoritos de la cuenta de antes", async ({ page }) => {
+  await page.addInitScript(() => {
+    if (localStorage.getItem("tf_sesion")) return; // solo la primera carga
+    localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-viejo", user: "vieja", name: "Vieja" }));
+    localStorage.setItem("tf_favoritos:u-viejo", JSON.stringify(["MAD-ROM-2026-12-11"]));
+    localStorage.setItem("tf_quiz:u-viejo", JSON.stringify({ hecho: true }));
+  });
+  await registrarse(page);
+  const s = await sesion(page);
+  expect(s.nube).toBe(true);
+  const suyos = await page.evaluate((uid) => localStorage.getItem(`tf_favoritos:${uid}`), s.uid);
+  expect(JSON.parse(suyos)).toEqual(["MAD-ROM-2026-12-11"]);
+  expect(await page.evaluate((uid) => localStorage.getItem(`tf_quiz:${uid}`), s.uid)).toContain("hecho");
+  // Solo se copia: lo de antes se queda donde estaba.
+  expect(await page.evaluate(() => localStorage.getItem("tf_favoritos:u-viejo"))).not.toBeNull();
+});
+
+test("lo que ya había en el cajón nuevo no se pisa", async ({ page }) => {
+  await page.goto("/index.html");
+  const correo = await registrarse(page);
+  const s = await sesion(page);
+  await page.evaluate(
+    ([uid]) => {
+      localStorage.setItem(`tf_favoritos:${uid}`, JSON.stringify(["lo-nuevo"]));
+      localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-viejo", user: "v", name: "V" }));
+      localStorage.setItem("tf_favoritos:u-viejo", JSON.stringify(["lo-viejo"]));
+    },
+    [s.uid]
+  );
+  const r = await page.evaluate(([c, p]) => nubeEntrar(c, p), [correo, clave]);
+  expect(r.ok).toBe(true);
+  expect(await page.evaluate((uid) => localStorage.getItem(`tf_favoritos:${uid}`), s.uid)).toBe('["lo-nuevo"]');
 });

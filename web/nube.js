@@ -25,8 +25,8 @@
    del proyecto → tus apps → configuración del SDK). Solo hacen falta estos dos
    campos. */
 const NUBE_CONFIG = {
-  apiKey: "",
-  projectId: "",
+  apiKey: "AIzaSyAisQaTaTO0Kn7lBQmJ7YgekpDIGoyz1gA",
+  projectId: "trip-a9418",
 };
 
 const NUBE_CLAVE = "tf_nube"; // los tokens: refresh, id, cuándo caduca, de quién
@@ -316,6 +316,25 @@ function nubeSalir() {
   }
 }
 
+/* Lo único que solo vive en este navegador —favoritos, el grupo de viaje, el
+   test— está guardado con el uid de la cuenta de antes. Al entrar por primera
+   vez con Firebase se copia al uid nuevo, si ahí no hay nada: sin esto
+   parecería que se han borrado, y siguen donde estaban, en un cajón al que ya
+   nadie llega. Solo copia: lo de antes se queda. */
+function nubeAdoptarDeLasCuentasViejas(uidNuevo) {
+  try {
+    const vieja = JSON.parse(localStorage.getItem(TF_SESION_KEY) || "null");
+    if (!vieja || !vieja.uid || vieja.nube || vieja.uid === uidNuevo) return;
+    ["tf_favoritos", "tf_grupo", "tf_quiz"].forEach((base) => {
+      const antes = localStorage.getItem(`${base}:${vieja.uid}`);
+      if (antes === null || localStorage.getItem(`${base}:${uidNuevo}`) !== null) return;
+      localStorage.setItem(`${base}:${uidNuevo}`, antes);
+    });
+  } catch {
+    /* navegación privada */
+  }
+}
+
 /* Registrarse y entrar acaban igual: ya hay tokens, falta la ficha. La ficha
    puede no existir si el registro se cortó entre crear la cuenta y apuntarla
    (se pierde la red, se cierra la pestaña), así que entrar la rehace. */
@@ -359,6 +378,7 @@ async function nubeRegistrar(correo, clave, nombre) {
     const t = nubeDeRespuesta(r);
     nubeGuardarTokens(t);
     const ficha = await nubeFichaDe(t, nombre);
+    nubeAdoptarDeLasCuentasViejas(t.uid);
     const sesion = nubeGuardarSesion(t.uid, ficha);
     if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
     return { ok: true, sesion };
@@ -379,6 +399,7 @@ async function nubeEntrar(correo, clave) {
       nubeSalir();
       return { ok: false, error: "Esta cuenta está bloqueada.", codigo: "bloqueada" };
     }
+    nubeAdoptarDeLasCuentasViejas(t.uid);
     const sesion = nubeGuardarSesion(t.uid, ficha);
     if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
     return { ok: true, sesion };

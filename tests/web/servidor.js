@@ -84,6 +84,17 @@ const servidor = http.createServer((req, res) => {
       res.writeHead(404).end("no está");
       return;
     }
+    /* `nube.js` lleva la configuracion REAL de Firebase, y el humo no puede hablar
+       con ella: son 382 pruebas que prueban la web de siempre, con sus cuentas y
+       su disparador. Aqui se sirve con los dos campos vacios, que es "Firebase
+       apagado". Las pruebas de `tests/nube/` lo encienden a proposito con
+       `window.TF_NUBE`, que manda sobre esto, y apuntan a los emuladores. */
+    if (path.basename(fichero) === "nube.js") {
+      cuerpo = Buffer.from(
+        String(cuerpo).replace(/(apiKey|projectId):\s*"[^"]*"/g, '$1: ""'),
+        "utf8"
+      );
+    }
     res.writeHead(200, {
       "Content-Type": TIPOS[path.extname(fichero)] || "application/octet-stream",
       "Cache-Control": "no-store",

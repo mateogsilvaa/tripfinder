@@ -396,7 +396,12 @@ async function tfProbarToken() {
 function tfSesion() {
   try {
     const s = JSON.parse(localStorage.getItem(TF_SESION_KEY) || "null");
-    return s && s.uid ? s : null;
+    if (!s || !s.uid) return null;
+    // Con Firebase, una sesión de las cuentas de antes (sin `nube`) ya no vale:
+    // su uid no existe allí y saldría como «pendiente de aprobación». Se
+    // comporta como no haber entrado, y entrar con Firebase la sustituye.
+    if (typeof nubeActiva === "function" && nubeActiva() && !s.nube) return null;
+    return s;
   } catch {
     return null;
   }

@@ -231,8 +231,9 @@ alguien. **Firebase** pone ese sitio: *Authentication* para entrar y *Firestore*
 con unas reglas (`firestore.rules`) que dejan a cada persona ver solo lo suyo. La web sigue
 siendo estática y sin build: habla con Firebase por REST, sin SDK (`web/nube.js`).
 
-Mientras `NUBE_CONFIG` esté vacío en `web/nube.js`, **no cambia nada** y la web sigue con las
-cuentas de `data/users.json`. En cuanto lo rellenas, pasa a funcionar así:
+`NUBE_CONFIG` en `web/nube.js` lleva el `apiKey` y el `projectId` del proyecto (`trip-a9418`), y
+con eso puesto la web funciona así. Si algún día se vacían los dos, vuelve a las cuentas de
+`data/users.json`, que siguen en el repo hasta que se retire ese sistema:
 
 - **Registrarse:** correo, contraseña y nombre. La cuenta nace `pendiente`: puede mirar la
   web, no lanzar nada. Hay «¿Olvidaste la contraseña?» y lo manda Firebase.
@@ -245,6 +246,11 @@ cuentas de `data/users.json`. En cuanto lo rellenas, pasa a funcionar así:
   cuarto de hora. A cambio no hace falta tarjeta en Firebase.
 
 ### Ponerlo en marcha (una vez)
+
+Hecho: el proyecto, el acceso con correo, la configuración de la web y las reglas. **Quedan dos
+cosas, y solo se pueden hacer desde tu cuenta**: el secreto `FIREBASE_SERVICE_ACCOUNT` (paso 5) y
+hacerte administrador (paso 6). Sin el primero, las búsquedas se apuntan pero nadie las recoge; sin
+el segundo, nadie puede aprobar cuentas.
 
 1. En la [consola de Firebase](https://console.firebase.google.com): *Añadir proyecto*.
 2. *Authentication → Método de acceso → Correo/contraseña → Activar*. En *Configuración →
