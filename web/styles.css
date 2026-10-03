@@ -3546,3 +3546,30 @@ h1 em { font-size: 1.3em; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
 }
+
+/* Entrar y crear una cuenta (Firebase): dos pestañas en el mismo diálogo. */
+.nube-pestanas {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 14px;
+  padding: 4px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+}
+.nube-pestanas button {
+  flex: 1;
+  min-height: var(--tap-min);
+  padding: 8px 14px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--t) var(--ease);
+}
+.nube-pestanas button:hover { color: var(--ink); }
+.nube-pestanas button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.nube-pestanas button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

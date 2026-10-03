@@ -329,6 +329,11 @@ async function revisarUsuario() {
 }
 
 export async function abrirPedirCuenta() {
+  // Con Firebase ya no se pide por WhatsApp ni por issue: cada cual se registra
+  // y queda pendiente de aprobación.
+  if (typeof nubeActiva === "function" && nubeActiva()) {
+    return (await import("./nube-ui.js")).abrirLogin("registro");
+  }
   const caja = $("#pedirCuenta");
   if (!caja) return;
   /* El formulario se pinta DOS veces a propósito: primero el de siempre, para

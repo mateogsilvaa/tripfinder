@@ -12,3 +12,6 @@ venv/
 node_modules/
 playwright-report/
 test-results/
+
+# Registros de los emuladores de Firebase
+*-debug.log

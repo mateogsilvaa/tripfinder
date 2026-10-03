@@ -89,3 +89,51 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  # Las reglas de Firestore son lo unico que separa los datos de cada cuenta, asi
+  # que se prueban contra el emulador de verdad: lo que NO dejan hacer, la cola
+  # de encargos de Python y la web entera registrando, aprobando y lanzando.
+  firebase:
+    name: reglas y cuentas (emulador de Firebase)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            tests/firebase/package-lock.json
+
+      # El emulador de Firestore es un jar y firebase-tools 15 pide Java 21.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Solo lo que usa la cola de encargos: scrapling y compania no hacen falta.
+      - run: pip install requests PyYAML python-dotenv "google-cloud-firestore>=2.19" pytest
+
+      - run: npm ci
+      - run: npm ci --prefix tests/firebase
+      - run: npx playwright install --with-deps chromium
+
+      - name: Reglas, encargos y cuentas
+        run: npm run todo --prefix tests/firebase
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-firebase
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

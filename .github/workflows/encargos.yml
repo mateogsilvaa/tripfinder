@@ -1,0 +1,68 @@
+name: Encargos de la web
+
+# La web no puede arrancar un scraper: es estatica y esto corre aqui. Antes lo
+# hacia con un token de GitHub cifrado dentro de users.json; ahora no lleva
+# ninguno. Apunta el encargo en Firestore (con las reglas de firestore.rules, a
+# nombre de una cuenta aprobada) y este workflow lo recoge cada pocos minutos y
+# levanta el que toque: search, stay, interrail, watch, unwatch, delete_search.
+#
+# Lo que tarda una busqueda en EMPEZAR es lo que tarda este cron, y los cron de
+# GitHub se retrasan cuando hay carga: de unos minutos a un cuarto de hora. A
+# cambio no hace falta tarjeta en Firebase. Si algun dia molesta, la salida es
+# una Cloud Function que avise al instante (plan Blaze); el resto no cambia.
+#
+# Sin el secreto FIREBASE_SERVICE_ACCOUNT no hace nada y sale en verde, para que
+# poner el repo en marcha no empiece con un workflow rojo cada cinco minutos.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  # `repository_dispatch` pide contents: write. Es de los pocos eventos que el
+  # GITHUB_TOKEN del propio workflow SI puede disparar.
+  contents: write
+
+concurrency:
+  # Dos pasadas a la vez mandarian dos veces el mismo encargo.
+  group: encargos
+  cancel-in-progress: false
+
+jobs:
+  recoger:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - name: Mirar si Firebase esta listo
+        id: listo
+        run: |
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "si=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Firebase sin configurar: falta el secreto FIREBASE_SERVICE_ACCOUNT."
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.listo.outputs.si == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.listo.outputs.si == 'true'
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # Solo lo que esto usa: instalar scrapling y compania cada cinco minutos
+      # para recoger un par de documentos seria tirar el tiempo.
+      - name: Dependencias
+        if: steps.listo.outputs.si == 'true'
+        run: pip install requests PyYAML python-dotenv "google-cloud-firestore>=2.19"
+
+      - name: Recoger y mandar
+        if: steps.listo.outputs.si == 'true'
+        env:
+          PYTHONPATH: src
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -m tripfinder encargos

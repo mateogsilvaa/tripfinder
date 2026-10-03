@@ -154,11 +154,13 @@ VIVO = '      <span class="board-live"><i aria-hidden="true"></i>en vivo</span>\
 GUIONES_WEB = (
     '<script src="log.js?v={v}"></script>\n'
     '<script src="auth.js?v={v}"></script>\n'
+    '<script src="nube.js?v={v}"></script>\n'
     '<script type="module" src="js/tripfinder.js?v={v}"></script>\n'
 )
 GUIONES_PANEL = (
     '<script src="log.js?v={v}"></script>\n'
     '<script src="auth.js?v={v}"></script>\n'
+    '<script src="nube.js?v={v}"></script>\n'
 )
 # La 404 no tiene datos que pintar: le basta el tema y el chip de cuenta.
 GUIONES_MINIMO = '<script src="log.js?v={v}"></script>\n'

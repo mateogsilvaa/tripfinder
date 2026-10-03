@@ -1682,6 +1682,26 @@ def cmd_claim(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_encargos(args: argparse.Namespace) -> int:
+    """Recoge los encargos que la web ha apuntado en Firestore y los manda a GitHub.
+
+    Sin la cuenta de servicio no hace nada y sale en verde: el workflow corre
+    cada pocos minutos y no puede ponerse rojo mientras Firebase no esta listo.
+    """
+    from . import nube
+
+    if not (os.environ.get("FIREBASE_SERVICE_ACCOUNT") or os.environ.get("FIRESTORE_EMULATOR_HOST")):
+        print("Firebase sin configurar: no hay encargos que recoger.")
+        return 0
+    cuenta = nube.procesar(nube.AlmacenFirestore(nube.abrir_firestore()))
+    print(
+        f"Encargos: {cuenta['enviado']} enviados, {cuenta['rechazado']} rechazados, "
+        f"{cuenta['error']} con error, {cuenta['atascado']} atascados, "
+        f"{cuenta['borrado']} viejos borrados."
+    )
+    return 0
+
+
 def _json_arg(crudo: str | None, que: str) -> dict | None:
     """Un argumento que viaja como JSON. Si viene roto, se dice y se sigue."""
     if not crudo:
@@ -1832,6 +1852,10 @@ def build_parser() -> argparse.ArgumentParser:
     cl.add_argument("--owner", required=True, help="Id de la cuenta")
     cl.add_argument("--owner-name", dest="owner_name", default="")
     cl.set_defaults(func=cmd_claim)
+
+    sub.add_parser(
+        "encargos", help="Recoge los encargos de Firestore y levanta el workflow de cada uno"
+    ).set_defaults(func=cmd_encargos)
 
     sub.add_parser("reindex", help="Rehace el indice de busquedas").set_defaults(func=cmd_reindex)
 

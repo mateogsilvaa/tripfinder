@@ -65,6 +65,9 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 </header>
 
 <main>
+  <!-- Con Firebase: aprobar a quien pide entrar (web/js/nube-admin.js). -->
+  <div id="nubeAdmin" hidden></div>
+
   <!-- ------------------------------------------------------- la puerta -->
   <section id="puerta" class="finder" hidden>
     <div class="finder-body">
@@ -168,6 +171,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 <script src="log.js?v=dev"></script>
 <script src="auth.js?v=dev"></script>
+<script src="nube.js?v=dev"></script>
 <!-- /tf:parte -->
 <script>
 /* El panel: la contraseña abre la puerta, el token de GitHub es lo que de
@@ -1278,7 +1282,10 @@ $("#runs").addEventListener("click", async () => {
   }
 });
 
-montarPuerta();
+// Con Firebase el panel es otro: entras con tu cuenta y apruebas a las demás.
+// Sin él, el de siempre.
+if (nubeActiva()) import("./js/nube-admin.js").then((m) => m.montarNube());
+else montarPuerta();
 </script>
 </body>
 </html>
