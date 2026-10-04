@@ -2,7 +2,11 @@
 
     resend        -> API de Resend (recomendado; solo una API key)
     smtp          -> SMTP clasico (Gmail necesita contrasena de aplicacion)
-    github_issue  -> abre una issue en el repo y GitHub te manda el email
+
+No hay un tercer transporte por issue de GitHub, y fue a proposito quitarlo: el
+repo es publico y una issue la lee cualquiera, asi que un aviso con tus
+escapadas, o las de otra cuenta, no puede acabar ahi. Si el correo falla, el
+aviso no se marca como enviado y se reintenta en el siguiente barrido.
 
 Si el metodo elegido falla se intenta el siguiente disponible, para no perder un
 chollo por un problema de credenciales.
@@ -14,11 +18,11 @@ import logging
 
 from ..config import env
 from ..models import FlightOffer
-from . import github_issue, render, resend, smtp
+from . import render, resend, smtp
 
 log = logging.getLogger("tripfinder")
 
-ORDER = ("resend", "smtp", "github_issue")
+ORDER = ("resend", "smtp")
 
 
 def _send_with(method: str, offers: list[FlightOffer], to: str) -> None:
@@ -27,8 +31,6 @@ def _send_with(method: str, offers: list[FlightOffer], to: str) -> None:
         resend.send(subject, render.render_html(offers), to)
     elif method == "smtp":
         smtp.send_email(subject, render.render_html(offers), to)
-    elif method == "github_issue":
-        github_issue.send(subject, render.render_markdown(offers))
     else:
         raise RuntimeError(f"Metodo de aviso desconocido: {method}")
 
@@ -37,7 +39,6 @@ def _configured(method: str) -> bool:
     return {
         "resend": bool(env("RESEND_API_KEY")),
         "smtp": bool(env("SMTP_USER") and env("SMTP_PASSWORD")),
-        "github_issue": bool(env("GITHUB_TOKEN") or env("GH_TOKEN")),
     }.get(method, False)
 
 
@@ -46,24 +47,18 @@ def notify_offers(
     to: str,
     method: str = "smtp",
     solo: bool = False,
-    issue_ok: bool = True,
 ) -> str:
     """Envia el aviso y devuelve el metodo que funciono.
 
     `solo` apaga la cadena de respaldo. Para un aviso de verdad NO se usa —vale
     mas un chollo por una via rara que un chollo perdido—, pero para comprobar
     unas credenciales si: si se pregunta "funciona el SMTP?" y contesta que si
-    porque ha abierto una issue, la respuesta es peor que no tenerla.
-
-    `issue_ok=False` quita la issue de la cadena: solo le llega al dueño del
-    repositorio, asi que para el aviso de otra cuenta no es un respaldo, es ruido.
+    porque ha salido por Resend, la respuesta es peor que no tenerla.
     """
     if not offers:
         return ""
 
     candidates = [method] if solo else [method] + [m for m in ORDER if m != method]
-    if not issue_ok:
-        candidates = [m for m in candidates if m != "github_issue"]
     errors: list[str] = []
     for candidate in candidates:
         if not _configured(candidate):

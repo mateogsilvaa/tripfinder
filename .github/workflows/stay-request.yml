@@ -1,24 +1,17 @@
 name: Buscar alojamiento (bajo demanda)
 
-# Se dispara cuando la web abre una issue "[stay] <offer_id>".
-# Solo se atienden issues del propietario del repo: cualquiera puede abrir una
-# issue publica y no queremos que un tercero consuma minutos de Actions.
+# Lo levanta la web con un `repository_dispatch: stay` —a traves de un encargo
+# en Firestore, que recoge `encargos.yml`—. Ya no se atiende ninguna issue: el
+# repositorio es publico, una issue la lee cualquiera, y abrir una era ademas
+# la forma de que un tercero gastase minutos de Actions.
 
 on:
-  # La web dispara esto directamente (sin crear ninguna issue). El trigger por
-  # issue se queda como plan B por si algun dia no hay token en el navegador.
   repository_dispatch:
     types: [stay]
-  # Solo al abrirla: con `labeled` cada etiqueta que se pone a cualquier issue
-  # del repositorio —las de aviso de chollo se abren ya etiquetadas— arrancaba
-  # un run mas solo para descartarlo en el `if` de abajo.
-  issues:
-    types: [opened]
 
 permissions:
   contents: write
   actions: write # para lanzar el deploy de Pages
-  issues: write
 
 concurrency:
   group: tripfinder-data
@@ -29,10 +22,6 @@ jobs:
     # Buscar cama son un par de minutos; de ahi en adelante es que se ha
     # colgado, y sin esto se queda hasta el limite de 6 horas de GitHub.
     timeout-minutes: 20
-    if: >
-      github.event_name == 'repository_dispatch' ||
-      (github.event.issue.user.login == github.repository_owner &&
-       startsWith(github.event.issue.title, '[stay] '))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -47,9 +36,6 @@ jobs:
       - name: Extraer los datos de la peticion
         id: parse
         env:
-          EVENT: ${{ github.event_name }}
-          TITLE: ${{ github.event.issue.title }}
-          BODY: ${{ github.event.issue.body }}
           P_OFFER: ${{ github.event.client_payload.offer_id }}
           P_CITY: ${{ github.event.client_payload.city }}
           P_COUNTRY: ${{ github.event.client_payload.country }}
@@ -58,23 +44,11 @@ jobs:
           P_CHECKOUT: ${{ github.event.client_payload.checkout }}
           P_ADULTS: ${{ github.event.client_payload.adults }}
         run: |
-          # La web dispara repository_dispatch con los datos ya estructurados;
-          # el camino de la issue se queda de reserva.
-          if [ "$EVENT" = "repository_dispatch" ]; then
-            {
-              echo "offer_id=$P_OFFER"; echo "city=$P_CITY"; echo "country=$P_COUNTRY"
-              echo "iata=$P_IATA"; echo "checkin=$P_CHECKIN"; echo "checkout=$P_CHECKOUT"
-              echo "adults=$P_ADULTS"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          offer_id="${TITLE#\[stay\] }"
-          echo "offer_id=${offer_id}" >> "$GITHUB_OUTPUT"
-          # Campos opcionales del bloque yaml del cuerpo, por si la oferta ya rotó de offers.json
-          for key in city country iata checkin checkout adults; do
-            value=$(printf '%s' "$BODY" | grep -m1 "^${key}:" | cut -d' ' -f2- | tr -d '\r')
-            echo "${key}=${value}" >> "$GITHUB_OUTPUT"
-          done
+          {
+            echo "offer_id=$P_OFFER"; echo "city=$P_CITY"; echo "country=$P_COUNTRY"
+            echo "iata=$P_IATA"; echo "checkin=$P_CHECKIN"; echo "checkout=$P_CHECKOUT"
+            echo "adults=$P_ADULTS"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Buscar alojamiento
         env:
@@ -90,7 +64,7 @@ jobs:
           CHECKOUT: ${{ steps.parse.outputs.checkout }}
           ADULTS: ${{ steps.parse.outputs.adults }}
         run: |
-          # Los flags opcionales se anaden solo si la issue los traia.
+          # Los flags opcionales se anaden solo si el encargo los traia.
           args=()
           if [ -n "$CITY" ];     then args+=(--city "$CITY"); fi
           if [ -n "$COUNTRY" ];  then args+=(--country "$COUNTRY"); fi
@@ -100,8 +74,7 @@ jobs:
           if [ -n "$ADULTS" ];   then args+=(--adults "$ADULTS"); fi
           python -m tripfinder scan-stays \
             --offer-id "$OFFER_ID" \
-            "${args[@]}" \
-            --summary-out summary.md
+            "${args[@]}"
 
       - name: Publicar resultados
         run: |
@@ -123,20 +96,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow run pages.yml --ref main
-
-      - name: Comentar y cerrar la issue
-        if: github.event_name == 'issues'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh issue comment ${{ github.event.issue.number }} --body-file summary.md
-          gh issue close ${{ github.event.issue.number }} \
-            --comment "Resultados publicados en la web (tarda ~1 min en desplegarse)."
-
-      - name: Avisar si algo fallo
-        if: failure() && github.event_name == 'issues'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh issue comment ${{ github.event.issue.number }} \
-            --body "La busqueda de alojamiento fallo. Log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

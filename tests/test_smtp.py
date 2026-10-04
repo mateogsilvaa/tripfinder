@@ -167,4 +167,4 @@ def test_probar_un_transporte_no_cae_a_los_demas(monkeypatch):
     intentados.clear()
     with pytest.raises(RuntimeError):
         N.notify_offers([oferta], to="t@t.com", method="smtp")
-    assert intentados == ["smtp", "resend", "github_issue"]
+    assert intentados == ["smtp", "resend"]

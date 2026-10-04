@@ -43,7 +43,6 @@
 
 import { $, esc, fetchJSON, on } from "./base.js";
 
-const REPO = "mateogsilvaa/tripfinder";
 export const MAX_PORQUE = 240;
 
 let USUARIOS = null; // los que ya existen, del fichero publicado
@@ -102,39 +101,6 @@ export function alternativas(user, nombre, cogidos) {
     .filter((c) => usuarioValido(c) && !cogidos.has(c))
     .filter((c, i, a) => a.indexOf(c) === i)
     .slice(0, 3);
-}
-
-/* El cuerpo de la issue. Va en texto plano y ordenado para que quien lo lea en
-   el panel —o en GitHub— vea lo mismo en los dos sitios. */
-export function cuerpoPeticion({ nombre, user, porque, sellado = null }) {
-  const cola = sellado
-    ? [
-        "---",
-        "Pedida desde la web. Aquí abajo van el correo y la contraseña que ha",
-        "elegido, cerrados con la clave pública del panel: esta issue es pública",
-        "y en claro no puede ir nada. Solo los abre quien tenga la privada, y con",
-        "eso la cuenta queda activa de un clic, sin contraseñas de ida y vuelta.",
-        "",
-        "```tf-sobre",
-        JSON.stringify(sellado),
-        "```",
-      ]
-    : [
-        "---",
-        "Pedida desde la web. El correo y la contraseña no van aquí: esta issue",
-        "es pública y todavía no hay buzón publicado con el que cerrarlos. Se",
-        "ponen desde el panel al crear la cuenta.",
-      ];
-  return [`Nombre: ${nombre}`, `Usuario: ${user}`, "", "Por qué:", porque, "", ...cola].join("\n");
-}
-
-export function urlPeticion(datos) {
-  return (
-    `https://github.com/${REPO}/issues/new` +
-    `?title=${encodeURIComponent(`[cuenta] ${datos.user}`)}` +
-    `&labels=peticion-cuenta` +
-    `&body=${encodeURIComponent(cuerpoPeticion(datos))}`
-  );
 }
 
 /* La petición entera dentro de la dirección, en base64 «de URL» para que ni
@@ -254,10 +220,6 @@ function mandadaHTML(datos, conPass = false) {
           ? "Cuando la apruebe, tu cuenta queda activa con la contraseña que acabas de elegir: no hay que esperar a que nadie te mande nada."
           : "Cuando la apruebe te pasará la contraseña por donde te haya dicho; esta web no manda correos a quien todavía no tiene cuenta."
       }</p>
-      <p class="meta">¿Tienes cuenta de GitHub? También puedes
-        <a href="${esc(urlPeticion(datos))}" target="_blank" rel="noopener" id="pcGitHub">dejarla
-        en GitHub</a>, y le sale sola en el panel. Lo que escribas ahí queda publicado, salvo el
-        correo y la contraseña, que van cerrados.</p>
       <div class="pedir-acc">
         <a class="btn ghost" href="./">Ver los chollos mientras</a>
       </div>

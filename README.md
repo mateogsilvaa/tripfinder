@@ -17,12 +17,12 @@ Todo corre **gratis sobre GitHub**: Actions como scheduler/backend y Pages como 
    Email  ──►  https://mateogsilvaa.github.io/tripfinder  (Pages, lee data/*.json)
                                           │
                         "Me interesa → buscar alojamiento"
-                                          │  (abre una Issue prerrellenada)
+                                          │  (un encargo en Firestore → encargos.yml)
                                           ▼
-                 ┌──────────────────── GitHub Actions (on: issues) ──────────────────────────┐
+                 ┌──────────────── GitHub Actions (repository_dispatch) ─────────────────────┐
                  │  stay-request.yml → tripfinder scan-stays --offer-id …                     │
                  │     · Airbnb + hoteles (Amadeus) + deep links Booking/Kayak                │
-                 │     · data/stays/<offer_id>.json (commit) + comentario en la issue         │
+                 │     · data/stays/<offer_id>.json (commit)                                  │
                  └───────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -30,10 +30,10 @@ Todo corre **gratis sobre GitHub**: Actions como scheduler/backend y Pages como 
 La web manda un `repository_dispatch` desde el navegador con el token de tu cuenta —que sale
 cifrado del sobre al entrar, nunca está en el HTML— y hace polling del JSON de resultados.
 
-Las issues fueron el primer disparador, cuando no había cuentas: abrir una era la única forma
-gratuita y autenticada de arrancar un workflow desde una web estática. Hoy **las búsquedas ya no
-pasan por ahí**; solo queda como último recurso para el alojamiento, si el dispatch falla con el
-panel ya abierto.
+Las issues fueron el primer disparador, cuando no había cuentas, y después el sitio donde se
+apuntaban avisos, peticiones de cuenta y búsquedas. **Ya no se usan para nada**: el repo es
+público y una issue la lee cualquiera. Nada en el código las crea, y lo que había se copió a
+Firestore (`migrar-issues.yml`), que es donde se guarda ahora lo que es de alguien.
 
 **Lo que no se lanza:** antes de levantar nada, la web mira si esa misma búsqueda ya está
 publicada. Si lo está, te la ofrece con la fecha en que se hizo en vez de repetirla —un barrido
@@ -64,21 +64,22 @@ python -m tripfinder scan-flights --dry-run
 
 ## Como te llegan los avisos
 
-`notify.method` en `config/watchlist.yml` elige el transporte, y si falla se prueban los demas
-automaticamente para no perder un chollo por un problema de credenciales:
+`notify.method` en `config/watchlist.yml` elige el transporte, y si falla se prueba el otro. Si
+ninguno sale, el aviso no se marca como enviado y se reintenta en el siguiente barrido, así que
+no se pierde un chollo por un problema de credenciales. **No hay aviso por issue**: el repo es
+público y una issue la lee cualquiera.
 
 | Metodo | Credencial | Notas |
 |---|---|---|
 | `smtp` (por defecto) | `SMTP_USER` + `SMTP_PASSWORD` | Gmail, con **contraseña de aplicación**. Escribe a cualquier dirección, que es lo que hace falta cuando hay varias cuentas. ~500 correos al día. |
 | `resend` | `RESEND_API_KEY` | 3.000 emails/mes gratis, pero **solo escribe al dueño de la clave** mientras el dominio no esté verificado. |
-| `github_issue` | ninguna | El workflow abre una issue con el chollo y GitHub te manda el email. Cero configuración, pero lo lee cualquiera: el repositorio es público. |
 
 ### Por que SMTP y no Resend
 
 Resend solo deja escribir a la direccion del dueno de la clave hasta que verificas un dominio, y
 el dominio de esta web es `mateogsilvaa.github.io`. **`github.io` es de GitHub**: no hay ningun
 registrador donde meter los registros DKIM y SPF que Resend pide, asi que esa verificacion no se
-puede hacer nunca. Con Resend solo recibe avisos una cuenta y las demas acaban en una issue.
+puede hacer nunca. Con Resend solo recibe avisos una cuenta, y las demás se quedan sin ellos.
 
 Las alternativas reales son SMTP o comprar un dominio propio.
 
@@ -116,7 +117,7 @@ python -m tripfinder scan-flights            # busca vuelos, guarda y notifica
 python -m tripfinder scan-flights --dry-run  # no escribe ni envía email
 python -m tripfinder scan-stays --offer-id RYR-MAD-FCO-20260910
 python -m tripfinder test-email                    # usa notify.method
-python -m tripfinder test-email --method github_issue
+python -m tripfinder test-email --method resend
 
 python -m tripfinder users list                    # cuentas de la web
 python -m tripfinder users add --user ana --name Ana --password ... --email ana@…
@@ -295,7 +296,7 @@ Una busqueda "donde sea" tarda **unos 8 minutos**: son ~105 destinos y a Google 
 pregunta uno a uno. La web hace polling durante 15 minutos.
 
 Desde la web se rellena el formulario (destino, tope, noches, meses, personas) y se
-abre una issue `[buscar] ...` que dispara `custom-search.yml`. En local:
+apunta un encargo que acaba levantando `custom-search.yml`. En local:
 
 ```bash
 python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12

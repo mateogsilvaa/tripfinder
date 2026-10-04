@@ -452,7 +452,6 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
                 batch,
                 to=destino,
                 method=cfg.notify.get("method", "resend"),
-                issue_ok=_es_del_dueno(destino, cfg),
             )
         except Exception as exc:  # noqa: BLE001
             log.error("No se pudo enviar el email a %s: %s", destino, exc)
@@ -1344,18 +1343,6 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
     return partes
 
 
-def _es_del_dueno(correo: str, cfg: Config) -> bool:
-    """Si ese buzon es el del dueño del repositorio.
-
-    El ultimo recurso de los avisos es abrir una issue, y una issue solo le
-    llega a quien lleva el repositorio: para cualquier otra cuenta no avisa a
-    nadie. Con el correo caido salian tres issues identicas por chollo —una por
-    cuenta— que no leia nadie, y encima con su direccion en el log publico.
-    """
-    dueno = (cfg.notify.get("to") or "").strip().lower()
-    return not correo or (bool(dueno) and correo.strip().lower() == dueno)
-
-
 def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
     """Manda un parte diario, probando los transportes hasta que uno pase."""
     from .notify import _configured, render
@@ -1372,13 +1359,7 @@ def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
         try:
             if not _configured(candidato):
                 continue
-            if candidato == "github_issue" and not _es_del_dueno(destinatario, cfg):
-                continue
-            if candidato == "github_issue":
-                from .notify import github_issue
-
-                github_issue.send(asunto, "Parte diario de seguimientos.")
-            elif candidato == "resend":
+            if candidato == "resend":
                 from .notify import resend
 
                 resend.send(asunto, cuerpo, destinatario)
@@ -1890,7 +1871,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     t = sub.add_parser("test-email", help="Envia un aviso de ejemplo")
     t.add_argument("--to")
-    t.add_argument("--method", choices=["resend", "smtp", "github_issue"])
+    t.add_argument("--method", choices=["resend", "smtp"])
     t.add_argument(
         "--solo",
         action="store_true",

@@ -4,6 +4,9 @@ El repositorio es publico, sus logs de Actions tambien, y `data/` se copia a
 Pages. Con el SMTP caido, cada chollo acababa en tres issues iguales —una por
 cuenta, que solo leia el dueño— y el log decia a quien iba cada una, direccion
 incluida. Y `state.json` llevaba las direcciones como claves.
+
+Hoy el aviso no tiene transporte por issue: si el correo falla se reintenta en el
+siguiente barrido, y no hay otro sitio publico adonde pueda ir.
 """
 
 import logging
@@ -11,13 +14,9 @@ import logging
 import pytest
 
 from tripfinder import notify
-from tripfinder.cli import _es_del_dueno
-from tripfinder.config import Config
 from tripfinder.models import FlightOffer
 from tripfinder.store import Store
 from tripfinder.util import TaparCorreos, clave_buzon, tapar_correos
-
-CFG = Config(raw={"notify": {"to": "Dueno@Example.com"}})
 
 
 def test_tapar_correos():
@@ -39,21 +38,14 @@ def test_el_filtro_tapa_lo_que_va_al_log(caplog):
     assert "a***@example.com" in caplog.text
 
 
-def test_la_issue_solo_es_respaldo_para_el_dueno():
-    assert _es_del_dueno("dueno@example.com", CFG)
-    assert _es_del_dueno("", CFG)  # el buzon de siempre
-    assert not _es_del_dueno("ana@example.com", CFG)
-
-
-def test_sin_issue_para_las_demas_cuentas(monkeypatch):
-    """Con el correo caido, el aviso de otra cuenta falla, no abre una issue."""
-    abiertas = []
+def test_ningun_aviso_acaba_en_una_issue(monkeypatch):
+    """Con el correo caido el aviso falla, para el dueño y para las demas cuentas:
+    no hay un respaldo publico."""
+    intentados = []
     monkeypatch.setattr(notify, "_configured", lambda m: True)
 
     def enviar(metodo, ofertas, to):
-        if metodo == "github_issue":
-            abiertas.append(to)
-            return
+        intentados.append(metodo)
         raise RuntimeError("caido")
 
     monkeypatch.setattr(notify, "_send_with", enviar)
@@ -61,11 +53,10 @@ def test_sin_issue_para_las_demas_cuentas(monkeypatch):
         provider="ryanair", origin="MAD", destination="FCO",
         depart_date="2026-11-13", return_date="2026-11-16", price=40,
     )
-    with pytest.raises(RuntimeError):
-        notify.notify_offers([oferta], to="ana@example.com", method="smtp", issue_ok=False)
-    assert abiertas == []
-    # Para el dueño sigue siendo el ultimo recurso.
-    assert notify.notify_offers([oferta], to="dueno@example.com", method="smtp") == "github_issue"
+    for destino in ("ana@example.com", "dueno@example.com"):
+        with pytest.raises(RuntimeError):
+            notify.notify_offers([oferta], to=destino, method="smtp")
+    assert "github_issue" not in intentados and "github_issue" not in notify.ORDER
 
 
 def test_state_json_no_guarda_direcciones(tmp_path):

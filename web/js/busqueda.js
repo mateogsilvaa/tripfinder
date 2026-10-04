@@ -57,8 +57,8 @@ import { desde } from "./alojamiento.js";
    partida doble (`opened` y `labeled`). Sin cuenta no se busca, y eso ya lo
    dice `candarFormularios` con el motivo puesto.
 
-   El de alojamiento (`issueURL`) SI se queda: ahi es el ultimo recurso que se
-   ofrece cuando el dispatch falla con el panel ya abierto.
+   Tampoco queda ya el de alojamiento: ahi era el ultimo recurso cuando el
+   dispatch fallaba, y con el repositorio publico una issue la lee cualquiera.
 
 /* ------------------------------------------------- no repetir lo ya buscado
 

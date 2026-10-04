@@ -2,7 +2,6 @@
 
 /* TripFinder — frontend estatico. Lee los JSON que commitea GitHub Actions. */
 
-export const REPO = "mateogsilvaa/tripfinder";
 export const POLL_EVERY_MS = 20000;
 // 45 vueltas x 20 s = 15 min, de sobra para una busqueda de las largas.
 export const MAX_VUELTAS = 45;
