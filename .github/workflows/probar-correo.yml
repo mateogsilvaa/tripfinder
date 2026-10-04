@@ -17,12 +17,11 @@ on:
       metodo:
         description: "Que transporte probar"
         type: choice
-        options: [smtp, resend, github_issue]
+        options: [smtp, resend]
         default: smtp
 
 permissions:
   contents: read
-  issues: write # solo lo usa el transporte github_issue
 
 concurrency:
   group: tripfinder-probar-correo

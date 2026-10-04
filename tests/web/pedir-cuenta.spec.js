@@ -95,9 +95,9 @@ test("no deja mandar media petición", async ({ page }) => {
   await expect(page.locator("#pcMsg")).toContainText("quién eres");
 });
 
-/* Lo que de verdad manda la petición: un enlace para WhatsApp, sin GitHub, y la
-   issue de siempre como segunda vía para quien sí lo tenga. */
-test("mandarla da un enlace para WhatsApp, y GitHub queda de segunda vía", async ({ page }) => {
+/* Lo que de verdad manda la petición: un enlace para WhatsApp. No hay camino por
+   issue: el repositorio es público y la leería cualquiera. */
+test("mandarla da un enlace para WhatsApp, y ninguna issue", async ({ page }) => {
   await abrir(page);
   await page.locator("#pcNombre").fill("Lucía Pérez");
   await page.locator("#pcUser").fill("lucia");
@@ -113,14 +113,11 @@ test("mandarla da un enlace para WhatsApp, y GitHub queda de segunda vía", asyn
   expect(texto).toContain("admin.html#peticion=");
   await expect(page.locator("#pcCopiar")).toBeVisible();
 
-  const url = decodeURIComponent(await page.locator("#pcGitHub").getAttribute("href"));
-  expect(url).toContain("github.com/mateogsilvaa/tripfinder/issues/new");
-  expect(url).toContain("labels=peticion-cuenta");
-  expect(url).toContain("[cuenta] lucia");
-  expect(url).toContain("Usuario: lucia");
-  expect(url).toContain("poder viajar más");
-  // Y en el cuerpo no viaja ninguna dirección.
-  expect(url).not.toMatch(/[\w.]+@[\w.]+/);
+  // Ya no hay camino por issue: el repositorio es público y la leería cualquiera.
+  await expect(page.locator("#pcGitHub")).toHaveCount(0);
+  expect(await page.locator("#pedirBody a[href*='/issues']").count()).toBe(0);
+  // Y en lo que se manda no viaja ninguna dirección.
+  expect(texto).not.toMatch(/[\w.]+@[\w.]+/);
 
   await expect(page.locator("#pedirBody")).toContainText("mándasela");
   await expect(page.locator("#pedirBody")).toContainText("lucia");

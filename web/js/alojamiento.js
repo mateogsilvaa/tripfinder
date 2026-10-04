@@ -12,7 +12,6 @@ import {
   fmtDate,
   fmtEUR,
   on,
-  REPO,
 } from "./base.js";
 import { GRUPO, pax } from "./precios.js";
 import { wireCompartir } from "./compartir.js";
@@ -44,27 +43,6 @@ function closePanel() {
 }
 on("#panelClose", "click", closePanel);
 on("#backdrop", "click", closePanel);
-
-function issueURL(o, adultos) {
-  const body = [
-    "Busqueda de alojamiento lanzada desde la web. No edites el bloque de abajo.",
-    "",
-    "```yaml",
-    `offer_id: ${o.id}`,
-    `city: ${o.destination_name || o.destination}`,
-    `iata: ${o.destination}`,
-    `country: ${o.destination_country || ""}`,
-    `checkin: ${o.depart_date}`,
-    `checkout: ${o.return_date || ""}`,
-    `adults: ${adultos}`,
-    "```",
-  ].join("\n");
-  return (
-    `https://github.com/${REPO}/issues/new` +
-    `?title=${encodeURIComponent(`[stay] ${o.id}`)}` +
-    `&labels=stay-request&body=${encodeURIComponent(body)}`
-  );
-}
 
 /* --------------------------------------------- las camas que ya has buscado
 
@@ -275,12 +253,11 @@ function askForSearch(offer, aviso = "") {
       caja.wire();
       return;
     }
-    // Se muestra el motivo y se deja la issue como ultimo recurso.
+    // Solo se dice el motivo: ya no hay una issue de ultimo recurso, porque el
+    // repositorio es publico y una issue la lee cualquiera.
     $("#panelBody").insertAdjacentHTML(
       "beforeend",
-      `<div class="status wait"><p>No se pudo lanzar: ${esc(r.reason)}</p>
-       <a class="btn ghost small" href="${issueURL(offer, adultos)}" target="_blank"
-          rel="noopener">Lanzarlo por issue</a></div>`
+      `<div class="status wait"><p>No se pudo lanzar: ${esc(r.reason)}</p></div>`
     );
   });
 }
@@ -316,7 +293,7 @@ function startPolling(id) {
     if (Date.now() - started > POLL_MAX_MS) {
       clearInterval(pollTimer);
       $("#panelBody").innerHTML =
-        '<div class="status wait">Está tardando más de lo normal. Revisa la issue en GitHub.</div>';
+        '<div class="status wait">Está tardando más de lo normal. Vuelve a mirar en un rato: el resultado aparece solo en cuanto esté.</div>';
       tfAnunciar("La búsqueda de alojamiento está tardando más de lo normal.");
       return;
     }

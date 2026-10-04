@@ -204,26 +204,6 @@ def render_html(offers: list[FlightOffer]) -> str:
 </body></html>"""
 
 
-def render_markdown(offers: list[FlightOffer]) -> str:
-    """Version para el aviso via issue de GitHub."""
-    lines = [
-        f"**{len(offers)}** escapadas por debajo de su precio habitual.",
-        "",
-        "| Precio | Ruta | Fechas | Viaje real | |",
-        "| ---: | --- | --- | ---: | --- |",
-    ]
-    for o in offers:
-        fechas = _fecha(o.depart_date) + (f" → {_fecha(o.return_date)}" if o.return_date else "")
-        marca = " 🔻 mínimo histórico" if o.minimo_historico else ""
-        lines.append(
-            f"| **{o.price:.0f} €**{marca} | {o.origin} → {o.destination_name or o.destination} | "
-            f"{fechas} ({o.nights or '?'}n) | {o.useful_hours:.0f} h | "
-            f"[web]({site_url()}/?offer={o.id}) · [reservar]({o.deep_link}) |"
-        )
-    lines += ["", "_Precio total ida y vuelta para 1 adulto._"]
-    return "\n".join(lines)
-
-
 def render_watch_digest(estado: list[tuple]) -> str:
     """Parte diario de los viajes que sigues.
 

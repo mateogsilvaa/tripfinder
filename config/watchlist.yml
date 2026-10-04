@@ -5,7 +5,7 @@
 party_size: 2
 
 notify:
-  # resend | smtp | github_issue  (ver docs/ARCHITECTURE.md)
+  # resend | smtp  (ver docs/ARCHITECTURE.md)
   #
   # SMTP, y no Resend, porque Resend solo deja escribir a la direccion del dueno
   # de la clave mientras el dominio no este verificado — y el dominio de esta web

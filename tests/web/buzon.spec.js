@@ -91,16 +91,9 @@ const rellenar = async (page, { pass = "unaclavelarga", pass2 = null, email = "l
   }
 };
 
-/* La petición ya no abre nada sola: deja un enlace para WhatsApp y otro para
-   GitHub. Aquí se lee el de GitHub, que es donde viaja el cuerpo de la issue. */
-async function mandar(page) {
-  await page.locator("#pcMandar").click();
-  const enlace = page.locator("#pcGitHub");
-  await expect(enlace).toBeAttached();
-  return decodeURIComponent(await enlace.getAttribute("href"));
-}
-
-/* Y el de WhatsApp, decodificado: la petición entera va detrás de #peticion=. */
+/* El enlace de WhatsApp, decodificado: la petición entera va detrás de #peticion=.
+   Ya no hay otro camino: no se abre ninguna issue, que en un repo público las lee
+   cualquiera. */
 async function mandarPorEnlace(page) {
   await page.locator("#pcMandar").click();
   const wa = page.locator("#pcWhats");
@@ -112,11 +105,6 @@ async function mandarPorEnlace(page) {
   const bin = Buffer.from(b64, "base64");
   return { texto, url, datos: JSON.parse(bin.toString("utf8")) };
 }
-
-const sobreDe = (cuerpo) => {
-  const m = /```tf-sobre\s*\n([\s\S]*?)\n```/i.exec(cuerpo);
-  return m ? JSON.parse(m[1].trim()) : null;
-};
 
 test.describe("el formulario", () => {
   test("con buzón pide el correo y la contraseña", async ({ page }) => {
@@ -167,33 +155,34 @@ test.describe("el formulario", () => {
     const buzon = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page, { email: "" });
-    const url = await mandar(page);
-    expect(sobreDe(url)).toBeTruthy();
+    const { datos } = await mandarPorEnlace(page);
+    expect(datos.s).toBeTruthy();
   });
 });
 
-test.describe("lo que viaja en la issue", () => {
+test.describe("lo que viaja en el enlace", () => {
   test("va el sobre, y ni el correo ni la contraseña en claro", async ({ page }) => {
     const buzon = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page);
-    const url = await mandar(page);
+    const { texto, datos } = await mandarPorEnlace(page);
+    const todo = texto + JSON.stringify(datos);
 
-    // Lo público sigue siendo público: es lo que quien aprueba tiene que leer.
-    expect(url).toContain("[cuenta] lucia");
-    expect(url).toContain("poder viajar más");
-    // Y lo que no puede estar, no está. La issue es pública.
-    expect(url).not.toContain("lucia@ejemplo.com");
-    expect(url).not.toMatch(/[\w.]+@[\w.]+\.[\w]+/);
-    expect(url).not.toContain("unaclavelarga");
-    expect(sobreDe(url)).toBeTruthy();
+    // Lo que quien aprueba tiene que leer.
+    expect(datos.u).toBe("lucia");
+    expect(datos.p).toContain("poder viajar más");
+    // Y lo que no puede ir en claro, no va: el enlace se pega en chats.
+    expect(todo).not.toContain("lucia@ejemplo.com");
+    expect(todo).not.toMatch(/[\w.]+@[\w.]+\.[\w]+/);
+    expect(todo).not.toContain("unaclavelarga");
+    expect(datos.s).toBeTruthy();
   });
 
   test("y el sobre se abre con la privada, con lo que se escribió dentro", async ({ page }) => {
     const buzon = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page);
-    const sellado = sobreDe(await mandar(page));
+    const sellado = (await mandarPorEnlace(page)).datos.s;
     expect(await abrirSobre(page, buzon.priv, sellado)).toEqual({
       email: "lucia@ejemplo.com",
       pass: "unaclavelarga",
@@ -207,11 +196,11 @@ test.describe("lo que viaja en la issue", () => {
     const otro = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page);
-    const sellado = sobreDe(await mandar(page));
+    const sellado = (await mandarPorEnlace(page)).datos.s;
     await expect(abrirSobre(page, otro.priv, sellado)).rejects.toThrow();
   });
 
-  test("sin GitHub: el enlace para WhatsApp lleva la petición y el sobre, y nada en claro",
+  test("el enlace para WhatsApp lleva la petición y el sobre, y nada en claro",
     async ({ page }) => {
       const buzon = await nuevoBuzon(page);
       await abrirForm(page, buzon);
@@ -250,10 +239,10 @@ test.describe("lo que viaja en la issue", () => {
     const buzon = await nuevoBuzon(page);
     await abrirForm(page, buzon);
     await rellenar(page);
-    const uno = sobreDe(await mandar(page));
+    const uno = (await mandarPorEnlace(page)).datos.s;
     await abrirForm(page, buzon);
     await rellenar(page);
-    const dos = sobreDe(await mandar(page));
+    const dos = (await mandarPorEnlace(page)).datos.s;
     expect(uno.data).not.toBe(dos.data);
     expect(uno.iv).not.toBe(dos.iv);
   });
