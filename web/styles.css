@@ -346,24 +346,6 @@ em, .script {
 
 .topbar-hueco { flex: 1; }
 
-.board-live {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: none;
-  font: 400 var(--fs-meta) / 1 var(--font-mono);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.board-live i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: tf-pulse 2s infinite;
-}
-
 .tema {
   flex: none;
   width: 38px;
@@ -411,9 +393,9 @@ em, .script {
 .cuenta b { font-weight: 700; }
 .cuenta-txt { max-width: 12ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* El cuarto flap: el test de destinos. Discreto por diseño —no es la acción
-   principal— pero un botón de verdad, con su área táctil y su giro. */
-.flaps { display: inline-flex; gap: 3px; }
+/* El test de destinos. Era un cuadradito con un «?» que nadie sabia que hacia;
+   ahora es un boton con su nombre: «Ayúdame a elegir» (y «¿Dónde ir?» en el
+   movil, donde no cabe mas). */
 .flap {
   display: inline-grid;
   place-items: center;
@@ -429,18 +411,18 @@ em, .script {
 .flap-boton {
   position: relative;
   margin-left: 10px;
+  padding: 9px 14px;
   border-color: var(--line);
+  border-radius: var(--r-pill);
   cursor: pointer;
   color: var(--muted);
-  perspective: 200px;
+  font: 500 var(--fs-ui-s, 13px) / 1 inherit;
+  letter-spacing: 0;
+  white-space: nowrap;
   transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
 }
-.flap-boton .flap-cara {
-  display: block;
-  transition: transform var(--t-med) var(--ease);
-}
+.flap-txt-corto { display: none; }
 .flap-boton:hover, .flap-boton:focus-visible { color: var(--accent-txt); border-color: var(--accent); }
-.flap-boton:hover .flap-cara { transform: rotateX(360deg); }
 .flap-boton.con-memoria { color: var(--accent-txt); border-color: var(--accent); }
 .flap-boton::after {
   content: "";
@@ -449,9 +431,6 @@ em, .script {
   width: max(100%, var(--tap-min));
   height: max(100%, var(--tap-min));
   transform: translate(-50%, -50%);
-}
-@media (prefers-reduced-motion: reduce) {
-  .flap-boton:hover .flap-cara { transform: none; }
 }
 
 /* ==========================================================================
@@ -1494,6 +1473,18 @@ h1 em { font-size: 1.3em; }
 .vacio { max-width: 74ch; }
 .nota-txt { display: inline-block; max-width: 74ch; vertical-align: middle; }
 .finder-form + .candado-nota { margin-top: 0; }
+/* El aviso de «hace falta una cuenta», encima de la herramienta: una caja con
+   su frase y sus dos botones, no una nota perdida debajo del formulario. */
+.candado-nota {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md, 12px);
+}
 .candado-nota, .cuenta-nota {
   font-size: var(--fs-ui-s);
   color: var(--muted);
@@ -2862,7 +2853,6 @@ h1 em { font-size: 1.3em; }
 
 @media (max-width: 760px) {
   :root { --pad-page: 16px; }
-  .board-live { display: none; }
   .board-head { display: none; }
 
   /* La barra en un móvil estrecho. Se cae por este orden: primero el nav y el
@@ -2889,8 +2879,9 @@ h1 em { font-size: 1.3em; }
   }
   .zonas::-webkit-scrollbar { display: none; }
   .zona { padding: 4px 0; }
-  .flaps { display: none; }
-  .flap-boton { margin-left: 0; }
+  .flap-boton { margin-left: 0; padding: 8px 10px; font-size: 12px; }
+  .flap-txt-largo { display: none; }
+  .flap-txt-corto { display: inline; }
   /* LOS FILTROS EN MÓVIL. Antes se veían los nueve controles a la vez y el
      primer vuelo quedaba fuera de pantalla. Ahora arriba solo hay dos cosas
      —buscador y "Filtros · N"— y el resto vive en una hoja que sube desde
@@ -3580,3 +3571,69 @@ h1 em { font-size: 1.3em; }
 .nube-vincular select { max-width: 100%; }
 .nube-verificar { padding: 12px 14px; border: 1px solid var(--hair); border-radius: var(--r-md, 12px); margin: 0 0 14px; }
 .nube-verificar .controls { margin: 8px 0 0; }
+
+/* «Cómo funciona»: tres pasos para quien llega por primera vez. Una lista
+   numerada de verdad, porque el orden es la información. */
+.como { padding-block: 22px 8px; }
+.como-titulo {
+  margin: 0 0 12px;
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.como-pasos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: paso;
+}
+.como-pasos li {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-md, 12px);
+  counter-increment: paso;
+}
+.como-pasos li::before {
+  content: counter(paso);
+  font: 500 var(--fs-data-s) / 1 var(--font-mono);
+  color: var(--accent-txt);
+}
+.como-pasos b { font-size: var(--fs-body-s); }
+.como-pasos span { font-size: var(--fs-body-s); color: var(--muted); line-height: 1.45; }
+@media (max-width: 760px) {
+  .como-pasos { grid-template-columns: 1fr; }
+}
+
+/* La página de privacidad: un texto para leer, a ancho de lectura. */
+.privacidad { max-width: 68ch; padding-block: 12px 40px; }
+.privacidad h2 {
+  margin: 26px 0 6px;
+  font: 400 var(--fs-caps-l) / 1 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.privacidad p { margin: 0; line-height: 1.6; }
+.privacidad .acciones-fila { margin-top: 28px; }
+.foot-enlace {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.foot-enlace:hover { color: var(--accent-txt); }
+
+/* En un móvil estrecho la marca y el botón del test no caben juntos con el tema y
+   la cuenta, y la cuenta se caía a una segunda fila vacía. Se queda el icono de
+   la marca (el nombre sigue en el título y en el pie). */
+@media (max-width: 380px) {
+  .marca-trip, .marca-finder { display: none; }
+}

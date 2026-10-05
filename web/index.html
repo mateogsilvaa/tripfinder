@@ -48,14 +48,13 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
       </a>
       <nav class="zonas" aria-label="Zonas">
-        <a href="./" class="zona activa" data-zona="promos" aria-current="page">Feed</a>
+        <a href="./" class="zona activa" data-zona="promos" aria-current="page">Chollos</a>
         <a href="buscar.html" class="zona" data-zona="buscar">Buscar</a>
-        <a href="seguimientos.html" class="zona" data-zona="follows">Vuelos que sigues</a>
+        <a href="seguimientos.html" class="zona" data-zona="follows">Mis avisos</a>
         <a href="interrail.html" class="zona" data-zona="interrail">Interrail</a>
       </nav>
       <div class="topbar-hueco"></div>
-      <span class="board-live"><i aria-hidden="true"></i>en vivo</span>
-      <span class="flaps" aria-hidden="true"><span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span><button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-cara" aria-hidden="true">?</span></button>
+      <button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-txt flap-txt-largo" aria-hidden="true">Ayúdame a elegir</span><span class="flap-txt flap-txt-corto" aria-hidden="true">¿Dónde ir?</span></button>
       <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
         <b aria-hidden="true">☀</b><span class="tema-txt">noche</span>
       </button>
@@ -66,20 +65,29 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <div>
     <h1>Vuelos <em>baratos</em><br>antes que nadie.</h1>
     <p class="lede">
-      Se recorre finde a finde hasta el año que viene y se pregunta a todas las
-      compañías, no solo a las low cost. Lo que aparece abajo es lo que hay
-      barato hoy.
+      Escapadas de fin de semana desde Madrid, por debajo de lo que suelen
+      costar. Se revisan cada doce horas.
     </p>
     <p class="trato">
-      Esto mira los precios cada doce horas y te escribe cuando un viaje baja de
-      lo que suele costar. No hay que buscar nada: apuntas el que te interese y
-      se revisa solo. <a href="#buscar">¿No tienes destino en la cabeza?</a>
+      Apunta el viaje que te interese y te escribimos cuando baje. ¿No sabes a
+      dónde ir? <a href="#buscar">Ayúdame a elegir</a>.
     </p>
   </div>
   <dl class="stats" id="stats"></dl>
 </header>
 
 <main>
+
+<!-- Para quien llega por primera vez: qué es esto y qué se hace aquí, en tres
+     pasos que de verdad van en ese orden. -->
+<section class="como" aria-labelledby="comoTitulo">
+  <h2 id="comoTitulo" class="como-titulo">Cómo funciona</h2>
+  <ol class="como-pasos">
+    <li><b>Mira los chollos</b><span>Cada día, los viajes que cuestan menos de lo normal.</span></li>
+    <li><b>Apunta el que te interese</b><span>Con una cuenta gratis. Se revisa solo, cada día.</span></li>
+    <li><b>Te escribimos cuando baje</b><span>Un correo, sin anuncios. Lo desactivas cuando quieras.</span></li>
+  </ol>
+</section>
 
 <section id="favAviso" class="fav-aviso" hidden aria-live="polite"></section>
 
@@ -266,7 +274,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     <p class="candado-nota">
       Hace falta una cuenta para buscar y ver tus búsquedas guardadas.
       <a href="#" data-entrar>Entrar</a>
-      <a href="#" data-pedir-cuenta>Pedir una cuenta</a>
+      <a href="#" data-pedir-cuenta>Crear cuenta</a>
     </p>
   </div>
 
@@ -331,7 +339,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     <p class="candado-nota">
       Hace falta una cuenta para seguir un viaje y ver tus seguimientos.
       <a href="#" data-entrar>Entrar</a>
-      <a href="#" data-pedir-cuenta>Pedir una cuenta</a>
+      <a href="#" data-pedir-cuenta>Crear cuenta</a>
     </p>
   </div>
 
@@ -427,6 +435,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <div class="foot-in">
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
+  <a class="foot-enlace" href="privacidad.html">Privacidad</a>
     <span class="build">build dev</span>
   </div>
 </footer>

@@ -140,6 +140,8 @@ LLEVAN = {
     # hoja que va aqui. Sin ella el boton no hacia nada.
     "interrail.html": {"nav": True, "hojas": True},
     "404.html": {"nav": True, "hojas": False},
+    # La privacidad lleva el nav, para volver, y no busca alojamiento.
+    "privacidad.html": {"nav": True, "hojas": False},
     "admin.html": {"nav": False, "hojas": False},
 }
 

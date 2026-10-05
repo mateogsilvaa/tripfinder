@@ -661,7 +661,7 @@ async function tfAbrirLogin() {
       <button class="btn primary" type="submit">Entrar</button>
       <p class="login-pedir">
         <span>¿No tienes cuenta?</span>
-        <button class="btn ghost small" type="button" id="tfPedirCuenta">Pedir una cuenta</button>
+        <button class="btn ghost small" type="button" id="tfPedirCuenta">Crear cuenta</button>
       </p>
     </form>`);
 

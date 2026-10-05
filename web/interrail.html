@@ -48,13 +48,13 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
       </a>
       <nav class="zonas" aria-label="Zonas">
-        <a href="./" class="zona" data-zona="promos">Feed</a>
+        <a href="./" class="zona" data-zona="promos">Chollos</a>
         <a href="buscar.html" class="zona" data-zona="buscar">Buscar</a>
-        <a href="seguimientos.html" class="zona" data-zona="follows">Vuelos que sigues</a>
+        <a href="seguimientos.html" class="zona" data-zona="follows">Mis avisos</a>
         <a href="interrail.html" class="zona activa" data-zona="interrail" aria-current="page">Interrail</a>
       </nav>
       <div class="topbar-hueco"></div>
-      <span class="flaps" aria-hidden="true"><span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span><button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-cara" aria-hidden="true">?</span></button>
+      <button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-txt flap-txt-largo" aria-hidden="true">Ayúdame a elegir</span><span class="flap-txt flap-txt-corto" aria-hidden="true">¿Dónde ir?</span></button>
       <button id="tema" class="tema" type="button" aria-label="Cambiar entre carta de día y carta de noche">
         <b aria-hidden="true">☀</b><span class="tema-txt">noche</span>
       </button>
@@ -64,7 +64,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <header class="masthead">
   <div>
     <h1>Por Europa,<br><em>en tren.</em></h1>
-    <p class="lede">Con el pase Interrail o sin él. Elige las ciudades y te monta el viaje entero: el orden que menos tren gasta, los <b>vuelos de ida y vuelta</b> —que no tienen por qué ser desde la misma ciudad—, <b>pisos enteros en el centro</b> de cada parada y el total de todo.</p>
+    <p class="lede">Elige las ciudades y te monta el viaje: el orden que menos tren gasta, los <b>vuelos de ida y vuelta</b>, <b>pisos enteros en el centro</b> de cada parada y el total. Con pase Interrail o sin él.</p>
   </div>
 </header>
 
@@ -238,6 +238,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <div class="foot-in">
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
+  <a class="foot-enlace" href="privacidad.html">Privacidad</a>
     <span class="build">build dev</span>
   </div>
 </footer>
