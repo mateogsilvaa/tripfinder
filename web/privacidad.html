@@ -4,22 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<script>
-/* Pages sirve esta pagina para cualquier direccion que no exista. Desde una
-   ruta honda los enlaces relativos apuntarian al sitio equivocado. */
-(function () {
-  try {
-    var raiz = "/tripfinder/";
-    var aqui = location.pathname;
-    if (aqui.indexOf(raiz) !== 0 || aqui.slice(raiz.length).indexOf("/") < 0) return;
-    var b = document.createElement("base");
-    b.href = raiz;
-    document.head.appendChild(b);
-  } catch (e) { /* sin arreglo: la pagina se ve sin estilos, pero se lee */ }
-})();
-</script>
-<title>TripFinder · fuera de la carta</title>
-<meta name="robots" content="noindex">
+<title>TripFinder · privacidad</title>
+<meta name="description" content="Qué guarda TripFinder de ti, dónde, y qué se ve públicamente. Sin anuncios ni rastreadores.">
 <meta name="theme-color" content="#100f0e" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#f3f0e9" media="(prefers-color-scheme: light)">
 <link rel="icon" href="iconos/marca.svg" type="image/svg+xml">
@@ -73,25 +59,53 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   </div><!-- /tf:parte -->
 
 <header class="masthead">
-
-  <h1>Fuera <em>de la carta</em></h1>
-  <p class="lede">
-    Esa dirección no está en el índice. Puede que la escribieras a mano, o que
-    fuera un enlace viejo de un chollo que ya no existe.
-  </p>
-
+  <div>
+    <h1>Qué guardamos<br><em>de ti.</em></h1>
+    <p class="lede">Poco, y te lo contamos entero: qué es privado, qué se ve públicamente y qué no existe.</p>
+  </div>
 </header>
 
 <main>
-  <section class="perdido">
-    <p class="perdido-ref" id="perdidaRef">—</p>
-    <p class="vacio">
-      Los chollos caducan: se buscan cada doce horas y lo que ya no está barato
-      desaparece del feed. Vuelve al feed a ver qué hay ahora.
+  <section class="privacidad">
+    <h2>Tu cuenta</h2>
+    <p>
+      Tu correo, tu nombre y tu contraseña, para que puedas entrar. La contraseña no
+      la vemos nadie: la guarda Firebase, el servicio de cuentas de Google. Tu correo
+      solo lo ve quien lleva la web.
     </p>
+
+    <h2>Tus avisos</h2>
+    <p>
+      Si los activas, te escribimos al correo de tu cuenta cuando baja un precio.
+      Los cambias o los apagas cuando quieras en «Tu cuenta». No mandamos nada más.
+    </p>
+
+    <h2>Lo que buscas y lo que sigues</h2>
+    <p>
+      <b>Esto es lo único que se ve públicamente.</b> Los viajes que sigues y las
+      búsquedas que guardas se publican junto con el nombre de tu cuenta, pero sin tu
+      correo. Si no quieres que se vea tu nombre, ponle a tu cuenta un apodo.
+    </p>
+
+    <h2>Favoritos y test de destinos</h2>
+    <p>Se guardan solo en tu navegador. No se envían a ningún sitio.</p>
+
+    <h2>Lo que no hay</h2>
+    <p>
+      Ni anuncios, ni rastreadores, ni analítica, ni venta de datos. Lo único de
+      terceros que carga la web son las tipografías de Google Fonts, así que Google
+      sabe que alguien ha abierto la página, y los servicios de cuentas de Firebase
+      cuando entras.
+    </p>
+
+    <h2>Borrar tu cuenta</h2>
+    <p>
+      Díselo a quien lleva la web y la borra con todo lo que tenía: la cuenta, el
+      correo y tus preferencias de avisos.
+    </p>
+
     <div class="acciones-fila">
-      <a class="btn primary" href="./#feed">Ir al feed</a>
-      <a class="btn ghost" href="./#buscar">Buscar un viaje</a>
+      <a class="btn primary" href="./">Volver a los chollos</a>
     </div>
   </section>
 </main>
@@ -106,13 +120,5 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 </footer>
 
 <script src="log.js?v=dev"></script><!-- /tf:parte -->
-<script>
-/* La dirección que no existía, dicha tal cual: si fue una errata se ve al
-   momento, y si fue un enlace viejo de un correo al menos sabes cuál era. */
-try {
-  var ref = document.getElementById("perdidaRef");
-  if (ref) ref.textContent = location.pathname + location.search;
-} catch (e) { /* da igual: el texto se queda en el guion */ }
-</script>
 </body>
 </html>

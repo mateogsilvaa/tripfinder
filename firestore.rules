@@ -12,6 +12,7 @@ rules_version = '2';
    reglas, así que no hace falta abrirles nada.
 
      usuarios/{uid}        la ficha de cada cuenta: nombre, correo, estado
+     cuentas_antiguas/{id} las cuentas de antes de Firebase (solo el administrador)
      encargos/{id}         lo que se le pide a un scraper (la cola)
 
    El estado manda: una cuenta recién registrada es `pendiente` y no puede
@@ -58,19 +59,49 @@ service cloud.firestore {
         && request.resource.data.nombre.size() <= 40;
 
       allow update: if entra() && (
-        // Cada cual, su nombre y sus preferencias. Ni el estado ni el correo.
+        // Cada cual, su nombre, sus preferencias y si su correo está verificado.
+        // Ni el estado ni el correo ni a qué cuenta antigua está vinculado. Lo de
+        // `verificado` no se cree: tiene que ser EXACTAMENTE lo que dice el token
+        // que firma Firebase, y solo Firebase sabe si ese correo es de verdad suyo.
         (request.auth.uid == uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'prefs'])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'prefs', 'verificado'])
           && request.resource.data.nombre is string
           && request.resource.data.nombre.size() > 0
-          && request.resource.data.nombre.size() <= 40)
-        // El administrador, el estado de las demás. No el suyo propio, para no
-        // dejar la web sin nadie al mando por un clic.
+          && request.resource.data.nombre.size() <= 40
+          && (!('verificado' in request.resource.data.diff(resource.data).affectedKeys())
+              || request.resource.data.verificado == request.auth.token.email_verified))
+        // El administrador, las de las demás. No la suya propia, para no dejar la
+        // web sin nadie al mando por un clic.
         || (admin()
           && request.auth.uid != uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado'])
-          && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado'])
+          && (
+            // Aprobar, bloquear o devolver a pendiente.
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado'])
+              && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado'])
+            // Vincularla con una cuenta de antes: hereda sus avisos, sus
+            // seguimientos y sus búsquedas. Solo si ha verificado su correo, porque
+            // si no, bastaría registrarse con el correo de otro para quedarse con
+            // lo suyo, y solo una vez.
+            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'legado', 'prefs'])
+              && 'legado' in request.resource.data.diff(resource.data).affectedKeys()
+              && resource.data.get('verificado', false) == true
+              && resource.data.get('legado', null) == null
+              && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado']
+              && exists(/databases/$(database)/documents/cuentas_antiguas/$(request.resource.data.legado))
+              && get(/databases/$(database)/documents/cuentas_antiguas/$(request.resource.data.legado)).data.get('vinculada', null) == null)
+          ))
       );
+    }
+
+    // Las cuentas de antes de Firebase, copiadas con `tripfinder migrar-cuentas`:
+    // nombre, correo y avisos. Nunca contraseñas ni sobres ni el token. Solo las ve
+    // el administrador, y solo puede marcar a cuál cuenta nueva se ha vinculado
+    // cada una; el resto lo escribe la cuenta de servicio.
+    match /cuentas_antiguas/{id} {
+      allow get, list: if admin();
+      allow update: if admin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vinculada'])
+        && request.resource.data.vinculada is string;
     }
 
     match /encargos/{id} {

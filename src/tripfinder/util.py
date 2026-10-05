@@ -216,3 +216,19 @@ def get_text(
             log.debug("GET %s fallo (intento %d/%d): %s", url, intento + 1, retries, exc)
             time.sleep(1.5 * (intento + 1))
     raise RuntimeError(f"GET {url} fallo tras {retries} intentos: {last}")
+
+
+def ids_de_dueno(spec: str | None) -> list[str]:
+    """Los ids de una cuenta, de la primera a la ultima: `"uid-nuevo,u-1a2b3c4d"`.
+
+    Una cuenta vinculada con una de antes de Firebase es dueña de lo suyo bajo los
+    DOS ids: lo que hizo antes lleva el viejo y lo de ahora, el nuevo. El encargo
+    los lleva juntos para poder borrar cualquiera de los dos. Crear algo usa solo
+    el primero (`primer_dueno`): lo nuevo siempre sale a nombre de la cuenta nueva.
+    """
+    return [x.strip() for x in str(spec or "").split(",") if x.strip()]
+
+
+def primer_dueno(spec: str | None) -> str:
+    ids = ids_de_dueno(spec)
+    return ids[0] if ids else ""

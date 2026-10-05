@@ -58,6 +58,11 @@ beforeEach(async () => {
     await setDoc(doc(db, "usuarios/ana"), { ...base, nombre: "Ana", correo: "ana@x.es", estado: "aprobado" });
     await setDoc(doc(db, "usuarios/bea"), { ...base, nombre: "Bea", correo: "bea@x.es", estado: "pendiente" });
     await setDoc(doc(db, "usuarios/cris"), { ...base, nombre: "Cris", correo: "cris@x.es", estado: "bloqueado" });
+    // Eva ya verificó su correo; Bea (arriba) no.
+    await setDoc(doc(db, "usuarios/eva"), { ...base, nombre: "Eva", correo: "eva@x.es", estado: "pendiente", verificado: true });
+    // Las cuentas de antes de Firebase, copiadas con `tripfinder migrar-cuentas`.
+    await setDoc(doc(db, "cuentas_antiguas/u-aaaaaaaa"), { usuario: "eva", nombre: "Eva", correo: "eva@x.es", activa: true });
+    await setDoc(doc(db, "cuentas_antiguas/u-bbbbbbbb"), { usuario: "ana", nombre: "Ana", correo: "ana@x.es", activa: true });
     await setDoc(doc(db, "usuarios/jefe"), {
       ...base,
       nombre: "Jefe",
@@ -68,7 +73,8 @@ beforeEach(async () => {
   });
 });
 
-const como = (uid, correo) => entorno.authenticatedContext(uid, { email: correo }).firestore();
+const como = (uid, correo, verificado = false) =>
+  entorno.authenticatedContext(uid, { email: correo, email_verified: verificado }).firestore();
 const anonimo = () => entorno.unauthenticatedContext().firestore();
 
 const ficha = (correo, extra = {}) => ({
@@ -123,7 +129,7 @@ test("nadie lista las fichas salvo el administrador", async () => {
   await assertFails(getDocs(collection(como("ana", "ana@x.es"), "usuarios")));
   await assertFails(getDocs(collection(anonimo(), "usuarios")));
   const lista = await assertSucceeds(getDocs(collection(como("jefe", "jefe@x.es"), "usuarios")));
-  assert.equal(lista.size, 4);
+  assert.equal(lista.size, 5);
 });
 
 test("una cuenta pendiente puede leer su ficha: así sabe cuándo la aprueban", async () => {
@@ -264,4 +270,75 @@ test("las issues copiadas no las lee ni las escribe nadie desde el navegador", a
     await assertFails(setDoc(doc(db, "issues/126"), { tipo: "tarea" }));
     await assertFails(deleteDoc(doc(db, "issues/125")));
   }
+});
+
+/* ------------------------------------------------- cuentas de antes de Firebase */
+test("verificarse: solo vale lo que dice el token de Firebase", async () => {
+  // Eva ha verificado su correo de verdad: su token lo dice.
+  await assertSucceeds(updateDoc(doc(como("eva", "eva@x.es", true), "usuarios/eva"), { verificado: true }));
+  // Bea no lo ha verificado: no puede escribir que sí.
+  await assertFails(updateDoc(doc(como("bea", "bea@x.es", false), "usuarios/bea"), { verificado: true }));
+  // Y sí puede escribir la verdad.
+  await assertSucceeds(updateDoc(doc(como("bea", "bea@x.es", false), "usuarios/bea"), { verificado: false }));
+});
+
+test("nadie se vincula a sí mismo con una cuenta de antes", async () => {
+  const eva = como("eva", "eva@x.es", true);
+  await assertFails(updateDoc(doc(eva, "usuarios/eva"), { legado: "u-aaaaaaaa" }));
+  await assertFails(updateDoc(doc(eva, "usuarios/eva"), { legado: "u-aaaaaaaa", estado: "aprobado" }));
+});
+
+const vincular = (db, uid, legado, extra = {}) =>
+  updateDoc(doc(db, `usuarios/${uid}`), { legado, estado: "aprobado", prefs: { chollos: "diario" }, ...extra });
+
+test("el administrador vincula a quien ha verificado su correo", async () => {
+  await assertSucceeds(vincular(como("jefe", "jefe@x.es"), "eva", "u-aaaaaaaa"));
+});
+
+test("y no a quien no lo ha verificado: registrarse con el correo de otro no vale", async () => {
+  await assertFails(vincular(como("jefe", "jefe@x.es"), "bea", "u-aaaaaaaa"));
+});
+
+test("solo una cuenta de las que existen, y solo una vez", async () => {
+  const jefe = como("jefe", "jefe@x.es");
+  await assertFails(vincular(jefe, "eva", "u-no-existe"));
+  await assertSucceeds(vincular(jefe, "eva", "u-aaaaaaaa"));
+  await assertFails(vincular(jefe, "eva", "u-bbbbbbbb")); // ya vinculada
+});
+
+test("una cuenta antigua ya vinculada a otra no se vuelve a vincular", async () => {
+  await entorno.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), "cuentas_antiguas/u-aaaaaaaa"), { vinculada: "otra" });
+  });
+  await assertFails(vincular(como("jefe", "jefe@x.es"), "eva", "u-aaaaaaaa"));
+});
+
+test("vincular no cuela otros campos", async () => {
+  const jefe = como("jefe", "jefe@x.es");
+  await assertFails(vincular(jefe, "eva", "u-aaaaaaaa", { admin: true }));
+  await assertFails(vincular(jefe, "eva", "u-aaaaaaaa", { correo: "otro@x.es" }));
+});
+
+test("el administrador marca la cuenta antigua como vinculada, y solo eso", async () => {
+  const jefe = como("jefe", "jefe@x.es");
+  await assertSucceeds(updateDoc(doc(jefe, "cuentas_antiguas/u-aaaaaaaa"), { vinculada: "eva" }));
+  await assertFails(updateDoc(doc(jefe, "cuentas_antiguas/u-bbbbbbbb"), { correo: "robado@x.es" }));
+  await assertFails(updateDoc(doc(jefe, "cuentas_antiguas/u-bbbbbbbb"), { vinculada: 7 }));
+});
+
+test("las cuentas antiguas (con sus correos) solo las ve el administrador", async () => {
+  for (const db of [anonimo(), como("ana", "ana@x.es"), como("eva", "eva@x.es", true)]) {
+    await assertFails(getDoc(doc(db, "cuentas_antiguas/u-aaaaaaaa")));
+    await assertFails(getDocs(collection(db, "cuentas_antiguas")));
+    await assertFails(setDoc(doc(db, "cuentas_antiguas/u-cccccccc"), { correo: "x@x.es" }));
+    await assertFails(deleteDoc(doc(db, "cuentas_antiguas/u-aaaaaaaa")));
+  }
+  const todas = await assertSucceeds(getDocs(collection(como("jefe", "jefe@x.es"), "cuentas_antiguas")));
+  assert.equal(todas.size, 2);
+});
+
+test("nadie borra ni crea cuentas antiguas desde el navegador, ni el administrador", async () => {
+  const jefe = como("jefe", "jefe@x.es");
+  await assertFails(setDoc(doc(jefe, "cuentas_antiguas/u-cccccccc"), { correo: "x@x.es" }));
+  await assertFails(deleteDoc(doc(jefe, "cuentas_antiguas/u-aaaaaaaa")));
 });

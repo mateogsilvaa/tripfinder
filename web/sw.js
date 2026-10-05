@@ -32,6 +32,7 @@ const PIEZAS = [
   "./seguimientos.html",
   "./interrail.html",
   "./404.html",
+  "./privacidad.html",
   "./styles.css",
   "./log.js",
   "./auth.js",

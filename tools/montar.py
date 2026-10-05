@@ -105,6 +105,10 @@ DESCRIPCIONES = {
         "Los viajes que tienes apuntados, revisados cada manana. Te escribe cuando "
         "el precio se mueve o cae dentro de tu tope."
     ),
+    "privacidad.html": (
+        "Qué guarda TripFinder de ti, dónde, y qué se ve públicamente. "
+        "Sin anuncios ni rastreadores."
+    ),
     "interrail.html": (
         "Monta tu Interrail: las ciudades por las que quieres pasar, los trenes, "
         "los vuelos de ida y vuelta y pisos enteros en el centro, con el total."
@@ -133,23 +137,25 @@ MANIFIESTO = (
 # alcanzable con el tabulador. Solo en las paginas publicas: en el panel y en
 # la 404 no hay nada que descubrir.
 DESCUBRIR = (
-    '<span class="flaps" aria-hidden="true">'
-    '<span class="flap">M</span><span class="flap">A</span><span class="flap">D</span></span>'
     '<button id="tfDescubrir" class="flap flap-boton" type="button"'
     ' aria-label="Descubrir tu destino ideal">'
-    '<span class="flap-cara" aria-hidden="true">?</span></button>'
+    '<span class="flap-txt flap-txt-largo" aria-hidden="true">Ayúdame a elegir</span>'
+    '<span class="flap-txt flap-txt-corto" aria-hidden="true">¿Dónde ir?</span></button>'
 )
 
 NAV = (
     '      <nav class="zonas" aria-label="Zonas">\n'
-    '        <a href="./"{promos}>Feed</a>\n'
+    '        <a href="./"{promos}>Chollos</a>\n'
     '        <a href="buscar.html"{buscar}>Buscar</a>\n'
-    '        <a href="seguimientos.html"{follows}>Vuelos que sigues</a>\n'
+    '        <a href="seguimientos.html"{follows}>Mis avisos</a>\n'
     '        <a href="interrail.html"{interrail}>Interrail</a>\n'
     '      </nav>\n'
 )
 
-VIVO = '      <span class="board-live"><i aria-hidden="true"></i>en vivo</span>\n'
+# Antes habia aqui un punto que latia con «en vivo». No decia nada que el pie no
+# dijera ya («actualizado …») y era justo el tipo de detalle que hace dudar de si
+# esto es una web de verdad: se quito.
+VIVO = ""
 
 GUIONES_WEB = (
     '<script src="log.js?v={v}"></script>\n'
@@ -165,13 +171,17 @@ GUIONES_PANEL = (
 # La 404 no tiene datos que pintar: le basta el tema y el chip de cuenta.
 GUIONES_MINIMO = '<script src="log.js?v={v}"></script>\n'
 
+ENLACE_PRIVACIDAD = '  <a class="foot-enlace" href="privacidad.html">Privacidad</a>\n'
+
 NOTA_404 = (
     '  <span>Los precios vuelan: confirma siempre antes de reservar.</span>\n'
+    + ENLACE_PRIVACIDAD
 )
 
 NOTA_WEB = (
     '  <span id="frescura">—</span>\n'
     "  <span>Los precios vuelan: confirma siempre antes de reservar.</span>\n"
+    + ENLACE_PRIVACIDAD
 )
 NOTA_PANEL = (
     "  <span>Las contraseñas no se guardan: solo su PBKDF2 con sal, "
@@ -231,6 +241,20 @@ PAGINAS = {
         "zona": "interrail",
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
+    },
+    # Que se guarda de cada persona y que se ve en publico. Lleva el nav, para
+    # volver, y no se anuncia como una zona.
+    "privacidad.html": {
+        "manifiesto": "",
+        "nav": NAV,
+        "descubrir": "",
+        "base": "",
+        "titulo": "TripFinder · privacidad",
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["privacidad.html"]}">',
+        "vivo": "",
+        "zona": None,
+        "nota": NOTA_404,
+        "guiones": GUIONES_MINIMO,
     },
     # La pagina que sirve Pages cuando la direccion no existe. Lleva el nav
     # (es lo unico util que puedes hacer desde ahi) pero no las hojas de

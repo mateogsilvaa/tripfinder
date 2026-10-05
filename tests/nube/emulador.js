@@ -66,7 +66,40 @@ async function encargosDe(uid) {
 const borrarCuenta = (uid) =>
   fetch(`${AUTH}/emulator/v1/projects/demo-tripfinder/accounts/${uid}`, { method: "DELETE" });
 
+/* Una cuenta de antes de Firebase, como la deja `tripfinder migrar-cuentas`. */
+async function sembrarAntigua(id, campos) {
+  const fields = {};
+  for (const [k, v] of Object.entries(campos)) {
+    fields[k] =
+      typeof v === "boolean"
+        ? { booleanValue: v }
+        : v && typeof v === "object"
+          ? { mapValue: { fields: Object.fromEntries(Object.entries(v).map(([a, b]) => [a, typeof b === "number" ? { doubleValue: b } : b === null ? { nullValue: null } : { stringValue: String(b) }])) } }
+          : { stringValue: String(v) };
+  }
+  const r = await fetch(`${FS}/cuentas_antiguas/${id}`, { method: "PATCH", headers: DUENO, body: JSON.stringify({ fields }) });
+  if (!r.ok) throw new Error(`no se pudo sembrar: ${r.status}`);
+}
+
+async function antigua(id) {
+  const r = await fetch(`${FS}/cuentas_antiguas/${id}`, { headers: DUENO });
+  return r.ok ? objeto((await r.json()).fields) : null;
+}
+
+/* Lo que pasa cuando alguien pincha el enlace del correo de verificación. */
+async function verificarCorreo(uid) {
+  const r = await fetch(`${AUTH}/identitytoolkit.googleapis.com/v1/projects/demo-tripfinder/accounts:update`, {
+    method: "POST",
+    headers: DUENO,
+    body: JSON.stringify({ localId: uid, emailVerified: true }),
+  });
+  if (!r.ok) throw new Error(`no se pudo verificar: ${r.status}`);
+}
+
 let n = 0;
 const correoNuevo = () => `prueba${Date.now()}${n++}@ejemplo.es`;
 
-module.exports = { CONFIG, ficha, poner, aprobar, hacerAdmin, encargosDe, borrarCuenta, correoNuevo };
+module.exports = {
+  CONFIG, ficha, poner, aprobar, hacerAdmin, encargosDe, borrarCuenta, correoNuevo,
+  sembrarAntigua, antigua, verificarCorreo,
+};

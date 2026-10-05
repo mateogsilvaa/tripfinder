@@ -408,6 +408,12 @@ function tfSesion() {
 }
 
 const tfUid = () => (tfSesion() || {}).uid || "";
+/* Todos los ids bajo los que algo es de esta persona: el de ahora y, si vinculó
+   una cuenta de antes de Firebase, el de aquella. */
+const tfUids = () => {
+  const s = tfSesion();
+  return s ? [s.uid, s.legado].filter(Boolean) : [];
+};
 const tfNombre = () => (tfSesion() || {}).name || (tfSesion() || {}).user || "";
 
 /* La clave con la que se guarda algo en ESTE navegador para ESTA cuenta.
@@ -655,7 +661,7 @@ async function tfAbrirLogin() {
       <button class="btn primary" type="submit">Entrar</button>
       <p class="login-pedir">
         <span>¿No tienes cuenta?</span>
-        <button class="btn ghost small" type="button" id="tfPedirCuenta">Pedir una cuenta</button>
+        <button class="btn ghost small" type="button" id="tfPedirCuenta">Crear cuenta</button>
       </p>
     </form>`);
 

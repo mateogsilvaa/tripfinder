@@ -43,7 +43,7 @@ export const comoDueno = () => ({ owner: tfUid(), owner_name: tfNombre() });
    primera persona en entrar se encontro los seguimientos y las busquedas de
    otro. Ahora no sale para nadie: desde el panel se le pone dueño y vuelve,
    pero de quien sea. */
-export const esMio = (x) => !!x && !!x.owner && x.owner === tfUid();
+export const esMio = (x) => !!x && !!x.owner && tfUids().includes(x.owner);
 
 /* Los tres motivos por los que un encargo no sale, y todos se arreglan igual:
    entrando con una cuenta que tenga acceso. */
@@ -67,7 +67,7 @@ export function avisoDeCuenta(que, vacio) {
     }
     return `<p class="meta cuenta-nota"><span class="nota-txt">Entra con tu cuenta para ver tus ${que}.</span>
       <button class="btn primary small" type="button" data-entrar>Entrar</button>
-      <button class="btn ghost small" type="button" data-pedir-cuenta>Pedir una cuenta</button></p>`;
+      <button class="btn ghost small" type="button" data-pedir-cuenta>Crear cuenta</button></p>`;
   }
   return `<p class="meta cuenta-nota"><span class="nota-txt">${vacio}</span></p>`;
 }
@@ -101,13 +101,15 @@ export function candarFormularios() {
     // cada panel— no se le pone otra nota encima diciendo lo mismo.
     const caja = form.closest(".herramienta") || form.parentElement;
     if (caja && caja.querySelector(".candado-nota")) return;
-    // Al final de la herramienta, junto al botón apagado: puesto justo debajo
-    // del formulario quedaba por encima del propio botón que explica.
-    (caja || form).insertAdjacentHTML(
-      caja ? "beforeend" : "afterend",
+    // ENCIMA del formulario, no debajo. Antes salía al final, tras un formulario
+    // gris y apagado que parecía roto, y lo primero que se veia era eso: una
+    // herramienta que no funciona. Dicho arriba —«hace falta una cuenta» y las
+    // dos puertas— se entiende antes de intentar nada.
+    form.insertAdjacentHTML(
+      "beforebegin",
       `<p class="candado-nota"><span class="nota-txt">Para ${que} hace falta una cuenta.</span>
         <button class="btn primary small" type="button" data-entrar>Entrar</button>
-        <button class="btn ghost small" type="button" data-pedir-cuenta>Pedir una cuenta</button></p>`
+        <button class="btn ghost small" type="button" data-pedir-cuenta>Crear cuenta</button></p>`
     );
   });
   wireEntrar(document);
@@ -170,7 +172,7 @@ export function cajaAcceso(r) {
                una contraseña nueva desde el panel y vuelve a entrar.`
         }
         ${sinCuenta ? '<button class="btn primary small" data-entrar type="button">Entrar</button>' : ""}
-        ${sinCuenta ? '<button class="btn ghost small" data-pedir-cuenta type="button">Pedir una cuenta</button>' : ""}
+        ${sinCuenta ? '<button class="btn ghost small" data-pedir-cuenta type="button">Crear cuenta</button>' : ""}
       </div>`,
     wire: () => wireEntrar(document),
   };

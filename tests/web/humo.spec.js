@@ -91,9 +91,9 @@ test.describe("la 404", () => {
 
 test.describe("el armazón que comparten las páginas", () => {
   for (const [pagina, activa] of [
-    ["/index.html", "Feed"],
+    ["/index.html", "Chollos"],
     ["/buscar.html", "Buscar"],
-    ["/seguimientos.html", "Vuelos que sigues"],
+    ["/seguimientos.html", "Mis avisos"],
     ["/interrail.html", "Interrail"],
   ]) {
     test(`${pagina} monta cabecera, zonas y pie`, async ({ page }) => {
