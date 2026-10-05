@@ -1,37 +1,37 @@
 {
-  "generado": "2026-10-01",
+  "generado": "2026-10-05",
   "rutas": {
     "MAD-EPU": {
-      "barridos": 2,
-      "ultima": "2026-09-13"
+      "barridos": 1,
+      "ultima": "2026-10-05"
     },
     "MAD-JCL": {
-      "barridos": 2,
-      "ultima": "2026-09-13"
+      "barridos": 1,
+      "ultima": "2026-10-05"
     },
     "MAD-KDL": {
-      "barridos": 2,
-      "ultima": "2026-09-13"
+      "barridos": 1,
+      "ultima": "2026-10-05"
     },
     "MAD-KLV": {
-      "barridos": 2,
-      "ultima": "2026-09-13"
+      "barridos": 1,
+      "ultima": "2026-10-05"
     },
     "MAD-KUN": {
-      "barridos": 2,
-      "ultima": "2026-09-13"
+      "barridos": 1,
+      "ultima": "2026-10-05"
     },
     "MAD-PLQ": {
-      "barridos": 2,
-      "ultima": "2026-09-13"
+      "barridos": 1,
+      "ultima": "2026-10-05"
     },
     "MAD-TAY": {
-      "barridos": 2,
-      "ultima": "2026-09-13"
+      "barridos": 1,
+      "ultima": "2026-10-05"
     },
     "MAD-URE": {
-      "barridos": 2,
-      "ultima": "2026-09-13"
+      "barridos": 1,
+      "ultima": "2026-10-05"
     }
   }
 }
