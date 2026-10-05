@@ -3632,9 +3632,11 @@ h1 em { font-size: 1.3em; }
 .foot-enlace:hover { color: var(--accent-txt); }
 
 /* En un móvil estrecho la marca y el botón del test no caben juntos con el tema y
-   la cuenta, y la cuenta se caía a una segunda fila vacía. Se queda el icono de
-   la marca (el nombre sigue en el título y en el pie). */
-@media (max-width: 380px) {
+   la cuenta, y la cuenta se caía a una segunda fila vacía. Con la letra manuscrita
+   de verdad (Pinyon Script, que solo carga con red) el nombre es más ancho que con
+   la de reserva, así que el corte está en 430 px y no justo al límite. Se queda el
+   icono de la marca (el nombre sigue en el título y en el pie). */
+@media (max-width: 430px) {
   .marca-trip, .marca-finder { display: none; }
   /* Solo el icono: sigue siendo un enlace y se pulsa con el dedo. */
   .marca { min-width: var(--tap-min); min-height: var(--tap-min); justify-content: center; }

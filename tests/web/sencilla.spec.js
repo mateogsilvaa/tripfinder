@@ -125,7 +125,7 @@ test.describe("en el móvil", () => {
   });
 });
 
-for (const ancho of [390, 360, 320]) {
+for (const ancho of [430, 390, 360, 320]) {
   test(`a ${ancho} px la marca, el test, el tema y la cuenta caben en UNA fila`, async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: ancho, height: 800 } });
     const page = await ctx.newPage();
