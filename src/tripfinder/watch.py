@@ -108,11 +108,14 @@ def borrar(watch_id: str, owner: str = "") -> bool:
     cuentas, que no son de nadie): sin esa comprobacion, dos personas que
     comparten la web se borrarian los seguimientos entre ellas sin querer.
     """
+    from .util import ids_de_dueno
+
+    suyos = ids_de_dueno(owner)
     lista = _cargar()
     quedan = [
         w
         for w in lista
-        if w.id != watch_id or (owner and w.owner and w.owner != owner)
+        if w.id != watch_id or (suyos and w.owner and w.owner not in suyos)
     ]
     _guardar(quedan)
     return len(quedan) < len(lista)

@@ -43,7 +43,7 @@ export const comoDueno = () => ({ owner: tfUid(), owner_name: tfNombre() });
    primera persona en entrar se encontro los seguimientos y las busquedas de
    otro. Ahora no sale para nadie: desde el panel se le pone dueño y vuelve,
    pero de quien sea. */
-export const esMio = (x) => !!x && !!x.owner && x.owner === tfUid();
+export const esMio = (x) => !!x && !!x.owner && tfUids().includes(x.owner);
 
 /* Los tres motivos por los que un encargo no sale, y todos se arreglan igual:
    entrando con una cuenta que tenga acceso. */

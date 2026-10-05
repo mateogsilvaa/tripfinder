@@ -237,8 +237,11 @@ def _tramitar(
         return cerrar("rechazado", f"más de {MAX_POR_HORA} encargos en una hora")
 
     payload = dict(e.get("payload") or {})
-    # El dueño sale de la ficha, nunca del encargo.
-    payload["owner"] = uid
+    # El dueño sale de la ficha, nunca del encargo. Si la cuenta se vinculó con una
+    # de antes de Firebase, lleva los dos ids (el nuevo primero): lo de antes lleva
+    # el viejo, y sin él no podría borrar sus seguimientos ni sus búsquedas.
+    legado = str(ficha.get("legado") or "").strip()
+    payload["owner"] = f"{uid},{legado}" if legado else uid
     payload["owner_name"] = str(ficha.get("nombre") or "")
     if len(payload) > TOPE_PROPIEDADES:
         return cerrar("error", f"{len(payload)} propiedades y GitHub admite {TOPE_PROPIEDADES}")
@@ -249,3 +252,64 @@ def _tramitar(
     except Exception as err:  # noqa: BLE001 - un encargo roto no frena a los demás
         return cerrar("error", str(err))
     return cerrar("enviado")
+
+
+# ------------------------------------------- a quién se le manda cada aviso
+def cuentas_para_avisos(db: Any | None = None) -> tuple[list[Any], dict[str, str]]:
+    """Las cuentas que reciben avisos y quién es quién, desde Firestore.
+
+    Devuelve `(cuentas, alias)`:
+
+    - `cuentas`: las cuentas nuevas aprobadas MÁS las de antes de Firebase que
+      todavía no se han vinculado. Estas últimas siguen recibiendo sus avisos con
+      lo que eligieron: no pierden nada por tardar en entrar con Firebase.
+    - `alias`: de cada cuenta antigua vinculada, a qué cuenta nueva corresponde.
+      Los seguimientos viejos llevan como `owner` el id de antes, y con esto el
+      parte llega igual a su dueño.
+
+    Si Firestore no contesta, devuelve vacío en vez de tumbar el barrido: el aviso
+    al buzón de la configuración sigue saliendo.
+    """
+    from . import users as U
+
+    try:
+        db = db or abrir_firestore()
+        cuentas: list[Any] = []
+        alias: dict[str, str] = {}
+        for d in db.collection("usuarios").stream():
+            f = d.to_dict() or {}
+            if f.get("estado") != "aprobado" or not f.get("correo"):
+                continue
+            cuentas.append(
+                U.User(
+                    id=d.id,
+                    user=str(f.get("nombre") or d.id),
+                    name=str(f.get("nombre") or ""),
+                    email=str(f["correo"]),
+                    prefs=U.prefs_validas(f.get("prefs")),
+                )
+            )
+            if f.get("legado"):
+                alias[str(f["legado"])] = d.id
+        for d in db.collection("cuentas_antiguas").stream():
+            f = d.to_dict() or {}
+            if f.get("vinculada") or not f.get("activa", True) or not f.get("correo"):
+                continue
+            cuentas.append(
+                U.User(
+                    id=d.id,
+                    user=str(f.get("usuario") or d.id),
+                    name=str(f.get("nombre") or ""),
+                    email=str(f["correo"]),
+                    prefs=U.prefs_validas(f.get("prefs")),
+                )
+            )
+        return cuentas, alias
+    except Exception as exc:  # noqa: BLE001 - un fallo aqui no puede tumbar el barrido
+        motivo = type(exc).__name__
+        log.warning("No se pudieron leer las cuentas de Firestore (%s): sin avisos por cuenta", motivo)
+        return [], {}
+
+
+def hay_firebase() -> bool:
+    return bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT") or os.environ.get("FIRESTORE_EMULATOR_HOST"))

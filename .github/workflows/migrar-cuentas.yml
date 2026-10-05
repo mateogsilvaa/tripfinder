@@ -1,0 +1,55 @@
+name: Pasar las cuentas antiguas a Firebase
+
+# Las cuentas de antes de Firebase viven en data/users.json, que es publico.
+# Esto copia de cada una lo justo para que su dueño la recupere con su cuenta
+# nueva —nombre, correo y avisos— a Firestore, donde las reglas dejan verlo solo
+# al administrador. NO copia ni el hash de la contrasena ni el sobre ni el token.
+#
+# Mientras una cuenta antigua no se vincule a una nueva, sigue recibiendo sus
+# avisos por correo desde la copia: nadie pierde nada por tardar en entrar.
+#
+# Solo a mano. Sin marcar `escribir` es un simulacro: cuenta y comprueba que la
+# cuenta de servicio entra, sin escribir. Repetible: no borra las vinculaciones.
+# El log de un repo publico lo lee cualquiera, asi que solo saca recuentos.
+
+on:
+  workflow_dispatch:
+    inputs:
+      escribir:
+        description: "Escribir en Firestore (si no, simulacro: solo cuenta y comprueba la conexion)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: migrar-cuentas
+  cancel-in-progress: false
+
+jobs:
+  migrar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dependencias
+        run: pip install requests PyYAML python-dotenv "google-cloud-firestore>=2.19"
+
+      - name: Pasar las cuentas
+        env:
+          PYTHONPATH: src
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ESCRIBIR: ${{ inputs.escribir }}
+        run: |
+          if [ "$ESCRIBIR" = "true" ]; then
+            python -m tripfinder migrar-cuentas --escribir
+          else
+            python -m tripfinder migrar-cuentas
+          fi

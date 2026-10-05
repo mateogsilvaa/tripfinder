@@ -295,6 +295,12 @@ function nubeGuardarSesion(uid, ficha) {
     prefs: ficha.prefs || {},
     estado: ficha.estado || "pendiente",
     admin: ficha.admin === true,
+    // A qué cuenta de antes de Firebase se vinculó, si lo hizo. Lo que hizo con
+    // aquella —seguimientos, búsquedas— lleva su id como dueño, y con esto sigue
+    // siendo suyo.
+    legado: ficha.legado || "",
+    // Lo dice Firebase, no esta web (ver `nubeVerificacion`).
+    verificado: ficha.verificado === true,
     nube: true,
     desde: Date.now(),
   };
@@ -321,18 +327,34 @@ function nubeSalir() {
    vez con Firebase se copia al uid nuevo, si ahí no hay nada: sin esto
    parecería que se han borrado, y siguen donde estaban, en un cajón al que ya
    nadie llega. Solo copia: lo de antes se queda. */
-function nubeAdoptarDeLasCuentasViejas(uidNuevo) {
+function nubeAdoptar(uidNuevo, ids) {
   try {
-    const vieja = JSON.parse(localStorage.getItem(TF_SESION_KEY) || "null");
-    if (!vieja || !vieja.uid || vieja.nube || vieja.uid === uidNuevo) return;
-    ["tf_favoritos", "tf_grupo", "tf_quiz"].forEach((base) => {
-      const antes = localStorage.getItem(`${base}:${vieja.uid}`);
-      if (antes === null || localStorage.getItem(`${base}:${uidNuevo}`) !== null) return;
-      localStorage.setItem(`${base}:${uidNuevo}`, antes);
-    });
+    [...new Set(ids)]
+      .filter((id) => id && id !== uidNuevo)
+      .forEach((viejo) =>
+        ["tf_favoritos", "tf_grupo", "tf_quiz"].forEach((base) => {
+          const antes = localStorage.getItem(`${base}:${viejo}`);
+          if (antes === null || localStorage.getItem(`${base}:${uidNuevo}`) !== null) return;
+          localStorage.setItem(`${base}:${uidNuevo}`, antes);
+        })
+      );
   } catch {
     /* navegación privada */
   }
+}
+
+/* El id de la sesión de las cuentas de antes que hubiera en ESTE navegador. */
+function nubeIdDeLaSesionVieja() {
+  try {
+    const vieja = JSON.parse(localStorage.getItem(TF_SESION_KEY) || "null");
+    return vieja && vieja.uid && !vieja.nube ? vieja.uid : "";
+  } catch {
+    return "";
+  }
+}
+
+function nubeAdoptarDeLasCuentasViejas(uidNuevo) {
+  nubeAdoptar(uidNuevo, [nubeIdDeLaSesionVieja()]);
 }
 
 /* Registrarse y entrar acaban igual: ya hay tokens, falta la ficha. La ficha
@@ -366,6 +388,65 @@ function nubeValidarCorreo(correo) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(correo);
 }
 
+/* ------------------------------------------------- verificar que el correo es suyo
+   Firebase deja registrarse con cualquier dirección sin comprobar que sea de
+   quien la escribe. Para recuperar una cuenta de antes eso no vale: si bastara
+   con escribir el correo de otro, cualquiera se quedaría con sus seguimientos.
+   Por eso se vincula solo a quien ha pinchado el enlace que Firebase manda a esa
+   dirección. */
+const nubeEnviarVerificacion = (idToken) => nubeAuth("sendOobCode", { requestType: "VERIFY_EMAIL", idToken });
+
+async function nubeReenviarVerificacion() {
+  const token = await nubeToken();
+  if (!token) return { ok: false, error: "Entra primero." };
+  try {
+    await nubeEnviarVerificacion(token);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+/* Lo que dice el token que firma Firebase. Es lo mismo que comprueban las
+   reglas al guardar `verificado`: no se puede escribir una cosa distinta. */
+function nubeClaimVerificado(idToken) {
+  try {
+    const carga = idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(carga)).email_verified === true;
+  } catch {
+    return false;
+  }
+}
+
+/* Pone la ficha al día con lo que dice Firebase. El token tarda hasta una hora
+   en enterarse de que has pinchado el enlace, así que si Firebase ya lo sabe y el
+   token todavía no, se renueva el token. Devuelve si está verificado. */
+async function nubeVerificacion(ficha) {
+  let t = nubeTokens();
+  if (!t) return false;
+  let verificado = nubeClaimVerificado(t.id);
+  if (!verificado) {
+    try {
+      const r = await nubeAuth("lookup", { idToken: t.id });
+      if (r && r.users && r.users[0] && r.users[0].emailVerified) {
+        await nubeRefrescar(t);
+        t = nubeTokens() || t;
+        verificado = nubeClaimVerificado(t.id);
+      }
+    } catch {
+      /* sin red: se queda como estaba */
+    }
+  }
+  if ((ficha.verificado === true) !== verificado) {
+    try {
+      await nubeCommit(t.id, [nubeCambiar(`usuarios/${t.uid}`, { verificado })]);
+    } catch {
+      return ficha.verificado === true;
+    }
+  }
+  return verificado;
+}
+
 async function nubeRegistrar(correo, clave, nombre) {
   correo = String(correo || "").trim().toLowerCase();
   nombre = String(nombre || "").trim();
@@ -377,6 +458,9 @@ async function nubeRegistrar(correo, clave, nombre) {
     const r = await nubeAuth("signUp", { email: correo, password: clave, returnSecureToken: true });
     const t = nubeDeRespuesta(r);
     nubeGuardarTokens(t);
+    // El enlace para verificar el correo. Si falla no pasa nada: se puede pedir
+    // otro desde «tu cuenta».
+    await nubeEnviarVerificacion(t.id).catch(() => {});
     const ficha = await nubeFichaDe(t, nombre);
     nubeAdoptarDeLasCuentasViejas(t.uid);
     const sesion = nubeGuardarSesion(t.uid, ficha);
@@ -455,6 +539,9 @@ async function nubeSincronizar() {
   if (!token) return tfSesion();
   try {
     const ficha = await nubeFichaDe(nubeTokens(), s.name);
+    ficha.verificado = await nubeVerificacion(ficha);
+    // Lo que solo vive en este navegador y era de la cuenta de antes.
+    if (ficha.legado) nubeAdoptar(s.uid, [ficha.legado]);
     return nubeGuardarSesion(s.uid, ficha);
   } catch {
     return s;
@@ -526,6 +613,32 @@ async function nubeCuentas() {
   if (!token) return [];
   const r = await nubeLlamar(nubeUrlFs("/usuarios?pageSize=300"), { metodo: "GET", token });
   return (r.documents || []).map(nubeDeDocumento);
+}
+
+/* Las cuentas de antes de Firebase (copiadas con `tripfinder migrar-cuentas`). */
+async function nubeCuentasAntiguas() {
+  const token = await nubeToken();
+  if (!token) return [];
+  const r = await nubeLlamar(nubeUrlFs("/cuentas_antiguas?pageSize=300"), { metodo: "GET", token });
+  return (r.documents || []).map(nubeDeDocumento);
+}
+
+/* Aprueba la cuenta y la vincula con una de antes, de una vez: hereda sus avisos
+   (se le copian sus preferencias), sus seguimientos y sus búsquedas. Son dos
+   escrituras en la misma operación; las reglas comprueban que el correo está
+   verificado y que la cuenta antigua no estaba ya vinculada. */
+async function nubeVincular(uid, legado, prefs) {
+  const token = await nubeToken();
+  if (!token) return { ok: false, error: "Entra primero." };
+  try {
+    await nubeCommit(token, [
+      nubeCambiar(`usuarios/${uid}`, { estado: "aprobado", legado, prefs: prefs || {} }),
+      nubeCambiar(`cuentas_antiguas/${legado}`, { vinculada: uid }),
+    ]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
 }
 
 async function nubeCambiarEstado(uid, estado) {

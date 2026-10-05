@@ -3573,3 +3573,10 @@ h1 em { font-size: 1.3em; }
 .nube-pestanas button:hover { color: var(--ink); }
 .nube-pestanas button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
 .nube-pestanas button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Vincular una cuenta nueva con una de antes (panel) y avisar de que falta
+   verificar el correo (tu cuenta). */
+.nube-vincular { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.nube-vincular select { max-width: 100%; }
+.nube-verificar { padding: 12px 14px; border: 1px solid var(--hair); border-radius: var(--r-md, 12px); margin: 0 0 14px; }
+.nube-verificar .controls { margin: 8px 0 0; }

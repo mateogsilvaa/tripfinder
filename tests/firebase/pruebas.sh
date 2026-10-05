@@ -9,7 +9,7 @@ echo "== reglas de Firestore"
 (cd tests/firebase && node --test reglas.test.js)
 
 echo "== cola de encargos (Python)"
-python -m pytest tests/test_nube.py tests/test_issues_a_nube.py -q -p no:cacheprovider
+python -m pytest tests/test_nube.py tests/test_issues_a_nube.py tests/test_cuentas_antiguas.py -q -p no:cacheprovider
 
 echo "== la web contra los emuladores"
 npx playwright test -c playwright.nube.config.js

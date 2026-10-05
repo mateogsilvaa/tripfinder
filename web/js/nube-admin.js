@@ -121,12 +121,24 @@ async function lista(caja, yo, aviso = "") {
     caja.innerHTML = `<p class="token-status">No se pudieron leer las cuentas: ${esc(e.message)}</p>`;
     return;
   }
+  // Las de antes de Firebase. Si aún no se han copiado, la lista sale vacía y todo
+  // sigue como siempre: no es un error.
+  let antiguas = [];
+  try {
+    antiguas = await nubeCuentasAntiguas();
+  } catch {
+    /* sin permiso o sin copiar: no se ofrece vincular */
+  }
+  const sinVincular = antiguas.filter((a) => !a.vinculada && a.activa !== false);
   const cuenta = (e) => cuentas.filter((c) => c.estado === e).length;
   $("#stats").innerHTML =
     `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
     `<div><dd class="${cuenta("pendiente") ? "hot" : ""}">${cuenta("pendiente")}</dd><dt>pendientes</dt></div>` +
     `<div><dd>${cuenta("aprobado")}</dd><dt>aprobadas</dt></div>` +
-    (cuenta("bloqueado") ? `<div><dd>${cuenta("bloqueado")}</dd><dt>bloqueadas</dt></div>` : "");
+    (cuenta("bloqueado") ? `<div><dd>${cuenta("bloqueado")}</dd><dt>bloqueadas</dt></div>` : "") +
+    (sinVincular.length
+      ? `<div><dd class="hot">${sinVincular.length}</dd><dt>cuentas de antes sin vincular</dt></div>`
+      : "");
 
   const ordenadas = [...cuentas].sort(
     (a, b) =>
@@ -143,16 +155,34 @@ async function lista(caja, yo, aviso = "") {
     <div class="hint" id="nubeAviso" role="status">${esc(aviso)}</div>
     <section class="rows" id="nubeCuentas">${
       ordenadas.length
-        ? ordenadas.map((c) => fila(c, yo)).join("")
+        ? ordenadas.map((c) => fila(c, yo, sinVincular)).join("")
         : `<p class="meta">Todavía no se ha registrado nadie.</p>`
     }</section>`;
 
   caja.querySelector("#nubeRecargar").addEventListener("click", () => lista(caja, yo));
   caja.querySelector("#nubeAdminSalir").addEventListener("click", () => salir(caja));
+  caja.querySelectorAll("[data-vincular]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      if (b.disabled) return;
+      const uid = b.dataset.vincular;
+      const legado = caja.querySelector(`[data-elegir="${uid}"]`).value;
+      const vieja = antiguas.find((a) => a.id === legado);
+      if (!vieja) return;
+      document.querySelectorAll("[data-vincular], [data-estado]").forEach((x) => (x.disabled = true));
+      const r = await nubeVincular(uid, legado, vieja.prefs || {});
+      lista(
+        caja,
+        yo,
+        r.ok
+          ? `${b.dataset.nombre}: aprobada y vinculada con «${vieja.nombre || vieja.usuario}». Ya tiene lo de antes.`
+          : `No se pudo: ${r.error}`
+      );
+    })
+  );
   caja.querySelectorAll("[data-estado]").forEach((b) =>
     b.addEventListener("click", async () => {
       if (b.disabled) return;
-      document.querySelectorAll("[data-estado]").forEach((x) => (x.disabled = true));
+      document.querySelectorAll("[data-vincular], [data-estado]").forEach((x) => (x.disabled = true));
       const r = await nubeCambiarEstado(b.dataset.uid, b.dataset.estado);
       lista(
         caja,
@@ -163,7 +193,7 @@ async function lista(caja, yo, aviso = "") {
   );
 }
 
-function fila(c, yo) {
+function fila(c, yo, sinVincular = []) {
   const [clase, texto] = ESTADOS[c.estado] || ["pendiente", c.estado || "Sin estado"];
   const esYo = c.id === yo.uid;
   const boton = (estado, rotulo, primario) =>
@@ -176,14 +206,41 @@ function fila(c, yo) {
       : c.estado === "aprobado"
         ? boton("bloqueado", "Bloquear")
         : boton("aprobado", "Aprobar", true);
+  // Vincular con una cuenta de antes: solo si ha verificado su correo y aún no
+  // tiene ninguna. La que coincide por correo sale elegida; si cambió de correo,
+  // se elige a mano.
+  let vincular = "";
+  if (!esYo && !c.legado && sinVincular.length && c.estado !== "bloqueado") {
+    const mismo = sinVincular.find((a) => (a.correo || "").toLowerCase() === (c.correo || "").toLowerCase());
+    const opciones = sinVincular
+      .map(
+        (a) =>
+          `<option value="${esc(a.id)}"${mismo && mismo.id === a.id ? " selected" : ""}>${esc(
+            a.nombre || a.usuario
+          )} · ${esc(a.correo || "sin correo")}</option>`
+      )
+      .join("");
+    vincular = c.verificado
+      ? `<span class="nube-vincular">
+           <select data-elegir="${esc(c.id)}" aria-label="Cuenta de antes de ${esc(c.nombre)}">${opciones}</select>
+           <button class="btn primary small" type="button" data-vincular="${esc(c.id)}"
+             data-nombre="${esc(c.nombre)}">Aprobar y vincular</button>
+         </span>
+         ${mismo ? `<span class="meta">Su correo coincide con una cuenta de antes.</span>` : ""}`
+      : `<span class="meta">Para vincularla con una cuenta de antes, antes tiene que verificar su correo.</span>`;
+  }
+  const etiquetaVerif = c.verificado
+    ? ` · correo verificado`
+    : ` · <span class="ojo">correo sin verificar</span>`;
   return `
     <div class="brow cuenta-row nube-cuenta ${esc(clase)}" data-cuenta="${esc(c.id)}">
       <span class="iata">${esc(String(c.nombre || "?").slice(0, 3).toUpperCase())}</span>
       <span class="dest-cell">
         <span class="city">${esc(c.nombre)}${c.admin ? " · admin" : ""}</span>
-        <span class="country">${esc(c.correo)}<br>${esc(texto)}${
+        <span class="country">${esc(c.correo)}<br>${esc(texto)}${etiquetaVerif}${
           fecha(c.creado) ? ` · desde ${esc(fecha(c.creado))}` : ""
-        }</span>
+        }${c.legado ? " · vinculada con una cuenta de antes" : ""}</span>
+        ${vincular}
       </span>
       <span class="peticion-acc">${acciones}</span>
     </div>`;

@@ -316,12 +316,14 @@ class Store:
         if not f.exists():
             return False
         if owner:
+            from .util import ids_de_dueno
+
             try:
                 datos = json.loads(f.read_text(encoding="utf-8"))
             except json.JSONDecodeError:
                 datos = {}
             dueno = datos.get("owner") or (datos.get("request") or {}).get("owner", "")
-            if dueno and dueno != owner:
+            if dueno and dueno not in ids_de_dueno(owner):
                 return False
         f.unlink()
         # save_search reconstruye el indice entero, asi que basta con reescribir

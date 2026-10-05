@@ -104,7 +104,10 @@ export function abrirLogin(modo = "entrar") {
     // lanzar nada: se dice aquí, que es cuando se puede hacer algo, y no al
     // pulsar un botón que no responde.
     if (r.sesion.estado !== "aprobado") {
-      msg.innerHTML = `<span class="ojo">${esc(TEXTO_ESTADO[r.sesion.estado] || TEXTO_ESTADO.pendiente)}</span>`;
+      const verificar = r.sesion.verificado
+        ? ""
+        : " Te hemos escrito un correo con un enlace para verificar que la dirección es tuya: si ya tenías cuenta de antes, es lo que permite recuperarla.";
+      msg.innerHTML = `<span class="ojo">${esc(TEXTO_ESTADO[r.sesion.estado] || TEXTO_ESTADO.pendiente)}${esc(verificar)}</span>`;
       boton.textContent = "Entendido";
       boton.type = "button";
       boton.onclick = () => {
@@ -148,6 +151,27 @@ export async function abrirCuenta() {
       )}</span>
       ${ahora.admin ? `<a class="btn ghost small" href="admin.html" id="nubePanel">Panel de cuentas</a>` : ""}
     </p>
+
+    ${
+      ahora.legado
+        ? `<p class="cuenta-quien" id="nubeVinculada">Tu cuenta de antes está vinculada a esta:
+           tus seguimientos, tus búsquedas guardadas y tus avisos son los de siempre.</p>`
+        : ""
+    }
+    ${
+      ahora.verificado
+        ? ""
+        : `<div class="nube-verificar" id="nubeVerificar">
+             <p class="cuenta-quien"><b>Falta verificar tu correo.</b> Te hemos escrito un enlace:
+               pínchalo y vuelve aquí. Si ya tenías una cuenta de antes, es lo que permite
+               recuperarla con todo lo que tenía.</p>
+             <p class="controls">
+               <button class="btn ghost small" type="button" id="nubeYaVerifique">Ya lo he verificado</button>
+               <button class="btn ghost small" type="button" id="nubeReenviar">Reenviar el correo</button>
+             </p>
+             <p class="token-status" id="nubeVerificarMsg" role="status"></p>
+           </div>`
+    }
 
     <form id="nubePerfil" class="modal-form">
       <h3 class="bloque-head">Tus datos y avisos</h3>
@@ -196,6 +220,25 @@ export async function abrirCuenta() {
     </div>`);
 
   tfWireVerClave(caja);
+
+  const verificarMsg = caja.querySelector("#nubeVerificarMsg");
+  if (verificarMsg) {
+    caja.querySelector("#nubeReenviar").addEventListener("click", async () => {
+      verificarMsg.textContent = "Mandando…";
+      const r = await nubeReenviarVerificacion();
+      verificarMsg.textContent = r.ok ? "Hecho. Mira tu correo (y la carpeta de spam)." : r.error;
+    });
+    caja.querySelector("#nubeYaVerifique").addEventListener("click", async () => {
+      verificarMsg.textContent = "Comprobando…";
+      const ahora2 = await nubeSincronizar();
+      if (ahora2 && ahora2.verificado) {
+        tfCerrarModal();
+        abrirCuenta();
+      } else {
+        verificarMsg.textContent = "Todavía no consta. Pincha el enlace del correo y vuelve a probar.";
+      }
+    });
+  }
 
   caja.querySelector("#nubeSalir").addEventListener("click", () => {
     tfSalir();

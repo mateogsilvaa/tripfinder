@@ -20,7 +20,7 @@ from .providers import build_providers
 from .scoring import is_deal, score_offer, should_notify
 from .stays import StayRequest, build_stay_providers
 from .store import Store
-from .util import clave_buzon, tapar_correos
+from .util import clave_buzon, primer_dueno, tapar_correos
 
 log = logging.getLogger("tripfinder")
 
@@ -532,14 +532,12 @@ def _reparto_de_chollos(
     hay vivo en ese momento. Si a alguien le llegara solo lo nuevo del dia que
     le toca su resumen, se perderia justo los chollos de los otros seis dias.
     """
-    from . import users as U
-
     ultimos = state.get("digest", {})
     salida: dict[str, tuple[list[FlightOffer], str]] = {}
     buzon_config = (cfg.notify.get("to") or "").strip()
     cubiertos = set()
 
-    for u in U.listar(incluir_inactivos=False):
+    for u in _cuentas_con_aviso()[0]:
         correo = (u.email or "").strip()
         if not correo:
             continue
@@ -1083,7 +1081,7 @@ def cmd_search(args: argparse.Namespace) -> int:
         return_date=getattr(args, "return") or "",
         desde=args.desde or "",
         hasta=args.hasta or "",
-        owner=args.owner or "",
+        owner=primer_dueno(args.owner),
         owner_name=args.owner_name or "",
     )
 
@@ -1235,7 +1233,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
     if args.accion == "add":
         # El id lleva la cuenta dentro: sin eso, dos personas siguiendo "Roma
         # en marzo" comparten id y la segunda pisa el seguimiento de la primera.
-        sufijo = f"-{args.owner.replace('u-', '')}" if args.owner else ""
+        sufijo = f"-{primer_dueno(args.owner).replace('u-', '')}" if args.owner else ""
         ident = (
             args.id or f"{(args.dest or 'todos').lower()}-{args.depart or args.months}{sufijo}"
         )
@@ -1252,7 +1250,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 adults=args.adults or cfg.party_size,
                 max_price=args.max_price,
                 source=_origen(args.source),
-                owner=args.owner or "",
+                owner=primer_dueno(args.owner),
                 owner_name=args.owner_name or "",
             )
         )
@@ -1306,6 +1304,18 @@ def cmd_watch(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cuentas_con_aviso() -> tuple[list, dict[str, str]]:
+    """Quien recibe avisos: Firestore si esta configurado y, si no, el fichero de
+    siempre. Ver `nube.cuentas_para_avisos`."""
+    from . import nube
+
+    if nube.hay_firebase():
+        return nube.cuentas_para_avisos()
+    from . import users as U
+
+    return U.listar(incluir_inactivos=False), {}
+
+
 def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> dict[str, list]:
     """Reparte los seguimientos revisados entre los buzones a los que van.
 
@@ -1313,10 +1323,14 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
     en que no hay nada. Lo que no tiene dueño (o cuya cuenta no tiene email) va
     al buzon de la configuracion, como antes de que hubiera cuentas.
     """
-    from . import users as U
-
     ultimos = (state or {}).get("watch_digest", {})
-    por_cuenta = {u.id: u for u in U.listar()}
+    cuentas, alias = _cuentas_con_aviso()
+    por_cuenta = {u.id: u for u in cuentas}
+    # Los seguimientos de antes de Firebase llevan el id de la cuenta antigua como
+    # dueño: con la cuenta nueva vinculada, el parte le llega a ella.
+    for viejo, nuevo in alias.items():
+        if nuevo in por_cuenta:
+            por_cuenta.setdefault(viejo, por_cuenta[nuevo])
     defecto = (cfg.notify.get("to") or "").strip()
     partes: dict[str, list] = {}
     for w, ofertas in estado:
@@ -1332,7 +1346,7 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
 
     # "Solo cuando haya algo": el parte de "he mirado y no hay nada" confirma que
     # el sistema esta vivo, pero no todo el mundo quiere ese correo cada dia.
-    for cuenta in por_cuenta.values():
+    for cuenta in {id(c): c for c in por_cuenta.values()}.values():
         correo = (cuenta.email or "").strip()
         if not correo or correo not in partes:
             continue
@@ -1708,6 +1722,33 @@ def cmd_migrar_issues(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_migrar_cuentas(args: argparse.Namespace) -> int:
+    """Copia las cuentas de data/users.json a Firestore. Sin --escribir, solo cuenta.
+
+    Solo imprime recuentos: el log de un workflow de un repo publico lo lee cualquiera.
+    """
+    from . import cuentas_a_nube, nube
+    from . import users as U
+
+    cuentas = U.listar()
+    almacen = None
+    if args.escribir or nube.hay_firebase():
+        almacen = cuentas_a_nube.AlmacenFirestore(nube.abrir_firestore())
+    r = cuentas_a_nube.migrar(cuentas, almacen, args.escribir)
+    print(f"Cuentas leidas: {r['cuentas']} ({r['con_correo']} con correo, {r['activas']} activas).")
+    if not args.escribir:
+        if almacen is not None:
+            print(f"Firestore: accesible, {almacen.contar().get('total', 0)} cuentas antiguas ya guardadas.")
+        print("Simulacro: no se ha escrito nada. Repite con --escribir para copiarlas.")
+        return 0
+    print(f"Escritas: {r['escritas']}. En Firestore ahora: {r['guardado'].get('total', 0)} cuentas antiguas.")
+    if not r["ok"]:
+        print("ERROR: lo guardado no cuadra con lo enviado.")
+        return 1
+    print("Comprobado: lo guardado cuadra con lo enviado.")
+    return 0
+
+
 def _json_arg(crudo: str | None, que: str) -> dict | None:
     """Un argumento que viaja como JSON. Si viene roto, se dice y se sigue."""
     if not crudo:
@@ -1862,6 +1903,10 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser(
         "encargos", help="Recoge los encargos de Firestore y levanta el workflow de cada uno"
     ).set_defaults(func=cmd_encargos)
+
+    mc = sub.add_parser("migrar-cuentas", help="Copia las cuentas de antes a Firestore (cuenta)")
+    mc.add_argument("--escribir", action="store_true", help="Guarda de verdad en Firestore")
+    mc.set_defaults(func=cmd_migrar_cuentas)
 
     mi = sub.add_parser("migrar-issues", help="Pasa las issues a Firestore (sin escribir, cuenta)")
     mi.add_argument("--escribir", action="store_true", help="Guarda de verdad en Firestore")
