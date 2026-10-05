@@ -3636,4 +3636,6 @@ h1 em { font-size: 1.3em; }
    la marca (el nombre sigue en el título y en el pie). */
 @media (max-width: 380px) {
   .marca-trip, .marca-finder { display: none; }
+  /* Solo el icono: sigue siendo un enlace y se pulsa con el dedo. */
+  .marca { min-width: var(--tap-min); min-height: var(--tap-min); justify-content: center; }
 }
