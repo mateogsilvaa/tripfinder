@@ -52,8 +52,3 @@ def test_el_backend_no_llama_a_la_api_de_escribir_issues():
         texto = fichero.read_text(encoding="utf-8")
         assert "/issues\"" not in texto and "/issues'" not in texto, fichero.name
         assert "github_issue" not in texto, fichero.name
-
-
-def test_el_unico_workflow_que_toca_las_issues_solo_las_lee():
-    flujo = yaml.safe_load((RAIZ / ".github" / "workflows" / "migrar-issues.yml").read_text(encoding="utf-8"))
-    assert flujo["permissions"]["issues"] == "read"

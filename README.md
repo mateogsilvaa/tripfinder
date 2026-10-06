@@ -33,7 +33,7 @@ cifrado del sobre al entrar, nunca está en el HTML— y hace polling del JSON d
 Las issues fueron el primer disparador, cuando no había cuentas, y después el sitio donde se
 apuntaban avisos, peticiones de cuenta y búsquedas. **Ya no se usan para nada**: el repo es
 público y una issue la lee cualquiera. Nada en el código las crea, y lo que había se copió a
-Firestore (`migrar-issues.yml`), que es donde se guarda ahora lo que es de alguien.
+Firestore (una sola vez, con `tripfinder migrar-issues`), que es donde se guarda ahora lo que es de alguien.
 
 **Lo que no se lanza:** antes de levantar nada, la web mira si esa misma búsqueda ya está
 publicada. Si lo está, te la ofrece con la fecha en que se hizo en vez de repetirla —un barrido
