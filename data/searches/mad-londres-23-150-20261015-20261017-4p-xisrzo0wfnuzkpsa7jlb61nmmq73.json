@@ -1,0 +1,28 @@
+{
+  "slug": "mad-londres-23-150-20261015-20261017-4p-xisrzo0wfnuzkpsa7jlb61nmmq73",
+  "label": "Londres · 15 oct → 17 oct · hasta 150 € · 4 pers.",
+  "request": {
+    "destination": "Londres",
+    "label": "Londres · 15 oct → 17 oct · hasta 150 € · 4 pers.",
+    "max_price": 150.0,
+    "nights_min": 2,
+    "nights_max": 3,
+    "months": 12,
+    "weekend_only": false,
+    "adults": 4,
+    "origin": "MAD",
+    "depart": "2026-10-15",
+    "return_date": "2026-10-17",
+    "desde": "",
+    "hasta": "",
+    "owner": "xISRZo0WfnUzKPSA7Jlb61nMmQ73",
+    "owner_name": "Pablo",
+    "slug": "mad-londres-23-150-20261015-20261017-4p-xisrzo0wfnuzkpsa7jlb61nmmq73"
+  },
+  "generated_at": "2026-10-07",
+  "errors": [],
+  "count": 0,
+  "owner": "xISRZo0WfnUzKPSA7Jlb61nMmQ73",
+  "owner_name": "Pablo",
+  "offers": []
+}
