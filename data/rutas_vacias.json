@@ -5,10 +5,6 @@
       "barridos": 2,
       "ultima": "2026-10-05"
     },
-    "MAD-FCO": {
-      "barridos": 1,
-      "ultima": "2026-10-10"
-    },
     "MAD-JCL": {
       "barridos": 2,
       "ultima": "2026-10-05"
@@ -25,10 +21,6 @@
       "barridos": 2,
       "ultima": "2026-10-05"
     },
-    "MAD-LIS": {
-      "barridos": 1,
-      "ultima": "2026-10-10"
-    },
     "MAD-NRT": {
       "barridos": 1,
       "ultima": "2026-10-10"
@@ -41,21 +33,9 @@
       "barridos": 2,
       "ultima": "2026-10-05"
     },
-    "MAD-TIA": {
-      "barridos": 1,
-      "ultima": "2026-10-10"
-    },
-    "MAD-TLL": {
-      "barridos": 1,
-      "ultima": "2026-10-10"
-    },
     "MAD-URE": {
       "barridos": 2,
       "ultima": "2026-10-05"
-    },
-    "MAD-VNO": {
-      "barridos": 1,
-      "ultima": "2026-10-10"
     }
   }
 }
