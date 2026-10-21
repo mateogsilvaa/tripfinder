@@ -387,6 +387,26 @@
       "last_checked": "2026-10-21",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "bucarest-6-iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "label": "Bucarest · 6 meses · avisa bajo 80 € · 4 pers.",
+      "destination": "Bucarest",
+      "depart": "",
+      "return_date": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 4,
+      "max_price": 80.0,
+      "source": "formulario",
+      "owner": "iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "owner_name": "sara",
+      "created": "2026-10-21",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
