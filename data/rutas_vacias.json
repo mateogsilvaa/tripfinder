@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-20",
+  "generado": "2026-10-21",
   "rutas": {
     "MAD-EPU": {
       "barridos": 2,
@@ -31,11 +31,7 @@
     },
     "MAD-TIA": {
       "barridos": 1,
-      "ultima": "2026-10-20"
-    },
-    "MAD-TLL": {
-      "barridos": 1,
-      "ultima": "2026-10-20"
+      "ultima": "2026-10-21"
     },
     "MAD-URE": {
       "barridos": 2,
@@ -43,7 +39,7 @@
     },
     "MAD-VNO": {
       "barridos": 1,
-      "ultima": "2026-10-20"
+      "ultima": "2026-10-21"
     }
   }
 }
