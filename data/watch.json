@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-22",
+  "updated": "2026-10-23",
   "watches": [
     {
       "id": "todos-2027-01-29-bccb1f1e",
@@ -17,7 +17,7 @@
       "owner_name": "mateo",
       "created": "2026-09-03",
       "best_price": 32.43,
-      "last_checked": "2026-10-22",
+      "last_checked": "2026-10-23",
       "active": true,
       "last_offers": [
         {
@@ -38,7 +38,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-10-22T21:09:47+00:00",
+          "found_at": "2026-10-23T10:54:10+00:00",
           "nights": 2,
           "depart_time": "",
           "arrive_time": "",
@@ -52,18 +52,8 @@
           "price_per_hour": 0.0,
           "weekend": true,
           "nocturno": false,
-          "alternatives": [
-            {
-              "airline": "Iberia Express",
-              "price": 41.0,
-              "price_per_person": 41.0,
-              "adults": 1,
-              "deep_link": "https://www.google.com/travel/flights?tfs=GhoSCjIwMjctMDEtMjlqBRIDTUFEcgUSA1BNSRoaEgoyMDI3LTAxLTMxagUSA1BNSXIFEgNNQURAAUgBmAEB&curr=EUR&hl=es&gl=ES",
-              "depart_time": "06:00",
-              "weekend": false
-            }
-          ],
-          "baseline": 36.68,
+          "alternatives": [],
+          "baseline": 37.23,
           "discount_pct": 0.0,
           "score": 27,
           "minimo_historico": false,
@@ -89,7 +79,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-10-22T21:09:45+00:00",
+          "found_at": "2026-10-23T10:54:08+00:00",
           "nights": 2,
           "depart_time": "",
           "arrive_time": "",
@@ -130,7 +120,7 @@
           "airline_link": "",
           "airline_link_label": "",
           "adults": 1,
-          "found_at": "2026-10-22T21:11:57+00:00",
+          "found_at": "2026-10-23T10:56:20+00:00",
           "nights": 2,
           "depart_time": "07:10",
           "arrive_time": "08:25",
@@ -171,7 +161,7 @@
           "airline_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-01-29&dateIn=2027-01-31&originIata=MAD&destinationIata=TNG&isReturn=true&discount=0",
           "airline_link_label": "Ryanair",
           "adults": 1,
-          "found_at": "2026-10-22T21:14:18+00:00",
+          "found_at": "2026-10-23T10:58:40+00:00",
           "nights": 2,
           "depart_time": "06:45",
           "arrive_time": "07:15",
@@ -212,7 +202,7 @@
           "airline_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-01-29&dateIn=2027-01-31&originIata=MAD&destinationIata=FCO&isReturn=true&discount=0",
           "airline_link_label": "Ryanair",
           "adults": 1,
-          "found_at": "2026-10-22T21:11:45+00:00",
+          "found_at": "2026-10-23T10:56:08+00:00",
           "nights": 2,
           "depart_time": "21:55",
           "arrive_time": "00:20",
@@ -250,7 +240,7 @@
           "origin": "MAD",
           "destination": "NDR",
           "depart_date": "2027-01-29",
-          "price": 52.0,
+          "price": 51.0,
           "currency": "EUR",
           "return_date": "2027-01-31",
           "origin_name": "Madrid",
@@ -263,7 +253,7 @@
           "airline_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2027-01-29&dateIn=2027-01-31&originIata=MAD&destinationIata=NDR&isReturn=true&discount=0",
           "airline_link_label": "Ryanair",
           "adults": 1,
-          "found_at": "2026-10-22T21:13:09+00:00",
+          "found_at": "2026-10-23T10:57:32+00:00",
           "nights": 2,
           "depart_time": "22:20",
           "arrive_time": "22:50",
@@ -284,7 +274,7 @@
           "minimo_historico": false,
           "minimo_anterior": null,
           "id": "google-MAD-NDR-20270129",
-          "price_per_person": 52.0
+          "price_per_person": 51.0
         }
       ]
     },
@@ -304,7 +294,7 @@
       "owner_name": "pdp",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-10-22",
+      "last_checked": "2026-10-23",
       "active": true,
       "last_offers": []
     },
@@ -324,7 +314,7 @@
       "owner_name": "mateo",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-10-22",
+      "last_checked": "2026-10-23",
       "active": true,
       "last_offers": []
     },
@@ -344,7 +334,7 @@
       "owner_name": "mateo",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-10-22",
+      "last_checked": "2026-10-23",
       "active": true,
       "last_offers": []
     },
@@ -364,7 +354,7 @@
       "owner_name": "mateo",
       "created": "2026-09-10",
       "best_price": 54.0,
-      "last_checked": "2026-10-22",
+      "last_checked": "2026-10-23",
       "active": true,
       "last_offers": []
     },
@@ -384,7 +374,7 @@
       "owner_name": "mateo",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-10-22",
+      "last_checked": "2026-10-23",
       "active": true,
       "last_offers": []
     },
@@ -404,7 +394,7 @@
       "owner_name": "sara",
       "created": "2026-10-21",
       "best_price": null,
-      "last_checked": "2026-10-22",
+      "last_checked": "2026-10-23",
       "active": true,
       "last_offers": []
     }
