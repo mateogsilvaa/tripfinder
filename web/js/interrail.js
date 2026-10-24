@@ -1167,6 +1167,31 @@ function trazado(r) {
   return cods;
 }
 
+/* Qué nombres caben sin pisarse. Con sesenta ciudades, Gante, Brujas, Amberes
+   y Bruselas caen en un cuadrado de veinte píxeles, y cuatro nombres encima
+   unos de otros no se leen. Se reparten por turnos: primero lo que es tuyo (lo
+   elegido y la ruta), luego las grandes y al final las pequeñas, y cada uno
+   entra solo si no choca con los que ya están. La que se queda sin nombre
+   sigue en el mapa, se puede tocar y lo dice al pasar por encima. */
+function rotulosQueCaben(elegidasSet, enRuta) {
+  const turno = ([cod, c]) => (elegidasSet.has(cod) || enRuta.has(cod) ? 0 : c.pequena ? 2 : 1);
+  const puestas = [];
+  const salen = new Set();
+  const choca = (a) => puestas.some((b) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2);
+  Object.entries(CIUDADES)
+    .sort((a, b) => turno(a) - turno(b))
+    .forEach(([cod, c]) => {
+      const x = px(c.lon);
+      const y = py(c.lat);
+      const ancho = c.ciudad.length * (turno([cod, c]) === 2 ? 5 : 6.2);
+      const caja = { x1: x + 6, x2: x + 8 + ancho, y1: y - 7, y2: y + 6 };
+      if (turno([cod, c]) > 0 && choca(caja)) return;
+      puestas.push(caja);
+      salen.add(cod);
+    });
+  return salen;
+}
+
 export function mapaSVG(elegidasSet, ruta) {
   const enRuta = new Set(ruta ? ruta.paradas.map((p) => p.cod) : []);
   const lineas = CONEXIONES.map(([a, b]) => {
@@ -1176,6 +1201,7 @@ export function mapaSVG(elegidasSet, ruta) {
   const camino = trazado(ruta)
     .map((c) => `${px(CIUDADES[c].lon)},${py(CIUDADES[c].lat)}`)
     .join(" ");
+  const rotulos = rotulosQueCaben(elegidasSet, enRuta);
   // Las pequeñas encima y con menos área de toque: Padua está a diez píxeles
   // de Venecia y Lucerna a doce de Zúrich. Lo que se pinta después recibe el
   // toque, y con el radio entero la pequeña tapaba el centro de la grande.
@@ -1189,9 +1215,10 @@ export function mapaSVG(elegidasSet, ruta) {
       const menor = c.pequena && !sel && !parada;
       return `<g class="ir-nodo${sel ? " sel" : ""}${parada ? " parada" : ""}" data-ir-ciudad="${esc(cod)}"
           role="button" tabindex="0" aria-pressed="${sel}" aria-label="${esc(c.ciudad)}">
+        <title>${esc(c.ciudad)}</title>
         <circle class="ir-nodo-toque" cx="${x}" cy="${y}" r="${c.pequena ? 8 : 13}"/>
         <circle class="ir-nodo-punto" cx="${x}" cy="${y}" r="${sel || parada ? 6 : 4}"/>
-        <text x="${x + 8}" y="${y + 4}"${menor ? ' class="menor"' : ""}>${esc(c.ciudad)}</text>
+        ${rotulos.has(cod) ? `<text x="${x + 8}" y="${y + 4}"${menor ? ' class="menor"' : ""}>${esc(c.ciudad)}</text>` : ""}
       </g>`;
     })
     .join("");
