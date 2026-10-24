@@ -268,13 +268,25 @@ siendo estática y sin build: habla con Firebase por REST, sin SDK (`web/nube.js
 con eso puesto la web funciona así. Si algún día se vacían los dos, vuelve a las cuentas de
 `data/users.json`, que siguen en el repo hasta que se retire ese sistema:
 
-- **Registrarse:** abierto a todo el mundo. Correo, contraseña y nombre, y la cuenta nace
+- **Entrar o crear, con un botón:** correo, contraseña y «Continuar». Si la cuenta existe,
+  entra; si no, se crea en ese momento y pregunta el nombre (ya relleno con lo de antes de la
+  arroba). Si el correo tiene cuenta y la contraseña no es, lo dice y resalta «¿Olvidaste la
+  contraseña?». Se recuerda el último correo.
+- **Con Google:** el botón sale en cuanto se rellena `googleClientId` en `NUBE_CONFIG`
+  (`web/nube.js`). Para tenerlo: Firebase → Authentication → Método de acceso → Google →
+  Activar, copiar ahí el «ID de cliente web»; y en Google Cloud → Credenciales → ese cliente
+  OAuth, añadir la dirección de la web (y la del dominio propio) en «Orígenes de JavaScript
+  autorizados». No es un secreto.
+- **Registrarse:** abierto a todo el mundo, y la cuenta nace
   **gratis** (`estado: aprobado`, `plan: gratis`): ve los chollos, guarda favoritos y recibe
   los chollos por correo en cuanto verifica su dirección (sin verificar no se le escribe, para
   que nadie use la web para mandar correo al buzón de otro). Hay «¿Olvidaste la contraseña?».
-- **Premium:** buscar, seguir viajes, pedir alojamiento e Interrail gastan minutos de Actions
-  y son de las cuentas premium. Las da quien lleva la web desde `/admin.html` (*Hacer premium*
-  / *Quitar premium* / *Bloquear*). **Las cuentas aprobadas de antes de abrir la web no tienen
+- **Premium (todavía no se exige):** el plan existe, la cuenta lo enseña y `/admin.html` lo da y
+  lo quita (*Hacer premium* / *Quitar premium* / *Bloquear*), pero de momento cualquier cuenta
+  aprobada lo usa todo. Para exigirlo hay tres interruptores que van juntos: `PREMIUM_OBLIGATORIO`
+  en `nube.py`, `TF_PREMIUM_OBLIGATORIO` en `nube.js` y, en `firestore.rules`, el `create` de
+  `encargos` de `aprobado()` a `premium()`. `planes.html` enseña los dos planes y «Me interesa»
+  apunta `quiere_premium` en la cuenta; el panel cuenta cuántos lo quieren. **Las cuentas aprobadas de antes de abrir la web no tienen
   `plan` y cuentan como premium**: son las de los conocidos, sin migrar nada. Vincular una
   cuenta de antes de Firebase también da premium.
 - **Resultados al momento:** cuando termina una búsqueda de alojamiento (de un vuelo o de una
@@ -347,6 +359,11 @@ apunta un encargo que acaba levantando `custom-search.yml`. En local:
 python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
 ```
 
+**Unos días de la semana, cualquier semana.** «Salgo un lunes y vuelvo un jueves, me da igual
+cuándo»: en *¿Cuándo?* → *Unos días de la semana*, con *Salgo el* y *Vuelvo el*. Se busca ese
+par cada semana del horizonte (o del tramo), las noches salen solas y se descarta lo que vuele
+otros días. En la CLI, `--dias 0-3` (0 es lunes).
+
 ## Lo que cuesta hacer funcionar esto
 
 Actions es gratis e ilimitado en repositorios públicos, y este lo es, así que ninguno de estos
@@ -370,6 +387,30 @@ pillar un chollo antes de que suba.
 Todos los workflows llevan `timeout-minutes`: sin él, uno colgado se queda hasta el límite de
 6 horas de GitHub.
 
+
+## El rediseño compacto (octubre de 2026)
+
+La misma voz con menos ruido. Lo que hay que saber antes de tocar la web:
+
+- **Las tarjetas separan, no los filos.** En claro, `--line` ya no es tinta plena: es una
+  raya suave, y lo que separa es la tarjeta (`--surface`) sobre el papel, con `--sombra`.
+  Esquinas de `--r: 10px` en tarjetas y `--r-s: 7px` en campos.
+- **Se navega como una app.** Arriba, pestañas con icono propio (`ICONOS` en
+  `tools/montar.py`, cuatro trazos a 1.8, nada de librerías ni emojis). En el móvil la
+  cabecera esconde el menú y abajo sale `.tabbar`, el mismo nav con otra maquetación; vive
+  en el pie porque la cabecera es pegajosa y translúcida, y un `position: fixed` dentro de
+  ella se colocaría contra ella.
+- **La portada es corta.** Titular de una línea con antetítulo (que dice de cuándo son los
+  datos), «cómo funciona» como franja, el chollo del día, el feed, y buscar/seguir en UNA
+  tarjeta con pestañas (`js/pestanas.js`: ratón, flechas y `#seguir`).
+- **Detalles.** Insignia verde con cuántos viajes sigues en «Mis avisos»; «/» salta al
+  buscador del feed; foco visible en todo; botones que ceden al pulsarlos; instalar como
+  app se ofrece abajo, pequeño, desde la segunda visita (`log.js`).
+- **Las reglas de siempre siguen**: el naranja es el precio, la manuscrita va contada,
+  todo texto a 4.5:1 sobre las cuatro superficies y 44 px de dedo en el móvil.
+
+La capa del rediseño va al final de `web/styles.css`, marcada: pisa lo de arriba sin tener
+que buscarlo.
 
 ## El panel de salidas: una sola página que se amplía
 
