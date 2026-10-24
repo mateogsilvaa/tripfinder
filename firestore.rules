@@ -16,9 +16,11 @@ rules_version = '2';
      encargos/{id}         lo que se le pide a un scraper (la cola)
 
    La web está abierta a todo el mundo: una cuenta recién registrada nace
-   `aprobado` y con `plan: gratis`, que deja ver los chollos y recibirlos por
-   correo. Lanzar algo —buscar, seguir, alojamiento, interrail— gasta minutos
-   de Actions y es de las cuentas `premium`, que solo da el administrador.
+   `aprobado` y con `plan: gratis`. El plan premium existe —lo da el
+   administrador y la web lo enseña— pero TODAVÍA NO SE EXIGE: de momento
+   cualquier cuenta aprobada lanza búsquedas. Para exigirlo, el `create` de
+   `encargos` pasa de `aprobado()` a `premium()`, y en `nube.py` y `nube.js`
+   se enciende PREMIUM_OBLIGATORIO.
 
    Las cuentas de antes de abrir la web no tienen `plan`, y una aprobada sin
    `plan` es premium: son las de los conocidos, y no hace falta migrarlas. */
@@ -131,9 +133,10 @@ service cloud.firestore {
     }
 
     match /encargos/{id} {
-      // Pedir algo a un scraper: solo cuentas premium, a su nombre, y con las
-      // mismas diez propiedades como mucho que admite GitHub en un dispatch.
-      allow create: if premium()
+      // Pedir algo a un scraper: cuentas aprobadas (premium cuando se exija,
+      // ver arriba), a su nombre, y con las mismas diez propiedades como mucho
+      // que admite GitHub en un dispatch.
+      allow create: if aprobado()
         && request.resource.data.keys().hasOnly(['tipo', 'owner', 'payload', 'estado', 'creado'])
         && request.resource.data.keys().hasAll(['tipo', 'owner', 'payload', 'estado', 'creado'])
         && request.resource.data.owner == request.auth.uid

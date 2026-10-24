@@ -498,7 +498,7 @@ function tfSalir() {
    lanza nada. */
 const tfPuedeEscribir = () =>
   typeof nubeActiva === "function" && nubeActiva()
-    ? nubeEsPremium(tfSesion())
+    ? nubePuedeLanzar(tfSesion())
     : !!tfToken() && (!!tfSesion() || !!localStorage.getItem(TF_TOKEN_KEY));
 
 /* Hay alguien dentro pero su cuenta es gratis: solo chollos. */

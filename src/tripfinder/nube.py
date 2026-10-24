@@ -58,6 +58,11 @@ CADUCA_ENVIANDO = timedelta(minutes=30)
 # abrir la web —la de un conocido— y cuenta como premium, igual que en las reglas.
 
 
+# Premium existe pero todavía no se exige: con esto apagado, cualquier cuenta
+# aprobada lanza scrapers. Va a juego con `firestore.rules` y `web/nube.js`.
+PREMIUM_OBLIGATORIO = False
+
+
 def plan_de(ficha: dict[str, Any] | None) -> str:
     return str((ficha or {}).get("plan") or "premium")
 
@@ -259,7 +264,7 @@ def _tramitar(
     # llegar aquí pueden haberla bloqueado o haberle quitado el premium.
     if not ficha or ficha.get("estado") != "aprobado":
         return cerrar("rechazado", "la cuenta no está aprobada")
-    if not es_premium(ficha):
+    if PREMIUM_OBLIGATORIO and not es_premium(ficha):
         return cerrar("rechazado", "la cuenta es gratis: lanzar búsquedas es de premium")
 
     # Lo que se acaba de mandar en esta misma pasada ya cuenta: `cerrar` lo ha

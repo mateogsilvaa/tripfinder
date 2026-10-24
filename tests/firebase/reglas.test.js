@@ -226,11 +226,7 @@ test("una cuenta premium pide un encargo a su nombre", async () => {
   await assertSucceeds(addDoc(collection(como("ana", "ana@x.es"), "encargos"), encargo("ana")));
 });
 
-test("una cuenta gratis no pide encargos: solo ve los chollos", async () => {
-  await assertFails(addDoc(collection(como("gus", "gus@x.es"), "encargos"), encargo("gus")));
-  await entorno.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), "usuarios/gus"), { plan: "premium" });
-  });
+test("de momento premium no se exige: una cuenta gratis también pide encargos", async () => {
   await assertSucceeds(addDoc(collection(como("gus", "gus@x.es"), "encargos"), encargo("gus")));
 });
 

@@ -14,10 +14,12 @@
 const esc = (s) => tfEsc(s);
 
 const TEXTO_ESTADO = {
-  premium: "Tu cuenta es premium: tienes todas las herramientas.",
-  gratis:
-    "Tu cuenta es gratuita: ves los chollos del día y te llegan por correo. Buscar viajes, " +
-    "seguirlos, pedir alojamiento y el Interrail son de las cuentas premium: pídeselo a quien lleva la web.",
+  premium: "Plan premium: todas las herramientas.",
+  // Mientras premium no se exija (TF_PREMIUM_OBLIGATORIO), gratis lo tiene todo.
+  gratis: TF_PREMIUM_OBLIGATORIO
+    ? "Plan gratis: ves los chollos y te llegan por correo. Buscar, seguir viajes, alojamiento e " +
+      "Interrail son de premium."
+    : "Plan gratis. Mientras estrenamos la web, todas las herramientas están abiertas.",
   pendiente: "Tu cuenta se está abriendo: en unos minutos podrás usarla.",
   bloqueado: "Tu cuenta está bloqueada.",
 };
@@ -152,7 +154,7 @@ export async function abrirCuenta() {
     <p class="cuenta-quien">
       Entras con <b>${esc(t.correo || "tu correo")}</b>. Tus favoritos, tus seguimientos y tus
       búsquedas solo los ves tú.
-      <span class="${nubeEsPremium(ahora) ? "cuenta-plan" : "cuenta-aviso"}" id="nubeEstado">${esc(
+      <span class="${nubePuedeLanzar(ahora) ? "cuenta-plan" : "cuenta-aviso"}" id="nubeEstado">${esc(
         textoDe(ahora)
       )}</span>
       ${ahora.admin ? `<a class="btn ghost small" href="admin.html" id="nubePanel">Panel de cuentas</a>` : ""}
@@ -196,7 +198,7 @@ export async function abrirCuenta() {
         </span>
       </div>
 
-      <div ${nubeEsPremium(ahora) ? "" : "hidden"}>
+      <div ${nubePuedeLanzar(ahora) ? "" : "hidden"}>
         <label for="nubeSeg">Parte de tus seguimientos</label>
         <select id="nubeSeg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
         <label class="switch sangrada">

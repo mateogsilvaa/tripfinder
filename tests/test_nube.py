@@ -110,15 +110,29 @@ def test_el_dueno_sale_de_la_ficha_y_no_del_encargo():
     assert buzon.mandados[0][1]["x"] == 1
 
 
-def test_una_cuenta_no_aprobada_no_lanza_nada():
-    a = Memoria(FICHAS, [encargo("e1", "bea"), encargo("e2", "cris"), encargo("e3", "fantasma")])
+def test_una_cuenta_bloqueada_o_que_no_existe_no_lanza_nada():
+    a = Memoria(FICHAS, [encargo("e2", "cris"), encargo("e3", "fantasma")])
     cuenta, buzon = pasar(a)
     assert buzon.mandados == []
-    assert cuenta["rechazado"] == 3
+    assert cuenta["rechazado"] == 2
     assert {e["estado"] for e in a.encargos.values()} == {"rechazado"}
 
 
-def test_una_cuenta_gratis_no_lanza_nada():
+def test_una_pendiente_se_abre_en_la_misma_pasada_y_su_encargo_sale():
+    a = Memoria(FICHAS, [encargo("e1", "bea")])
+    cuenta, _ = pasar(a)
+    assert cuenta["abiertas"] == 1 and cuenta["enviado"] == 1
+
+
+def test_de_momento_una_cuenta_gratis_tambien_lanza():
+    assert nube.PREMIUM_OBLIGATORIO is False
+    a = Memoria(FICHAS, [encargo("e1", owner="gus")])
+    cuenta, _ = pasar(a)
+    assert cuenta["enviado"] == 1
+
+
+def test_cuando_se_exija_una_cuenta_gratis_no_lanza_nada(monkeypatch):
+    monkeypatch.setattr(nube, "PREMIUM_OBLIGATORIO", True)
     a = Memoria(FICHAS, [encargo("e1", owner="gus")])
     cuenta, buzon = pasar(a)
     assert cuenta["rechazado"] == 1 and not buzon.mandados

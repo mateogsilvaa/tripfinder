@@ -38,7 +38,7 @@ const sesion = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("tf
 
 test("registrarse abre una cuenta gratis al momento y lo dice", async ({ page }) => {
   const correo = await registrarse(page);
-  await expect(page.locator("#nubeMsg")).toContainText("gratuita");
+  await expect(page.locator("#nubeMsg")).toContainText("Plan gratis");
   const s = await sesion(page);
   expect(s).toMatchObject({ estado: "aprobado", plan: "gratis" });
   expect(s.name).toBe("Dani");
@@ -49,12 +49,13 @@ test("registrarse abre una cuenta gratis al momento y lo dice", async ({ page })
   expect(JSON.stringify(s)).not.toContain(correo);
 });
 
-test("una cuenta gratis no puede lanzar nada y no queda ningún encargo", async ({ page }) => {
+test("de momento premium no se exige: una cuenta gratis lanza y el encargo es suyo", async ({ page }) => {
   await registrarse(page);
   const s = await sesion(page);
   const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD" }));
-  expect(r).toMatchObject({ ok: false, reason: "gratis" });
-  expect(await E.encargosDe(s.uid)).toEqual([]);
+  expect(r.ok).toBe(true);
+  const [e] = await E.encargosDe(s.uid);
+  expect(e).toMatchObject({ tipo: "search", owner: s.uid });
 });
 
 test("una cuenta aprobada de antes de los planes es premium", async ({ page }) => {
@@ -218,9 +219,7 @@ test("tu cuenta enseña el correo y el estado, y guarda el nombre y los avisos",
   await page.locator(".modal [data-cerrar]").click();
   await page.locator("#tfCuenta").click();
   await expect(page.locator("#tfModal")).toContainText(correo);
-  await expect(page.locator("#nubeEstado")).toContainText("gratuita");
-  // Una cuenta gratis no sigue viajes: el parte de seguimientos no se le ofrece.
-  await expect(page.locator("#nubeSeg")).toBeHidden();
+  await expect(page.locator("#nubeEstado")).toContainText("Plan gratis");
   await page.locator("#nubeNombre").fill("Daniela");
   await page.locator("#nubeChollos").selectOption("diario");
   await page.locator("#nubeTope").fill("120");
@@ -341,8 +340,7 @@ test("el administrador da premium, lo quita y bloquea", async ({ browser, page }
 
   await panel.locator(`[data-cuenta="${pide.uid}"] [data-plan="gratis"]`).click();
   await expect(panel.locator("#nubeAviso")).toContainText("Pidiendo: ahora es gratis");
-  const sin = await page.evaluate(() => tfDispatch("search", { origin: "VLC" }));
-  expect(sin).toMatchObject({ ok: false, reason: "gratis" });
+  expect((await E.ficha(pide.uid)).plan).toBe("gratis");
 
   await panel.locator(`[data-cuenta="${pide.uid}"] [data-estado="bloqueado"]`).click();
   await expect(panel.locator("#nubeAviso")).toContainText("Pidiendo: bloqueada");
@@ -363,13 +361,11 @@ test("el panel dice cuántas cuentas hay y cuántas son premium", async ({ brows
 });
 
 /* ------------------------------------------------------- el formulario de verdad */
-test("con cuenta gratis el buscador sale apagado y dice que es de premium", async ({ page }) => {
+test("con cuenta gratis, mientras premium no se exija, el buscador funciona", async ({ page }) => {
   await registrarse(page);
-  const s = await sesion(page);
   await page.goto("/buscar.html");
-  await expect(page.locator(".premium-nota")).toContainText("premium");
-  await expect(page.locator('button[form="finderForm"]')).toBeDisabled();
-  expect(await E.encargosDe(s.uid)).toEqual([]);
+  await expect(page.locator(".premium-nota")).toHaveCount(0);
+  await expect(page.locator('button[form="finderForm"]')).toBeEnabled();
 });
 
 test("buscar con la cuenta premium apunta el encargo con lo que sale del formulario", async ({ page }) => {

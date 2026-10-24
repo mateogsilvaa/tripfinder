@@ -318,6 +318,10 @@ function nubeGuardarSesion(uid, ficha) {
    `firestore.rules`. */
 const nubePlan = (ficha) => (ficha && ficha.plan) || "premium";
 const nubeEsPremium = (s) => !!s && s.estado === "aprobado" && s.plan === "premium";
+/* Premium existe pero TODAVÍA NO SE EXIGE (igual que en firestore.rules y en
+   nube.py): con esto en false, cualquier cuenta aprobada lanza búsquedas. */
+const TF_PREMIUM_OBLIGATORIO = false;
+const nubePuedeLanzar = (s) => !!s && s.estado === "aprobado" && (!TF_PREMIUM_OBLIGATORIO || s.plan === "premium");
 
 function nubeSalir() {
   try {
@@ -564,12 +568,12 @@ async function nubeSincronizar() {
 async function nubeEncargar(tipo, payload) {
   let s = tfSesion();
   if (!s || !s.uid) return { ok: false, reason: "sin-cuenta" };
-  if (!nubeEsPremium(s)) {
+  if (!nubePuedeLanzar(s)) {
     // Quizá te acaban de dar premium: se mira antes de decir que no.
     s = (await nubeSincronizar()) || s;
     if (s.estado === "bloqueado") return { ok: false, reason: "bloqueada" };
     if (s.estado !== "aprobado") return { ok: false, reason: "pendiente" };
-    if (!nubeEsPremium(s)) return { ok: false, reason: "gratis" };
+    if (!nubePuedeLanzar(s)) return { ok: false, reason: "gratis" };
   }
   const token = await nubeToken();
   if (!token) return { ok: false, reason: "sin-cuenta" };
@@ -584,7 +588,7 @@ async function nubeEncargar(tipo, payload) {
       const ahora = (await nubeSincronizar()) || s;
       if (ahora.estado === "bloqueado") return { ok: false, reason: "bloqueada" };
       if (ahora.estado !== "aprobado") return { ok: false, reason: "pendiente" };
-      if (!nubeEsPremium(ahora)) return { ok: false, reason: "gratis" };
+      if (!nubePuedeLanzar(ahora)) return { ok: false, reason: "gratis" };
     }
     if (typeof tfApuntar === "function") tfApuntar("encargo", `${tipo}: ${e.codigo}`, e.detalle);
     return { ok: false, reason: e.message };
@@ -687,12 +691,12 @@ if (nubeActiva()) {
   const s = tfSesion();
   if (s && s.nube) {
     setTimeout(async () => {
-      const antes = nubeEsPremium(s);
+      const antes = nubePuedeLanzar(s);
       const ahora = await nubeSincronizar();
       // Si te acaban de dar premium (o quitártelo), los formularios se pintaron
       // con lo de antes: apagados, o encendidos sin poder. Se recarga una vez;
       // a la siguiente ya coincide y no vuelve a pasar.
-      if (ahora && ahora.nube && nubeEsPremium(ahora) !== antes) location.reload();
+      if (ahora && ahora.nube && nubePuedeLanzar(ahora) !== antes) location.reload();
     }, 800);
   }
 }
