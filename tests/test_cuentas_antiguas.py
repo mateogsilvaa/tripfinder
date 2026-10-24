@@ -48,6 +48,8 @@ def test_el_documento_lleva_lo_justo_para_recuperar_la_cuenta():
         "prefs": {
             "chollos": "diario", "chollos_max_precio": 90.0,
             "seguimientos": "diario", "seguimientos_solo_novedades": False,
+            # Los correos llegan apagados: se enciende desde la cuenta nueva.
+            "avisos": False, "dia": None, "franja": "cualquiera",
         },
         "activa": True, "creada": "2026-08-20",
     }
@@ -198,6 +200,8 @@ def test_los_seguimientos_de_una_cuenta_antigua_llegan_a_su_cuenta_nueva(monkeyp
     from tripfinder.watch import Watch
 
     cuentas, alias = nube.cuentas_para_avisos(_db())
+    for c in cuentas:
+        c.prefs["avisos"] = True
     monkeypatch.setattr(cli, "_cuentas_con_aviso", lambda: (cuentas, alias))
     w_viejo = Watch(id="a", label="x", owner="u-1111aaaa")
     w_nuevo = Watch(id="b", label="y", owner="uid-ana")

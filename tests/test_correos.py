@@ -15,7 +15,7 @@ def fichero_temporal(tmp_path, monkeypatch):
     return tmp_path
 
 
-CFG = Config(raw={"notify": {"to": "el-de-siempre@example.com"}})
+CFG = Config(raw={"notify": {"to": "el-de-siempre@example.com", "buzon_fijo": True}})
 
 
 def oferta(precio: float, dest: str = "FCO") -> FlightOffer:
@@ -52,6 +52,78 @@ def test_cada_cuanto(frecuencia, ultimo, toca, monkeypatch):
     assert _cada_cuanto(frecuencia, ultimo) is toca
 
 
+# --------------------------------------------- apagado salvo que lo enciendas
+def test_sin_encenderlo_nadie_recibe_nada():
+    """Las cuentas de antes y las nuevas: ninguna lleva `avisos` guardado."""
+    U.anadir("ana", password="ana12345", email="ana@example.com")
+    U.cambiar_prefs("ana", {"chollos": "cada_vez"})
+    reparto = _reparto_de_chollos([oferta(30)], [oferta(30)], CFG, {}, 6)
+    assert "ana@example.com" not in reparto
+    assert U.PREFS_DEFECTO["avisos"] is False
+
+
+def test_el_buzon_de_la_configuracion_tambien_esta_apagado():
+    apagado = Config(raw={"notify": {"to": "el-de-siempre@example.com"}})
+    assert _reparto_de_chollos([oferta(30)], [oferta(30)], apagado, {}, 6) == {}
+    assert _partes_por_dueno([(W.Watch(id="c"), [oferta(40)])], apagado, {}) == {}
+
+
+def test_un_seguimiento_de_alguien_con_los_correos_apagados_no_va_al_buzon_fijo():
+    ana = U.anadir("ana", password="ana12345", email="ana@example.com")
+    assert _partes_por_dueno([(W.Watch(id="a", owner=ana.id), [oferta(40)])], CFG, {}) == {}
+
+
+@pytest.mark.parametrize(
+    "frecuencia,dia,hoy,ultimo,toca",
+    [
+        # 2026-08-24 es lunes, el 27 jueves, el 28 viernes.
+        ("dos_semana", None, (2026, 8, 24), "2026-08-20", True),
+        ("dos_semana", None, (2026, 8, 25), "2026-08-20", False),  # martes no
+        ("dos_semana", None, (2026, 8, 27), "2026-08-26", False),  # hace un dia
+        ("semanal", 4, (2026, 8, 28), "2026-08-21", True),        # su viernes
+        ("semanal", 4, (2026, 8, 27), "2026-08-14", False),       # no es viernes
+        ("semanal", 4, (2026, 8, 28), "", True),                  # la primera vez
+        ("quincenal", 4, (2026, 8, 28), "2026-08-21", False),
+        ("quincenal", 4, (2026, 8, 28), "2026-08-14", True),
+        ("mensual", 0, (2026, 8, 24), "2026-08-03", False),
+        ("mensual", 0, (2026, 8, 31), "2026-08-03", True),
+    ],
+)
+def test_frecuencias_con_dia(frecuencia, dia, hoy, ultimo, toca, monkeypatch):
+    import tripfinder.cli as C
+
+    class Hoy(C.date):
+        @classmethod
+        def today(cls):
+            return C.date(*hoy)
+
+    monkeypatch.setattr(C, "date", Hoy)
+    assert _cada_cuanto(frecuencia, ultimo, {"dia": dia}) is toca
+
+
+@pytest.mark.parametrize("hora,franja,toca", [(6, "manana", True), (6, "noche", False), (18, "noche", True)])
+def test_la_franja_elige_el_barrido(hora, franja, toca, monkeypatch):
+    import tripfinder.cli as C
+
+    class Ahora(C.datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return C.datetime(2026, 8, 24, hora, tzinfo=tz)
+
+    monkeypatch.setattr(C, "datetime", Ahora)
+    assert _cada_cuanto("diario", "", {"franja": franja}) is toca
+    # «En cuanto aparezca» no espera a ninguna franja.
+    assert _cada_cuanto("cada_vez", "", {"franja": franja}) is True
+
+
+def test_prefs_nuevas_se_validan():
+    p = U.prefs_validas({"avisos": "si", "dia": 9, "franja": "madrugada", "chollos": "quincenal"})
+    assert p["avisos"] is False  # solo un True de verdad lo enciende
+    assert p["dia"] is None and p["franja"] == "cualquiera"
+    assert p["chollos"] == "quincenal"
+    assert U.prefs_validas({"avisos": True, "dia": "4"})["dia"] == 4
+
+
 def test_prefs_rotas_no_tumban_nada():
     p = U.prefs_validas({"chollos": "cuando sea", "chollos_max_precio": "ochenta"})
     assert p["chollos"] == "cada_vez"  # lo que no se entiende, al valor de casa
@@ -63,9 +135,9 @@ def test_prefs_rotas_no_tumban_nada():
 # ----------------------------------------------------------------- chollos
 def test_cada_uno_recibe_lo_suyo():
     U.anadir("ana", password="ana12345", email="ana@example.com")
-    U.cambiar_prefs("ana", {"chollos": "cada_vez", "chollos_max_precio": 60})
+    U.cambiar_prefs("ana", {"avisos": True, "chollos": "cada_vez", "chollos_max_precio": 60})
     U.anadir("mateo", password="mateo12345", email="mateo@example.com")
-    U.cambiar_prefs("mateo", {"chollos": "nunca"})
+    U.cambiar_prefs("mateo", {"avisos": True, "chollos": "nunca"})
 
     nuevas = [oferta(45), oferta(120, "BKK")]
     reparto = _reparto_de_chollos(nuevas, nuevas, CFG, {}, 6)
@@ -79,7 +151,7 @@ def test_cada_uno_recibe_lo_suyo():
 def test_el_resumen_manda_lo_mejor_que_hay_no_solo_lo_de_hoy():
     """Con un resumen semanal, mandar solo lo nuevo del martes se come el resto."""
     U.anadir("ana", password="ana12345", email="ana@example.com")
-    U.cambiar_prefs("ana", {"chollos": "semanal"})
+    U.cambiar_prefs("ana", {"avisos": True, "chollos": "semanal"})
 
     vivas = [oferta(40), oferta(55, "OTP"), oferta(70, "BGY")]
     reparto = _reparto_de_chollos(vivas, [], CFG, {}, 6)
@@ -115,8 +187,9 @@ def test_una_cuenta_apagada_no_recibe():
 # ------------------------------------------------------------ seguimientos
 def test_el_parte_respeta_la_frecuencia_de_cada_uno():
     ana = U.anadir("ana", password="ana12345", email="ana@example.com")
-    U.cambiar_prefs("ana", {"seguimientos": "nunca"})
+    U.cambiar_prefs("ana", {"avisos": True, "seguimientos": "nunca"})
     mateo = U.anadir("mateo", password="mateo12345", email="mateo@example.com")
+    U.cambiar_prefs("mateo", {"avisos": True})
 
     estado = [
         (W.Watch(id="a", owner=ana.id), []),
@@ -128,7 +201,7 @@ def test_el_parte_respeta_la_frecuencia_de_cada_uno():
 
 def test_solo_novedades_calla_el_parte_vacio():
     ana = U.anadir("ana", password="ana12345", email="ana@example.com")
-    U.cambiar_prefs("ana", {"seguimientos": "diario", "seguimientos_solo_novedades": True})
+    U.cambiar_prefs("ana", {"avisos": True, "seguimientos": "diario", "seguimientos_solo_novedades": True})
     vacio = [(W.Watch(id="a", owner=ana.id), [])]
     assert _partes_por_dueno(vacio, CFG, {}) == {}
 

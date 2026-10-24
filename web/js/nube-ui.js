@@ -182,30 +182,11 @@ export async function abrirCuenta() {
     }
 
     <form id="nubePerfil" class="modal-form">
-      <h3 class="bloque-head">Tus datos y avisos</h3>
+      <h3 class="bloque-head">Tus datos</h3>
       <label for="nubeNombre">Tu nombre</label>
       <input id="nubeNombre" maxlength="40" value="${esc(ahora.name)}" autocomplete="name">
 
-      <label for="nubeChollos">Chollos del día</label>
-      <div class="par-campo">
-        <select id="nubeChollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
-        <span class="par-tope">
-          <span class="par-y">…y solo si bajan de</span>
-          <input id="nubeTope" type="number" min="0" step="10" placeholder="sin tope"
-            aria-label="Precio máximo de los chollos, en euros"
-            value="${prefs.chollos_max_precio ? Math.round(prefs.chollos_max_precio) : ""}">
-          <span class="par-unidad">€</span>
-        </span>
-      </div>
-
-      <div ${nubePuedeLanzar(ahora) ? "" : "hidden"}>
-        <label for="nubeSeg">Parte de tus seguimientos</label>
-        <select id="nubeSeg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
-        <label class="switch sangrada">
-          <input type="checkbox" id="nubeSoloNov"${prefs.seguimientos_solo_novedades ? " checked" : ""}>
-          <span>Solo cuando haya algo nuevo que contar</span>
-        </label>
-      </div>
+      ${tfAvisosHTML("nube", prefs, nubePuedeLanzar(ahora))}
 
       <p class="token-status" id="nubePerfilMsg" role="status"></p>
       <button class="btn primary" type="submit">Guardar</button>
@@ -230,6 +211,7 @@ export async function abrirCuenta() {
     </div>`);
 
   tfWireVerClave(caja);
+  tfAvisosAtar(caja, "nube");
 
   const verificarMsg = caja.querySelector("#nubeVerificarMsg");
   if (verificarMsg) {
@@ -266,15 +248,9 @@ export async function abrirCuenta() {
       msg.textContent = "El nombre no puede quedar vacío.";
       return;
     }
-    const tope = Number(caja.querySelector("#nubeTope").value);
     msg.textContent = "Guardando…";
     tfOcupado(guardar, true, "Guardando…");
-    const r = await nubeGuardarPerfil(nombre, {
-      chollos: caja.querySelector("#nubeChollos").value,
-      chollos_max_precio: tope > 0 ? tope : null,
-      seguimientos: caja.querySelector("#nubeSeg").value,
-      seguimientos_solo_novedades: caja.querySelector("#nubeSoloNov").checked,
-    });
+    const r = await nubeGuardarPerfil(nombre, tfAvisosLeer(caja, "nube"));
     tfOcupado(guardar, false);
     msg.textContent = r.ok ? "Guardado." : r.error;
   });

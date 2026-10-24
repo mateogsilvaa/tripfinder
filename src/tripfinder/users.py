@@ -91,10 +91,23 @@ def comprobar(password: str, guardado: dict[str, Any] | None) -> bool:
 
 # Que correos quiere cada uno. Lo que se puede cumplir de verdad, ni una opcion
 # de adorno: el scan de vuelos y el repaso de seguimientos son los dos unicos
-# sitios desde los que sale un email.
-FRECUENCIAS = ("cada_vez", "diario", "semanal", "nunca")
+# sitios desde los que sale un email, y pasan dos veces al dia.
+#
+#   cada_vez    en cuanto aparezca algo (solo chollos)
+#   diario      como mucho uno al dia
+#   dos_semana  lunes y jueves
+#   semanal     uno a la semana, el `dia` elegido (o a los siete dias del ultimo)
+#   quincenal   cada dos semanas, el `dia` elegido
+#   mensual     cada cuatro semanas, el `dia` elegido
+FRECUENCIAS = ("cada_vez", "diario", "dos_semana", "semanal", "quincenal", "mensual", "nunca")
+# A que hora del dia, mas o menos: el barrido de la manana o el de la tarde.
+FRANJAS = ("cualquiera", "manana", "noche")
 
 PREFS_DEFECTO: dict[str, Any] = {
+    # EL INTERRUPTOR. Nadie recibe ningun correo hasta que lo enciende el mismo
+    # desde su cuenta: ni las cuentas nuevas ni las de antes, que no lo tienen
+    # guardado y por tanto lo tienen apagado.
+    "avisos": False,
     # Chollos del dia: "cada_vez" es el aviso en cuanto aparece algo excepcional.
     "chollos": "cada_vez",
     # Tope opcional para no recibir chollos que no te vas a plantear.
@@ -105,6 +118,10 @@ PREFS_DEFECTO: dict[str, Any] = {
     # Si esta puesto, el parte solo sale cuando hay algo nuevo que contar; si no,
     # llega igualmente diciendo que se ha mirado y no habia nada.
     "seguimientos_solo_novedades": False,
+    # Para los resumenes: que dia de la semana (0 lunes … 6 domingo; None, el
+    # que toque) y en que barrido.
+    "dia": None,
+    "franja": "cualquiera",
 }
 
 
@@ -123,6 +140,14 @@ def prefs_validas(crudo: Any) -> dict[str, Any]:
     except (TypeError, ValueError):
         prefs["chollos_max_precio"] = None
     prefs["seguimientos_solo_novedades"] = bool(crudo.get("seguimientos_solo_novedades"))
+    prefs["avisos"] = crudo.get("avisos") is True
+    try:
+        dia = int(crudo.get("dia"))
+        prefs["dia"] = dia if 0 <= dia <= 6 else None
+    except (TypeError, ValueError):
+        prefs["dia"] = None
+    franja = str(crudo.get("franja", "")).strip().lower()
+    prefs["franja"] = franja if franja in FRANJAS else "cualquiera"
     return prefs
 
 

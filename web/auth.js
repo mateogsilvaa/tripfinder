@@ -756,15 +756,117 @@ async function tfAbrirLogin() {
    decidir. Una lista de opciones que no se cumplen es peor que no tenerlas. */
 const TF_FREQ_CHOLLOS = [
   ["cada_vez", "En cuanto aparezca"],
-  ["diario", "Como mucho uno al día"],
+  ["diario", "Uno al día, como mucho"],
+  ["dos_semana", "Dos por semana (lunes y jueves)"],
   ["semanal", "Un resumen a la semana"],
+  ["quincenal", "Cada dos semanas"],
+  ["mensual", "Una vez al mes"],
   ["nunca", "Ninguno"],
 ];
 const TF_FREQ_SEGUIMIENTOS = [
   ["diario", "El parte de cada día"],
+  ["dos_semana", "Dos por semana (lunes y jueves)"],
   ["semanal", "Un resumen a la semana"],
+  ["quincenal", "Cada dos semanas"],
+  ["mensual", "Una vez al mes"],
   ["nunca", "Ninguno"],
 ];
+const TF_DIAS = [
+  ["", "El que toque"],
+  ["0", "Lunes"],
+  ["1", "Martes"],
+  ["2", "Miércoles"],
+  ["3", "Jueves"],
+  ["4", "Viernes"],
+  ["5", "Sábado"],
+  ["6", "Domingo"],
+];
+const TF_FRANJAS = [
+  ["cualquiera", "Me da igual"],
+  ["manana", "Por la mañana"],
+  ["noche", "Por la tarde-noche"],
+];
+// Las frecuencias que dejan elegir el día.
+const TF_CON_DIA = ["semanal", "quincenal", "mensual"];
+
+/* LOS CORREOS, en las dos fichas de cuenta (la de Firebase y la de antes). Van
+   apagados para todo el mundo: nadie recibe nada hasta que enciende el
+   interruptor, y entonces elige qué, cada cuánto, qué día y a qué hora. Los
+   ids de siempre (`<p>Chollos`, `<p>Tope`…) se mantienen. */
+function tfAvisosHTML(p, prefs = {}, conSeguimientos = true) {
+  const encendidos = prefs.avisos === true;
+  const dia = prefs.dia === null || prefs.dia === undefined ? "" : String(prefs.dia);
+  return `
+      <fieldset class="avisos" id="${p}AvisosCaja">
+        <legend class="bloque-head">Correos</legend>
+        <label class="switch avisos-interruptor">
+          <input type="checkbox" id="${p}Avisos"${encendidos ? " checked" : ""}>
+          <span>Quiero recibir correos</span>
+        </label>
+        <p class="meta avisos-apagados"${encendidos ? " hidden" : ""}>Apagados: no te escribimos nada.</p>
+        <div class="avisos-opciones"${encendidos ? "" : " hidden"}>
+          <label for="${p}Chollos">Chollos</label>
+          <div class="par-campo">
+            <select id="${p}Chollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
+            <span class="par-tope">
+              <span class="par-y">por debajo de</span>
+              <input id="${p}Tope" type="number" min="0" step="10" placeholder="sin tope"
+                aria-label="Precio máximo de los chollos, en euros"
+                value="${prefs.chollos_max_precio ? Math.round(prefs.chollos_max_precio) : ""}">
+              <span class="par-unidad">€</span>
+            </span>
+          </div>
+          <div${conSeguimientos ? "" : " hidden"}>
+            <label for="${p}Seg">Tus seguimientos</label>
+            <select id="${p}Seg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
+            <label class="switch sangrada">
+              <input type="checkbox" id="${p}SoloNov"${prefs.seguimientos_solo_novedades ? " checked" : ""}>
+              <span>Solo si hay algo nuevo</span>
+            </label>
+          </div>
+          <div class="avisos-cuando">
+            <span class="avisos-dia">
+              <label for="${p}Dia">Qué día</label>
+              <select id="${p}Dia">${tfOpciones(TF_DIAS, dia)}</select>
+            </span>
+            <span>
+              <label for="${p}Franja">A qué hora</label>
+              <select id="${p}Franja">${tfOpciones(TF_FRANJAS, prefs.franja || "cualquiera")}</select>
+            </span>
+          </div>
+        </div>
+      </fieldset>`;
+}
+
+/* El interruptor enseña u oculta el resto, y «qué día» solo sale cuando alguna
+   de las dos frecuencias lo usa. */
+function tfAvisosAtar(caja, p) {
+  const $ = (id) => caja.querySelector(`#${p}${id}`);
+  const pintar = () => {
+    const on = $("Avisos").checked;
+    caja.querySelector(`#${p}AvisosCaja .avisos-opciones`).hidden = !on;
+    caja.querySelector(`#${p}AvisosCaja .avisos-apagados`).hidden = on;
+    const conDia = TF_CON_DIA.includes($("Chollos").value) || TF_CON_DIA.includes($("Seg").value);
+    caja.querySelector(`#${p}AvisosCaja .avisos-dia`).hidden = !conDia;
+  };
+  ["Avisos", "Chollos", "Seg"].forEach((id) => $(id).addEventListener("change", pintar));
+  pintar();
+}
+
+function tfAvisosLeer(caja, p) {
+  const $ = (id) => caja.querySelector(`#${p}${id}`);
+  const tope = Number($("Tope").value);
+  const dia = $("Dia").value;
+  return {
+    avisos: $("Avisos").checked,
+    chollos: $("Chollos").value,
+    chollos_max_precio: tope > 0 ? tope : null,
+    seguimientos: $("Seg").value,
+    seguimientos_solo_novedades: $("SoloNov").checked,
+    dia: dia === "" ? null : Number(dia),
+    franja: $("Franja").value,
+  };
+}
 
 const tfOpciones = (lista, elegido) =>
   lista
@@ -819,24 +921,7 @@ async function tfAbrirCuenta() {
           : "<b>No tienes ninguna.</b> Sin dirección no se te manda nada."
       }</p>
 
-      <label for="tfChollos">Chollos del día</label>
-      <div class="par-campo">
-        <select id="tfChollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
-        <span class="par-tope">
-          <span class="par-y">…y solo si bajan de</span>
-          <input id="tfTope" type="number" min="0" step="10" placeholder="sin tope"
-            aria-label="Precio máximo de los chollos, en euros"
-            value="${prefs.chollos_max_precio ? Math.round(prefs.chollos_max_precio) : ""}">
-          <span class="par-unidad">€</span>
-        </span>
-      </div>
-
-      <label for="tfSeg">Parte de tus seguimientos</label>
-      <select id="tfSeg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
-      <label class="switch sangrada">
-        <input type="checkbox" id="tfSoloNov"${prefs.seguimientos_solo_novedades ? " checked" : ""}>
-        <span>Solo cuando haya algo nuevo que contar</span>
-      </label>
+      ${tfAvisosHTML("tf", prefs)}
 
       <p class="token-status" id="tfPrefsMsg"></p>
       <button class="btn primary" type="submit">Guardar</button>
@@ -878,6 +963,7 @@ async function tfAbrirCuenta() {
   });
 
   tfWireVerClave(caja);
+  tfAvisosAtar(caja, "tf");
   tfCambiarMiClave(caja, s, yo);
 
   const guardar = caja.querySelector("#tfPrefsForm button[type=submit]");
@@ -885,18 +971,12 @@ async function tfAbrirCuenta() {
     e.preventDefault();
     if (guardar.disabled) return;
     const msg = caja.querySelector("#tfPrefsMsg");
-    const tope = Number(caja.querySelector("#tfTope").value);
     msg.textContent = "Guardando…";
     tfOcupado(guardar, true, "Guardando…");
     const r = await tfDispatch("user_prefs", {
       user: s.user,
       email: caja.querySelector("#tfEmail").value.trim(),
-      prefs: {
-        chollos: caja.querySelector("#tfChollos").value,
-        chollos_max_precio: tope > 0 ? tope : null,
-        seguimientos: caja.querySelector("#tfSeg").value,
-        seguimientos_solo_novedades: caja.querySelector("#tfSoloNov").checked,
-      },
+      prefs: tfAvisosLeer(caja, "tf"),
     });
     tfOcupado(guardar, false);
     msg.textContent = r.ok

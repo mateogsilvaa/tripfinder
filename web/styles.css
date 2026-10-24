@@ -3659,3 +3659,10 @@ h1 em { font-size: 1.3em; }
   /* Solo el icono: sigue siendo un enlace y se pulsa con el dedo. */
   .marca { min-width: var(--tap-min); min-height: var(--tap-min); justify-content: center; }
 }
+
+/* Los correos de «tu cuenta»: un interruptor y, si se enciende, el resto. */
+fieldset.avisos { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 6px; }
+fieldset.avisos legend { padding: 0; }
+.avisos-opciones { display: grid; gap: 6px; padding-left: 12px; border-left: 2px solid var(--line); }
+.avisos-cuando { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.avisos-cuando > span { display: grid; gap: 4px; }

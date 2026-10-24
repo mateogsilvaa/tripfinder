@@ -188,13 +188,19 @@ error.
 
 ### Qué correos y cada cuánto
 
-Cada cuenta lo decide en su propio botón (arriba a la derecha → tu nombre):
+**Apagados para todo el mundo.** Nadie recibe nada hasta que enciende «Quiero recibir correos»
+en su cuenta; las cuentas de antes tampoco, porque no lo tienen guardado. El buzón de
+`notify.to` del YAML también está apagado salvo `notify.buzon_fijo: true`.
+
+Encendido, cada cuenta elige (arriba a la derecha → tu nombre):
 
 | | Opciones |
 |---|---|
-| **Chollos del día** | en cuanto aparezca · como mucho uno al día · un resumen a la semana · ninguno |
+| **Chollos del día** | en cuanto aparezca · uno al día · dos por semana (lunes y jueves) · semanal · cada dos semanas · mensual · ninguno |
 | …y solo si bajan de | un tope en € opcional, para no recibir lo que no te vas a plantear |
-| **Parte de tus seguimientos** | el de cada día · un resumen a la semana · ninguno |
+| **Parte de tus seguimientos** | el de cada día · dos por semana · semanal · cada dos semanas · mensual · ninguno |
+| **Qué día** | para los semanales, quincenales y mensuales: lunes … domingo, o el que toque |
+| **A qué hora** | el barrido de la mañana, el de la tarde-noche, o me da igual |
 | Solo si hay novedades | calla el parte los días en que se ha mirado y no había nada |
 
 Con "en cuanto aparezca" llega lo que ha salido nuevo hoy. Con un resumen diario

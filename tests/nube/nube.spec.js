@@ -221,13 +221,16 @@ test("tu cuenta enseña el correo y el estado, y guarda el nombre y los avisos",
   await expect(page.locator("#tfModal")).toContainText(correo);
   await expect(page.locator("#nubeEstado")).toContainText("Plan gratis");
   await page.locator("#nubeNombre").fill("Daniela");
+  // Apagados de casa: hay que encenderlos para elegir.
+  await expect(page.locator("#nubeChollos")).toBeHidden();
+  await page.locator("#nubeAvisos").check();
   await page.locator("#nubeChollos").selectOption("diario");
   await page.locator("#nubeTope").fill("120");
   await page.locator("#nubePerfil button[type=submit]").click();
   await expect(page.locator("#nubePerfilMsg")).toHaveText("Guardado.");
   const f = await E.ficha(s.uid);
   expect(f.nombre).toBe("Daniela");
-  expect(f.prefs).toMatchObject({ chollos: "diario", chollos_max_precio: 120 });
+  expect(f.prefs).toMatchObject({ avisos: true, chollos: "diario", chollos_max_precio: 120 });
   // El estado y el correo no se tocan al guardar.
   expect(f).toMatchObject({ estado: "aprobado", plan: "gratis", correo });
   expect((await sesion(page)).name).toBe("Daniela");

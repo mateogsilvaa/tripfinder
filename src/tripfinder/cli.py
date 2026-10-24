@@ -9,7 +9,7 @@ import os
 import random
 import re
 import sys
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -479,17 +479,39 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cada_cuanto(frecuencia: str, ultimo: str) -> bool:
-    """Si toca escribir hoy segun lo que pidio esa cuenta."""
+# Dos barridos al dia, a las 6 y a las 18 UTC (con el retraso que meta GitHub).
+# Antes de esta hora es el de la manana.
+HORA_CORTE_UTC = 14
+
+
+def _cada_cuanto(frecuencia: str, ultimo: str, prefs: dict | None = None) -> bool:
+    """Si toca escribir en este barrido segun lo que pidio esa cuenta."""
+    prefs = prefs or {}
     if frecuencia == "nunca":
+        return False
+    hoy = date.today()
+    franja = prefs.get("franja", "cualquiera")
+    if frecuencia != "cada_vez" and franja in ("manana", "noche"):
+        manana = datetime.now(UTC).hour < HORA_CORTE_UTC
+        if manana != (franja == "manana"):
+            return False
+    dia = prefs.get("dia")
+    if frecuencia in ("semanal", "quincenal", "mensual") and dia is not None and hoy.weekday() != dia:
+        return False
+    if frecuencia == "dos_semana" and hoy.weekday() not in (0, 3):
         return False
     if frecuencia == "cada_vez" or not ultimo:
         return True
     try:
-        dias = (date.today() - date.fromisoformat(ultimo[:10])).days
+        dias = (hoy - date.fromisoformat(ultimo[:10])).days
     except ValueError:
         return True
-    return dias >= (7 if frecuencia == "semanal" else 1)
+    # Con dia fijo basta un dia menos: el barrido de ese dia puede caer antes o
+    # despues de la hora a la que salio el anterior.
+    minimo = {"diario": 1, "dos_semana": 2, "semanal": 7, "quincenal": 14, "mensual": 28}.get(frecuencia, 1)
+    if dia is not None and minimo >= 7:
+        minimo -= 1
+    return dias >= minimo
 
 
 def aparcar_avisos(state: dict, ofertas: list[FlightOffer]) -> list[FlightOffer]:
@@ -542,8 +564,12 @@ def _reparto_de_chollos(
         if not correo:
             continue
         cubiertos.add(correo.lower())
+        # Apagado salvo que lo haya encendido el: ver `users.PREFS_DEFECTO`.
+        if not u.prefs.get("avisos"):
+            continue
         frecuencia = str(u.prefs.get("chollos", "cada_vez"))
-        if not _cada_cuanto(frecuencia, ultimos.get(clave_buzon(correo)) or ultimos.get(correo, "")):
+        ultimo = ultimos.get(clave_buzon(correo)) or ultimos.get(correo, "")
+        if not _cada_cuanto(frecuencia, ultimo, u.prefs):
             continue
         tope = u.prefs.get("chollos_max_precio")
         fuente = nuevas if frecuencia == "cada_vez" else deals
@@ -552,9 +578,11 @@ def _reparto_de_chollos(
             motivo = "lo nuevo" if frecuencia == "cada_vez" else f"resumen {frecuencia}"
             salida[correo] = (suyas[:max_email], motivo)
 
-    # El buzon de siempre sigue como estaba, salvo que ya haya una cuenta con
-    # ese mismo email: entonces manda lo que haya elegido esa cuenta y no se
-    # duplica el correo.
+    # El buzon de la configuracion tambien esta apagado salvo que se encienda
+    # (`notify.buzon_fijo`). Y si hay una cuenta con ese mismo email, manda lo
+    # que haya elegido esa cuenta y no se duplica el correo.
+    if not cfg.notify.get("buzon_fijo"):
+        buzon_config = ""
     if buzon_config and buzon_config.lower() not in cubiertos and nuevas:
         salida[buzon_config] = (nuevas[:max_email], "lo nuevo")
     return salida
@@ -1344,16 +1372,21 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
     for viejo, nuevo in alias.items():
         if nuevo in por_cuenta:
             por_cuenta.setdefault(viejo, por_cuenta[nuevo])
-    defecto = (cfg.notify.get("to") or "").strip()
+    defecto = (cfg.notify.get("to") or "").strip() if cfg.notify.get("buzon_fijo") else ""
     partes: dict[str, list] = {}
     for w, ofertas in estado:
         cuenta = por_cuenta.get(getattr(w, "owner", "") or "")
-        destino = (cuenta.email.strip() if cuenta and cuenta.email else defecto) or defecto
+        # Con cuenta y email, manda lo que esa cuenta haya encendido (o nada).
+        if cuenta and cuenta.email:
+            if not cuenta.prefs.get("avisos"):
+                continue
+            destino, prefs = cuenta.email.strip(), cuenta.prefs
+        else:
+            destino, prefs = defecto, {}
         if not destino:
             continue
-        prefs = cuenta.prefs if cuenta and cuenta.email else {}
         ultimo = ultimos.get(clave_buzon(destino)) or ultimos.get(destino, "")
-        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimo):
+        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimo, prefs):
             continue
         partes.setdefault(destino, []).append((w, ofertas))
 
