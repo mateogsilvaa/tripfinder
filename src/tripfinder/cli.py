@@ -644,8 +644,16 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         country=country,
         solo_enteros=bool(getattr(args, "solo_enteros", False)),
         centro=getattr(args, "centro", None),
-        radio_km=RADIO_INTERRAIL_KM if getattr(args, "centro", None) else None,
     )
+    # Siempre alrededor del centro, no solo en el Interrail. Por nombre de
+    # ciudad Airbnb y Holidu devolvian pisos a 4, 6 y 8 km —en Copenhague, los
+    # cuatro primeros a mas de 6 km—, y a partir de 2,5 km ya hay que coger
+    # transporte para todo. Si no se sabe donde esta el centro, como antes.
+    if req.centro is None:
+        from .stays.centro import coordenadas
+
+        req.centro = coordenadas(req.city, req.country)
+    req.radio_km = RADIO_KM if req.centro else None
 
     stays: list[StayOffer] = []
     errors: list[str] = []
@@ -806,9 +814,10 @@ def _texto_corto(valor: Any, campo: str, largo: int = 60, vacio: bool = False) -
     return texto
 
 
-# Lo lejos del centro que puede quedar una cama del Interrail: unos treinta
-# minutos andando. Lo mismo que `MAX_KM` en `web/js/interrail.js`.
-RADIO_INTERRAIL_KM = 2.5
+# Lo lejos del centro que puede quedar una cama: unos treinta minutos andando.
+# Lo mismo que `MAX_KM` en `web/js/interrail.js`. Vale para todo el
+# alojamiento, no solo el del Interrail: mas lejos, «empieza a fastidiar».
+RADIO_KM = 2.5
 
 
 def paradas_interrail(crudo: str) -> list[dict[str, Any]]:

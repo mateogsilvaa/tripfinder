@@ -352,10 +352,20 @@ function fotos(s) {
     </div>`;
 }
 
+/* De dónde viene cada cama, dicho como se llama la web y no como el código. */
+const FUENTES = {
+  google_hotels: "Google Hoteles",
+  airbnb: "Airbnb",
+  holidu: "Holidu",
+  amadeus_hotels: "Amadeus",
+};
+
 function stayRow(s) {
   const meta = [
-    s.provider,
-    s.rating ? `valoración ${s.rating}` : "",
+    FUENTES[s.provider] || s.provider,
+    s.rating
+      ? `${String(s.rating).replace(".", ",")}/5${s.reviews ? ` (${Number(s.reviews).toLocaleString("es-ES")} opiniones)` : ""}`
+      : "",
     // Lo que antes no se decía: un estudio a doce kilómetros del centro no es
     // más barato que uno normal y céntrico, es otro viaje.
     aPie(s.km_centro),

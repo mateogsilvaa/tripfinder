@@ -35,6 +35,7 @@ providers:
 
 stays:
   providers:
+    - google_hotels  # hoteles: el mas barato de Booking, Expedia y la web del hotel
     - airbnb
     - holidu         # comparador: pisos enteros de Vrbo, Booking y agencias
     - amadeus_hotels
