@@ -90,7 +90,8 @@ test("una cuenta aprobada de antes de los planes es premium", async ({ page }) =
   });
   const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD" }));
   expect(r.ok).toBe(true);
-  expect((await sesion(page)).plan).toBe("premium");
+  // Lo que dice la ficha al sincronizar: sin `plan`, premium.
+  expect((await page.evaluate(() => nubeSincronizar())).plan).toBe("premium");
 });
 
 test("al hacerla premium, la misma sesión ya puede lanzar y el encargo es suyo", async ({ page }) => {

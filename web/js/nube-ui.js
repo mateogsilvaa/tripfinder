@@ -319,7 +319,8 @@ export async function abrirCuenta() {
     }
     msg.textContent = "Guardando…";
     tfOcupado(guardar, true, "Guardando…");
-    const r = await nubeGuardarPerfil(nombre, tfAvisosLeer(caja, "nube"));
+    // Lo que no son correos (como «me interesa premium») se queda como estaba.
+    const r = await nubeGuardarPerfil(nombre, { ...ahora.prefs, ...tfAvisosLeer(caja, "nube") });
     tfOcupado(guardar, false);
     msg.textContent = r.ok ? "Guardado." : r.error;
   });

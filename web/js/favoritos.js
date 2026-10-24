@@ -525,9 +525,8 @@ export function refrescarObservacion() {
   num.textContent = n === 0 ? "—" : String(n);
   txt.textContent =
     n === 0
-      ? "Todavía no sigues ningún viaje. Dale a Seguir en cualquier entrada del feed " +
-        "y aquí verás si sube o baja de precio cada vez que se actualicen los datos."
+      ? "Todavía no sigues ningún viaje. Toca la campana de cualquier vuelo y aquí verás si sube o baja."
       : n === 1
-        ? "1 viaje apuntado. Se revisa cada 12 h y te avisamos si sube o baja de precio."
-        : `${n} viajes apuntados. Se revisan cada 12 h y te avisamos si suben o bajan de precio.`;
+        ? "1 viaje apuntado. Se revisa cada 12 h."
+        : `${n} viajes apuntados. Se revisan cada 12 h.`;
 }

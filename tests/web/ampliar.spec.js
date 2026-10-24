@@ -39,10 +39,18 @@ async function conSesion(page) {
 }
 
 test.describe("la ventana que se amplía", () => {
-  test("las dos herramientas están en la portada, en pequeño", async ({ page }) => {
+  test("las dos herramientas están en la portada, en una tarjeta con pestañas", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator("#buscar #finderForm")).toBeVisible();
+    await expect(page.locator("#seguir #watchForm")).toBeHidden();
+    await page.locator("#tabSeguir").click();
     await expect(page.locator("#seguir #watchForm")).toBeVisible();
+    await expect(page.locator("#buscar")).toBeHidden();
+    await expect(page.locator("#tabSeguir")).toHaveAttribute("aria-selected", "true");
+    // Con el teclado también, como pide el patrón de pestañas.
+    await page.keyboard.press("ArrowLeft");
+    await expect(page.locator("#tabBuscar")).toBeFocused();
+    await expect(page.locator("#buscar")).toBeVisible();
     // Y el feed está encima: primero se ve lo que hay, luego se pide.
     const orden = await page.evaluate(() => {
       const y = (s) => document.querySelector(s).getBoundingClientRect().top;
@@ -71,6 +79,7 @@ test.describe("la ventana que se amplía", () => {
     await conSesion(page);
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await listo(page);
+    await page.locator("#tabSeguir").click();
     await page.fill("#wMax", "95");
     await page.click('button[form="watchForm"]');
     await enPagina(page, "seguimientos.html");
@@ -132,16 +141,16 @@ test.describe("la ventana que se amplía", () => {
   /* En un móvil el nav estaba en `display: none`, así que no había NINGUNA
      puerta: ni el nav ni un enlace en la portada. Se llegaba solo enviando el
      formulario, que es justo lo que no quiere hacer quien viene a mirar. */
-  test("y en un móvil también se ve y se puede pulsar", async ({ page }) => {
+  test("y en un móvil también se ve y se puede pulsar, en la barra de abajo", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     for (const href of ["buscar.html", "seguimientos.html"]) {
-      const enlace = page.locator(`.zona[href="${href}"]`);
+      const enlace = page.locator(`.tabbar .tab[href="${href}"]`);
       await expect(enlace, `${href} en 390 px`).toBeVisible();
       const caja = await enlace.boundingBox();
       expect(caja.width).toBeGreaterThan(0);
     }
-    await page.locator('.zona[href="seguimientos.html"]').click();
+    await page.locator('.tabbar .tab[href="seguimientos.html"]').click();
     await expect(page).toHaveURL(/seguimientos\.html$/);
   });
 
@@ -152,7 +161,9 @@ test.describe("la ventana que se amplía", () => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator('#observacion a[href="seguimientos.html"]')).toBeVisible();
     await expect(page.locator('#buscar a[href="buscar.html"]')).toBeVisible();
+    await page.locator("#tabSeguir").click();
     await expect(page.locator('#seguir a[href="seguimientos.html"]')).toBeVisible();
+    await page.locator("#tabBuscar").click();
 
     await page.locator('#buscar a[href="buscar.html"]').click();
     await expect(page).toHaveURL(/buscar\.html$/);

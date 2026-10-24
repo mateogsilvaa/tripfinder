@@ -141,6 +141,7 @@ async function lista(caja, yo, aviso = "") {
     `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
     `<div><dd>${premium}</dd><dt>premium</dt></div>` +
     `<div><dd>${cuenta("aprobado") - premium}</dd><dt>gratis</dt></div>` +
+    `<div><dd>${cuentas.filter((c) => c.prefs && c.prefs.quiere_premium).length}</dd><dt>quieren premium</dt></div>` +
     (cuenta("pendiente") ? `<div><dd class="hot">${cuenta("pendiente")}</dd><dt>pendientes</dt></div>` : "") +
     (cuenta("bloqueado") ? `<div><dd>${cuenta("bloqueado")}</dd><dt>bloqueadas</dt></div>` : "") +
     (sinVincular.length
@@ -251,7 +252,9 @@ function fila(c, yo, sinVincular = []) {
           c.estado === "aprobado" ? (plan === "premium" ? "Premium" : "Gratis") : texto
         )}${etiquetaVerif}${
           fecha(c.creado) ? ` · desde ${esc(fecha(c.creado))}` : ""
-        }${c.legado ? " · vinculada con una cuenta de antes" : ""}</span>
+        }${c.legado ? " · vinculada con una cuenta de antes" : ""}${
+          c.prefs && c.prefs.quiere_premium && nubePlan(c) !== "premium" ? " · quiere premium" : ""
+        }</span>
         ${vincular}
       </span>
       <span class="peticion-acc">${acciones}</span>

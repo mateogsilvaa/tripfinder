@@ -24,9 +24,10 @@ for (const pagina of PAGINAS) {
       await expect(page.locator(".zonas a")).toHaveText(["Chollos", "Buscar", "Mis avisos", "Interrail"]);
     });
 
-    test("el pie lleva la privacidad", async ({ page }) => {
+    test("el pie lleva la privacidad y los planes", async ({ page }) => {
       await page.goto(pagina);
-      await expect(page.locator(".foot a.foot-enlace")).toHaveAttribute("href", "privacidad.html");
+      await expect(page.locator('.foot a.foot-enlace[href="privacidad.html"]')).toHaveCount(1);
+      await expect(page.locator('.foot a.foot-enlace[href="planes.html"]')).toHaveCount(1);
     });
   });
 }
