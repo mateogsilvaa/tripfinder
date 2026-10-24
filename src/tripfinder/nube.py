@@ -352,5 +352,51 @@ def cuentas_para_avisos(db: Any | None = None) -> tuple[list[Any], dict[str, str
         return [], {}
 
 
+# ------------------------------------------- resultados, sin esperar a Pages
+# Un resultado (las camas de un vuelo, de una parada del Interrail) se escribe
+# en `data/` y se publica con la web: commit, push y despliegue de Pages, uno o
+# tres minutos más de espera con la búsqueda ya terminada. Copiado aquí, la web
+# lo lee en cuanto existe. Lo de `data/` sigue siendo el original: esto es un
+# atajo, y si falla no pasa nada.
+#
+# Va como texto JSON en un solo campo y no como mapa de Firestore: es lo que la
+# web ya sabe leer, y un mapa con tipos por campo pesaría el triple.
+TOPE_RESULTADO = 900_000  # Firestore admite 1 MiB por documento
+GUARDAR_RESULTADOS = timedelta(days=3)
+
+
+def id_resultado(clave: str) -> str:
+    return "".join(c if c.isalnum() or c in "-_." else "_" for c in clave)[:200]
+
+
+def publicar_resultado(clave: str, datos: dict[str, Any], db: Any | None = None) -> bool:
+    """Copia un resultado a `resultados/{clave}`. Nunca lanza: es un atajo."""
+    texto = json.dumps(datos, ensure_ascii=False, separators=(",", ":"))
+    if len(texto.encode()) > TOPE_RESULTADO:
+        log.info("Resultado %s demasiado grande para Firestore: solo en data/", clave)
+        return False
+    try:
+        db = db or abrir_firestore()
+        db.collection("resultados").document(id_resultado(clave)).set(
+            {"json": texto, "creado": datetime.now(UTC)}
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001 - sin atajo, la web espera a Pages
+        log.warning("No se pudo copiar el resultado a Firestore (%s)", type(exc).__name__)
+        return False
+
+
+def borrar_resultados_viejos(db: Any, ahora: datetime | None = None) -> int:
+    """Lo de hace más de tres días ya está en Pages: fuera de Firestore."""
+    from google.cloud.firestore_v1.base_query import FieldFilter
+
+    corte = (ahora or datetime.now(UTC)) - GUARDAR_RESULTADOS
+    n = 0
+    for d in db.collection("resultados").where(filter=FieldFilter("creado", "<", corte)).stream():
+        d.reference.delete()
+        n += 1
+    return n
+
+
 def hay_firebase() -> bool:
     return bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT") or os.environ.get("FIRESTORE_EMULATOR_HOST"))

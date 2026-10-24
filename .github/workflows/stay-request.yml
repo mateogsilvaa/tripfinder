@@ -53,6 +53,9 @@ jobs:
       - name: Buscar alojamiento
         env:
           PYTHONPATH: src
+          # Para copiar el resultado a Firestore y que la web lo vea sin
+          # esperar al despliegue de Pages. Sin el secreto, solo va a data/.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
           AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
           SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}

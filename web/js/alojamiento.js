@@ -297,11 +297,15 @@ function startPolling(id) {
       tfAnunciar("La búsqueda de alojamiento está tardando más de lo normal.");
       return;
     }
-    let data = null;
-    try {
-      data = await fetchJSON(`data/stays/${id}.json`);
-    } catch {
-      return; // todavia no esta publicado: se reintenta en la siguiente vuelta
+    // Primero Firestore, donde el resultado está en cuanto acaba el scraper;
+    // luego Pages, que llega uno o tres minutos después.
+    let data = typeof nubeResultado === "function" ? await nubeResultado(`stay-${id}`) : null;
+    if (!data) {
+      try {
+        data = await fetchJSON(`data/stays/${id}.json`);
+      } catch {
+        return; // todavia no esta publicado: se reintenta en la siguiente vuelta
+      }
     }
     clearInterval(pollTimer);
     pintarStays(data, OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id]);

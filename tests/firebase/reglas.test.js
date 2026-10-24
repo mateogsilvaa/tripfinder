@@ -284,6 +284,20 @@ test("los encargos no se cambian ni se borran desde el navegador", async () => {
   await assertFails(deleteDoc(doc(ana, "encargos/e1")));
 });
 
+/* --------------------------------------------------------------- resultados */
+test("los resultados se leen sin cuenta, de uno en uno, y nadie los escribe", async () => {
+  await entorno.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "resultados/stay-x"), { json: "{}", creado: new Date() });
+  });
+  await assertSucceeds(getDoc(doc(anonimo(), "resultados/stay-x")));
+  await assertFails(getDocs(collection(anonimo(), "resultados")));
+  for (const db of [anonimo(), como("ana", "ana@x.es"), como("jefe", "jefe@x.es")]) {
+    await assertFails(setDoc(doc(db, "resultados/stay-y"), { json: "{}" }));
+    await assertFails(updateDoc(doc(db, "resultados/stay-x"), { json: "[]" }));
+    await assertFails(deleteDoc(doc(db, "resultados/stay-x")));
+  }
+});
+
 /* --------------------------------------------------- lo que no está escrito */
 test("lo que no tiene regla está cerrado, también para el administrador", async () => {
   await entorno.withSecurityRulesDisabled(async (ctx) => {

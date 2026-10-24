@@ -122,6 +122,14 @@ service cloud.firestore {
         && request.resource.data.vinculada is string;
     }
 
+    // Lo que acaba de encontrar un scraper, para que la web lo vea sin esperar
+    // al despliegue de Pages. Es lo mismo que se publica en `data/` —la web es
+    // pública—, así que se lee sin cuenta. Por id, nunca la lista entera, y
+    // solo lo escribe la cuenta de servicio.
+    match /resultados/{id} {
+      allow get: if true;
+    }
+
     match /encargos/{id} {
       // Pedir algo a un scraper: solo cuentas premium, a su nombre, y con las
       // mismas diez propiedades como mucho que admite GitHub en un dispatch.

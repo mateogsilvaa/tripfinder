@@ -714,6 +714,10 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
     path = store.save_stays(
         args.offer_id, offer, stays, req.checkin, req.checkout, errors, summary=resumen
     )
+    from . import nube
+
+    if nube.hay_firebase():
+        nube.publicar_resultado(f"stay-{args.offer_id}", json.loads(path.read_text(encoding="utf-8")))
     # Cada busqueda de cama mejora la estimacion del tablon: aqui es cuando hay
     # dato nuevo que destilar.
     store.save_beds()
@@ -1697,7 +1701,14 @@ def cmd_encargos(args: argparse.Namespace) -> int:
     if not (os.environ.get("FIREBASE_SERVICE_ACCOUNT") or os.environ.get("FIRESTORE_EMULATOR_HOST")):
         print("Firebase sin configurar: no hay encargos que recoger.")
         return 0
-    cuenta = nube.procesar(nube.AlmacenFirestore(nube.abrir_firestore()))
+    db = nube.abrir_firestore()
+    cuenta = nube.procesar(nube.AlmacenFirestore(db))
+    try:
+        viejos = nube.borrar_resultados_viejos(db)
+        if viejos:
+            print(f"Resultados de más de tres días borrados de Firestore: {viejos}.")
+    except Exception as exc:  # noqa: BLE001 - limpiar no puede tumbar la cola
+        print(f"No se pudieron limpiar los resultados viejos ({type(exc).__name__}).")
     print(
         f"Encargos: {cuenta['enviado']} enviados, {cuenta['rechazado']} rechazados, "
         f"{cuenta['error']} con error, {cuenta['atascado']} atascados, "

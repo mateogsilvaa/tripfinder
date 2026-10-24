@@ -591,6 +591,20 @@ async function nubeEncargar(tipo, payload) {
   }
 }
 
+/* Un resultado recién salido del scraper, antes de que llegue a Pages (ver
+   `resultados` en firestore.rules). Sin cuenta: es lo mismo que se publica en
+   `data/`. null si no está o no hay Firebase: la web sigue mirando `data/`. */
+async function nubeResultado(clave) {
+  if (!nubeActiva()) return null;
+  const id = String(clave).replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 200);
+  try {
+    const d = await nubeLeerDoc("", `resultados/${id}`);
+    return d && typeof d.json === "string" ? JSON.parse(d.json) : null;
+  } catch {
+    return null;
+  }
+}
+
 /* Tus encargos recientes y cómo van (pendiente, enviado, error…). */
 async function nubeMisEncargos() {
   const s = tfSesion();

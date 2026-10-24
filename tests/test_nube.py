@@ -356,3 +356,56 @@ def test_el_almacen_de_firestore_hace_lo_mismo_que_el_de_memoria():
     # Pasada una semana, se borra.
     nube.procesar(a, visto, datetime.now(UTC) + timedelta(days=8))
     assert not ref.get().exists
+
+
+# ----------------------------------------------------------------- resultados
+class DocFalso:
+    def __init__(self, db, id_):
+        self.db, self.id = db, id_
+
+    def set(self, datos):
+        self.db.guardado[self.id] = datos
+
+
+class ColeccionFalsa:
+    def __init__(self, db):
+        self.db = db
+
+    def document(self, id_):
+        return DocFalso(self.db, id_)
+
+
+class DbFalsa:
+    def __init__(self, falla=False):
+        self.guardado = {}
+        self.falla = falla
+
+    def collection(self, nombre):
+        if self.falla:
+            raise RuntimeError("sin red")
+        assert nombre == "resultados"
+        return ColeccionFalsa(self)
+
+
+def test_un_resultado_se_copia_como_texto_json():
+    import json
+
+    db = DbFalsa()
+    assert nube.publicar_resultado("stay-ryanair-MAD-ROM-20261211", {"stays": [{"name": "Hotel Ñ"}]}, db)
+    (doc,) = db.guardado.values()
+    assert json.loads(doc["json"]) == {"stays": [{"name": "Hotel Ñ"}]}
+    assert "creado" in doc
+
+
+def test_el_id_no_lleva_barras_ni_cosas_raras():
+    assert nube.id_resultado("stay-a/b c") == "stay-a_b_c"
+
+
+def test_un_resultado_enorme_se_queda_solo_en_data():
+    db = DbFalsa()
+    assert not nube.publicar_resultado("x", {"a": "x" * (nube.TOPE_RESULTADO + 1)}, db)
+    assert db.guardado == {}
+
+
+def test_si_firestore_falla_no_tumba_nada():
+    assert nube.publicar_resultado("x", {"a": 1}, DbFalsa(falla=True)) is False

@@ -271,6 +271,12 @@ con eso puesto la web funciona así. Si algún día se vacían los dos, vuelve a
   / *Quitar premium* / *Bloquear*). **Las cuentas aprobadas de antes de abrir la web no tienen
   `plan` y cuentan como premium**: son las de los conocidos, sin migrar nada. Vincular una
   cuenta de antes de Firebase también da premium.
+- **Resultados al momento:** cuando termina una búsqueda de alojamiento (de un vuelo o de una
+  parada del Interrail), además de commitearse en `data/stays/` se copia a Firestore
+  (`resultados/stay-<id>`, de lectura pública como el JSON de Pages). La web lo lee de ahí
+  primero, así que el resultado sale en cuanto acaba el scraper, sin esperar el uno a tres
+  minutos del despliegue de Pages. `encargos` borra los de más de tres días. Necesita el mismo
+  secreto `FIREBASE_SERVICE_ACCOUNT`; sin él, todo sigue por Pages como antes.
 - **Lo pendiente:** si queda alguna ficha `pendiente` (de antes, o de una web vieja en la caché
   de alguien), `tripfinder encargos` la abre como gratis en su siguiente pasada.
 - **Lanzar búsquedas:** el navegador no lleva ya ningún token de GitHub. Apunta un *encargo*

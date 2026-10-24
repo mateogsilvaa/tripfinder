@@ -12,6 +12,7 @@
     "nubeActiva": "readonly",
     "nubeEsPremium": "readonly",
     "nubePlan": "readonly",
+    "nubeResultado": "readonly",
     "tfEsGratis": "readonly",
     "nubeCambiarClave": "readonly",
     "nubeCambiarEstado": "readonly",
