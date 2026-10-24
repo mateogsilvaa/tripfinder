@@ -225,7 +225,7 @@ export async function abrirCuenta() {
       búsquedas solo los ves tú.
       <span class="${nubePuedeLanzar(ahora) ? "cuenta-plan" : "cuenta-aviso"}" id="nubeEstado">${esc(
         textoDe(ahora)
-      )}</span>
+      )} <a class="cuenta-planes" href="planes.html">Ver planes</a></span>
       ${ahora.admin ? `<a class="btn ghost small" href="admin.html" id="nubePanel">Panel de cuentas</a>` : ""}
     </p>
 

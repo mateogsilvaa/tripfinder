@@ -4108,3 +4108,4 @@ h1 { line-height: 1.02; margin: 6px 0 10px; }
 }
 .field.con-tecla:focus-within .tecla { opacity: 0; }
 @media (max-width: 760px) { .tecla { display: none; } }
+.cuenta-planes { margin-left: 4px; color: var(--accent-txt); border-bottom: 1px solid currentColor; }
