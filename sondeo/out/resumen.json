@@ -1,0 +1,103 @@
+{
+  "ts": "CAESABozCgoSBjoEUm9tYRoAEhoSFAoHCOoPEAwYCxIHCOoPEAwYDRgCMgIQACoJCgU6A0VVUhoA",
+  "google_sin_fecha_sigilo": {
+    "len": 2802124,
+    "euros": 1,
+    "s": 2.5
+  },
+  "google_sin_fecha": {
+    "len": 2823361,
+    "euros": 1,
+    "s": 2.0
+  },
+  "google_ts_sigilo": {
+    "len": 2859081,
+    "euros": 1,
+    "s": 2.4
+  },
+  "google_ts": {
+    "len": 2825270,
+    "euros": 1,
+    "s": 2.1
+  },
+  "google_hotels_ts_sigilo": {
+    "len": 2853431,
+    "euros": 1,
+    "s": 2.1
+  },
+  "google_hotels_ts": {
+    "len": 2860411,
+    "euros": 1,
+    "s": 2.0
+  },
+  "booking_sigilo": {
+    "len": 3793,
+    "euros": 0,
+    "s": 0.3
+  },
+  "booking": {
+    "len": 3962,
+    "euros": 0,
+    "s": 0.3
+  },
+  "hotellook_sigilo": {
+    "error": "GET https://engine.hotellook.com/api/v2/cache.json?location=Rome&currency=eur&checkIn=2026-12-11&checkOut=2026-12-13&limit=20 fallo tras 1 intentos: 404 Client Error: Not Found for url: https://engine.hotellook.com/api/v2/cache.json?location=Rome&currency=eur&checkIn=2026-12-11&checkOut=2026-12-13&l"
+  },
+  "hotellook": {
+    "error": "GET https://engine.hotellook.com/api/v2/cache.json?location=Rome&currency=eur&checkIn=2026-12-11&checkOut=2026-12-13&limit=20 fallo tras 1 intentos: 404 Client Error: Not Found for url: https://engine.hotellook.com/api/v2/cache.json?location=Rome&currency=eur&checkIn=2026-12-11&checkOut=2026-12-13&l"
+  },
+  "trivago_sigilo": {
+    "len": 101928,
+    "euros": 1,
+    "s": 0.3
+  },
+  "trivago": {
+    "len": 95080,
+    "euros": 1,
+    "s": 0.2
+  },
+  "destinia_sigilo": {
+    "error": "GET https://destinia.com/hotels/search/?destination=Roma&checkin=2026-12-11&checkout=2026-12-13&rooms=2 fallo tras 1 intentos: 404 Client Error: Not Found for url: https://destinia.com/hotels/search/?destination=Roma&checkin=2026-12-11&checkout=2026-12-13&rooms=2"
+  },
+  "destinia": {
+    "error": "GET https://destinia.com/hotels/search/?destination=Roma&checkin=2026-12-11&checkout=2026-12-13&rooms=2 fallo tras 1 intentos: 404 Client Error: Not Found for url: https://destinia.com/hotels/search/?destination=Roma&checkin=2026-12-11&checkout=2026-12-13&rooms=2"
+  },
+  "hostelworld_sigilo": {
+    "len": 705590,
+    "euros": 109,
+    "s": 1.9
+  },
+  "hostelworld": {
+    "len": 727666,
+    "euros": 109,
+    "s": 1.9
+  },
+  "kayak_sigilo": {
+    "len": 1601616,
+    "euros": 444,
+    "s": 0.8
+  },
+  "kayak": {
+    "len": 1572099,
+    "euros": 444,
+    "s": 0.8
+  },
+  "hotels_com_sigilo": {
+    "len": 1017945,
+    "euros": 101,
+    "s": 2.8
+  },
+  "hotels_com": {
+    "error": "GET https://es.hoteles.com/Hotel-Search?destination=Roma&startDate=2026-12-11&endDate=2026-12-13&adults=2 fallo tras 1 intentos: None"
+  },
+  "agoda_sigilo": {
+    "len": 436702,
+    "euros": 0,
+    "s": 0.6
+  },
+  "agoda": {
+    "len": 431227,
+    "euros": 0,
+    "s": 0.3
+  }
+}
