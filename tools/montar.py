@@ -77,7 +77,8 @@ ARREGLO_BASE = """<script>
    ruta honda los enlaces relativos apuntarian al sitio equivocado. */
 (function () {
   try {
-    var raiz = "__RAIZ__";
+    // En github.io cuelga de __RAIZ__; con dominio propio, de la raíz.
+    var raiz = location.pathname.indexOf("__RAIZ__") === 0 ? "__RAIZ__" : "/";
     var aqui = location.pathname;
     if (aqui.indexOf(raiz) !== 0 || aqui.slice(raiz.length).indexOf("/") < 0) return;
     var b = document.createElement("base");

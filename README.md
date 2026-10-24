@@ -62,6 +62,30 @@ python -m tripfinder scan-flights --dry-run
    lo abren solas. Desde ahí creas las cuentas de quien vaya a usarla:
    ver [Cuentas y panel](#cuentas-y-panel).
 
+## Dominio propio
+
+La web está lista para salir con un dominio tuyo en vez de `mateogsilvaa.github.io/tripfinder`.
+Nada del código lleva la dirección escrita: sale de dos **variables de repositorio**
+(`Settings → Secrets and variables → Actions → Variables`, no secretos).
+
+1. **DNS**, en el registrador donde compraste el dominio:
+   - dominio raíz (`tudominio.es`): cuatro registros `A` a `185.199.108.153`, `185.199.109.153`,
+     `185.199.110.153` y `185.199.111.153` (y si quieres IPv6, `AAAA` a
+     `2606:50c0:8000::153`, `…8001::153`, `…8002::153`, `…8003::153`);
+   - subdominio (`www.` o `viajes.`): un `CNAME` a `mateogsilvaa.github.io`.
+2. **GitHub**: `Settings → Pages → Custom domain` con el dominio, y cuando el certificado esté
+   listo (minutos u horas), marca *Enforce HTTPS*.
+3. **Variables**: `DOMINIO` = `tudominio.es` (pages publica el `CNAME`) y `SITE_URL` =
+   `https://tudominio.es` (los enlaces de los correos). Sin ellas, todo sigue en github.io.
+4. **Firebase**: *Authentication → Configuración → Dominios autorizados* → añade el dominio.
+   Sin esto, entrar y registrarse fallan en el dominio nuevo.
+5. **Google Cloud → Credenciales**: si restringiste la clave de la API por referente, añade
+   `https://tudominio.es/*`.
+
+De regalo: con un dominio propio sí se puede verificar en Resend (registros DKIM/SPF), y
+entonces escribe a cualquier dirección, sin el tope de ~500 correos al día de Gmail. Con la
+web abierta al público es lo recomendable.
+
 ## Como te llegan los avisos
 
 `notify.method` en `config/watchlist.yml` elige el transporte, y si falla se prueba el otro. Si

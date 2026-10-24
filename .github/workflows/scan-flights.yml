@@ -60,7 +60,7 @@ jobs:
           NOTIFY_TO: ${{ secrets.NOTIFY_TO || secrets.SMTP_USER }}
           AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
           AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
-          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
           REPO_SLUG: ${{ github.repository }}
           # A quien se le avisa sale de Firestore (cuentas aprobadas y cuentas de
           # antes aun sin vincular). Sin el secreto, el aviso al buzon de siempre.
@@ -84,7 +84,7 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           NOTIFY_TO: ${{ secrets.NOTIFY_TO || secrets.SMTP_USER }}
-          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
           REPO_SLUG: ${{ github.repository }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python -m tripfinder watch run

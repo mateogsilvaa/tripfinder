@@ -71,7 +71,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           AMADEUS_CLIENT_ID: ${{ secrets.AMADEUS_CLIENT_ID }}
           AMADEUS_CLIENT_SECRET: ${{ secrets.AMADEUS_CLIENT_SECRET }}
-          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
           REPO_SLUG: ${{ github.repository }}
         # --diferir-avisos: lo que encuentre se aparca en state.json y lo manda
         # el scan de las 08:00 con lo suyo. La gracia de buscar de noche es que
