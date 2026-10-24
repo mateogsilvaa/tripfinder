@@ -53,6 +53,19 @@ MAX_POR_HORA = 30
 # en vez de reenviarlo, que sería arriesgarse a lanzar dos veces la misma búsqueda.
 CADUCA_ENVIANDO = timedelta(minutes=30)
 
+# Lo que puede hacer cada plan. Gratis ve los chollos y los recibe por correo;
+# premium, además, lanza scrapers. Una ficha aprobada sin `plan` es de antes de
+# abrir la web —la de un conocido— y cuenta como premium, igual que en las reglas.
+
+
+def plan_de(ficha: dict[str, Any] | None) -> str:
+    return str((ficha or {}).get("plan") or "premium")
+
+
+def es_premium(ficha: dict[str, Any] | None) -> bool:
+    return bool(ficha) and ficha.get("estado") == "aprobado" and plan_de(ficha) == "premium"
+
+
 # Lo ya tramitado se borra pasada una semana: Firestore cobra por lo que se
 # guarda y a nadie le sirve un encargo de hace un mes.
 GUARDAR_TRAMITADOS = timedelta(days=7)
@@ -75,6 +88,10 @@ class Almacen(Protocol):
     def actualizar(self, id_: str, **campos: Any) -> None: ...
 
     def borrar(self, id_: str) -> None: ...
+
+    def fichas_pendientes(self) -> list[dict[str, Any]]: ...
+
+    def abrir_ficha(self, uid: str) -> None: ...
 
 
 # ---------------------------------------------------------------- Firestore
@@ -144,6 +161,15 @@ class AlmacenFirestore:
     def borrar(self, id_: str) -> None:
         self.db.collection("encargos").document(id_).delete()
 
+    def fichas_pendientes(self) -> list[dict[str, Any]]:
+        from google.cloud.firestore_v1.base_query import FieldFilter
+
+        consulta = self.db.collection("usuarios").where(filter=FieldFilter("estado", "==", "pendiente"))
+        return [{**d.to_dict(), "id": d.id} for d in consulta.stream()]
+
+    def abrir_ficha(self, uid: str) -> None:
+        self.db.collection("usuarios").document(uid).update({"estado": "aprobado", "plan": "gratis"})
+
 
 # ------------------------------------------------------------------ GitHub
 def despachar_github(evento: str, payload: dict[str, Any]) -> None:
@@ -185,7 +211,14 @@ def procesar(
     Nada de lo que falle aquí tumba la pasada: un encargo roto no puede dejar sin
     atender a los que vienen detrás."""
     ahora = ahora or datetime.now(UTC)
-    cuenta = {"enviado": 0, "rechazado": 0, "error": 0, "atascado": 0, "borrado": 0}
+    cuenta = {"enviado": 0, "rechazado": 0, "error": 0, "atascado": 0, "borrado": 0, "abiertas": 0}
+
+    # La web es abierta: lo que quede `pendiente` —de antes de abrirla, o de una
+    # web vieja en la caché de algún navegador— pasa a gratis. Antes de los
+    # encargos, para que nadie se quede esperando una aprobación que ya no existe.
+    for f in almacen.fichas_pendientes():
+        almacen.abrir_ficha(f["id"])
+        cuenta["abiertas"] += 1
 
     for e in almacen.atascados():
         desde = _instante(e.get("procesado")) or _desde_el_principio(e)
@@ -222,10 +255,12 @@ def _tramitar(
 
     uid = e.get("owner")
     ficha = almacen.ficha(uid) if isinstance(uid, str) and uid else None
-    # Las reglas ya exigen una cuenta aprobada al crearlo, pero entre crearlo y
-    # llegar aquí pueden haberla bloqueado.
+    # Las reglas ya exigen una cuenta premium al crearlo, pero entre crearlo y
+    # llegar aquí pueden haberla bloqueado o haberle quitado el premium.
     if not ficha or ficha.get("estado") != "aprobado":
         return cerrar("rechazado", "la cuenta no está aprobada")
+    if not es_premium(ficha):
+        return cerrar("rechazado", "la cuenta es gratis: lanzar búsquedas es de premium")
 
     # Lo que se acaba de mandar en esta misma pasada ya cuenta: `cerrar` lo ha
     # apuntado como enviado con `procesado = ahora`, así que sale en la consulta.
@@ -279,6 +314,12 @@ def cuentas_para_avisos(db: Any | None = None) -> tuple[list[Any], dict[str, str
         for d in db.collection("usuarios").stream():
             f = d.to_dict() or {}
             if f.get("estado") != "aprobado" or not f.get("correo"):
+                continue
+            # Con la web abierta cualquiera se registra con cualquier dirección:
+            # a una cuenta gratis solo se le escribe si ha demostrado que el
+            # correo es suyo. Si no, registrarse con el correo de otro sería
+            # una forma gratis de mandarle spam desde nuestro Gmail.
+            if plan_de(f) == "gratis" and f.get("verificado") is not True:
                 continue
             cuentas.append(
                 U.User(

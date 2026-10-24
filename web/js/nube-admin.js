@@ -1,4 +1,9 @@
-/* nube-admin.js — El panel cuando hay Firebase: aprobar a quien pide entrar.
+/* nube-admin.js — El panel cuando hay Firebase: quién hay y quién es premium.
+
+   La web es abierta: quien se registra entra gratis y ve los chollos. Desde
+   aquí se le da premium —todas las herramientas— o se le quita, y se bloquea a
+   quien sobre. Las cuentas de antes de abrir la web no tienen `plan` y cuentan
+   como premium: son las de los conocidos.
 
    Con las cuentas de antes, el panel abría un token de GitHub con una clave
    maestra y escribía en `data/users.json`. Aquí no hay nada de eso: entras con
@@ -31,7 +36,7 @@ export async function montarNube() {
   if (!caja) return;
   caja.hidden = false;
   const lede = $("#lede");
-  if (lede) lede.textContent = "Aquí apruebas las cuentas que piden entrar en la web y ves quién hay.";
+  if (lede) lede.textContent = "Aquí ves quién hay en la web y das o quitas premium.";
 
   // Con sesión se mira la ficha de ahora: quizá te acaban de hacer administrador.
   const s = tfSesion() && tfSesion().nube ? await nubeSincronizar() : null;
@@ -131,10 +136,12 @@ async function lista(caja, yo, aviso = "") {
   }
   const sinVincular = antiguas.filter((a) => !a.vinculada && a.activa !== false);
   const cuenta = (e) => cuentas.filter((c) => c.estado === e).length;
+  const premium = cuentas.filter((c) => c.estado === "aprobado" && nubePlan(c) === "premium").length;
   $("#stats").innerHTML =
     `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
-    `<div><dd class="${cuenta("pendiente") ? "hot" : ""}">${cuenta("pendiente")}</dd><dt>pendientes</dt></div>` +
-    `<div><dd>${cuenta("aprobado")}</dd><dt>aprobadas</dt></div>` +
+    `<div><dd>${premium}</dd><dt>premium</dt></div>` +
+    `<div><dd>${cuenta("aprobado") - premium}</dd><dt>gratis</dt></div>` +
+    (cuenta("pendiente") ? `<div><dd class="hot">${cuenta("pendiente")}</dd><dt>pendientes</dt></div>` : "") +
     (cuenta("bloqueado") ? `<div><dd>${cuenta("bloqueado")}</dd><dt>bloqueadas</dt></div>` : "") +
     (sinVincular.length
       ? `<div><dd class="hot">${sinVincular.length}</dd><dt>cuentas de antes sin vincular</dt></div>`
@@ -174,7 +181,7 @@ async function lista(caja, yo, aviso = "") {
         caja,
         yo,
         r.ok
-          ? `${b.dataset.nombre}: aprobada y vinculada con «${vieja.nombre || vieja.usuario}». Ya tiene lo de antes.`
+          ? `${b.dataset.nombre}: premium y vinculada con «${vieja.nombre || vieja.usuario}». Ya tiene lo de antes.`
           : `No se pudo: ${r.error}`
       );
     })
@@ -183,12 +190,10 @@ async function lista(caja, yo, aviso = "") {
     b.addEventListener("click", async () => {
       if (b.disabled) return;
       document.querySelectorAll("[data-vincular], [data-estado]").forEach((x) => (x.disabled = true));
-      const r = await nubeCambiarEstado(b.dataset.uid, b.dataset.estado);
-      lista(
-        caja,
-        yo,
-        r.ok ? `${b.dataset.nombre}: ${ESTADOS[b.dataset.estado][1].toLowerCase()}.` : `No se pudo: ${r.error}`
-      );
+      const plan = b.dataset.plan || "";
+      const r = await nubeCambiarEstado(b.dataset.uid, b.dataset.estado, plan);
+      const hecho = plan ? (plan === "premium" ? "ahora es premium" : "ahora es gratis") : ESTADOS[b.dataset.estado][1].toLowerCase();
+      lista(caja, yo, r.ok ? `${b.dataset.nombre}: ${hecho}.` : `No se pudo: ${r.error}`);
     })
   );
 }
@@ -196,16 +201,21 @@ async function lista(caja, yo, aviso = "") {
 function fila(c, yo, sinVincular = []) {
   const [clase, texto] = ESTADOS[c.estado] || ["pendiente", c.estado || "Sin estado"];
   const esYo = c.id === yo.uid;
-  const boton = (estado, rotulo, primario) =>
+  const plan = nubePlan(c);
+  const boton = (estado, rotulo, primario, conPlan = "") =>
     `<button class="btn ${primario ? "primary" : "ghost"} small" type="button" data-estado="${estado}"
-      data-uid="${esc(c.id)}" data-nombre="${esc(c.nombre)}">${rotulo}</button>`;
+      data-uid="${esc(c.id)}" data-nombre="${esc(c.nombre)}"${conPlan ? ` data-plan="${conPlan}"` : ""}>${rotulo}</button>`;
   const acciones = esYo
     ? `<span class="meta">tú</span>`
     : c.estado === "pendiente"
-      ? boton("aprobado", "Aprobar", true) + boton("bloqueado", "Bloquear")
+      ? boton("aprobado", "Abrir gratis", false, "gratis") +
+        boton("aprobado", "Hacer premium", true, "premium") +
+        boton("bloqueado", "Bloquear")
       : c.estado === "aprobado"
-        ? boton("bloqueado", "Bloquear")
-        : boton("aprobado", "Aprobar", true);
+        ? (plan === "premium"
+            ? boton("aprobado", "Quitar premium", false, "gratis")
+            : boton("aprobado", "Hacer premium", true, "premium")) + boton("bloqueado", "Bloquear")
+        : boton("aprobado", "Desbloquear", true, plan);
   // Vincular con una cuenta de antes: solo si ha verificado su correo y aún no
   // tiene ninguna. La que coincide por correo sale elegida; si cambió de correo,
   // se elige a mano.
@@ -224,7 +234,7 @@ function fila(c, yo, sinVincular = []) {
       ? `<span class="nube-vincular">
            <select data-elegir="${esc(c.id)}" aria-label="Cuenta de antes de ${esc(c.nombre)}">${opciones}</select>
            <button class="btn primary small" type="button" data-vincular="${esc(c.id)}"
-             data-nombre="${esc(c.nombre)}">Aprobar y vincular</button>
+             data-nombre="${esc(c.nombre)}">Vincular y hacer premium</button>
          </span>
          ${mismo ? `<span class="meta">Su correo coincide con una cuenta de antes.</span>` : ""}`
       : `<span class="meta">Para vincularla con una cuenta de antes, antes tiene que verificar su correo.</span>`;
@@ -237,7 +247,9 @@ function fila(c, yo, sinVincular = []) {
       <span class="iata">${esc(String(c.nombre || "?").slice(0, 3).toUpperCase())}</span>
       <span class="dest-cell">
         <span class="city">${esc(c.nombre)}${c.admin ? " · admin" : ""}</span>
-        <span class="country">${esc(c.correo)}<br>${esc(texto)}${etiquetaVerif}${
+        <span class="country">${esc(c.correo)}<br>${esc(
+          c.estado === "aprobado" ? (plan === "premium" ? "Premium" : "Gratis") : texto
+        )}${etiquetaVerif}${
           fecha(c.creado) ? ` · desde ${esc(fecha(c.creado))}` : ""
         }${c.legado ? " · vinculada con una cuenta de antes" : ""}</span>
         ${vincular}

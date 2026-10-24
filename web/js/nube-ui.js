@@ -5,20 +5,25 @@
    cuenta de antes: son pantallas que casi nadie abre y no hay motivo para
    pagarlas en cada página.
 
-   Las cuentas ya no se piden por WhatsApp ni por issue. Cada cual se registra
-   con su correo y su contraseña, y queda `pendiente`: puede mirar la web, pero
-   no lanzar nada hasta que quien la lleva la apruebe desde el panel. El correo
-   y lo que busca cada uno viven en Firebase, no en el repositorio. */
+   La web está abierta: cualquiera se registra con su correo y su contraseña y
+   entra con una cuenta gratuita, que ve los chollos y los recibe por correo.
+   Lanzar búsquedas, seguir viajes, pedir alojamiento e Interrail es de las
+   cuentas premium, que da quien lleva la web desde el panel. El correo y lo que
+   busca cada uno viven en Firebase, no en el repositorio. */
 
 const esc = (s) => tfEsc(s);
 
 const TEXTO_ESTADO = {
-  aprobado: "Tu cuenta está aprobada.",
-  pendiente:
-    "Tu cuenta está pendiente de aprobación. Puedes mirar la web, pero no lanzar búsquedas ni " +
-    "seguir viajes hasta que quien la lleva la apruebe.",
+  premium: "Tu cuenta es premium: tienes todas las herramientas.",
+  gratis:
+    "Tu cuenta es gratuita: ves los chollos del día y te llegan por correo. Buscar viajes, " +
+    "seguirlos, pedir alojamiento y el Interrail son de las cuentas premium: pídeselo a quien lleva la web.",
+  pendiente: "Tu cuenta se está abriendo: en unos minutos podrás usarla.",
   bloqueado: "Tu cuenta está bloqueada.",
 };
+
+const textoDe = (s) =>
+  s.estado === "aprobado" ? TEXTO_ESTADO[s.plan === "premium" ? "premium" : "gratis"] : TEXTO_ESTADO[s.estado] || TEXTO_ESTADO.pendiente;
 
 /* ------------------------------------------------------------ entrar / crear */
 export function abrirLogin(modo = "entrar") {
@@ -35,8 +40,8 @@ export function abrirLogin(modo = "entrar") {
     <form id="nubeForm" class="modal-form" novalidate>
       <p class="meta">${
         registro
-          ? "Los chollos del día son de todos. Tus favoritos, tus seguimientos y tus búsquedas son " +
-            "tuyos. Cuando quien lleva la web apruebe tu cuenta podrás lanzar búsquedas y seguir viajes."
+          ? "Es gratis y para todo el mundo: con tu cuenta guardas favoritos y te llegan los chollos " +
+            "por correo. Las cuentas premium, además, buscan viajes, los siguen y piden alojamiento."
           : "Los chollos del día son de todos. Tus favoritos, tus seguimientos y tus búsquedas son " +
             "tuyos: para verlos, entra."
       }</p>
@@ -100,14 +105,15 @@ export function abrirLogin(modo = "entrar") {
       msg.textContent = r.error;
       return;
     }
-    // Una cuenta nueva, o una que aún no han aprobado, entra pero no puede
-    // lanzar nada: se dice aquí, que es cuando se puede hacer algo, y no al
-    // pulsar un botón que no responde.
-    if (r.sesion.estado !== "aprobado") {
+    // Una cuenta nueva entra gratis: qué puede hacer, y que falta verificar el
+    // correo, se dice aquí, que es cuando se lee, y no al pulsar un botón que
+    // no responde.
+    if (registro || r.sesion.estado !== "aprobado") {
       const verificar = r.sesion.verificado
         ? ""
-        : " Te hemos escrito un correo con un enlace para verificar que la dirección es tuya: si ya tenías cuenta de antes, es lo que permite recuperarla.";
-      msg.innerHTML = `<span class="ojo">${esc(TEXTO_ESTADO[r.sesion.estado] || TEXTO_ESTADO.pendiente)}${esc(verificar)}</span>`;
+        : " Te hemos escrito un correo con un enlace para verificar que la dirección es tuya: hasta " +
+          "que lo pinches no te mandamos chollos, y si ya tenías cuenta de antes, es lo que permite recuperarla.";
+      msg.innerHTML = `<span class="ojo">${esc(textoDe(r.sesion))}${esc(verificar)}</span>`;
       boton.textContent = "Entendido";
       boton.type = "button";
       boton.onclick = () => {
@@ -115,7 +121,7 @@ export function abrirLogin(modo = "entrar") {
         location.reload();
       };
       caja.querySelectorAll("[data-cerrar]").forEach((b) => b.addEventListener("click", () => location.reload()));
-      if (typeof tfAnunciar === "function") tfAnunciar(TEXTO_ESTADO[r.sesion.estado]);
+      if (typeof tfAnunciar === "function") tfAnunciar(textoDe(r.sesion));
       return;
     }
     tfCerrarModal();
@@ -146,8 +152,8 @@ export async function abrirCuenta() {
     <p class="cuenta-quien">
       Entras con <b>${esc(t.correo || "tu correo")}</b>. Tus favoritos, tus seguimientos y tus
       búsquedas solo los ves tú.
-      <span class="${ahora.estado === "aprobado" ? "" : "cuenta-aviso"}" id="nubeEstado">${esc(
-        TEXTO_ESTADO[ahora.estado] || TEXTO_ESTADO.pendiente
+      <span class="${nubeEsPremium(ahora) ? "cuenta-plan" : "cuenta-aviso"}" id="nubeEstado">${esc(
+        textoDe(ahora)
       )}</span>
       ${ahora.admin ? `<a class="btn ghost small" href="admin.html" id="nubePanel">Panel de cuentas</a>` : ""}
     </p>
@@ -190,12 +196,14 @@ export async function abrirCuenta() {
         </span>
       </div>
 
-      <label for="nubeSeg">Parte de tus seguimientos</label>
-      <select id="nubeSeg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
-      <label class="switch sangrada">
-        <input type="checkbox" id="nubeSoloNov"${prefs.seguimientos_solo_novedades ? " checked" : ""}>
-        <span>Solo cuando haya algo nuevo que contar</span>
-      </label>
+      <div ${nubeEsPremium(ahora) ? "" : "hidden"}>
+        <label for="nubeSeg">Parte de tus seguimientos</label>
+        <select id="nubeSeg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
+        <label class="switch sangrada">
+          <input type="checkbox" id="nubeSoloNov"${prefs.seguimientos_solo_novedades ? " checked" : ""}>
+          <span>Solo cuando haya algo nuevo que contar</span>
+        </label>
+      </div>
 
       <p class="token-status" id="nubePerfilMsg" role="status"></p>
       <button class="btn primary" type="submit">Guardar</button>

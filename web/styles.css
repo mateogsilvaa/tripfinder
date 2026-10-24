@@ -1747,6 +1747,7 @@ h1 em { font-size: 1.3em; }
 }
 .cuenta-quien b { color: var(--ink); }
 .cuenta-aviso { display: block; margin-top: 8px; color: var(--accent-txt); }
+.cuenta-plan { display: block; margin-top: 8px; color: var(--deep); }
 
 /* Cada bloque dice de qué va antes de empezar, para que no haya que deducirlo
    del primer campo. */

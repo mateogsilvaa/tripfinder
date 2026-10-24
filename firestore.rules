@@ -15,8 +15,13 @@ rules_version = '2';
      cuentas_antiguas/{id} las cuentas de antes de Firebase (solo el administrador)
      encargos/{id}         lo que se le pide a un scraper (la cola)
 
-   El estado manda: una cuenta recién registrada es `pendiente` y no puede
-   hacer nada hasta que el administrador la pase a `aprobado`. */
+   La web está abierta a todo el mundo: una cuenta recién registrada nace
+   `aprobado` y con `plan: gratis`, que deja ver los chollos y recibirlos por
+   correo. Lanzar algo —buscar, seguir, alojamiento, interrail— gasta minutos
+   de Actions y es de las cuentas `premium`, que solo da el administrador.
+
+   Las cuentas de antes de abrir la web no tienen `plan`, y una aprobada sin
+   `plan` es premium: son las de los conocidos, y no hace falta migrarlas. */
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -37,6 +42,13 @@ service cloud.firestore {
     // El administrador es una cuenta aprobada con `admin: true`. Ese campo solo
     // se pone con la cuenta de servicio (`tripfinder nube-admin`): ninguna
     // regla de abajo deja escribirlo desde el navegador.
+    // Premium: aprobada y con `plan: premium`, o aprobada de antes de que
+    // existieran los planes (sin el campo). Las nuevas nacen con `plan: gratis`
+    // y ninguna regla deja a nadie cambiarse el suyo.
+    function premium() {
+      return aprobado() && ficha(request.auth.uid).get('plan', 'premium') == 'premium';
+    }
+
     function admin() {
       return aprobado() && ficha(request.auth.uid).get('admin', false) == true;
     }
@@ -45,13 +57,16 @@ service cloud.firestore {
       allow get: if entra() && (request.auth.uid == uid || admin());
       allow list: if admin();
 
-      // Registrarse. La ficha nace `pendiente`, a nombre del correo con el que
-      // se ha entrado, y sin `admin`: nadie se da permisos al crearla.
+      // Registrarse. La ficha nace `aprobado` y `gratis`, a nombre del correo
+      // con el que se ha entrado, y sin `admin`: nadie se da permisos al
+      // crearla. `pendiente` sin plan es lo que manda una web de antes que siga
+      // en la caché de algún navegador; `tripfinder encargos` la abre a gratis.
       allow create: if entra()
         && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['nombre', 'correo', 'estado', 'creado', 'prefs'])
+        && request.resource.data.keys().hasOnly(['nombre', 'correo', 'estado', 'plan', 'creado', 'prefs'])
         && request.resource.data.keys().hasAll(['nombre', 'correo', 'estado', 'creado'])
-        && request.resource.data.estado == 'pendiente'
+        && ((request.resource.data.estado == 'aprobado' && request.resource.data.get('plan', '') == 'gratis')
+          || (request.resource.data.estado == 'pendiente' && !('plan' in request.resource.data)))
         && request.resource.data.correo == request.auth.token.email
         && request.resource.data.creado == request.time
         && request.resource.data.nombre is string
@@ -75,18 +90,21 @@ service cloud.firestore {
         || (admin()
           && request.auth.uid != uid
           && (
-            // Aprobar, bloquear o devolver a pendiente.
-            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado'])
-              && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado'])
+            // Aprobar, bloquear o devolver a pendiente, y dar o quitar premium.
+            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'plan'])
+              && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado']
+              && request.resource.data.get('plan', 'premium') in ['gratis', 'premium'])
             // Vincularla con una cuenta de antes: hereda sus avisos, sus
             // seguimientos y sus búsquedas. Solo si ha verificado su correo, porque
             // si no, bastaría registrarse con el correo de otro para quedarse con
             // lo suyo, y solo una vez.
-            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'legado', 'prefs'])
+            // Quien tenía cuenta de antes era un conocido: se le da premium.
+            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'legado', 'prefs', 'plan'])
               && 'legado' in request.resource.data.diff(resource.data).affectedKeys()
               && resource.data.get('verificado', false) == true
               && resource.data.get('legado', null) == null
               && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado']
+              && request.resource.data.get('plan', 'premium') in ['gratis', 'premium']
               && exists(/databases/$(database)/documents/cuentas_antiguas/$(request.resource.data.legado))
               && get(/databases/$(database)/documents/cuentas_antiguas/$(request.resource.data.legado)).data.get('vinculada', null) == null)
           ))
@@ -105,9 +123,9 @@ service cloud.firestore {
     }
 
     match /encargos/{id} {
-      // Pedir algo a un scraper: solo cuentas aprobadas, a su nombre, y con las
+      // Pedir algo a un scraper: solo cuentas premium, a su nombre, y con las
       // mismas diez propiedades como mucho que admite GitHub en un dispatch.
-      allow create: if aprobado()
+      allow create: if premium()
         && request.resource.data.keys().hasOnly(['tipo', 'owner', 'payload', 'estado', 'creado'])
         && request.resource.data.keys().hasAll(['tipo', 'owner', 'payload', 'estado', 'creado'])
         && request.resource.data.owner == request.auth.uid

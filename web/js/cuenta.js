@@ -292,7 +292,7 @@ async function revisarUsuario() {
 
 export async function abrirPedirCuenta() {
   // Con Firebase ya no se pide por WhatsApp ni por issue: cada cual se registra
-  // y queda pendiente de aprobación.
+  // y entra gratis al momento.
   if (typeof nubeActiva === "function" && nubeActiva()) {
     return (await import("./nube-ui.js")).abrirLogin("registro");
   }

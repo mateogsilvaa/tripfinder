@@ -493,11 +493,16 @@ function tfSalir() {
   tfGuardarTokenSesion("");
 }
 
-/* Si la web puede escribir ahora mismo: hay cuenta dentro y token abierto. */
+/* Si la web puede escribir ahora mismo: hay cuenta premium dentro (o, sin
+   Firebase, token abierto). Una cuenta gratis entra y ve los chollos, pero no
+   lanza nada. */
 const tfPuedeEscribir = () =>
   typeof nubeActiva === "function" && nubeActiva()
-    ? (tfSesion() || {}).estado === "aprobado"
+    ? nubeEsPremium(tfSesion())
     : !!tfToken() && (!!tfSesion() || !!localStorage.getItem(TF_TOKEN_KEY));
+
+/* Hay alguien dentro pero su cuenta es gratis: solo chollos. */
+const tfEsGratis = () => !!tfSesion() && !tfPuedeEscribir() && typeof nubeActiva === "function" && nubeActiva();
 
 /* La primera vez que alguien entra en un navegador que ya tenia favoritos sin
    cuenta, se los queda. Si no, al crear la cuenta parecia que se habian
@@ -984,6 +989,7 @@ function tfCambiarMiClave(caja, sesion, yo) {
 function tfExplicarFallo(r) {
   if (r.reason === "sin-cuenta") return "Para esto hay que entrar con una cuenta.";
   if (r.reason === "pendiente") return "Tu cuenta todavía está pendiente de aprobación.";
+  if (r.reason === "gratis") return "Esto es de las cuentas premium: con la gratuita ves los chollos.";
   if (r.reason === "bloqueada") return "Tu cuenta está bloqueada.";
   if (r.reason === "sin-token" || r.reason === "token-invalido") {
     return "Esta cuenta no tiene acceso para escribir: pídele al administrador una contraseña nueva.";

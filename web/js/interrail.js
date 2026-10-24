@@ -1019,8 +1019,8 @@ function estadoBusquedaHTML(r, ctx, esperando) {
       de ${plural(conCama(paradasConFechas(r, ctx.ida)).length, "parada", "paradas")}: un par de minutos por
       parada. Puedes cerrar la página, el resultado se guarda.</p>`;
   }
-  if (!haySesion()) {
-    const caja = cajaAcceso({ reason: "sin-cuenta" });
+  if (!haySesion() || (typeof tfEsGratis === "function" && tfEsGratis())) {
+    const caja = cajaAcceso({ reason: haySesion() ? "gratis" : "sin-cuenta" });
     return `<div class="ir-sin-sesion">${caja.html}</div>`;
   }
   return `<div class="ir-pedir">

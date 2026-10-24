@@ -55,7 +55,10 @@ beforeEach(async () => {
   await entorno.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     const base = { creado: new Date() };
+    // Ana es de antes de los planes (sin `plan`): premium. Gus se registró con
+    // la web abierta: aprobado y gratis.
     await setDoc(doc(db, "usuarios/ana"), { ...base, nombre: "Ana", correo: "ana@x.es", estado: "aprobado" });
+    await setDoc(doc(db, "usuarios/gus"), { ...base, nombre: "Gus", correo: "gus@x.es", estado: "aprobado", plan: "gratis" });
     await setDoc(doc(db, "usuarios/bea"), { ...base, nombre: "Bea", correo: "bea@x.es", estado: "pendiente" });
     await setDoc(doc(db, "usuarios/cris"), { ...base, nombre: "Cris", correo: "cris@x.es", estado: "bloqueado" });
     // Eva ya verificó su correo; Bea (arriba) no.
@@ -80,19 +83,32 @@ const anonimo = () => entorno.unauthenticatedContext().firestore();
 const ficha = (correo, extra = {}) => ({
   nombre: "Dani",
   correo,
-  estado: "pendiente",
+  estado: "aprobado",
+  plan: "gratis",
   creado: serverTimestamp(),
   ...extra,
 });
 
 /* ----------------------------------------------------------------- registro */
-test("registrarse: nace pendiente, con tu correo y tu uid", async () => {
+test("registrarse: la web es abierta, nace aprobada y gratis, con tu correo y tu uid", async () => {
   await assertSucceeds(setDoc(doc(como("dani", "dani@x.es"), "usuarios/dani"), ficha("dani@x.es")));
 });
 
-test("registrarse: no puedes nacer aprobado", async () => {
+test("registrarse: no puedes nacer premium, ni aprobada sin plan", async () => {
   const db = como("dani", "dani@x.es");
-  await assertFails(setDoc(doc(db, "usuarios/dani"), ficha("dani@x.es", { estado: "aprobado" })));
+  await assertFails(setDoc(doc(db, "usuarios/dani"), ficha("dani@x.es", { plan: "premium" })));
+  const sinPlan = ficha("dani@x.es");
+  delete sinPlan.plan;
+  await assertFails(setDoc(doc(db, "usuarios/dani"), sinPlan));
+});
+
+test("registrarse con una web de antes en caché: pendiente y sin plan sigue valiendo", async () => {
+  const vieja = ficha("dani@x.es", { estado: "pendiente" });
+  delete vieja.plan;
+  await assertSucceeds(setDoc(doc(como("dani", "dani@x.es"), "usuarios/dani"), vieja));
+  await assertFails(
+    setDoc(doc(como("dani", "dani@x.es"), "usuarios/dani"), ficha("dani@x.es", { estado: "pendiente" }))
+  );
 });
 
 test("registrarse: no puedes nacer administrador", async () => {
@@ -129,7 +145,7 @@ test("nadie lista las fichas salvo el administrador", async () => {
   await assertFails(getDocs(collection(como("ana", "ana@x.es"), "usuarios")));
   await assertFails(getDocs(collection(anonimo(), "usuarios")));
   const lista = await assertSucceeds(getDocs(collection(como("jefe", "jefe@x.es"), "usuarios")));
-  assert.equal(lista.size, 5);
+  assert.equal(lista.size, 6);
 });
 
 test("una cuenta pendiente puede leer su ficha: así sabe cuándo la aprueban", async () => {
@@ -144,6 +160,19 @@ test("el nombre y las preferencias, cada cual los suyos", async () => {
 test("nadie se aprueba a sí mismo", async () => {
   await assertFails(updateDoc(doc(como("bea", "bea@x.es"), "usuarios/bea"), { estado: "aprobado" }));
   await assertFails(updateDoc(doc(como("cris", "cris@x.es"), "usuarios/cris"), { estado: "aprobado" }));
+});
+
+test("nadie se hace premium", async () => {
+  await assertFails(updateDoc(doc(como("gus", "gus@x.es"), "usuarios/gus"), { plan: "premium" }));
+});
+
+test("el administrador da y quita premium, y no inventa planes", async () => {
+  const jefe = como("jefe", "jefe@x.es");
+  await assertSucceeds(updateDoc(doc(jefe, "usuarios/gus"), { plan: "premium" }));
+  await assertSucceeds(updateDoc(doc(jefe, "usuarios/gus"), { plan: "gratis" }));
+  await assertSucceeds(updateDoc(doc(jefe, "usuarios/bea"), { estado: "aprobado", plan: "gratis" }));
+  await assertFails(updateDoc(doc(jefe, "usuarios/gus"), { plan: "oro" }));
+  await assertFails(updateDoc(doc(jefe, "usuarios/jefe"), { plan: "gratis" }));
 });
 
 test("nadie se hace administrador", async () => {
@@ -193,8 +222,16 @@ const encargo = (owner, extra = {}) => ({
   ...extra,
 });
 
-test("una cuenta aprobada pide un encargo a su nombre", async () => {
+test("una cuenta premium pide un encargo a su nombre", async () => {
   await assertSucceeds(addDoc(collection(como("ana", "ana@x.es"), "encargos"), encargo("ana")));
+});
+
+test("una cuenta gratis no pide encargos: solo ve los chollos", async () => {
+  await assertFails(addDoc(collection(como("gus", "gus@x.es"), "encargos"), encargo("gus")));
+  await entorno.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), "usuarios/gus"), { plan: "premium" });
+  });
+  await assertSucceeds(addDoc(collection(como("gus", "gus@x.es"), "encargos"), encargo("gus")));
 });
 
 test("pendiente y bloqueada no piden nada", async () => {
@@ -293,6 +330,10 @@ const vincular = (db, uid, legado, extra = {}) =>
 
 test("el administrador vincula a quien ha verificado su correo", async () => {
   await assertSucceeds(vincular(como("jefe", "jefe@x.es"), "eva", "u-aaaaaaaa"));
+});
+
+test("y al vincularla le da premium: tener cuenta de antes es ser un conocido", async () => {
+  await assertSucceeds(vincular(como("jefe", "jefe@x.es"), "eva", "u-aaaaaaaa", { plan: "premium" }));
 });
 
 test("y no a quien no lo ha verificado: registrarse con el correo de otro no vale", async () => {

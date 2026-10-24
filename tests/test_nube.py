@@ -19,7 +19,7 @@ class Memoria:
     """Un `Almacen` de mentira: dos diccionarios."""
 
     def __init__(self, fichas=None, encargos=None):
-        self.fichas = fichas or {}
+        self.fichas = {k: dict(v) for k, v in (fichas or {}).items()}
         self.encargos = {e["id"]: dict(e) for e in (encargos or [])}
 
     def _estado(self, *estados):
@@ -46,6 +46,12 @@ class Memoria:
     def borrar(self, id_):
         del self.encargos[id_]
 
+    def fichas_pendientes(self):
+        return [{**f, "id": uid} for uid, f in self.fichas.items() if f.get("estado") == "pendiente"]
+
+    def abrir_ficha(self, uid):
+        self.fichas[uid] = {**self.fichas[uid], "estado": "aprobado", "plan": "gratis"}
+
 
 def encargo(id_, owner="ana", tipo="search", payload=None, **extra):
     return {
@@ -63,6 +69,8 @@ FICHAS = {
     "ana": {"nombre": "Ana", "correo": "ana@x.es", "estado": "aprobado"},
     "bea": {"nombre": "Bea", "correo": "bea@x.es", "estado": "pendiente"},
     "cris": {"nombre": "Cris", "correo": "cris@x.es", "estado": "bloqueado"},
+    "gus": {"nombre": "Gus", "correo": "gus@x.es", "estado": "aprobado", "plan": "gratis"},
+    "pia": {"nombre": "Pía", "correo": "pia@x.es", "estado": "aprobado", "plan": "premium"},
 }
 
 
@@ -108,6 +116,41 @@ def test_una_cuenta_no_aprobada_no_lanza_nada():
     assert buzon.mandados == []
     assert cuenta["rechazado"] == 3
     assert {e["estado"] for e in a.encargos.values()} == {"rechazado"}
+
+
+def test_una_cuenta_gratis_no_lanza_nada():
+    a = Memoria(FICHAS, [encargo("e1", owner="gus")])
+    cuenta, buzon = pasar(a)
+    assert cuenta["rechazado"] == 1 and not buzon.mandados
+    assert "premium" in a.encargos["e1"]["motivo"]
+
+
+def test_premium_y_las_aprobadas_de_antes_lanzan():
+    # Ana es de antes de los planes: sin `plan`, y aprobada. Es una conocida.
+    a = Memoria(FICHAS, [encargo("e1", owner="pia"), encargo("e2", owner="ana")])
+    cuenta, _ = pasar(a)
+    assert cuenta["enviado"] == 2
+
+
+def test_las_pendientes_se_abren_a_gratis_y_no_a_premium():
+    a = Memoria(FICHAS)
+    cuenta, _ = pasar(a)
+    assert cuenta["abiertas"] == 1
+    assert a.fichas["bea"]["estado"] == "aprobado" and a.fichas["bea"]["plan"] == "gratis"
+    assert not nube.es_premium(a.fichas["bea"])
+    # Las demás, como estaban.
+    assert a.fichas["cris"]["estado"] == "bloqueado"
+    assert "plan" not in a.fichas["ana"]
+
+
+def test_el_plan_de_cada_ficha():
+    assert nube.es_premium(FICHAS["ana"])
+    assert nube.es_premium(FICHAS["pia"])
+    assert not nube.es_premium(FICHAS["gus"])
+    assert not nube.es_premium(FICHAS["cris"])
+    # Un plan que no existe no es premium: lo mismo que dicen las reglas.
+    assert not nube.es_premium({"estado": "aprobado", "plan": "oro"})
+    assert not nube.es_premium(None)
 
 
 def test_un_tipo_que_no_es_de_scraper_se_rechaza():
@@ -222,7 +265,7 @@ def test_lo_tramitado_se_borra_a_la_semana():
 
 
 def test_sin_encargos_no_pasa_nada():
-    cuenta, buzon = pasar(Memoria(FICHAS))
+    cuenta, buzon = pasar(Memoria({k: v for k, v in FICHAS.items() if v["estado"] != "pendiente"}))
     assert sum(cuenta.values()) == 0 and buzon.mandados == []
 
 

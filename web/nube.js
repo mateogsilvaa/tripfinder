@@ -294,6 +294,7 @@ function nubeGuardarSesion(uid, ficha) {
     name: nombre,
     prefs: ficha.prefs || {},
     estado: ficha.estado || "pendiente",
+    plan: nubePlan(ficha),
     admin: ficha.admin === true,
     // A qué cuenta de antes de Firebase se vinculó, si lo hizo. Lo que hizo con
     // aquella —seguimientos, búsquedas— lleva su id como dueño, y con esto sigue
@@ -311,6 +312,12 @@ function nubeGuardarSesion(uid, ficha) {
   }
   return sesion;
 }
+
+/* Gratis ve los chollos; premium, además, lanza búsquedas. Una ficha sin `plan`
+   es de antes de abrir la web —la de un conocido— y es premium, igual que en
+   `firestore.rules`. */
+const nubePlan = (ficha) => (ficha && ficha.plan) || "premium";
+const nubeEsPremium = (s) => !!s && s.estado === "aprobado" && s.plan === "premium";
 
 function nubeSalir() {
   try {
@@ -366,7 +373,8 @@ async function nubeFichaDe(t, nombreSiFalta) {
     const nombre = (nombreSiFalta || (t.correo || "").split("@")[0] || "cuenta").slice(0, 40);
     try {
       await nubeCommit(t.id, [
-        nubeCrear(`usuarios/${t.uid}`, { nombre, correo: t.correo, estado: "pendiente" }),
+        // La web es abierta: se nace aprobada y gratis. Premium lo da el panel.
+        nubeCrear(`usuarios/${t.uid}`, { nombre, correo: t.correo, estado: "aprobado", plan: "gratis" }),
       ]);
     } catch (e) {
       // Si ya existía (otra pestaña acaba de crearla), se lee y listo.
@@ -374,7 +382,7 @@ async function nubeFichaDe(t, nombreSiFalta) {
     }
     ficha = await nubeLeerDoc(t.id, `usuarios/${t.uid}`);
   }
-  return ficha || { nombre: nombreSiFalta, estado: "pendiente" };
+  return ficha || { nombre: nombreSiFalta, estado: "aprobado", plan: "gratis" };
 }
 
 async function nubeAuth(operacion, cuerpo) {
@@ -556,10 +564,12 @@ async function nubeSincronizar() {
 async function nubeEncargar(tipo, payload) {
   let s = tfSesion();
   if (!s || !s.uid) return { ok: false, reason: "sin-cuenta" };
-  if (s.estado !== "aprobado") {
-    // Quizá te acaban de aprobar: se mira antes de decir que no.
+  if (!nubeEsPremium(s)) {
+    // Quizá te acaban de dar premium: se mira antes de decir que no.
     s = (await nubeSincronizar()) || s;
-    if (s.estado !== "aprobado") return { ok: false, reason: s.estado === "bloqueado" ? "bloqueada" : "pendiente" };
+    if (s.estado === "bloqueado") return { ok: false, reason: "bloqueada" };
+    if (s.estado !== "aprobado") return { ok: false, reason: "pendiente" };
+    if (!nubeEsPremium(s)) return { ok: false, reason: "gratis" };
   }
   const token = await nubeToken();
   if (!token) return { ok: false, reason: "sin-cuenta" };
@@ -574,6 +584,7 @@ async function nubeEncargar(tipo, payload) {
       const ahora = (await nubeSincronizar()) || s;
       if (ahora.estado === "bloqueado") return { ok: false, reason: "bloqueada" };
       if (ahora.estado !== "aprobado") return { ok: false, reason: "pendiente" };
+      if (!nubeEsPremium(ahora)) return { ok: false, reason: "gratis" };
     }
     if (typeof tfApuntar === "function") tfApuntar("encargo", `${tipo}: ${e.codigo}`, e.detalle);
     return { ok: false, reason: e.message };
@@ -632,7 +643,8 @@ async function nubeVincular(uid, legado, prefs) {
   if (!token) return { ok: false, error: "Entra primero." };
   try {
     await nubeCommit(token, [
-      nubeCambiar(`usuarios/${uid}`, { estado: "aprobado", legado, prefs: prefs || {} }),
+      // Tener cuenta de antes es ser un conocido: premium.
+      nubeCambiar(`usuarios/${uid}`, { estado: "aprobado", legado, prefs: prefs || {}, plan: "premium" }),
       nubeCambiar(`cuentas_antiguas/${legado}`, { vinculada: uid }),
     ]);
     return { ok: true };
@@ -641,11 +653,14 @@ async function nubeVincular(uid, legado, prefs) {
   }
 }
 
-async function nubeCambiarEstado(uid, estado) {
+/* Estado y, si se da, plan. Aprobar una pendiente de antes de abrir la web la
+   deja gratis: sin `plan`, una aprobada contaría como premium. */
+async function nubeCambiarEstado(uid, estado, plan) {
   const token = await nubeToken();
   if (!token) return { ok: false, error: "Entra primero." };
+  const campos = plan ? { estado, plan } : { estado };
   try {
-    await nubeCommit(token, [nubeCambiar(`usuarios/${uid}`, { estado })]);
+    await nubeCommit(token, [nubeCambiar(`usuarios/${uid}`, campos)]);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };

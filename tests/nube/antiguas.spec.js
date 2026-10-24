@@ -109,11 +109,11 @@ test("con el correo verificado, la administradora la vincula y hereda lo de ante
   await expect(jefa.page.locator("#stats")).toContainText("cuentas de antes sin vincular");
 
   await fila.locator("[data-vincular]").click();
-  await expect(jefa.page.locator("#nubeAviso")).toContainText("aprobada y vinculada");
+  await expect(jefa.page.locator("#nubeAviso")).toContainText("premium y vinculada");
 
   // En la base de datos: aprobada, vinculada, con sus avisos de antes.
   const f = await E.ficha(s.uid);
-  expect(f).toMatchObject({ estado: "aprobado", legado: ID_VIEJO });
+  expect(f).toMatchObject({ estado: "aprobado", legado: ID_VIEJO, plan: "premium" });
   expect(f.prefs).toMatchObject({ chollos: "semanal", seguimientos: "diario" });
   expect((await E.antigua(ID_VIEJO)).vinculada).toBe(s.uid);
 
@@ -191,7 +191,7 @@ test("quien cambió de correo se vincula igual: se elige la cuenta a mano", asyn
   await expect(fila).not.toContainText("Su correo coincide");
   await fila.locator("select").selectOption(ID_VIEJO);
   await fila.locator("[data-vincular]").click();
-  await expect(jefa.page.locator("#nubeAviso")).toContainText("aprobada y vinculada");
+  await expect(jefa.page.locator("#nubeAviso")).toContainText("premium y vinculada");
   expect((await E.ficha(s.uid)).legado).toBe(ID_VIEJO);
   await ctx.close();
   await jefa.ctx.close();

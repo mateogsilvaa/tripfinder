@@ -1701,7 +1701,7 @@ def cmd_encargos(args: argparse.Namespace) -> int:
     print(
         f"Encargos: {cuenta['enviado']} enviados, {cuenta['rechazado']} rechazados, "
         f"{cuenta['error']} con error, {cuenta['atascado']} atascados, "
-        f"{cuenta['borrado']} viejos borrados."
+        f"{cuenta['borrado']} viejos borrados, {cuenta['abiertas']} cuentas pendientes abiertas."
     )
     return 0
 
