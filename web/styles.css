@@ -3395,6 +3395,23 @@ h1 em { font-size: 1.3em; }
 .ir-ruta.corta { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; }
 .ir-ruta.corta h3 { margin: 0; font-size: var(--fs-body); }
 .ir-corta-paradas { margin: 2px 0; font-size: var(--fs-body-s); }
+.ir-corta-idea { margin: 2px 0; font-size: var(--fs-body-s); color: var(--muted); }
+/* Clásica o menos conocida: un rótulo, no un color. El naranja es del precio
+   y el verde de lo que se vigila; esto es tinta y un filete. */
+.ir-tipo {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tag);
+  font: 500 var(--fs-caps) / 1.3 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.ir-tipo.alternativa { border-style: dashed; }
+.ir-etiqueta .ir-tipo { margin: 0; padding: 0 5px; }
+.ir-monton { margin: 14px 0 6px; font: 500 var(--fs-meta) / 1.4 var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .ir-ruta.corta .meta { margin: 0; font: 400 var(--fs-meta) / 1.4 var(--font-mono); color: var(--muted); }
 .ir-ruta.corta .btn { flex: none; }
 .ir-largo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; color: var(--accent-txt); }

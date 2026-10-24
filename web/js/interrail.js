@@ -31,7 +31,7 @@
 import { POLL_EVERY_MS, esc, escURL, fetchJSON, fmtDate, parseISO } from "./base.js";
 import { ORIGENES } from "./busqueda.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso, wireEntrar } from "./disparador.js";
-import { CIUDADES, CONEXIONES, ESTACIONES, NOCTURNOS, RUTAS, ZONAS } from "./interrail-datos.js";
+import { CIUDADES, CONEXIONES, ESTACIONES, NOCTURNOS, RUTAS, TIPOS, ZONAS } from "./interrail-datos.js";
 import { comoFechaICS, descargar, evento, finDeTramo } from "./compartir.js";
 import { edreamsURL } from "./precios.js";
 
@@ -926,7 +926,9 @@ function resumenHTML(r, ctx, libres, esperando) {
   return `
     <header class="ir-resumen">
       <div class="ir-res-cab">
-        <p class="ir-etiqueta">${r.propia ? "tu ruta" : "la ruta elegida"}</p>
+        <p class="ir-etiqueta">${r.propia ? "tu ruta" : "la ruta elegida"}${
+          TIPOS[r.tipo] ? ` · <span class="ir-tipo ${esc(r.tipo)}">${esc(TIPOS[r.tipo])}</span>` : ""
+        }</p>
         <h3>${esc(r.nombre)}</h3>
         <p class="ir-res-idea">${esc(r.idea)}</p>
         <ul class="ir-res-datos">
@@ -1064,6 +1066,27 @@ function tarjeta(r, ctx, libres) {
     </article>`;
 }
 
+/* Las demás, en dos montones: las clásicas, que es lo que se viene buscando, y
+   las menos conocidas, que es lo que no se sabía que se quería. Si todas son de
+   un tipo (o de ninguno, como las rutas propias), una sola lista. */
+function cortasPorTipo(lista, ctx) {
+  const grupos = [
+    ["clasica", "Las clásicas"],
+    ["alternativa", "Menos conocidas: el mismo tren, menos gente y camas más baratas"],
+  ].map(([tipo, titulo]) => [titulo, lista.filter((r) => r.tipo === tipo)]);
+  const sinTipo = lista.filter((r) => !TIPOS[r.tipo]);
+  const llenos = grupos.filter(([, rs]) => rs.length);
+  if (llenos.length < 2) return `<div class="ir-cortas">${lista.map((r) => tarjetaCorta(r, ctx)).join("")}</div>`;
+  return (
+    llenos
+      .map(
+        ([titulo, rs]) => `<h4 class="ir-monton">${esc(titulo)}</h4>
+          <div class="ir-cortas">${rs.map((r) => tarjetaCorta(r, ctx)).join("")}</div>`
+      )
+      .join("") + (sinTipo.length ? `<div class="ir-cortas">${sinTipo.map((r) => tarjetaCorta(r, ctx)).join("")}</div>` : "")
+  );
+}
+
 /* Las demás, en corto: con lo justo para decidir si cambiarse. */
 function tarjetaCorta(r, ctx) {
   const t = totalViaje(r, { ...ctx, camas: CAMAS, vuelos: VUELOS });
@@ -1075,7 +1098,9 @@ function tarjetaCorta(r, ctx) {
   return `
     <article class="ir-ruta corta" id="ruta-${esc(r.id)}">
       <div>
+        ${TIPOS[r.tipo] ? `<span class="ir-tipo ${esc(r.tipo)}">${esc(TIPOS[r.tipo])}</span>` : ""}
         <h3>${esc(r.nombre)}</h3>
+        <p class="ir-corta-idea">${esc(r.idea || "")}</p>
         <p class="ir-corta-paradas">${r.paradas.map((p) => esc(p.ciudad)).join(" → ")}</p>
         <p class="meta">${plural(diasDeBono(r), "día", "días")} de tren · ${plural(noches(r), "noche", "noches")} ·
           ${esc(tren)}</p>
@@ -1151,7 +1176,11 @@ export function mapaSVG(elegidasSet, ruta) {
   const camino = trazado(ruta)
     .map((c) => `${px(CIUDADES[c].lon)},${py(CIUDADES[c].lat)}`)
     .join(" ");
+  // Las pequeñas encima y con menos área de toque: Padua está a diez píxeles
+  // de Venecia y Lucerna a doce de Zúrich. Lo que se pinta después recibe el
+  // toque, y con el radio entero la pequeña tapaba el centro de la grande.
   const nodos = Object.entries(CIUDADES)
+    .sort(([, a], [, b]) => Number(a.pequena) - Number(b.pequena))
     .map(([cod, c]) => {
       const x = px(c.lon);
       const y = py(c.lat);
@@ -1160,7 +1189,7 @@ export function mapaSVG(elegidasSet, ruta) {
       const menor = c.pequena && !sel && !parada;
       return `<g class="ir-nodo${sel ? " sel" : ""}${parada ? " parada" : ""}" data-ir-ciudad="${esc(cod)}"
           role="button" tabindex="0" aria-pressed="${sel}" aria-label="${esc(c.ciudad)}">
-        <circle class="ir-nodo-toque" cx="${x}" cy="${y}" r="13"/>
+        <circle class="ir-nodo-toque" cx="${x}" cy="${y}" r="${c.pequena ? 8 : 13}"/>
         <circle class="ir-nodo-punto" cx="${x}" cy="${y}" r="${sel || parada ? 6 : 4}"/>
         <text x="${x + 8}" y="${y + 4}"${menor ? ' class="menor"' : ""}>${esc(c.ciudad)}</text>
       </g>`;
@@ -1251,7 +1280,7 @@ function pintar() {
     (resto.length
       ? `<details class="ir-mas"${abierta ? " open" : ""}>
            <summary>${elegida.propia ? "Rutas hechas que pasan por ahí" : "Otras rutas"} · ${resto.length}</summary>
-           <div class="ir-cortas">${resto.map((r) => tarjetaCorta(r, ctx)).join("")}</div>
+           ${cortasPorTipo(resto, ctx)}
          </details>`
       : "");
   wireEntrar(caja);

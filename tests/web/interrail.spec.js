@@ -219,7 +219,10 @@ test.describe("las ciudades por las que quieres pasar", () => {
     await abrir(page);
     await elegir(page, "LUC");
     await expect(page.locator("#irElegidas")).toContainText("elige al menos otra");
-    await expect(page.locator(".ir-ruta.elegida")).toHaveAttribute("id", "ruta-suiza");
+    // La que más días de tren gasta pasando por Lucerna va primero; la de los
+    // lagos suizos, entre las otras.
+    await expect(page.locator(".ir-ruta.elegida")).toHaveAttribute("id", "ruta-grantour");
+    await expect(page.locator("#ruta-suiza")).toHaveCount(1);
   });
 
   test("lo elegido se queda al volver", async ({ page }) => {
@@ -461,9 +464,11 @@ test.describe("las fechas", () => {
 /* ------------------------------------------------------ las rutas hechas */
 
 test.describe("las rutas hechas", () => {
-  test("hay doce, y se puede elegir otra", async ({ page }) => {
+  test("hay veintidós, clásicas y menos conocidas, y se puede elegir otra", async ({ page }) => {
     await abrir(page);
-    await expect(page.locator("#irRutas .ir-ruta")).toHaveCount(12);
+    await expect(page.locator("#irRutas .ir-ruta")).toHaveCount(22);
+    await expect(page.locator("#irRutas .ir-monton")).toHaveCount(2);
+    await expect(page.locator("#ruta-flandes .ir-tipo")).toHaveText("menos conocida");
     await otraRuta(page, "italia");
     await expect(page.locator(".ir-ruta.elegida")).toHaveAttribute("id", "ruta-italia");
     expect((await paradas(page))[0]).toBe("Milán");
@@ -633,4 +638,15 @@ test.describe("los horarios, compartir y el calendario", () => {
     expect(ics).toContain("SUMMARY:Vuelo Budapest → Madrid");
     expect(ics).toContain("DTSTART;VALUE=DATE:20261106");
   });
+});
+
+/* Las rutas nuevas tienen que salir enteras del mapa: un tramo sin conexión
+   pintaría «sin tren» en mitad de una ruta propuesta por la propia web. */
+test("todas las rutas hechas se pueden hacer en tren, tramo a tramo", async ({ page }) => {
+  await page.goto("/interrail.html");
+  const rotas = await page.evaluate(async () => {
+    const m = await import("./js/interrail.js");
+    return m.RUTAS.map(m.rutaHecha).filter((r) => r.roto).map((r) => r.id);
+  });
+  expect(rotas).toEqual([]);
 });
