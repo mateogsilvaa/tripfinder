@@ -132,10 +132,12 @@ Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 
 ## Cuentas y panel
 
-Los chollos del día son un tablón público: los ve igual todo el que entre. Todo
-lo demás —buscar, seguir un viaje, pedir alojamiento, guardar un favorito— se
-apunta a nombre de alguien, así que **sin cuenta no se puede**. Los formularios
-se ven, pero salen apagados y con el botón de entrar al lado.
+Los chollos del día son un tablón público: los ve igual todo el que entre. Crear
+una cuenta es libre y gratis, y con ella se guardan favoritos y llegan los chollos
+por correo. Lo demás —buscar, seguir un viaje, pedir alojamiento, el Interrail—
+es de las **cuentas premium**, que da el administrador (ver
+[Firebase](#firebase-cuentas-y-base-de-datos)). Los formularios se ven, pero salen
+apagados y con el motivo puesto: entrar, o pedir premium.
 
 **El panel** (`/admin.html`, enlazado abajo del todo en cada página) pide una
 contraseña. La primera vez que entras no hay ninguna: la pones ahí mismo. Desde
@@ -236,10 +238,17 @@ siendo estática y sin build: habla con Firebase por REST, sin SDK (`web/nube.js
 con eso puesto la web funciona así. Si algún día se vacían los dos, vuelve a las cuentas de
 `data/users.json`, que siguen en el repo hasta que se retire ese sistema:
 
-- **Registrarse:** correo, contraseña y nombre. La cuenta nace `pendiente`: puede mirar la
-  web, no lanzar nada. Hay «¿Olvidaste la contraseña?» y lo manda Firebase.
-- **Aprobar:** quien lleva la web entra en `/admin.html` con su cuenta y pulsa *Aprobar* o
-  *Bloquear*. Los correos están en Firebase, no en el repo.
+- **Registrarse:** abierto a todo el mundo. Correo, contraseña y nombre, y la cuenta nace
+  **gratis** (`estado: aprobado`, `plan: gratis`): ve los chollos, guarda favoritos y recibe
+  los chollos por correo en cuanto verifica su dirección (sin verificar no se le escribe, para
+  que nadie use la web para mandar correo al buzón de otro). Hay «¿Olvidaste la contraseña?».
+- **Premium:** buscar, seguir viajes, pedir alojamiento e Interrail gastan minutos de Actions
+  y son de las cuentas premium. Las da quien lleva la web desde `/admin.html` (*Hacer premium*
+  / *Quitar premium* / *Bloquear*). **Las cuentas aprobadas de antes de abrir la web no tienen
+  `plan` y cuentan como premium**: son las de los conocidos, sin migrar nada. Vincular una
+  cuenta de antes de Firebase también da premium.
+- **Lo pendiente:** si queda alguna ficha `pendiente` (de antes, o de una web vieja en la caché
+  de alguien), `tripfinder encargos` la abre como gratis en su siguiente pasada.
 - **Lanzar búsquedas:** el navegador no lleva ya ningún token de GitHub. Apunta un *encargo*
   en Firestore y `encargos.yml` lo recoge cada cinco minutos y levanta el workflow que toque,
   **a nombre de la cuenta que lo pidió** (lo lee de su ficha, no del encargo). Una búsqueda
