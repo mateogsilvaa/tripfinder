@@ -3671,3 +3671,13 @@ fieldset.avisos legend { padding: 0; }
 .dias-par { display: flex; align-items: flex-end; gap: 8px; }
 .dias-par > label { flex: 1; display: grid; gap: 4px; }
 .dias-flecha { padding-bottom: 10px; color: var(--muted); font-family: var(--font-mono); }
+
+/* Entrar: Google arriba si está configurado, una raya, y el correo. */
+.login { display: grid; gap: 10px; }
+.login-google { display: flex; justify-content: center; min-height: 44px; }
+.login-o { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--muted); font: 400 var(--fs-meta) / 1 var(--font-mono); }
+.login-o::before, .login-o::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.login-pista { margin: -2px 0 0; }
+.login-boton { width: 100%; }
+.login-hecho { margin: 0; font-weight: 600; }
+#nubeOlvide.resalta { border-color: var(--accent-txt); color: var(--accent-txt); }

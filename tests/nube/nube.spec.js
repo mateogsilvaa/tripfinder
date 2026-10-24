@@ -15,11 +15,15 @@ test.beforeEach(async ({ page }) => {
 const clave = "una-clave-larga-1";
 
 /* Registrarse por la pantalla, como lo haría quien llega a la web. */
-async function registrarse(page, { nombre = "Dani", correo = E.correoNuevo(), pass = clave, espera = true } = {}) {
+/* Una sola pantalla: correo, contraseña y «Continuar». Si la cuenta es nueva,
+   un segundo paso pregunta el nombre (ya puesto, sacado del correo) y «Listo»
+   recarga la página. `listo: false` se queda en ese segundo paso. */
+async function registrarse(
+  page,
+  { nombre = "Dani", correo = E.correoNuevo(), pass = clave, espera = true, listo = true } = {}
+) {
   await page.goto("/index.html");
   await page.locator("#tfCuenta").click();
-  await page.locator('[data-modo="registro"]').click();
-  await page.locator("#nubeNombre").fill(nombre);
   await page.locator("#nubeCorreo").fill(correo);
   await page.locator("#nubePass").fill(pass);
   await page.locator("#nubeForm button[type=submit]").click();
@@ -30,15 +34,32 @@ async function registrarse(page, { nombre = "Dani", correo = E.correoNuevo(), pa
       const s = JSON.parse(localStorage.getItem("tf_sesion") || "null");
       return s && s.nube;
     });
+    await expect(page.locator("#nubeBienvenida")).toBeVisible();
+    if (listo) {
+      await page.locator("#nubeNombre").fill(nombre);
+      await Promise.all([page.waitForEvent("load"), page.locator("#nubeListo").click()]);
+    }
   }
   return correo;
 }
 
 const sesion = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("tf_sesion") || "null"));
 
-test("registrarse abre una cuenta gratis al momento y lo dice", async ({ page }) => {
+test("una sola pantalla: con un correo nuevo, la cuenta se crea y pregunta el nombre", async ({ page }) => {
+  const correo = E.correoNuevo();
+  await registrarse(page, { correo, listo: false });
+  await expect(page.locator("#nubeBienvenida")).toContainText("Cuenta creada");
+  await expect(page.locator("#nubeBienvenida")).toContainText("Plan gratis");
+  // El nombre de casa sale del correo, y se cambia ahí mismo.
+  await expect(page.locator("#nubeNombre")).toHaveValue(/^Prueba/);
+  await page.locator("#nubeNombre").fill("Dani");
+  await Promise.all([page.waitForEvent("load"), page.locator("#nubeListo").click()]);
+  expect((await E.ficha((await sesion(page)).uid)).nombre).toBe("Dani");
+  await expect(page.locator("#tfCuenta")).toContainText("Dani");
+});
+
+test("registrarse abre una cuenta gratis al momento", async ({ page }) => {
   const correo = await registrarse(page);
-  await expect(page.locator("#nubeMsg")).toContainText("Plan gratis");
   const s = await sesion(page);
   expect(s).toMatchObject({ estado: "aprobado", plan: "gratis" });
   expect(s.name).toBe("Dani");
@@ -114,7 +135,7 @@ test("entrar con la contraseña mal no entra, con la buena sí", async ({ page }
   await page.locator("#nubeCorreo").fill(correo);
   await page.locator("#nubePass").fill("otra-clave-distinta");
   await page.locator("#nubeForm button[type=submit]").click();
-  await expect(page.locator("#nubeMsg")).toContainText("Correo o contraseña incorrectos");
+  await expect(page.locator("#nubeMsg")).toContainText("la contraseña no es esa");
   expect(await sesion(page)).toBeNull();
 
   await page.locator("#nubePass").fill(clave);
@@ -123,12 +144,25 @@ test("entrar con la contraseña mal no entra, con la buena sí", async ({ page }
   expect(await sesion(page)).toMatchObject({ estado: "aprobado", plan: "gratis" });
 });
 
-test("no se puede registrar dos veces el mismo correo", async ({ page }) => {
+test("con un correo que ya tiene cuenta y otra contraseña, no crea otra: dice que la contraseña no es", async ({ page }) => {
   const correo = await registrarse(page);
   await page.evaluate(() => tfSalir());
-  await registrarse(page, { correo, espera: false });
-  await expect(page.locator("#nubeMsg")).toContainText("Ya hay una cuenta con ese correo");
+  await registrarse(page, { correo, pass: "otra-clave-larga-2", espera: false });
+  await expect(page.locator("#nubeMsg")).toContainText("ya tiene cuenta y la contraseña no es esa");
+  await expect(page.locator("#nubeOlvide")).toHaveClass(/resalta/);
   expect(await sesion(page)).toBeNull();
+});
+
+test("con el correo y la contraseña de siempre, Continuar entra sin preguntar nada", async ({ page }) => {
+  const correo = await registrarse(page);
+  await page.evaluate(() => tfSalir());
+  await page.goto("/index.html");
+  await page.locator("#tfCuenta").click();
+  // El correo de la última vez ya está puesto.
+  await expect(page.locator("#nubeCorreo")).toHaveValue(correo);
+  await page.locator("#nubePass").fill(clave);
+  await Promise.all([page.waitForEvent("load"), page.locator("#nubeForm button[type=submit]").click()]);
+  expect((await sesion(page)).nube).toBe(true);
 });
 
 test("las contraseñas cortas y los correos raros se paran antes de llamar", async ({ page }) => {
@@ -136,8 +170,6 @@ test("las contraseñas cortas y los correos raros se paran antes de llamar", asy
   let llamadas = 0;
   page.on("request", (r) => r.url().includes("identitytoolkit") && llamadas++);
   await page.locator("#tfCuenta").click();
-  await page.locator('[data-modo="registro"]').click();
-  await page.locator("#nubeNombre").fill("Dani");
   await page.locator("#nubeCorreo").fill("sin-arroba");
   await page.locator("#nubePass").fill(clave);
   await page.locator("#nubeForm button[type=submit]").click();
@@ -216,7 +248,6 @@ test("un corte de red al renovar no tira la sesión", async ({ page }) => {
 test("tu cuenta enseña el correo y el estado, y guarda el nombre y los avisos", async ({ page }) => {
   const correo = await registrarse(page);
   const s = await sesion(page);
-  await page.locator(".modal [data-cerrar]").click();
   await page.locator("#tfCuenta").click();
   await expect(page.locator("#tfModal")).toContainText(correo);
   await expect(page.locator("#nubeEstado")).toContainText("Plan gratis");
@@ -238,7 +269,6 @@ test("tu cuenta enseña el correo y el estado, y guarda el nombre y los avisos",
 
 test("cambiar la contraseña: la vieja deja de valer y la nueva entra", async ({ page }) => {
   const correo = await registrarse(page);
-  await page.locator(".modal [data-cerrar]").click();
   await page.locator("#tfCuenta").click();
   await page.locator("#nubeClaveVieja").fill("la-que-no-es-1");
   await page.locator("#nubeClaveNueva").fill("la-nueva-clave-2");
@@ -271,8 +301,8 @@ test("olvidé la contraseña manda el correo sin decir si la cuenta existe", asy
 test("«Pedir una cuenta» abre el registro", async ({ page }) => {
   await page.goto("/index.html");
   await page.locator("[data-pedir-cuenta]").first().click();
-  await expect(page.locator('[data-modo="registro"]')).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#nubeNombre")).toBeVisible();
+  await expect(page.locator("#tfModal h2")).toHaveText("Crea tu cuenta");
+  await expect(page.locator("#nubeCorreo")).toBeVisible();
 });
 
 test("sin configuración la web sigue con las cuentas de siempre", async ({ browser }) => {

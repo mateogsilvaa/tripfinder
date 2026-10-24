@@ -27,6 +27,13 @@
 const NUBE_CONFIG = {
   apiKey: "AIzaSyAisQaTaTO0Kn7lBQmJ7YgekpDIGoyz1gA",
   projectId: "trip-a9418",
+  /* ENTRAR CON GOOGLE. Vacío, el botón no sale. Para encenderlo: en Firebase,
+     Authentication → Método de acceso → Google → Activar; ahí mismo, en
+     «Configuración del SDK web», está el «ID de cliente web»
+     (…apps.googleusercontent.com): va aquí. Y en Google Cloud → Credenciales →
+     ese cliente OAuth, en «Orígenes de JavaScript autorizados», la dirección
+     de la web. No es un secreto: el navegador lo enseña igual. */
+  googleClientId: "",
 };
 
 const NUBE_CLAVE = "tf_nube"; // los tokens: refresh, id, cuándo caduca, de quién
@@ -459,10 +466,18 @@ async function nubeVerificacion(ficha) {
   return verificado;
 }
 
+/* El nombre de casa, si no se da otro: lo de antes de la arroba, sin números
+   ni puntos y con mayúscula. «ana.garcia91@…» -> «Ana garcia». Se cambia luego
+   en «tu cuenta». */
+function nubeNombreDeCorreo(correo) {
+  const base = String(correo || "").split("@")[0].replace(/[._-]+/g, " ").replace(/\d+/g, "").trim();
+  const n = (base || "viajero").slice(0, 40);
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
 async function nubeRegistrar(correo, clave, nombre) {
   correo = String(correo || "").trim().toLowerCase();
-  nombre = String(nombre || "").trim();
-  if (!nombre) return { ok: false, error: "Falta tu nombre: es como te va a llamar la web." };
+  nombre = String(nombre || "").trim() || nubeNombreDeCorreo(correo);
   if (nombre.length > 40) return { ok: false, error: "El nombre, de 40 caracteres como mucho." };
   if (!nubeValidarCorreo(correo)) return { ok: false, error: NUBE_TEXTOS.INVALID_EMAIL };
   if (String(clave || "").length < NUBE_MIN_CLAVE) return { ok: false, error: NUBE_TEXTOS.WEAK_PASSWORD };
@@ -499,6 +514,62 @@ async function nubeEntrar(correo, clave) {
     const sesion = nubeGuardarSesion(t.uid, ficha);
     if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
     return { ok: true, sesion };
+  } catch (e) {
+    return { ok: false, error: e.message, codigo: e.codigo };
+  }
+}
+
+/* ENTRAR O CREAR, CON UN SOLO BOTÓN. Antes eran dos pestañas y la mitad de los
+   «no me deja entrar» eran gente en la equivocada: registrándose con un correo
+   que ya tenía cuenta, o entrando con uno que no. Ahora se prueba a entrar y,
+   si Firebase dice que esas credenciales no valen, se prueba a crear la
+   cuenta: si el correo ya existe, lo que falla es la contraseña, y se dice
+   eso. Firebase no deja saber si un correo tiene cuenta sin más (protección
+   contra enumeración), y así tampoco hace falta. */
+const NUBE_CREDENCIALES_MALAS = ["INVALID_LOGIN_CREDENTIALS", "INVALID_PASSWORD", "EMAIL_NOT_FOUND"];
+
+async function nubeContinuar(correo, clave) {
+  correo = String(correo || "").trim().toLowerCase();
+  if (!nubeValidarCorreo(correo)) return { ok: false, error: NUBE_TEXTOS.INVALID_EMAIL };
+  if (!clave) return { ok: false, error: "Falta la contraseña." };
+  // Ninguna cuenta de aquí tiene una más corta: se dice sin preguntar a nadie.
+  if (String(clave).length < NUBE_MIN_CLAVE) {
+    return { ok: false, codigo: "clave-mala", error: `La contraseña tiene ${NUBE_MIN_CLAVE} caracteres o más.` };
+  }
+  const dentro = await nubeEntrar(correo, clave);
+  if (dentro.ok || !NUBE_CREDENCIALES_MALAS.includes(dentro.codigo)) return { ...dentro, nueva: false };
+  const nueva = await nubeRegistrar(correo, clave, "");
+  if (nueva.ok) return { ...nueva, nueva: true };
+  if (nueva.codigo === "EMAIL_EXISTS") {
+    return { ok: false, codigo: "clave-mala", error: "Ese correo ya tiene cuenta y la contraseña no es esa." };
+  }
+  return nueva;
+}
+
+/* Con Google: el botón de Google da un `credential` (un token firmado por
+   Google) y Firebase lo cambia por una sesión suya. La primera vez crea la
+   cuenta; el nombre sale del de Google. */
+const nubeGoogleId = () => (nubeConfig() || {}).googleClientId || "";
+
+async function nubeConGoogle(credential) {
+  try {
+    const r = await nubeAuth("signInWithIdp", {
+      postBody: `id_token=${encodeURIComponent(credential)}&providerId=google.com`,
+      requestUri: location.origin,
+      returnSecureToken: true,
+      returnIdpCredential: true,
+    });
+    const t = nubeDeRespuesta(r);
+    nubeGuardarTokens(t);
+    const ficha = await nubeFichaDe(t, r.displayName || r.firstName || nubeNombreDeCorreo(r.email));
+    if (ficha.estado === "bloqueado") {
+      nubeSalir();
+      return { ok: false, error: "Esta cuenta está bloqueada.", codigo: "bloqueada" };
+    }
+    nubeAdoptarDeLasCuentasViejas(t.uid);
+    const sesion = nubeGuardarSesion(t.uid, ficha);
+    if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
+    return { ok: true, sesion, nueva: !!r.isNewUser };
   } catch (e) {
     return { ok: false, error: e.message, codigo: e.codigo };
   }

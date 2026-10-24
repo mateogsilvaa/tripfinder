@@ -24,11 +24,9 @@ async function persona(browser) {
   return { ctx, page: await ctx.newPage() };
 }
 
-async function registrarse(page, { nombre, correo }) {
+async function registrarse(page, { nombre, correo, listo = true }) {
   await page.goto("/index.html");
   await page.locator("#tfCuenta").click();
-  await page.locator('[data-modo="registro"]').click();
-  await page.locator("#nubeNombre").fill(nombre);
   await page.locator("#nubeCorreo").fill(correo);
   await page.locator("#nubePass").fill(clave);
   await page.locator("#nubeForm button[type=submit]").click();
@@ -36,6 +34,10 @@ async function registrarse(page, { nombre, correo }) {
     const s = JSON.parse(localStorage.getItem("tf_sesion") || "null");
     return s && s.nube;
   });
+  if (listo) {
+    await page.locator("#nubeNombre").fill(nombre);
+    await Promise.all([page.waitForEvent("load"), page.locator("#nubeListo").click()]);
+  }
   return JSON.parse(await page.evaluate(() => localStorage.getItem("tf_sesion")));
 }
 
@@ -60,9 +62,9 @@ async function antiguaDe(correo) {
 }
 
 test("al registrarse se manda el correo de verificación y consta como sin verificar", async ({ page }) => {
-  const s = await registrarse(page, { nombre: "Ana", correo: E.correoNuevo() });
+  const s = await registrarse(page, { nombre: "Ana", correo: E.correoNuevo(), listo: false });
   expect(s.verificado).toBe(false);
-  await expect(page.locator("#nubeMsg")).toContainText("verificar que la dirección es tuya");
+  await expect(page.locator("#nubeBienvenida")).toContainText("confirmar la dirección");
   expect((await E.ficha(s.uid)).verificado).toBeUndefined();
 });
 
@@ -76,7 +78,6 @@ test("pinchar el enlace del correo la deja verificada, y la ficha lo dice", asyn
 
 test("tu cuenta avisa de que falta verificar y se comprueba con un botón", async ({ page }) => {
   const s = await registrarse(page, { nombre: "Ana", correo: E.correoNuevo() });
-  await page.locator(".modal [data-cerrar]").click();
   await page.locator("#tfCuenta").click();
   await expect(page.locator("#nubeVerificar")).toContainText("Falta verificar tu correo");
   await page.locator("#nubeYaVerifique").click();
@@ -209,7 +210,6 @@ test("tu cuenta dice que la de antes está vinculada", async ({ browser }) => {
   await jefa.page.locator(`[data-cuenta="${s.uid}"] [data-vincular]`).click();
   await expect(jefa.page.locator("#nubeAviso")).toContainText("vinculada");
 
-  await page.locator(".modal [data-cerrar]").click();
   await page.locator("#tfCuenta").click();
   await expect(page.locator("#nubeVinculada")).toContainText("Tu cuenta de antes está vinculada");
   await ctx.close();
