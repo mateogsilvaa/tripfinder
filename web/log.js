@@ -327,3 +327,120 @@ function tfMarcarCaja(si) {
 function tfEsDeLaCaja() {
   return tfDeLaCaja;
 }
+
+/* ------------------------------------------------- ofrecer instalarla como app
+   En el móvil, a la pantalla de inicio; en el ordenador, como una ventana
+   propia, sin la barra del navegador. Chrome y Edge avisan con
+   `beforeinstallprompt`: se guarda y se ofrece con nuestras palabras, abajo y
+   pequeño. Safari en iPhone no avisa de nada, así que ahí se explica el gesto.
+
+   SIN DAR LA LATA: nunca en la primera visita (quien acaba de llegar no sabe
+   aún si le sirve), nunca si ya está instalada, y «Ahora no» calla treinta
+   días. Y siempre queda el botón del pie, para quien lo quiera luego. */
+const TF_INSTALAR_NO = "tf_instalar_no";
+const TF_VISITAS = "tf_visitas";
+let tfAvisoInstalar = null;
+
+const tfInstalada = () =>
+  (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) || navigator.standalone === true;
+const tfEsIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) && !/crios|fxios|edgios/i.test(navigator.userAgent);
+const tfEsMovil = () => (window.matchMedia ? window.matchMedia("(pointer: coarse)").matches : false);
+
+function tfPuedeOfrecer() {
+  if (tfInstalada() || !document.querySelector('link[rel="manifest"]')) return false;
+  try {
+    const no = Number(localStorage.getItem(TF_INSTALAR_NO) || 0);
+    if (no && Date.now() - no < 30 * 864e5) return false;
+    return Number(localStorage.getItem(TF_VISITAS) || 0) >= 2;
+  } catch {
+    return false;
+  }
+}
+
+function tfOfrecerInstalar(forzar = false) {
+  if (!forzar && !tfPuedeOfrecer()) return;
+  if (document.getElementById("tfInstalar")) return;
+  const ios = !tfAvisoInstalar && tfEsIOS();
+  if (!tfAvisoInstalar && !ios) return;
+  const caja = document.createElement("aside");
+  caja.id = "tfInstalar";
+  caja.className = "instalar";
+  caja.setAttribute("role", "dialog");
+  caja.setAttribute("aria-label", "Instalar TripFinder");
+  const donde = tfEsMovil() ? "en tu pantalla de inicio" : "en tu ordenador, como una app";
+  caja.innerHTML = ios
+    ? `<p><b>TripFinder ${donde}.</b> Pulsa <span class="instalar-ico" aria-label="Compartir">⎙</span>
+         Compartir y luego «Añadir a pantalla de inicio».</p>
+       <button type="button" class="btn ghost small" data-instalar-no>Entendido</button>`
+    : `<p><b>TripFinder ${donde}.</b> Se abre en su propia ventana y avisa más rápido.</p>
+       <button type="button" class="btn primary small" data-instalar-si>Instalar</button>
+       <button type="button" class="btn ghost small" data-instalar-no>Ahora no</button>`;
+  document.body.appendChild(caja);
+  const quitar = () => caja.remove();
+  caja.querySelector("[data-instalar-no]").addEventListener("click", () => {
+    try {
+      localStorage.setItem(TF_INSTALAR_NO, String(Date.now()));
+    } catch {
+      /* navegación privada */
+    }
+    quitar();
+  });
+  const si = caja.querySelector("[data-instalar-si]");
+  if (si) {
+    si.addEventListener("click", async () => {
+      const aviso = tfAvisoInstalar;
+      tfAvisoInstalar = null;
+      quitar();
+      if (!aviso) return;
+      aviso.prompt();
+      try {
+        await aviso.userChoice;
+      } catch {
+        /* da igual lo que conteste */
+      }
+      tfPintarBotonInstalar();
+    });
+  }
+}
+
+/* El botón del pie: sale cuando el navegador deja instalar (o en un iPhone) y
+   no está instalada ya. */
+function tfPintarBotonInstalar() {
+  const pie = document.querySelector(".foot-in");
+  if (!pie) return;
+  let b = document.getElementById("tfInstalarPie");
+  const puede = !tfInstalada() && (tfAvisoInstalar || tfEsIOS());
+  if (!puede) {
+    if (b) b.remove();
+    return;
+  }
+  if (b) return;
+  b = document.createElement("button");
+  b.id = "tfInstalarPie";
+  b.type = "button";
+  b.className = "instalar-pie";
+  b.textContent = tfEsMovil() ? "Instalar la app" : "Instalar en el ordenador";
+  b.addEventListener("click", () => tfOfrecerInstalar(true));
+  pie.appendChild(b);
+}
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  tfAvisoInstalar = e;
+  tfPintarBotonInstalar();
+  setTimeout(() => tfOfrecerInstalar(), 4000);
+});
+window.addEventListener("appinstalled", () => {
+  tfAvisoInstalar = null;
+  document.getElementById("tfInstalar")?.remove();
+  tfPintarBotonInstalar();
+});
+window.addEventListener("load", () => {
+  try {
+    localStorage.setItem(TF_VISITAS, String(Number(localStorage.getItem(TF_VISITAS) || 0) + 1));
+  } catch {
+    /* navegación privada */
+  }
+  tfPintarBotonInstalar();
+  if (tfEsIOS()) setTimeout(() => tfOfrecerInstalar(), 4000);
+});
