@@ -195,8 +195,8 @@ export function cajaAcceso(r) {
         }</strong>
         ${
           sinCuenta
-            ? `Los chollos del día los ve todo el mundo. Buscar, seguir un viaje o pedir
-               alojamiento se guarda a tu nombre y es de las cuentas premium: entra con la tuya.`
+            ? `Buscar, seguir un viaje o pedir alojamiento se guarda a tu nombre. Entra o
+               crea tu cuenta: es gratis.`
             : aprobacion
               ? r.reason === "bloqueada"
                 ? "Tu cuenta está bloqueada."

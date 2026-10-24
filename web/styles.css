@@ -4064,3 +4064,47 @@ h1 { line-height: 1.02; margin: 6px 0 10px; }
   .cuenta, #tfCuenta { padding: 10px 12px; }
 }
 .foot-enlace { display: inline-flex; align-items: center; min-width: var(--tap-min); min-height: var(--tap-min); justify-content: center; }
+
+/* «Hace falta una cuenta»: el texto y, debajo, los dos botones a su tamaño.
+   En columna, Entrar era una barra naranja de lado a lado. */
+.token-box { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.token-box > strong, .token-box > :not(.btn) { flex-basis: 100%; }
+.token-box .btn { flex: none; }
+.ir-ev-ico svg { display: inline-block; vertical-align: -3px; }
+
+/* El número de lo que sigues, pegado al nombre de la pestaña. Verde: es lo que
+   se vigila, no un precio. */
+.insignia {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  margin-left: 2px;
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  color: var(--paper);
+  font: 600 10px / 1 var(--font-mono);
+  letter-spacing: 0;
+}
+.tab .insignia { position: absolute; top: 4px; left: calc(50% + 6px); margin: 0; }
+
+/* La tecla del atajo, dentro del buscador del feed. */
+.field.con-tecla { position: relative; }
+.tecla {
+  position: absolute;
+  right: 8px;
+  bottom: 10px;
+  min-width: 20px;
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  color: var(--muted);
+  font: 500 var(--fs-meta) / 1 var(--font-mono);
+  text-align: center;
+  pointer-events: none;
+  transition: opacity var(--t) var(--ease);
+}
+.field.con-tecla:focus-within .tecla { opacity: 0; }
+@media (max-width: 760px) { .tecla { display: none; } }

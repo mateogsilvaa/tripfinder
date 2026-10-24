@@ -37,6 +37,18 @@ import { edreamsURL } from "./precios.js";
 
 export { CIUDADES, NOCTURNOS, RUTAS };
 
+/* Los iconos del día a día, de línea y del color del texto: los mismos trazos
+   que los del menú. Antes eran emojis, y un emoji sale distinto en cada
+   sistema y con colores que no son los de la web. */
+const svg = (d) =>
+  `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" stroke-linejoin="round" focusable="false">${d}</svg>`;
+const ICO = {
+  avion: svg('<path d="M10.5 13.5 3.5 11l1.2-1.6 7.3 1 4.2-4.6a2 2 0 0 1 2.9 2.8L14.5 13l1 7.3-1.6 1.2-2.5-7z"/>'),
+  tren: svg('<rect x="6" y="3.5" width="12" height="13.5" rx="3.2"/><path d="M6 11.2h12M9.3 20.5 8 21.8M14.7 20.5l1.3 1.3"/>'),
+  noche: svg('<path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"/>'),
+};
+
 /* «2 h 21», «50 min». Sin ceros a la izquierda y sin decir «0 h». */
 export function enHoras(min) {
   const h = Math.floor(min / 60);
@@ -658,7 +670,7 @@ function vueloHTML(sentido, r, ctx, v, buscando) {
     : "";
   return `<li class="ir-ev ir-ev-vuelo">
       <span class="ir-ev-dia">${esc(fechaCorta(dia))}</span>
-      <span class="ir-ev-ico" aria-hidden="true">✈</span>
+      <span class="ir-ev-ico" aria-hidden="true">${ICO.avion}</span>
       <div class="ir-ev-cuerpo">
         <p class="ir-ev-titulo">${titulo}</p>
         ${estado}
@@ -770,17 +782,17 @@ function tramoHTML(r, i, p, siguiente) {
   const n = t.noche || t.nocturnoPosible;
   const nocturno = n
     ? t.noche
-      ? `<div class="ir-nocturno"><span>🌙 Noche en el tren: una noche menos de piso.</span>
+      ? `<div class="ir-nocturno"><span>Noche en el tren: una noche menos de piso.</span>
            <button type="button" class="btn ghost small" data-ir-noche="${esc(clave)}">Mejor de día</button></div>`
       : p.noches > 0
-        ? `<div class="ir-nocturno"><span>🌙 Hay tren nocturno (sale ≈ ${esc(n.sale)}, llega ≈ ${esc(n.llega)}):
+        ? `<div class="ir-nocturno"><span>Hay tren nocturno (sale ≈ ${esc(n.sale)}, llega ≈ ${esc(n.llega)}):
              te ahorras una noche de piso; litera con el pase ≈ ${horquilla(n.litera)}.</span>
            <button type="button" class="btn ghost small" data-ir-noche="${esc(clave)}">Ir de noche</button></div>`
         : ""
     : "";
   return `<li class="ir-ev ir-ev-tren${t.noche ? " de-noche" : ""}">
       <span class="ir-ev-dia">${esc(fechaCorta(p.deNoche ? p.checkout : p.sale))}</span>
-      <span class="ir-ev-ico" aria-hidden="true">${t.noche ? "🌙" : "🚆"}</span>
+      <span class="ir-ev-ico" aria-hidden="true">${t.noche ? ICO.noche : ICO.tren}</span>
       <div class="ir-ev-cuerpo">
         <p class="ir-ev-titulo">${esc(p.ciudad)} → ${esc(siguiente.ciudad)}</p>
         <p class="ir-ev-meta">${horas} · billete suelto ≈ ${horquilla(t.billete)}</p>
