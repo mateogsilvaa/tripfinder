@@ -671,5 +671,14 @@ async function nubeCambiarEstado(uid, estado, plan) {
    te han aprobado, la próxima acción ya lo sabe. */
 if (nubeActiva()) {
   const s = tfSesion();
-  if (s && s.nube) setTimeout(nubeSincronizar, 800);
+  if (s && s.nube) {
+    setTimeout(async () => {
+      const antes = nubeEsPremium(s);
+      const ahora = await nubeSincronizar();
+      // Si te acaban de dar premium (o quitártelo), los formularios se pintaron
+      // con lo de antes: apagados, o encendidos sin poder. Se recarga una vez;
+      // a la siguiente ya coincide y no vuelve a pasar.
+      if (ahora && ahora.nube && nubeEsPremium(ahora) !== antes) location.reload();
+    }, 800);
+  }
 }

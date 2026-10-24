@@ -376,7 +376,11 @@ test("buscar con la cuenta premium apunta el encargo con lo que sale del formula
   await registrarse(page);
   const s = await sesion(page);
   await E.hacerPremium(s.uid);
+  // La sesión guardada aún dice gratis: la página lo descubre al cargar y se
+  // recarga sola con el formulario encendido.
   await page.goto("/buscar.html");
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("tf_sesion") || "{}").plan === "premium");
+  await expect(page.locator('button[form="finderForm"]')).toBeEnabled();
   await page.locator('button[form="finderForm"]').click();
   await expect(page.locator("#searches")).toContainText("preguntando destino a destino");
   const [e] = await E.encargosDe(s.uid);
