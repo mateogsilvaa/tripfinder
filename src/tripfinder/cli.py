@@ -1122,6 +1122,7 @@ def cmd_search(args: argparse.Namespace) -> int:
         return_date=getattr(args, "return") or "",
         desde=args.desde or "",
         hasta=args.hasta or "",
+        dias=getattr(args, "dias", "") or "",
         owner=primer_dueno(args.owner),
         owner_name=args.owner_name or "",
     )
@@ -1886,6 +1887,7 @@ def build_parser() -> argparse.ArgumentParser:
     # quiere decir con fechas flexibles.
     b.add_argument("--desde", help="Primer dia del tramo en que puedes viajar (YYYY-MM-DD)")
     b.add_argument("--hasta", help="Ultimo dia del tramo (YYYY-MM-DD)")
+    b.add_argument("--dias", default="", help="Dias de ida y vuelta, 0=lunes: 0-3 es de lunes a jueves")
     b.add_argument("--adults", type=int)
     b.add_argument("--summary-out")
     b.add_argument("--owner", default="", help="Id de la cuenta que la pide")

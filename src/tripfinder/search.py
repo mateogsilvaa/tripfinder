@@ -48,6 +48,10 @@ class SearchRequest:
     # mira ninguno.
     desde: str = ""
     hasta: str = ""
+    # Unos dias de la semana, cualquier semana: "0-3" es salir un lunes y volver
+    # un jueves. Es otra forma de no saber la fecha: no importa que semana, pero
+    # si que dias, porque son los que se pueden coger libres.
+    dias: str = ""
     # Quien la pidio. Vacio = busqueda de antes de las cuentas: la ve todo el mundo.
     owner: str = ""
     owner_name: str = ""
@@ -61,6 +65,16 @@ class SearchRequest:
         """
         limpio = str(self.origin or "").strip().upper()
         self.origin = limpio if re.fullmatch(r"[A-Z]{3}", limpio) else "MAD"
+        par = dias_de_la_semana(self.dias)
+        self.dias = f"{par[0]}-{par[1]}" if par else ""
+        if par:
+            # Las noches salen de los dos dias: de lunes a jueves son tres.
+            self.nights_min = self.nights_max = (par[1] - par[0]) % 7 or 7
+            self.weekend_only = False
+
+    @property
+    def par_de_dias(self) -> tuple[int, int] | None:
+        return dias_de_la_semana(self.dias)
 
     @property
     def slug(self) -> str:
@@ -74,6 +88,8 @@ class SearchRequest:
         que es lo que de verdad hace que dos busquedas sean distintas.
         """
         partes = [self.origin, self.destination or "todos", f"{self.nights_min}{self.nights_max}"]
+        if self.dias:
+            partes.append("dias" + self.dias.replace("-", ""))
         if self.max_price:
             partes.append(str(int(self.max_price)))
         if self.depart:
@@ -418,6 +434,12 @@ def _paso(dias_ventana: int) -> int:
     return max(7, dias_ventana // 45 + 1)
 
 
+def dias_de_la_semana(texto: str) -> tuple[int, int] | None:
+    """ "0-3" -> (0, 3): lunes a jueves. None si no son dos dias de 0 a 6."""
+    m = re.fullmatch(r"\s*([0-6])\s*-\s*([0-6])\s*", str(texto or ""))
+    return (int(m.group(1)), int(m.group(2))) if m else None
+
+
 def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, date]]:
     """Fechas a probar: los findes del horizonte, o el dia 1 y 15 de cada mes."""
     hoy = date.today()
@@ -451,9 +473,14 @@ def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, 
             tope = final
         hoy, fin = principio, tope
 
-    if req.weekend_only:
-        salida = int(weekend_cfg.get("outbound_weekday", 4))
-        vuelta = int(weekend_cfg.get("inbound_weekday", 6))
+    # Unos dias fijos de la semana (de lunes a jueves) o el finde de siempre:
+    # las dos son lo mismo, una ida y una vuelta cada semana del horizonte.
+    par = req.par_de_dias
+    if par or req.weekend_only:
+        salida, vuelta = par or (
+            int(weekend_cfg.get("outbound_weekday", 4)),
+            int(weekend_cfg.get("inbound_weekday", 6)),
+        )
         noches = (vuelta - salida) % 7 or 7
         # Con ventana, el primer viernes puede ser el mismo dia en que empieza;
         # sin ventana se salta el de hoy, que ya no se compra.
@@ -475,6 +502,11 @@ def _candidate_trips(req: SearchRequest, weekend_cfg: dict) -> list[tuple[date, 
         dias.append((d, d + timedelta(days=req.nights_min)))
         d += timedelta(days=salto)
     return dias
+
+
+def _en_sus_dias(o: FlightOffer, par: tuple[int, int]) -> bool:
+    ida, vuelta = _fecha(o.depart_date), _fecha(o.return_date or "")
+    return ida is not None and vuelta is not None and (ida.weekday(), vuelta.weekday()) == par
 
 
 def _google_candidatas(
@@ -709,6 +741,10 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
         o.useful_hours = useful_hours(o)
     if req.max_price:
         ofertas = [o for o in ofertas if o.price <= req.max_price]
+    # Con dias fijos, solo los viajes que salen y vuelven esos dias: Google y
+    # Wizz devuelven lo mas barato de alrededor y se colaba un martes.
+    if req.par_de_dias:
+        ofertas = [o for o in ofertas if _en_sus_dias(o, req.par_de_dias)]
 
     # Ryanair, Wizz y Google devuelven el mismo viaje: se fusionan por ruta y
     # fecha como en el scan, quedandose con la mas barata y guardando el resto

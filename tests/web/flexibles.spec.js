@@ -56,7 +56,7 @@ test.describe("el formulario", () => {
     const opciones = await page.locator("#fWhen option").evaluateAll((os) =>
       os.map((o) => o.value)
     );
-    expect(opciones).toEqual(["weekend", "mes", "mes-finde", "tramo", "exact", "anytime"]);
+    expect(opciones).toEqual(["weekend", "mes", "mes-finde", "dias", "tramo", "exact", "anytime"]);
   });
 
   test("elegir un mes enseña los doce que vienen, con su año", async ({ page }) => {
@@ -159,6 +159,24 @@ test.describe("el encargo", () => {
     // Un tramo NO son fechas exactas: si viajara como `depart`, el backend
     // buscaría ese día y solo ese.
     expect(p.viaje.depart).toBe("");
+  });
+
+  test("unos días de la semana: de lunes a jueves, cualquier semana", async ({ page }) => {
+    await enBuscar(page);
+    const enviar = await lanzar(page);
+    await page.selectOption("#fWhen", "dias");
+    await expect(page.locator("#diasWrap")).toBeVisible();
+    // Las noches salen de los dos días: el campo sobra.
+    await expect(page.locator("#nightsWrap")).toBeHidden();
+    await expect(page.locator("#fDiaIda")).toHaveValue("0");
+    await expect(page.locator("#fDiaVuelta")).toHaveValue("3");
+    await page.selectOption("#fDiaVuelta", "4");
+    const p = (await enviar()).client_payload;
+    expect(p.viaje.dias).toBe("0-4");
+    expect(p.weekend).toBe("no");
+    expect(p.viaje.depart).toBe("");
+    expect(p.label).toContain("lun → vie");
+    expect(Object.keys(p).length).toBeLessThanOrEqual(10);
   });
 
   test("las fechas exactas siguen yendo como fechas exactas", async ({ page }) => {

@@ -145,7 +145,11 @@ const HINTS = {
   "one|mes": "Ese destino en ese mes: se mira día a día y sale el más barato.",
   "one|mes-finde": "Ese destino, el finde de ese mes que salga más barato.",
   "one|tramo": "Ese destino, el mejor día dentro del tramo que has marcado.",
+  "any|dias": "Esos dos días, cualquier semana, donde sea.",
+  "one|dias": "Ese destino, saliendo y volviendo esos días, la semana que salga más barata.",
 };
+
+const DIAS_CORTOS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 
 /* Los modos de fecha flexible: un mes, un mes de findes, o un tramo. Los tres
    mandan una VENTANA (`desde`/`hasta`) en vez de una fecha, que es el término
@@ -279,7 +283,9 @@ function syncFinder() {
     $("#camasWrap").hidden = !puedeCamas;
     if (!puedeCamas) $("#fCamas").checked = false;
   }
-  $("#nightsWrap").hidden = cuando === "exact";
+  // Con dos días fijos las noches salen solas: de lunes a jueves son tres.
+  if (existe("#diasWrap")) $("#diasWrap").hidden = cuando !== "dias";
+  $("#nightsWrap").hidden = cuando === "exact" || cuando === "dias";
   // Con ventana, el horizonte sobra: ya has dicho hasta cuándo.
   $("#monthsWrap").hidden = cuando === "exact" || FLEXIBLES.has(cuando);
   $("#finderHint").textContent = HINTS[`${donde}|${cuando}`] || "";
@@ -353,6 +359,8 @@ on("#finderForm", "submit", async (e) => {
       ? `${fmtDate(ventana.desde)} → ${fmtDate(ventana.hasta)}`
       : cuando === "weekend"
       ? `findes · ${$("#fMonths").value || 12} meses`
+      : cuando === "dias"
+      ? `${DIAS_CORTOS[$("#fDiaIda").value]} → ${DIAS_CORTOS[$("#fDiaVuelta").value]} · ${$("#fMonths").value || 12} meses`
       : `${$("#fMonths").value || 12} meses`;
 
   const origen = $("#fOrigen") ? $("#fOrigen").value.trim().toUpperCase() : "";
@@ -388,6 +396,7 @@ on("#finderForm", "submit", async (e) => {
       desde: ventana.desde,
       hasta: ventana.hasta,
       camas: $("#fCamas") && $("#fCamas").checked ? "si" : "",
+      dias: cuando === "dias" ? `${$("#fDiaIda").value}-${$("#fDiaVuelta").value}` : "",
     },
   };
 

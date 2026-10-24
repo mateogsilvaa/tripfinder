@@ -21,6 +21,8 @@ export const CAMPOS_BUSCAR = {
   cuando: "#fWhen",
   dest: "#fDest",
   mes: "#fMes",
+  diaIda: "#fDiaIda",
+  diaVuelta: "#fDiaVuelta",
   depart: "#fDepart",
   regreso: "#fReturn",
   camas: "#fCamas",

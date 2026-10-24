@@ -223,7 +223,8 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
           <option value="weekend">Un finde cualquiera</option>
           <option value="mes">Un mes entero</option>
           <option value="mes-finde">Un mes, solo los findes</option>
-          <option value="tramo">Entre dos fechas</option>
+          <option value="dias">Unos días de la semana</option>
+        <option value="tramo">Entre dos fechas</option>
           <option value="exact">Fechas exactas</option>
           <option value="anytime">Cualquier fecha</option>
         </select>
@@ -233,6 +234,13 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <button type="button" id="destBtn" class="date-btn">Elegir destino</button>
         <input id="fDest" type="hidden">
       </label>
+      <div class="celda dias-par" id="diasWrap" hidden>
+        <label for="fDiaIda"><span>Salgo el</span>
+          <select id="fDiaIda"><option value="0" selected>lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3">jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
+        <span class="dias-flecha" aria-hidden="true">→</span>
+        <label for="fDiaVuelta"><span>Vuelvo el</span>
+          <select id="fDiaVuelta"><option value="0">lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3" selected>jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
+      </div>
       <label class="celda" id="mesWrap" hidden>
         <span>Mes</span>
         <select id="fMes"></select>
