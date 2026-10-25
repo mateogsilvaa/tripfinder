@@ -1,5 +1,5 @@
 {
-  "generado": "2026-10-23",
+  "generado": "2026-10-25",
   "rutas": {
     "MAD-EPU": {
       "barridos": 2,
@@ -21,17 +21,45 @@
       "barridos": 2,
       "ultima": "2026-10-05"
     },
+    "MAD-MAN": {
+      "barridos": 1,
+      "ultima": "2026-10-25"
+    },
+    "MAD-NRT": {
+      "barridos": 1,
+      "ultima": "2026-10-25"
+    },
     "MAD-PLQ": {
       "barridos": 2,
       "ultima": "2026-10-05"
+    },
+    "MAD-PSA": {
+      "barridos": 1,
+      "ultima": "2026-10-25"
+    },
+    "MAD-RAK": {
+      "barridos": 1,
+      "ultima": "2026-10-25"
     },
     "MAD-TAY": {
       "barridos": 2,
       "ultima": "2026-10-05"
     },
+    "MAD-TIA": {
+      "barridos": 1,
+      "ultima": "2026-10-25"
+    },
+    "MAD-TLL": {
+      "barridos": 1,
+      "ultima": "2026-10-25"
+    },
     "MAD-URE": {
       "barridos": 2,
       "ultima": "2026-10-05"
+    },
+    "MAD-VNO": {
+      "barridos": 1,
+      "ultima": "2026-10-25"
     }
   }
 }
