@@ -273,10 +273,12 @@ con eso puesto la web funciona así. Si algún día se vacían los dos, vuelve a
   arroba). Si el correo tiene cuenta y la contraseña no es, lo dice y resalta «¿Olvidaste la
   contraseña?». Se recuerda el último correo.
 - **Con Google:** el botón sale en cuanto se rellena `googleClientId` en `NUBE_CONFIG`
-  (`web/nube.js`). Para tenerlo: Firebase → Authentication → Método de acceso → Google →
-  Activar, copiar ahí el «ID de cliente web»; y en Google Cloud → Credenciales → ese cliente
-  OAuth, añadir la dirección de la web (y la del dominio propio) en «Orígenes de JavaScript
-  autorizados». No es un secreto.
+  (`web/nube.js`). Pasos (detalle en el comentario de ese fichero): Firebase → Authentication →
+  Método de acceso → Google → Activar y copiar el «ID de cliente web»; en Google Cloud →
+  Credenciales → ese cliente, añadir como «Origen de JavaScript autorizado» el ORIGEN de la web
+  (`https://mateogsilvaa.github.io`, sin `/tripfinder`) y el del dominio propio; y en Google
+  Auth Platform → Branding poner el nombre «TripFinder» y publicar la app, o solo entrarán los
+  usuarios de prueba. No es un secreto.
 - **Registrarse:** abierto a todo el mundo, y la cuenta nace
   **gratis** (`estado: aprobado`, `plan: gratis`): ve los chollos, guarda favoritos y recibe
   los chollos por correo en cuanto verifica su dirección (sin verificar no se le escribe, para

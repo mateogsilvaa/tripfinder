@@ -32,6 +32,8 @@ import { POLL_EVERY_MS, esc, escURL, fetchJSON, fmtDate, parseISO } from "./base
 import { ORIGENES } from "./busqueda.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso, wireEntrar } from "./disparador.js";
 import { CIUDADES, CONEXIONES, ESTACIONES, NOCTURNOS, RUTAS, TIPOS, ZONAS } from "./interrail-datos.js";
+import { ALTO as ALTO_EU, ANCHO as ANCHO_EU, PAISES as PAISES_EU, PUNTOS } from "./mapa-europa.js";
+import { isoDe } from "./paises.js";
 import { comoFechaICS, descargar, evento, finDeTramo } from "./compartir.js";
 import { edreamsURL } from "./precios.js";
 
@@ -1155,16 +1157,15 @@ function laElegida(lista) {
    mirando Europa se entiende solo, y en una lista de 48 nombres no. La lista
    sigue debajo, para quien prefiera escribir o use lector de pantalla.
 
-   La proyección es la más simple que no engaña a esta escala: longitud por el
-   coseno de 50° y latitud tal cual. */
-const LON0 = -2;
-const LAT1 = 61.2;
-const ESCALA = 34;
-const COS = Math.cos((50 * Math.PI) / 180);
-const px = (lon) => Math.round((lon - LON0) * COS * ESCALA);
-const py = (lat) => Math.round((LAT1 - lat) * ESCALA);
-const ANCHO_MAPA = px(22.5);
-const ALTO_MAPA = py(40.2);
+   LOS PAÍSES SON DE VERDAD. Antes eran puntos y rayas sobre un fondo liso, y
+   no se sabía dónde acababa Francia. Ahora el fondo es Europa (Natural Earth),
+   proyectada y recortada una vez en `tools/mapas.mjs`: aquí solo se pintan
+   los trazos ya hechos y se colocan las ciudades en su punto. Los países por
+   los que pasa la ruta se tiñen, y las paradas llevan su número. */
+const px = (cod) => PUNTOS[cod][0];
+const py = (cod) => PUNTOS[cod][1];
+const ANCHO_MAPA = ANCHO_EU;
+const ALTO_MAPA = ALTO_EU;
 
 /* Por dónde pasa de verdad la ruta: las paradas y, entre cada dos, las
    ciudades que el tren atraviesa sin parar. */
@@ -1193,8 +1194,8 @@ function rotulosQueCaben(elegidasSet, enRuta) {
   Object.entries(CIUDADES)
     .sort((a, b) => turno(a) - turno(b))
     .forEach(([cod, c]) => {
-      const x = px(c.lon);
-      const y = py(c.lat);
+      const x = px(cod);
+      const y = py(cod);
       const ancho = c.ciudad.length * (turno([cod, c]) === 2 ? 5 : 6.2);
       const caja = { x1: x + 6, x2: x + 8 + ancho, y1: y - 7, y2: y + 6 };
       if (turno([cod, c]) > 0 && choca(caja)) return;
@@ -1206,12 +1207,18 @@ function rotulosQueCaben(elegidasSet, enRuta) {
 
 export function mapaSVG(elegidasSet, ruta) {
   const enRuta = new Set(ruta ? ruta.paradas.map((p) => p.cod) : []);
-  const lineas = CONEXIONES.map(([a, b]) => {
-    const [ca, cb] = [CIUDADES[a], CIUDADES[b]];
-    return `<line x1="${px(ca.lon)}" y1="${py(ca.lat)}" x2="${px(cb.lon)}" y2="${py(cb.lat)}"/>`;
-  }).join("");
+  const orden = new Map(ruta ? ruta.paradas.map((p, i) => [p.cod, i + 1]) : []);
+  // Los países que toca la ruta, parando o de paso.
+  const visitados = new Set(trazado(ruta).map((c) => isoDe(CIUDADES[c].pais)).filter(Boolean));
+  const paises = PAISES_EU.map(
+    (p) =>
+      `<path class="ir-pais${visitados.has(p.iso) ? " visita" : ""}" d="${p.d}"><title>${esc(p.nombre)}</title></path>`
+  ).join("");
+  const lineas = CONEXIONES.map(
+    ([a, b]) => `<line x1="${px(a)}" y1="${py(a)}" x2="${px(b)}" y2="${py(b)}"/>`
+  ).join("");
   const camino = trazado(ruta)
-    .map((c) => `${px(CIUDADES[c].lon)},${py(CIUDADES[c].lat)}`)
+    .map((c) => `${px(c)},${py(c)}`)
     .join(" ");
   const rotulos = rotulosQueCaben(elegidasSet, enRuta);
   // Las pequeñas encima y con menos área de toque: Padua está a diez píxeles
@@ -1220,24 +1227,31 @@ export function mapaSVG(elegidasSet, ruta) {
   const nodos = Object.entries(CIUDADES)
     .sort(([, a], [, b]) => Number(a.pequena) - Number(b.pequena))
     .map(([cod, c]) => {
-      const x = px(c.lon);
-      const y = py(c.lat);
+      const x = px(cod);
+      const y = py(cod);
       const sel = elegidasSet.has(cod);
       const parada = enRuta.has(cod);
       const menor = c.pequena && !sel && !parada;
+      const n = orden.get(cod);
+      const marca = n
+        ? `<circle class="ir-nodo-punto" cx="${x}" cy="${y}" r="9"/>
+           <text class="ir-nodo-num" x="${x}" y="${y + 3.5}" text-anchor="middle">${n}</text>`
+        : `<circle class="ir-nodo-punto" cx="${x}" cy="${y}" r="${sel ? 6 : 3.5}"/>`;
       return `<g class="ir-nodo${sel ? " sel" : ""}${parada ? " parada" : ""}" data-ir-ciudad="${esc(cod)}"
           role="button" tabindex="0" aria-pressed="${sel}" aria-label="${esc(c.ciudad)}">
         <title>${esc(c.ciudad)}</title>
         <circle class="ir-nodo-toque" cx="${x}" cy="${y}" r="${c.pequena ? 8 : 13}"/>
-        <circle class="ir-nodo-punto" cx="${x}" cy="${y}" r="${sel || parada ? 6 : 4}"/>
-        ${rotulos.has(cod) ? `<text x="${x + 8}" y="${y + 4}"${menor ? ' class="menor"' : ""}>${esc(c.ciudad)}</text>` : ""}
+        ${marca}
+        ${rotulos.has(cod) ? `<text x="${x + (n ? 12 : 7)}" y="${y + 4}"${menor ? ' class="menor"' : ""}>${esc(c.ciudad)}</text>` : ""}
       </g>`;
     })
     .join("");
   return `<svg class="ir-mapa-svg" viewBox="0 0 ${ANCHO_MAPA} ${ALTO_MAPA}" role="group"
-      aria-label="Mapa de ciudades: toca una para añadirla o quitarla">
+      aria-label="Mapa de Europa: toca una ciudad para añadirla o quitarla">
+      <rect class="ir-mar" width="${ANCHO_MAPA}" height="${ALTO_MAPA}"/>
+      <g class="ir-paises">${paises}</g>
       <g class="ir-mapa-lineas">${lineas}</g>
-      ${camino ? `<polyline class="ir-mapa-ruta" points="${camino}"/>` : ""}
+      ${camino ? `<polyline class="ir-mapa-ruta-fondo" points="${camino}"/><polyline class="ir-mapa-ruta" points="${camino}"/>` : ""}
       ${nodos}
     </svg>`;
 }

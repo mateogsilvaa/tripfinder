@@ -4109,3 +4109,73 @@ h1 { line-height: 1.02; margin: 6px 0 10px; }
 .field.con-tecla:focus-within .tecla { opacity: 0; }
 @media (max-width: 760px) { .tecla { display: none; } }
 .cuenta-planes { margin-left: 4px; color: var(--accent-txt); border-bottom: 1px solid currentColor; }
+
+/* El mapa del Interrail, con Europa de verdad debajo. El mar es el papel, la
+   tierra una tarjeta, y los países de la ruta se tiñen del verde de lo que se
+   vigila. Las paradas llevan su número de orden. */
+.ir-mapa { overflow: hidden; background: var(--paper); }
+.ir-mar { fill: var(--paper); }
+.ir-pais { fill: var(--surface2); stroke: var(--line); stroke-width: 0.6; stroke-linejoin: round; transition: fill var(--t) var(--ease); }
+.ir-pais.visita { fill: color-mix(in srgb, var(--deep) 22%, var(--surface2)); }
+.ir-mapa-lineas line { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 2 3; opacity: 0.45; }
+.ir-mapa-ruta-fondo { fill: none; stroke: var(--paper); stroke-width: 8; stroke-linejoin: round; stroke-linecap: round; }
+.ir-mapa-ruta { stroke-width: 4; }
+.ir-nodo-punto { stroke: var(--surface2); }
+.ir-nodo text { stroke: var(--surface2); }
+.ir-nodo.parada .ir-nodo-punto { fill: var(--deep); stroke: var(--paper); stroke-width: 2; }
+.ir-nodo text.ir-nodo-num { fill: var(--paper); stroke: none; font: 600 10px var(--font-mono); }
+.ir-nodo.parada text:not(.ir-nodo-num) { font-weight: 600; }
+
+/* El mapamundi para elegir países. Gris lo que no tiene chollo hoy, tinta lo
+   que sí, y verde lo elegido (es lo que se queda vigilando el feed). */
+.mundo-btn {
+  min-height: 38px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: none;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mundo-btn::after { content: " ›"; color: var(--muted); }
+#tfModal .modal-caja:has(.mundo) { width: min(980px, calc(100vw - 24px)); max-width: none; }
+.mundo { display: grid; gap: 10px; }
+.mundo-svg { display: block; width: 100%; height: auto; border-radius: var(--r-s); background: var(--paper); }
+.mp { fill: var(--surface2); stroke: var(--paper); stroke-width: 0.5; cursor: pointer; transition: fill var(--t-micro) var(--ease); }
+.mp.con { fill: color-mix(in srgb, var(--ink) 38%, var(--surface2)); }
+.mp:hover, .mp:focus-visible { fill: var(--muted); outline: none; }
+.mp.sel { fill: var(--deep); }
+.mundo-leyenda { margin: 0; display: flex; align-items: center; gap: 6px; font-size: var(--fs-ui-s); color: var(--muted); }
+.mundo-muestra { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-left: 8px; }
+.mundo-muestra.con { margin-left: 0; background: color-mix(in srgb, var(--ink) 38%, var(--surface2)); }
+.mundo-muestra.sel { background: var(--deep); }
+.mundo-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.mundo-chip { min-height: 36px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--ink); font-size: var(--fs-ui-s); cursor: pointer; }
+.mundo-chip.sel { background: var(--deep); border-color: var(--deep); color: var(--paper); }
+.mundo-pie { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mundo-cuenta { flex: 1 1 200px; font-size: var(--fs-body-s); color: var(--muted); }
+.mp { fill: color-mix(in srgb, var(--ink) 13%, var(--paper)); }
+.mp.con { fill: color-mix(in srgb, var(--ink) 45%, var(--paper)); }
+.mp.sel { fill: var(--deep); }
+.mundo-pie .btn { font-family: var(--font-sans); letter-spacing: 0; text-transform: none; }
+
+/* «Mi cuenta»: arriba quién eres y tu plan; debajo, lo que se cambia. */
+.cuenta-ficha { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--hair); border-radius: var(--r); background: var(--surface2); }
+.cuenta-avatar { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; background: var(--btn-bg); color: var(--btn-ink); font-weight: 700; }
+.cuenta-ficha-txt { flex: 1; min-width: 0; display: grid; }
+.cuenta-ficha-txt span { color: var(--muted); font-size: var(--fs-ui-s); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-chip { flex: none; display: inline-flex; align-items: center; min-height: 32px; padding: 4px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); font: 500 var(--fs-caps-l) / 1 var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.plan-chip.premium { border-color: var(--deep); color: var(--deep); }
+.cuenta-linea { margin: 10px 0 0; font-size: var(--fs-body-s); color: var(--muted); }
+.cuenta-linea b { color: var(--ink); }
+.cuenta-bloque { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--hair); }
+.cuenta-guardado { margin: 4px 0 0; font-size: var(--fs-ui-s); color: var(--muted); min-height: 1.4em; }
+#nubeClaveCaja summary { min-height: var(--tap-min); display: flex; align-items: center; cursor: pointer; font-weight: 500; }
+#nubeClaveCaja[open] summary { margin-bottom: 8px; }
+@media (max-width: 720px) {
+  .mundo-btn { min-height: 44px; }
+}

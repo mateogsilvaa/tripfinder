@@ -146,6 +146,7 @@ LLEVAN = {
     "privacidad.html": {"nav": True, "hojas": False},
     # Los planes: el nav para volver; entrar abre su propio diálogo.
     "planes.html": {"nav": True, "hojas": False},
+    "condiciones.html": {"nav": True, "hojas": False},
     "admin.html": {"nav": False, "hojas": False},
 }
 

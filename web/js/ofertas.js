@@ -1,5 +1,6 @@
 /* ofertas.js — La hoja del dia: cargar el scan, filtrar, y pintar la plancha y el indice. */
 
+import { abrirMundo, paisesElegidos, rotuloPaises } from "./mundo.js";
 import {
   $,
   CONTINENTES,
@@ -37,7 +38,7 @@ import {
 import { deltaHTML, favBtn, sincronizarFavs, wireFavs } from "./favoritos.js";
 import { HISTORIA, cargarHistoria, historiaHTML, minimoHTML } from "./historia.js";
 import { cargarCamasHechas, conCama, openStays } from "./alojamiento.js";
-import { banderaDe } from "./paises.js";
+import { banderaDe, isoDe } from "./paises.js";
 
 export let OFFERS = [];
 /* El día del levantamiento, para el rótulo del chollo. No es la fecha del
@@ -174,6 +175,8 @@ export async function init() {
     $("#cont").parentElement.hidden = true;
   }
 
+  montarPaises();
+
   $(".controls").hidden = false;
   const barra = document.querySelector(".filtros-movil");
   if (barra) barra.hidden = false;
@@ -279,6 +282,7 @@ function filtrosActivos() {
   const tope = $("#price");
   return (
     ($("#cont").value ? 1 : 0) +
+    (paisesElegidos().size ? 1 : 0) +
     ($("#onlyWeekend").checked ? 1 : 0) +
     (!$("#unique").checked ? 1 : 0) +
     ($("#sort").value !== "score" ? 1 : 0) +
@@ -394,6 +398,25 @@ function montarHoja() {
   renderHoja(0);
 }
 
+/* EL MAPAMUNDI. Un campo más en los filtros, al lado de «Zona»: un botón que
+   dice qué países hay elegidos y abre el mapa (`mundo.js`). Cada toque repinta
+   el feed por el mismo camino que cualquier otro filtro: el `input` de #cont. */
+function montarPaises() {
+  if (existe("#mundoBtn") || !existe("#cont")) return;
+  $("#cont").closest(".field").insertAdjacentHTML(
+    "afterend",
+    `<div class="field"><label for="mundoBtn">Países</label>
+      <button type="button" id="mundoBtn" class="mundo-btn">${esc(rotuloPaises())}</button></div>`
+  );
+  $("#mundoBtn").addEventListener("click", () => {
+    const conChollo = new Set(OFFERS.map((o) => isoDe(o.destination_country)).filter(Boolean));
+    abrirMundo(conChollo, () => {
+      $("#mundoBtn").textContent = rotuloPaises();
+      $("#cont").dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  });
+}
+
 function currentList() {
   const q = $("#q").value.trim().toLowerCase();
   const max = Number($("#price").value);
@@ -415,6 +438,7 @@ function currentList() {
             ? (REGIONES[o.destination] || []).includes(continente.slice(2))
             : CONTINENTES[o.destination] === continente)) &&
       (lejos || !o.long_haul) &&
+      (!paisesElegidos().size || paisesElegidos().has(isoDe(o.destination_country))) &&
       (!q ||
         `${o.destination_name} ${o.destination} ${o.destination_country}`.toLowerCase().includes(q))
   );

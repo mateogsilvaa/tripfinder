@@ -27,12 +27,20 @@
 const NUBE_CONFIG = {
   apiKey: "AIzaSyAisQaTaTO0Kn7lBQmJ7YgekpDIGoyz1gA",
   projectId: "trip-a9418",
-  /* ENTRAR CON GOOGLE. Vacío, el botón no sale. Para encenderlo: en Firebase,
-     Authentication → Método de acceso → Google → Activar; ahí mismo, en
-     «Configuración del SDK web», está el «ID de cliente web»
-     (…apps.googleusercontent.com): va aquí. Y en Google Cloud → Credenciales →
-     ese cliente OAuth, en «Orígenes de JavaScript autorizados», la dirección
-     de la web. No es un secreto: el navegador lo enseña igual. */
+  /* ENTRAR CON GOOGLE. Vacío, el botón no sale. Tres pasos:
+
+     1. Firebase → Authentication → Método de acceso → Google → Activar. Con el
+        proveedor desplegado, abre «Configuración del SDK web (Web SDK
+        configuration)»: ahí está el «ID de cliente web», que acaba en
+        .apps.googleusercontent.com. Cópialo aquí, entre las comillas.
+     2. Google Cloud → APIs y servicios → Credenciales → ese mismo cliente («Web
+        client (auto created by Google Service)») → «Orígenes de JavaScript
+        autorizados» → añade https://mateogsilvaa.github.io (y el dominio
+        propio cuando lo haya). Es el ORIGEN: sin /tripfinder ni barra final.
+     3. Google Auth Platform → Branding: «Nombre de la aplicación» = TripFinder,
+        y publicar la app («En producción») o solo entrarán los usuarios de prueba.
+
+     No es un secreto: el navegador lo enseña igual. */
   googleClientId: "",
 };
 
