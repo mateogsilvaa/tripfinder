@@ -9,7 +9,7 @@ import os
 import random
 import re
 import sys
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -479,17 +479,39 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     return 0
 
 
-def _cada_cuanto(frecuencia: str, ultimo: str) -> bool:
-    """Si toca escribir hoy segun lo que pidio esa cuenta."""
+# Dos barridos al dia, a las 6 y a las 18 UTC (con el retraso que meta GitHub).
+# Antes de esta hora es el de la manana.
+HORA_CORTE_UTC = 14
+
+
+def _cada_cuanto(frecuencia: str, ultimo: str, prefs: dict | None = None) -> bool:
+    """Si toca escribir en este barrido segun lo que pidio esa cuenta."""
+    prefs = prefs or {}
     if frecuencia == "nunca":
+        return False
+    hoy = date.today()
+    franja = prefs.get("franja", "cualquiera")
+    if frecuencia != "cada_vez" and franja in ("manana", "noche"):
+        manana = datetime.now(UTC).hour < HORA_CORTE_UTC
+        if manana != (franja == "manana"):
+            return False
+    dia = prefs.get("dia")
+    if frecuencia in ("semanal", "quincenal", "mensual") and dia is not None and hoy.weekday() != dia:
+        return False
+    if frecuencia == "dos_semana" and hoy.weekday() not in (0, 3):
         return False
     if frecuencia == "cada_vez" or not ultimo:
         return True
     try:
-        dias = (date.today() - date.fromisoformat(ultimo[:10])).days
+        dias = (hoy - date.fromisoformat(ultimo[:10])).days
     except ValueError:
         return True
-    return dias >= (7 if frecuencia == "semanal" else 1)
+    # Con dia fijo basta un dia menos: el barrido de ese dia puede caer antes o
+    # despues de la hora a la que salio el anterior.
+    minimo = {"diario": 1, "dos_semana": 2, "semanal": 7, "quincenal": 14, "mensual": 28}.get(frecuencia, 1)
+    if dia is not None and minimo >= 7:
+        minimo -= 1
+    return dias >= minimo
 
 
 def aparcar_avisos(state: dict, ofertas: list[FlightOffer]) -> list[FlightOffer]:
@@ -542,8 +564,12 @@ def _reparto_de_chollos(
         if not correo:
             continue
         cubiertos.add(correo.lower())
+        # Apagado salvo que lo haya encendido el: ver `users.PREFS_DEFECTO`.
+        if not u.prefs.get("avisos"):
+            continue
         frecuencia = str(u.prefs.get("chollos", "cada_vez"))
-        if not _cada_cuanto(frecuencia, ultimos.get(clave_buzon(correo)) or ultimos.get(correo, "")):
+        ultimo = ultimos.get(clave_buzon(correo)) or ultimos.get(correo, "")
+        if not _cada_cuanto(frecuencia, ultimo, u.prefs):
             continue
         tope = u.prefs.get("chollos_max_precio")
         fuente = nuevas if frecuencia == "cada_vez" else deals
@@ -552,9 +578,11 @@ def _reparto_de_chollos(
             motivo = "lo nuevo" if frecuencia == "cada_vez" else f"resumen {frecuencia}"
             salida[correo] = (suyas[:max_email], motivo)
 
-    # El buzon de siempre sigue como estaba, salvo que ya haya una cuenta con
-    # ese mismo email: entonces manda lo que haya elegido esa cuenta y no se
-    # duplica el correo.
+    # El buzon de la configuracion tambien esta apagado salvo que se encienda
+    # (`notify.buzon_fijo`). Y si hay una cuenta con ese mismo email, manda lo
+    # que haya elegido esa cuenta y no se duplica el correo.
+    if not cfg.notify.get("buzon_fijo"):
+        buzon_config = ""
     if buzon_config and buzon_config.lower() not in cubiertos and nuevas:
         salida[buzon_config] = (nuevas[:max_email], "lo nuevo")
     return salida
@@ -644,8 +672,16 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         country=country,
         solo_enteros=bool(getattr(args, "solo_enteros", False)),
         centro=getattr(args, "centro", None),
-        radio_km=RADIO_INTERRAIL_KM if getattr(args, "centro", None) else None,
     )
+    # Siempre alrededor del centro, no solo en el Interrail. Por nombre de
+    # ciudad Airbnb y Holidu devolvian pisos a 4, 6 y 8 km —en Copenhague, los
+    # cuatro primeros a mas de 6 km—, y a partir de 2,5 km ya hay que coger
+    # transporte para todo. Si no se sabe donde esta el centro, como antes.
+    if req.centro is None:
+        from .stays.centro import coordenadas
+
+        req.centro = coordenadas(req.city, req.country)
+    req.radio_km = RADIO_KM if req.centro else None
 
     stays: list[StayOffer] = []
     errors: list[str] = []
@@ -706,6 +742,10 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
     path = store.save_stays(
         args.offer_id, offer, stays, req.checkin, req.checkout, errors, summary=resumen
     )
+    from . import nube
+
+    if nube.hay_firebase():
+        nube.publicar_resultado(f"stay-{args.offer_id}", json.loads(path.read_text(encoding="utf-8")))
     # Cada busqueda de cama mejora la estimacion del tablon: aqui es cuando hay
     # dato nuevo que destilar.
     store.save_beds()
@@ -806,9 +846,10 @@ def _texto_corto(valor: Any, campo: str, largo: int = 60, vacio: bool = False) -
     return texto
 
 
-# Lo lejos del centro que puede quedar una cama del Interrail: unos treinta
-# minutos andando. Lo mismo que `MAX_KM` en `web/js/interrail.js`.
-RADIO_INTERRAIL_KM = 2.5
+# Lo lejos del centro que puede quedar una cama: unos treinta minutos andando.
+# Lo mismo que `MAX_KM` en `web/js/interrail.js`. Vale para todo el
+# alojamiento, no solo el del Interrail: mas lejos, «empieza a fastidiar».
+RADIO_KM = 2.5
 
 
 def paradas_interrail(crudo: str) -> list[dict[str, Any]]:
@@ -1081,6 +1122,7 @@ def cmd_search(args: argparse.Namespace) -> int:
         return_date=getattr(args, "return") or "",
         desde=args.desde or "",
         hasta=args.hasta or "",
+        dias=getattr(args, "dias", "") or "",
         owner=primer_dueno(args.owner),
         owner_name=args.owner_name or "",
     )
@@ -1331,16 +1373,21 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
     for viejo, nuevo in alias.items():
         if nuevo in por_cuenta:
             por_cuenta.setdefault(viejo, por_cuenta[nuevo])
-    defecto = (cfg.notify.get("to") or "").strip()
+    defecto = (cfg.notify.get("to") or "").strip() if cfg.notify.get("buzon_fijo") else ""
     partes: dict[str, list] = {}
     for w, ofertas in estado:
         cuenta = por_cuenta.get(getattr(w, "owner", "") or "")
-        destino = (cuenta.email.strip() if cuenta and cuenta.email else defecto) or defecto
+        # Con cuenta y email, manda lo que esa cuenta haya encendido (o nada).
+        if cuenta and cuenta.email:
+            if not cuenta.prefs.get("avisos"):
+                continue
+            destino, prefs = cuenta.email.strip(), cuenta.prefs
+        else:
+            destino, prefs = defecto, {}
         if not destino:
             continue
-        prefs = cuenta.prefs if cuenta and cuenta.email else {}
         ultimo = ultimos.get(clave_buzon(destino)) or ultimos.get(destino, "")
-        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimo):
+        if not _cada_cuanto(str(prefs.get("seguimientos", "diario")), ultimo, prefs):
             continue
         partes.setdefault(destino, []).append((w, ofertas))
 
@@ -1688,11 +1735,18 @@ def cmd_encargos(args: argparse.Namespace) -> int:
     if not (os.environ.get("FIREBASE_SERVICE_ACCOUNT") or os.environ.get("FIRESTORE_EMULATOR_HOST")):
         print("Firebase sin configurar: no hay encargos que recoger.")
         return 0
-    cuenta = nube.procesar(nube.AlmacenFirestore(nube.abrir_firestore()))
+    db = nube.abrir_firestore()
+    cuenta = nube.procesar(nube.AlmacenFirestore(db))
+    try:
+        viejos = nube.borrar_resultados_viejos(db)
+        if viejos:
+            print(f"Resultados de más de tres días borrados de Firestore: {viejos}.")
+    except Exception as exc:  # noqa: BLE001 - limpiar no puede tumbar la cola
+        print(f"No se pudieron limpiar los resultados viejos ({type(exc).__name__}).")
     print(
         f"Encargos: {cuenta['enviado']} enviados, {cuenta['rechazado']} rechazados, "
         f"{cuenta['error']} con error, {cuenta['atascado']} atascados, "
-        f"{cuenta['borrado']} viejos borrados."
+        f"{cuenta['borrado']} viejos borrados, {cuenta['abiertas']} cuentas pendientes abiertas."
     )
     return 0
 
@@ -1833,6 +1887,7 @@ def build_parser() -> argparse.ArgumentParser:
     # quiere decir con fechas flexibles.
     b.add_argument("--desde", help="Primer dia del tramo en que puedes viajar (YYYY-MM-DD)")
     b.add_argument("--hasta", help="Ultimo dia del tramo (YYYY-MM-DD)")
+    b.add_argument("--dias", default="", help="Dias de ida y vuelta, 0=lunes: 0-3 es de lunes a jueves")
     b.add_argument("--adults", type=int)
     b.add_argument("--summary-out")
     b.add_argument("--owner", default="", help="Id de la cuenta que la pide")

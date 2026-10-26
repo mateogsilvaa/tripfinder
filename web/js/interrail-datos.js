@@ -81,6 +81,20 @@ export const CIUDADES = {
   SXB: C("Estrasburgo", "Francia", 48.5734, 7.7521, ["SXB", "BSL"], true),
   GDN: C("Gdansk", "Polonia", 54.352, 18.6466, ["GDN"]),
   BOD: C("Burdeos", "Francia", 44.8378, -0.5792, ["BOD"]),
+  // Las de las rutas alternativas: menos conocidas, más baratas y con menos
+  // gente, y casi todas a un tren corto de una grande.
+  GNT: C("Gante", "Bélgica", 51.0543, 3.7174, ["BRU", "CRL"], true),
+  ANR: C("Amberes", "Bélgica", 51.2194, 4.4025, ["BRU", "CRL", "EIN"], true),
+  LEJ: C("Leipzig", "Alemania", 51.3397, 12.3731, ["LEJ", "BER"], true),
+  BRN: C("Brno", "Chequia", 49.1951, 16.6068, ["BRQ", "VIE", "PRG"], true),
+  BZO: C("Bolzano", "Italia", 46.4983, 11.3548, ["VRN", "INN", "BGY"], true),
+  CHU: C("Coira", "Suiza", 46.8508, 9.532, ["ZRH"], true),
+  TIR: C("Tirano", "Italia", 46.2167, 10.1689, ["BGY", "MXP"], true),
+  TLS: C("Toulouse", "Francia", 43.6047, 1.4442, ["TLS"]),
+  GOT: C("Gotemburgo", "Suecia", 57.7089, 11.9746, ["GOT"]),
+  TRN: C("Turín", "Italia", 45.0703, 7.6869, ["TRN"]),
+  PDV: C("Padua", "Italia", 45.4064, 11.8768, ["VCE", "TSF"], true),
+  BLD: C("Bled", "Eslovenia", 46.3683, 14.1146, ["LJU"], true),
 };
 
 /* Cómo se agrupan en el formulario. Por países eran catorce filas —en el
@@ -110,6 +124,9 @@ export const ESTACIONES = {
   POZ: "Poznań Główny", WAW: "Warszawa Centralna", KRK: "Kraków Główny",
   DRS: "Dresden Hbf", NUE: "Nürnberg Hbf", BLQ: "Bologna Centrale", VRN: "Verona Porta Nuova",
   INN: "Innsbruck Hbf", SXB: "Strasbourg", GDN: "Gdańsk Główny", BOD: "Bordeaux St-Jean",
+  GNT: "Gent-Sint-Pieters", ANR: "Antwerpen-Centraal", LEJ: "Leipzig Hbf", BRN: "Brno hl.n.",
+  BZO: "Bolzano/Bozen", CHU: "Chur", TIR: "Tirano", TLS: "Toulouse Matabiau",
+  GOT: "Göteborg Central", TRN: "Torino Porta Nuova", PDV: "Padova", BLD: "Lesce-Bled",
 };
 
 /* LOS TRENES NOCTURNOS directos entre dos ciudades del mapa: [a, b, sale,
@@ -219,82 +236,202 @@ export const CONEXIONES = [
   ["GDN", "WAW", 170, R(2, 5), [15, 35]],
   ["GDN", "POZ", 210, R(2, 5), [15, 30]],
   ["BOD", "PAR", 125, R(15, 30), [30, 90]],
+  ["BRU", "GNT", 35, null, [10, 15]],
+  ["GNT", "BRG", 25, null, [5, 10]],
+  ["GNT", "ANR", 55, null, [10, 15]],
+  ["BRU", "ANR", 45, null, [8, 12]],
+  ["ANR", "AMS", 75, R(5, 10), [20, 45]],
+  ["BER", "LEJ", 75, null, [20, 45]],
+  ["LEJ", "DRS", 70, null, [15, 30]],
+  ["LEJ", "NUE", 120, null, [25, 60]],
+  ["PRG", "BRN", 150, null, [10, 20]],
+  ["BRN", "VIE", 90, null, [10, 20]],
+  ["BRN", "BTS", 90, null, [8, 15]],
+  ["VRN", "BZO", 95, null, [15, 25]],
+  ["BZO", "INN", 120, null, [20, 45]],
+  ["ZRH", "CHU", 75, null, [20, 40]],
+  // El Bernina Express: el panorámico pide reserva; el regional de la misma
+  // vía, no, y entra en el pase.
+  ["CHU", "TIR", 255, R(10, 35), [40, 70]],
+  ["TIR", "MIL", 150, null, [10, 15]],
+  ["BOD", "TLS", 125, null, [25, 50]],
+  ["TLS", "MPL", 130, R(10, 20), [20, 50]],
+  ["CPH", "GOT", 220, R(5, 10), [30, 70]],
+  ["GOT", "OSL", 240, null, [25, 60]],
+  ["MIL", "TRN", 60, R(10, 15), [15, 35]],
+  ["TRN", "GOA", 110, null, [12, 20]],
+  ["VCE", "PDV", 30, null, [5, 10]],
+  ["PDV", "BLQ", 70, R(10, 15), [10, 25]],
+  ["PDV", "VRN", 50, null, [8, 15]],
+  ["LJU", "BLD", 60, null, [5, 8]],
 ];
 
 /* LAS RUTAS HECHAS. Paradas y noches; los tramos salen del mapa. Son las que
    se proponen cuando no eliges ciudades, y las que se enseñan como «otras
    rutas que pasan por…» cuando sí. */
 export const RUTAS = [
+  /* `tipo`: «clasica» es la que hace todo el mundo la primera vez;
+     «alternativa», la que va por las ciudades de al lado —Gante en vez de
+     Brujas, Leipzig en vez de Berlín, Toulouse en vez de París—: menos gente,
+     camas más baratas y el mismo tren. */
   {
     id: "centro",
+    tipo: "clasica",
     nombre: "Europa central",
     idea: "Cuatro capitales en línea, sin una sola reserva: el pase sin letra pequeña.",
     paradas: [["AMS", 2], ["BER", 3], ["PRG", 2], ["VIE", 2], ["BUD", 2]],
   },
   {
     id: "italia",
+    tipo: "clasica",
     nombre: "Italia de punta a punta",
     idea: "Tramos cortos y rápidos: más ciudad que tren. Todos llevan reserva.",
     paradas: [["MIL", 2], ["VCE", 2], ["FLR", 2], ["ROM", 3], ["NAP", 2]],
   },
   {
     id: "francia",
+    tipo: "clasica",
     nombre: "Del Mediterráneo a París",
     idea: "Barcelona, la costa y subir hasta París.",
     paradas: [["BCN", 1], ["MPL", 2], ["LYS", 2], ["PAR", 3]],
   },
   {
     id: "suiza",
+    tipo: "clasica",
     nombre: "Suiza y los lagos",
     idea: "Trayectos de una o dos horas entre montañas. Sin reservas; Suiza no es barata, el tren con pase sí sale a cuenta.",
     paradas: [["ZRH", 2], ["LUC", 2], ["INT", 2], ["GVA", 2]],
   },
   {
     id: "norte",
+    tipo: "clasica",
     nombre: "Los nórdicos",
     idea: "Tres capitales y el tren de Bergen, que es el viaje en sí.",
     paradas: [["CPH", 2], ["STO", 3], ["OSL", 2], ["BGO", 2]],
   },
   {
     id: "benelux",
+    tipo: "clasica",
     nombre: "Del Benelux a Berlín",
     idea: "Canales y catedrales, sin una reserva: de Bruselas a Berlín por Brujas, Ámsterdam y Colonia.",
     paradas: [["BRU", 2], ["BRG", 1], ["AMS", 2], ["CGN", 1], ["BER", 3]],
   },
   {
     id: "alpes",
+    tipo: "clasica",
     nombre: "Del Rin a Viena",
     idea: "Alemania de norte a sur y los Alpes austriacos. Trenes rápidos y ninguna reserva obligatoria.",
     paradas: [["CGN", 1], ["FRA", 1], ["MUC", 2], ["SZG", 2], ["VIE", 2]],
   },
   {
     id: "danubio",
+    tipo: "alternativa",
     nombre: "Del Danubio al Adriático",
     idea: "La más barata de todas: regionales sin reserva y ciudades que cuestan la mitad.",
     paradas: [["VIE", 2], ["BTS", 1], ["BUD", 2], ["ZAG", 2], ["LJU", 2]],
   },
   {
     id: "riviera",
+    tipo: "clasica",
     nombre: "La Riviera y la Toscana",
     idea: "Costa hasta Cinque Terre y luego tierra adentro. Todo regional salvo el último tramo.",
     paradas: [["NCE", 2], ["GOA", 1], ["SPZ", 2], ["PSA", 1], ["FLR", 2], ["ROM", 2]],
   },
   {
     id: "polonia",
+    tipo: "alternativa",
     nombre: "Polonia",
     idea: "Barata y con buen tren. Los Intercity polacos piden reserva, pero cuesta poco.",
     paradas: [["BER", 2], ["POZ", 1], ["WAW", 2], ["KRK", 3]],
   },
   {
     id: "hamburgo",
+    tipo: "clasica",
     nombre: "De Hamburgo a Oslo",
     idea: "El norte de Alemania y tres capitales nórdicas, subiendo por la costa.",
     paradas: [["HAM", 2], ["CPH", 2], ["STO", 3], ["OSL", 2]],
   },
   {
     id: "vuelta",
+    tipo: "clasica",
     nombre: "La vuelta grande",
     idea: "De París a Roma dando la vuelta por el centro. Para un pase de siete días.",
     paradas: [["PAR", 2], ["AMS", 2], ["BER", 2], ["PRG", 2], ["VIE", 2], ["VCE", 2], ["ROM", 2]],
   },
+  {
+    id: "primera",
+    tipo: "clasica",
+    nombre: "La primera vez",
+    idea: "París, Bruselas, Ámsterdam, Berlín y Praga: la que hace todo el mundo, y por algo.",
+    paradas: [["PAR", 3], ["BRU", 1], ["AMS", 2], ["BER", 3], ["PRG", 2]],
+  },
+  {
+    id: "grantour",
+    tipo: "clasica",
+    nombre: "Suiza e Italia",
+    idea: "Los lagos suizos, bajar a Milán por los Alpes y la Italia de las postales hasta Roma.",
+    paradas: [["ZRH", 2], ["LUC", 1], ["MIL", 2], ["VCE", 2], ["FLR", 2], ["ROM", 3]],
+  },
+  {
+    id: "flandes",
+    tipo: "alternativa",
+    nombre: "Flandes sin prisas",
+    idea: "Gante y Amberes, las hermanas de Brujas con la mitad de gente. Trenes de media hora y ninguna reserva.",
+    paradas: [["BRU", 1], ["GNT", 2], ["BRG", 1], ["ANR", 2]],
+  },
+  {
+    id: "sajonia",
+    tipo: "alternativa",
+    nombre: "Sajonia y Moravia",
+    idea: "De Berlín a Viena por Leipzig, Dresde, Praga y Brno: la Europa central sin las colas de la clásica.",
+    paradas: [["BER", 2], ["LEJ", 2], ["DRS", 1], ["PRG", 2], ["BRN", 1], ["VIE", 2]],
+  },
+  {
+    id: "brennero",
+    tipo: "alternativa",
+    nombre: "Por el Brennero",
+    idea: "De Verona a Salzburgo cruzando los Dolomitas: Bolzano e Innsbruck, montaña desde la ventanilla.",
+    paradas: [["VRN", 2], ["BZO", 2], ["INN", 2], ["SZG", 2]],
+  },
+  {
+    id: "bernina",
+    tipo: "alternativa",
+    nombre: "El tren del Bernina",
+    idea: "De Zúrich a Milán por el paso del Bernina, glaciares incluidos. El regional de la misma vía no pide reserva.",
+    paradas: [["ZRH", 1], ["CHU", 1], ["TIR", 1], ["MIL", 2]],
+  },
+  {
+    id: "occitania",
+    tipo: "alternativa",
+    nombre: "El sur de Francia",
+    idea: "Burdeos, Toulouse, Montpellier y Marsella: el Mediterráneo francés sin pasar por París.",
+    paradas: [["BOD", 2], ["TLS", 2], ["MPL", 2], ["MRS", 2]],
+  },
+  {
+    id: "oeste",
+    tipo: "alternativa",
+    nombre: "Escandinavia por el oeste",
+    idea: "Copenhague, Gotemburgo, Oslo y el tren de Bergen. Más barata que ir por Estocolmo.",
+    paradas: [["CPH", 2], ["GOT", 2], ["OSL", 2], ["BGO", 2]],
+  },
+  {
+    id: "norteitalia",
+    tipo: "alternativa",
+    nombre: "La otra Italia del norte",
+    idea: "Turín, Bolonia, Padua y Verona: soportales, comida y precios de ciudad normal.",
+    paradas: [["TRN", 2], ["BLQ", 2], ["PDV", 1], ["VRN", 2]],
+  },
+  {
+    id: "eslovenia",
+    tipo: "alternativa",
+    nombre: "Viena, Eslovenia y Zagreb",
+    idea: "Liubliana y el lago de Bled entre dos capitales. De las más baratas del mapa.",
+    paradas: [["VIE", 2], ["LJU", 2], ["BLD", 2], ["ZAG", 2]],
+  },
 ];
+
+/* Lo que se dice de cada tipo en las tarjetas. */
+export const TIPOS = {
+  clasica: "clásica",
+  alternativa: "menos conocida",
+};

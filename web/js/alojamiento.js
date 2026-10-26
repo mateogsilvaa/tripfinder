@@ -297,11 +297,15 @@ function startPolling(id) {
       tfAnunciar("La búsqueda de alojamiento está tardando más de lo normal.");
       return;
     }
-    let data = null;
-    try {
-      data = await fetchJSON(`data/stays/${id}.json`);
-    } catch {
-      return; // todavia no esta publicado: se reintenta en la siguiente vuelta
+    // Primero Firestore, donde el resultado está en cuanto acaba el scraper;
+    // luego Pages, que llega uno o tres minutos después.
+    let data = typeof nubeResultado === "function" ? await nubeResultado(`stay-${id}`) : null;
+    if (!data) {
+      try {
+        data = await fetchJSON(`data/stays/${id}.json`);
+      } catch {
+        return; // todavia no esta publicado: se reintenta en la siguiente vuelta
+      }
     }
     clearInterval(pollTimer);
     pintarStays(data, OFFERS.find((o) => o.id === id) || SEARCH_OFFERS[id]);
@@ -352,10 +356,20 @@ function fotos(s) {
     </div>`;
 }
 
+/* De dónde viene cada cama, dicho como se llama la web y no como el código. */
+const FUENTES = {
+  google_hotels: "Google Hoteles",
+  airbnb: "Airbnb",
+  holidu: "Holidu",
+  amadeus_hotels: "Amadeus",
+};
+
 function stayRow(s) {
   const meta = [
-    s.provider,
-    s.rating ? `valoración ${s.rating}` : "",
+    FUENTES[s.provider] || s.provider,
+    s.rating
+      ? `${String(s.rating).replace(".", ",")}/5${s.reviews ? ` (${Number(s.reviews).toLocaleString("es-ES")} opiniones)` : ""}`
+      : "",
     // Lo que antes no se decía: un estudio a doce kilómetros del centro no es
     // más barato que uno normal y céntrico, es otro viaje.
     aPie(s.km_centro),

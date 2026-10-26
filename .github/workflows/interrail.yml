@@ -39,6 +39,9 @@ jobs:
       - name: Buscar los vuelos y la cama en cada parada
         env:
           PYTHONPATH: src
+          # Para copiar el resultado a Firestore y que la web lo vea sin
+          # esperar al despliegue de Pages. Sin el secreto, solo va a data/.
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           # Las paradas y los vuelos llegan como JSON y se validan en Python, no
           # en bash: el identificador acaba siendo un nombre de fichero y la
           # ciudad una URL.

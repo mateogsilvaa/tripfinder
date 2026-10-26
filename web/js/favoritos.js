@@ -514,20 +514,39 @@ export async function refrescarFavsDeTodo() {
 
 
 
+/* El número de lo que sigues, en la pestaña de «Mis avisos» (arriba y en la
+   barra del móvil). Sin nada, no sale: un 0 en rojo sería ruido. */
+export function insigniaSeguimientos(n) {
+  document.querySelectorAll('.zona[data-zona="follows"], .tab[data-zona="follows"]').forEach((a) => {
+    let b = a.querySelector(".insignia");
+    if (!n) {
+      if (b) b.remove();
+      return;
+    }
+    if (!b) {
+      b = document.createElement("span");
+      b.className = "insignia";
+      a.appendChild(b);
+    }
+    b.textContent = n > 99 ? "99+" : String(n);
+    b.setAttribute("aria-label", `${n} ${n === 1 ? "viaje" : "viajes"}`);
+  });
+}
+
 /* El contador de la portada. No es la lista —esa vive en `seguimientos.html`—:
    es la línea que dice cuántos hay y qué se hace con ellos, para que el
    botón de Seguir de cada fila signifique algo desde la primera vez que se pulsa. */
 export function refrescarObservacion() {
+  const n = Object.keys(favLeer()).length;
+  insigniaSeguimientos(n);
   const num = document.getElementById("obsCuenta");
   const txt = document.getElementById("obsTexto");
   if (!num || !txt) return;
-  const n = Object.keys(favLeer()).length;
   num.textContent = n === 0 ? "—" : String(n);
   txt.textContent =
     n === 0
-      ? "Todavía no sigues ningún viaje. Dale a Seguir en cualquier entrada del feed " +
-        "y aquí verás si sube o baja de precio cada vez que se actualicen los datos."
+      ? "Todavía no sigues ningún viaje. Toca la campana de cualquier vuelo y aquí verás si sube o baja."
       : n === 1
-        ? "1 viaje apuntado. Se revisa cada 12 h y te avisamos si sube o baja de precio."
-        : `${n} viajes apuntados. Se revisan cada 12 h y te avisamos si suben o bajan de precio.`;
+        ? "1 viaje apuntado. Se revisa cada 12 h."
+        : `${n} viajes apuntados. Se revisan cada 12 h.`;
 }

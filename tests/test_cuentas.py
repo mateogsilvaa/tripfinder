@@ -183,9 +183,10 @@ def test_el_parte_diario_va_a_cada_uno_al_suyo(monkeypatch):
     from tripfinder.config import Config
 
     ana = U.anadir("ana", password="ana12345", email="ana@example.com")
+    U.cambiar_prefs("ana", {"avisos": True})
     mateo = U.anadir("mateo", password="mateo12345")  # sin email: al buzon de siempre
 
-    cfg = Config(raw={"notify": {"to": "el-de-siempre@example.com"}})
+    cfg = Config(raw={"notify": {"to": "el-de-siempre@example.com", "buzon_fijo": True}})
     estado = [
         (W.Watch(id="a", owner=ana.id), []),
         (W.Watch(id="b", owner=mateo.id), []),

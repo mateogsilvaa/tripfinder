@@ -46,6 +46,8 @@ async function poner(uid, campos) {
 }
 
 const aprobar = (uid) => poner(uid, { estado: "aprobado" });
+// Lo que hace el panel con «Hacer premium»: todas las herramientas.
+const hacerPremium = (uid) => poner(uid, { estado: "aprobado", plan: "premium" });
 const hacerAdmin = (uid) => poner(uid, { estado: "aprobado", admin: true });
 
 async function encargosDe(uid) {
@@ -100,6 +102,6 @@ let n = 0;
 const correoNuevo = () => `prueba${Date.now()}${n++}@ejemplo.es`;
 
 module.exports = {
-  CONFIG, ficha, poner, aprobar, hacerAdmin, encargosDe, borrarCuenta, correoNuevo,
+  CONFIG, ficha, poner, aprobar, hacerPremium, hacerAdmin, encargosDe, borrarCuenta, correoNuevo,
   sembrarAntigua, antigua, verificarCorreo,
 };

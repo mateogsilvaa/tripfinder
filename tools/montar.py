@@ -77,7 +77,8 @@ ARREGLO_BASE = """<script>
    ruta honda los enlaces relativos apuntarian al sitio equivocado. */
 (function () {
   try {
-    var raiz = "__RAIZ__";
+    // En github.io cuelga de __RAIZ__; con dominio propio, de la raíz.
+    var raiz = location.pathname.indexOf("__RAIZ__") === 0 ? "__RAIZ__" : "/";
     var aqui = location.pathname;
     if (aqui.indexOf(raiz) !== 0 || aqui.slice(raiz.length).indexOf("/") < 0) return;
     var b = document.createElement("base");
@@ -108,6 +109,10 @@ DESCRIPCIONES = {
     "privacidad.html": (
         "Qué guarda TripFinder de ti, dónde, y qué se ve públicamente. "
         "Sin anuncios ni rastreadores."
+    ),
+    "planes.html": (
+        "Gratis para ver chollos y recibirlos por correo. Premium para buscar, seguir "
+        "viajes, alojamiento e Interrail."
     ),
     "interrail.html": (
         "Monta tu Interrail: las ciudades por las que quieres pasar, los trenes, "
@@ -143,14 +148,52 @@ DESCUBRIR = (
     '<span class="flap-txt flap-txt-corto" aria-hidden="true">¿Dónde ir?</span></button>'
 )
 
-NAV = (
-    '      <nav class="zonas" aria-label="Zonas">\n'
-    '        <a href="./"{promos}>Chollos</a>\n'
-    '        <a href="buscar.html"{buscar}>Buscar</a>\n'
-    '        <a href="seguimientos.html"{follows}>Mis avisos</a>\n'
-    '        <a href="interrail.html"{interrail}>Interrail</a>\n'
-    '      </nav>\n'
+# Los iconos del nav, dibujados aqui y no sacados de una libreria: cuatro
+# trazos a 1.8 que heredan el color del texto. Van con `aria-hidden`: el nombre
+# de la zona ya lo dice la palabra de al lado.
+ICONOS = {
+    "promos": '<path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.3 7.3a1 1 0 0 1-1.4 0z"/>'
+    '<circle cx="8" cy="8" r="1.4"/>',
+    "buscar": '<circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.6-4.6"/>',
+    "follows": '<path d="M6.2 16.5V11a5.8 5.8 0 0 1 11.6 0v5.5l1.4 1.8H4.8z"/>'
+    '<path d="M10 20.6a2.1 2.1 0 0 0 4 0"/>',
+    "interrail": '<rect x="6" y="3.5" width="12" height="13.5" rx="3.2"/>'
+    '<path d="M6 11.2h12M9.3 20.5 8 21.8M14.7 20.5l1.3 1.3"/>'
+    '<path d="M9.6 14.3h.01M14.4 14.3h.01" stroke-width="2.4"/>',
+}
+
+
+def _icono(zona: str) -> str:
+    return (
+        '<svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"'
+        ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"'
+        f' focusable="false">{ICONOS[zona]}</svg>'
+    )
+
+
+ZONAS_NAV = (
+    ("promos", "./", "Chollos"),
+    ("buscar", "buscar.html", "Buscar"),
+    ("follows", "seguimientos.html", "Mis avisos"),
+    ("interrail", "interrail.html", "Interrail"),
 )
+
+
+def _enlaces(sangria: str) -> str:
+    return "".join(
+        f'{sangria}<a href="{href}"{{{zona}}}>{_icono(zona)}<span>{nombre}</span></a>\n'
+        for zona, href, nombre in ZONAS_NAV
+    )
+
+
+NAV = '      <nav class="zonas" aria-label="Zonas">\n' + _enlaces("        ") + "      </nav>\n"
+
+# LA BARRA DE ABAJO, en el movil. Es el mismo nav con otra maquetacion: cuatro
+# pestañas al alcance del pulgar, como en una app (y cuando se instala, es una
+# app). En escritorio no se ve. Va en el pie y no en la cabecera porque la
+# cabecera es pegajosa y un `position: fixed` dentro de ella se coloca contra
+# ella, no contra la pantalla.
+TABBAR = '<nav class="tabbar" aria-label="Zonas">\n' + _enlaces("  ") + "</nav>\n"
 
 # Antes habia aqui un punto que latia con «en vivo». No decia nada que el pie no
 # dijera ya («actualizado …») y era justo el tipo de detalle que hace dudar de si
@@ -171,7 +214,10 @@ GUIONES_PANEL = (
 # La 404 no tiene datos que pintar: le basta el tema y el chip de cuenta.
 GUIONES_MINIMO = '<script src="log.js?v={v}"></script>\n'
 
-ENLACE_PRIVACIDAD = '  <a class="foot-enlace" href="privacidad.html">Privacidad</a>\n'
+ENLACE_PRIVACIDAD = (
+    '  <span class="foot-enlaces"><a class="foot-enlace" href="planes.html">Planes</a>'
+    '<a class="foot-enlace" href="privacidad.html">Privacidad</a></span>\n'
+)
 
 NOTA_404 = (
     '  <span>Los precios vuelan: confirma siempre antes de reservar.</span>\n'
@@ -204,6 +250,7 @@ PAGINAS = {
         "zona": "promos",
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
+        "tabbar": TABBAR,
     },
     "buscar.html": {
         "base": "",
@@ -216,6 +263,7 @@ PAGINAS = {
         "zona": "buscar",
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
+        "tabbar": TABBAR,
     },
     "seguimientos.html": {
         "base": "",
@@ -228,6 +276,7 @@ PAGINAS = {
         "zona": "follows",
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
+        "tabbar": TABBAR,
     },
     # El Interrail: la ruta por Europa en tren, con vuelos y alojamiento.
     "interrail.html": {
@@ -241,6 +290,7 @@ PAGINAS = {
         "zona": "interrail",
         "nota": NOTA_WEB,
         "guiones": GUIONES_WEB,
+        "tabbar": TABBAR,
     },
     # Que se guarda de cada persona y que se ve en publico. Lleva el nav, para
     # volver, y no se anuncia como una zona.
@@ -255,6 +305,21 @@ PAGINAS = {
         "zona": None,
         "nota": NOTA_404,
         "guiones": GUIONES_MINIMO,
+        "tabbar": TABBAR,
+    },
+    # Lo que trae cada plan. Interfaz: premium todavia no se cobra ni se exige.
+    "planes.html": {
+        "base": "",
+        "manifiesto": MANIFIESTO,
+        "nav": NAV,
+        "descubrir": "",
+        "titulo": "TripFinder · planes",
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["planes.html"]}">',
+        "vivo": "",
+        "zona": None,
+        "nota": NOTA_404,
+        "guiones": GUIONES_PANEL,
+        "tabbar": TABBAR,
     },
     # La pagina que sirve Pages cuando la direccion no existe. Lleva el nav
     # (es lo unico util que puedes hacer desde ahi) pero no las hojas de
@@ -270,6 +335,7 @@ PAGINAS = {
         "zona": None,
         "nota": NOTA_404,
         "guiones": GUIONES_MINIMO,
+        "tabbar": "",
     },
     # El panel no es una zona publica: no lleva nav, ni las hojas de
     # alojamiento, ni se indexa.
@@ -284,6 +350,7 @@ PAGINAS = {
         "zona": None,
         "nota": NOTA_PANEL,
         "guiones": GUIONES_PANEL,
+        "tabbar": "",
     },
 }
 
@@ -295,7 +362,7 @@ MARCA = re.compile(
 )
 
 
-def _zonas(activa: str | None) -> dict[str, str]:
+def _zonas(activa: str | None, clase: str = "zona") -> dict[str, str]:
     """Los atributos de cada enlace del nav, con el activo marcado.
 
     Cuatro, y las cuatro son PAGINAS. Antes eran cuatro y dos de ellas
@@ -310,9 +377,9 @@ def _zonas(activa: str | None) -> dict[str, str]:
     salida: dict[str, str] = {}
     for z in ("promos", "buscar", "follows", "interrail"):
         if z == activa:
-            salida[z] = f' class="zona activa" data-zona="{z}" aria-current="page"'
+            salida[z] = f' class="{clase} activa" data-zona="{z}" aria-current="page"'
         else:
-            salida[z] = f' class="zona" data-zona="{z}"'
+            salida[z] = f' class="{clase}" data-zona="{z}"'
     return salida
 
 
@@ -325,6 +392,7 @@ def render(nombre_parte: str, datos: dict, version: str = BUILD) -> str:
     for clave in ("guiones", "manifiesto"):
         huecos[clave] = str(huecos.get(clave, "")).format(v=version)
     huecos["nav"] = str(huecos.get("nav", "")).format(**_zonas(datos.get("zona")))
+    huecos["tabbar"] = str(huecos.get("tabbar", "")).format(**_zonas(datos.get("zona"), "tab"))
 
     def sustituir(m: re.Match) -> str:
         clave = m.group(1)

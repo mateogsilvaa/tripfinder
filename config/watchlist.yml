@@ -17,6 +17,11 @@ notify:
   # siguiente transporte que si tenga credenciales.
   method: smtp
   to: mateogonsilva@gmail.com
+  # Los correos estan apagados para todo el mundo salvo que cada cuenta los
+  # encienda desde «tu cuenta». Este buzon tambien: con `false`, `to` solo es el
+  # destino de las pruebas (`test-email`). Ponlo a `true` para recibir aqui lo
+  # de siempre sin tener cuenta.
+  buzon_fijo: false
   # Aviso inmediato solo si es un chollo excepcional (evita el correo diario)
   min_score: 88
   # Ademas, resumen semanal aunque no haya nada excepcional. 6 = domingo
@@ -35,6 +40,7 @@ providers:
 
 stays:
   providers:
+    - google_hotels  # hoteles: el mas barato de Booking, Expedia y la web del hotel
     - airbnb
     - holidu         # comparador: pisos enteros de Vrbo, Booking y agencias
     - amadeus_hotels

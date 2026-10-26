@@ -24,9 +24,10 @@ for (const pagina of PAGINAS) {
       await expect(page.locator(".zonas a")).toHaveText(["Chollos", "Buscar", "Mis avisos", "Interrail"]);
     });
 
-    test("el pie lleva la privacidad", async ({ page }) => {
+    test("el pie lleva la privacidad y los planes", async ({ page }) => {
       await page.goto(pagina);
-      await expect(page.locator(".foot a.foot-enlace")).toHaveAttribute("href", "privacidad.html");
+      await expect(page.locator('.foot a.foot-enlace[href="privacidad.html"]')).toHaveCount(1);
+      await expect(page.locator('.foot a.foot-enlace[href="planes.html"]')).toHaveCount(1);
     });
   });
 }
@@ -36,8 +37,8 @@ test("la portada explica en tres pasos qué es esto", async ({ page }) => {
   const pasos = page.locator(".como-pasos li");
   await expect(pasos).toHaveCount(3);
   await expect(pasos.nth(0)).toContainText("Mira los chollos");
-  await expect(pasos.nth(1)).toContainText("Apunta el que te interese");
-  await expect(pasos.nth(2)).toContainText("Te escribimos cuando baje");
+  await expect(pasos.nth(1)).toContainText("Crea tu cuenta gratis");
+  await expect(pasos.nth(2)).toContainText("Te escribimos cuando haya chollo");
 });
 
 test("la portada no repite lo mismo en dos párrafos", async ({ page }) => {

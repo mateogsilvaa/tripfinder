@@ -230,6 +230,9 @@ function frescura(iso) {
     ? `sin conexión · lo último guardado, ${texto}`
     : `levantamiento: ${texto} · se revisa cada 12 h`;
   el.className = deLaCaja || horas > 36 ? "viejo" : "";
+  // Y arriba, en el renglón del titular: lo primero que se lee es de cuándo es.
+  const ante = document.getElementById("antetitulo");
+  if (ante) ante.textContent = `Desde Madrid · actualizado ${texto}`;
 }
 
 function renderStats(payload) {

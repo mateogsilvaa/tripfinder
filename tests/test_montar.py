@@ -54,7 +54,9 @@ def test_una_sola_edicion_cambia_el_nav_de_las_zonas():
     # Y cada página marca la suya, sin marcar dos.
     for fichero, datos in montar.PAGINAS.items():
         html = (WEB / fichero).read_text(encoding="utf-8")
-        assert html.count('aria-current="page"') == (1 if datos["zona"] else 0), fichero
+        # Arriba y, en las que la llevan, en la barra de abajo del móvil.
+        veces = 2 if datos.get("tabbar") else 1
+        assert html.count('aria-current="page"') == (veces if datos["zona"] else 0), fichero
 
 def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
     """Los cuatro enlaces del nav son PAGINAS.
@@ -142,6 +144,8 @@ LLEVAN = {
     "404.html": {"nav": True, "hojas": False},
     # La privacidad lleva el nav, para volver, y no busca alojamiento.
     "privacidad.html": {"nav": True, "hojas": False},
+    # Los planes: el nav para volver; entrar abre su propio diálogo.
+    "planes.html": {"nav": True, "hojas": False},
     "admin.html": {"nav": False, "hojas": False},
 }
 

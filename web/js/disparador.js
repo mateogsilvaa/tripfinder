@@ -52,7 +52,14 @@ export const esFaltaDeAcceso = (r) =>
   r.reason === "sin-token" ||
   r.reason === "token-invalido" ||
   r.reason === "pendiente" ||
+  r.reason === "gratis" ||
   r.reason === "bloqueada";
+
+/* Lo que trae premium, dicho igual en todos los sitios donde se echa en falta. */
+const PIDE_PREMIUM = "Pídeselo a quien lleva la web.";
+export const QUE_ES_PREMIUM =
+  "Tu cuenta es gratuita: ves los chollos del día y te llegan por correo. Buscar viajes, " +
+  `seguirlos, pedir alojamiento y montar un Interrail es de las cuentas premium. ${PIDE_PREMIUM}`;
 
 /* Lo que se enseña cuando no hay nada que enseñar: o no has entrado, o has
    entrado y todavia no tienes nada tuyo. Sin esto la caja se queda en blanco y
@@ -81,9 +88,19 @@ export function candarFormularios() {
      puestos: quien ya habia entrado seguia leyendo "hace falta una cuenta para
      buscar" y un "Entrar" encima de un formulario que le funcionaba. Se dice de
      una cosa que falta cuando falta. */
-  if (tfUid()) {
+  const gratis = typeof tfEsGratis === "function" && tfEsGratis();
+  if (tfUid() && !gratis) {
     document.querySelectorAll(".candado-nota").forEach((n) => (n.hidden = true));
     return;
+  }
+  // Con cuenta gratis, las notas de la portada («hace falta una cuenta») ya no
+  // dicen la verdad: la cuenta está, lo que falta es premium.
+  if (gratis) {
+    document.querySelectorAll(".candado-nota").forEach((n) => {
+      n.classList.add("premium-nota");
+      n.innerHTML = `<span class="nota-txt">Con tu cuenta gratuita ves los chollos; esto es de las
+        cuentas premium. ${PIDE_PREMIUM}</span>`;
+    });
   }
   [
     ["#finderForm", "buscar"],
@@ -101,6 +118,14 @@ export function candarFormularios() {
     // cada panel— no se le pone otra nota encima diciendo lo mismo.
     const caja = form.closest(".herramienta") || form.parentElement;
     if (caja && caja.querySelector(".candado-nota")) return;
+    if (gratis) {
+      form.insertAdjacentHTML(
+        "beforebegin",
+        `<p class="candado-nota premium-nota"><span class="nota-txt">Para ${que} hace falta una cuenta
+          premium. ${PIDE_PREMIUM}</span></p>`
+      );
+      return;
+    }
     // ENCIMA del formulario, no debajo. Antes salía al final, tras un formulario
     // gris y apagado que parecía roto, y lo primero que se veia era eso: una
     // herramienta que no funciona. Dicho arriba —«hace falta una cuenta» y las
@@ -150,6 +175,16 @@ export function wireEntrar(raiz = document) {
    abre con su contraseña al entrar. Aquí solo queda decir qué falta. */
 export function cajaAcceso(r) {
   const sinCuenta = r.reason === "sin-cuenta";
+  if (r.reason === "gratis") {
+    return {
+      html: `
+      <div class="token-box premium-box">
+        <strong>Esto es de las cuentas premium.</strong>
+        ${tfEsc(QUE_ES_PREMIUM)}
+      </div>`,
+      wire: () => {},
+    };
+  }
   // Con Firebase la cuenta existe pero puede estar a la espera de que la aprueben.
   const aprobacion = r.reason === "pendiente" || r.reason === "bloqueada";
   return {
@@ -160,8 +195,8 @@ export function cajaAcceso(r) {
         }</strong>
         ${
           sinCuenta
-            ? `Los chollos del día los ve todo el mundo, pero buscar, seguir un viaje
-               o pedir alojamiento se guarda a tu nombre. Entra y lo lanzamos.`
+            ? `Buscar, seguir un viaje o pedir alojamiento se guarda a tu nombre. Entra o
+               crea tu cuenta: es gratis.`
             : aprobacion
               ? r.reason === "bloqueada"
                 ? "Tu cuenta está bloqueada."

@@ -50,10 +50,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
       </a>
       <nav class="zonas" aria-label="Zonas">
-        <a href="./" class="zona" data-zona="promos">Chollos</a>
-        <a href="buscar.html" class="zona activa" data-zona="buscar" aria-current="page">Buscar</a>
-        <a href="seguimientos.html" class="zona" data-zona="follows">Mis avisos</a>
-        <a href="interrail.html" class="zona" data-zona="interrail">Interrail</a>
+        <a href="./" class="zona" data-zona="promos"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.3 7.3a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.4"/></svg><span>Chollos</span></a>
+        <a href="buscar.html" class="zona activa" data-zona="buscar" aria-current="page"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.6-4.6"/></svg><span>Buscar</span></a>
+        <a href="seguimientos.html" class="zona" data-zona="follows"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.2 16.5V11a5.8 5.8 0 0 1 11.6 0v5.5l1.4 1.8H4.8z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/></svg><span>Mis avisos</span></a>
+        <a href="interrail.html" class="zona" data-zona="interrail"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3.5" width="12" height="13.5" rx="3.2"/><path d="M6 11.2h12M9.3 20.5 8 21.8M14.7 20.5l1.3 1.3"/><path d="M9.6 14.3h.01M14.4 14.3h.01" stroke-width="2.4"/></svg><span>Interrail</span></a>
       </nav>
       <div class="topbar-hueco"></div>
       <button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-txt flap-txt-largo" aria-hidden="true">Ayúdame a elegir</span><span class="flap-txt flap-txt-corto" aria-hidden="true">¿Dónde ir?</span></button>
@@ -97,7 +97,8 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
             <option value="weekend">Un finde cualquiera</option>
             <option value="mes">Un mes entero</option>
             <option value="mes-finde">Un mes, solo los findes</option>
-            <option value="tramo">Entre dos fechas</option>
+            <option value="dias">Unos días de la semana</option>
+          <option value="tramo">Entre dos fechas</option>
             <option value="exact">Fechas exactas</option>
             <option value="anytime">Cualquier fecha</option>
           </select>
@@ -107,6 +108,13 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
           <button type="button" id="destBtn" class="date-btn">Elegir destino</button>
           <input id="fDest" type="hidden">
         </label>
+        <div class="celda dias-par" id="diasWrap" hidden>
+          <label for="fDiaIda"><span>Salgo el</span>
+            <select id="fDiaIda"><option value="0" selected>lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3">jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
+          <span class="dias-flecha" aria-hidden="true">→</span>
+          <label for="fDiaVuelta"><span>Vuelvo el</span>
+            <select id="fDiaVuelta"><option value="0">lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3" selected>jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
+        </div>
         <label class="celda" id="mesWrap" hidden>
           <span>Mes</span>
           <select id="fMes"></select>
@@ -224,10 +232,16 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <div class="foot-in">
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
-  <a class="foot-enlace" href="privacidad.html">Privacidad</a>
+  <span class="foot-enlaces"><a class="foot-enlace" href="planes.html">Planes</a><a class="foot-enlace" href="privacidad.html">Privacidad</a></span>
     <span class="build">build dev</span>
   </div>
 </footer>
+<nav class="tabbar" aria-label="Zonas">
+  <a href="./" class="tab" data-zona="promos"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.3 7.3a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.4"/></svg><span>Chollos</span></a>
+  <a href="buscar.html" class="tab activa" data-zona="buscar" aria-current="page"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.6-4.6"/></svg><span>Buscar</span></a>
+  <a href="seguimientos.html" class="tab" data-zona="follows"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.2 16.5V11a5.8 5.8 0 0 1 11.6 0v5.5l1.4 1.8H4.8z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/></svg><span>Mis avisos</span></a>
+  <a href="interrail.html" class="tab" data-zona="interrail"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3.5" width="12" height="13.5" rx="3.2"/><path d="M6 11.2h12M9.3 20.5 8 21.8M14.7 20.5l1.3 1.3"/><path d="M9.6 14.3h.01M14.4 14.3h.01" stroke-width="2.4"/></svg><span>Interrail</span></a>
+</nav>
 
 <script src="log.js?v=dev"></script>
 <script src="auth.js?v=dev"></script>

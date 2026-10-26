@@ -5,124 +5,201 @@
    cuenta de antes: son pantallas que casi nadie abre y no hay motivo para
    pagarlas en cada página.
 
-   Las cuentas ya no se piden por WhatsApp ni por issue. Cada cual se registra
-   con su correo y su contraseña, y queda `pendiente`: puede mirar la web, pero
-   no lanzar nada hasta que quien la lleva la apruebe desde el panel. El correo
-   y lo que busca cada uno viven en Firebase, no en el repositorio. */
+   La web está abierta: cualquiera se registra con su correo y su contraseña y
+   entra con una cuenta gratuita, que ve los chollos y los recibe por correo.
+   Lanzar búsquedas, seguir viajes, pedir alojamiento e Interrail es de las
+   cuentas premium, que da quien lleva la web desde el panel. El correo y lo que
+   busca cada uno viven en Firebase, no en el repositorio. */
 
 const esc = (s) => tfEsc(s);
 
 const TEXTO_ESTADO = {
-  aprobado: "Tu cuenta está aprobada.",
-  pendiente:
-    "Tu cuenta está pendiente de aprobación. Puedes mirar la web, pero no lanzar búsquedas ni " +
-    "seguir viajes hasta que quien la lleva la apruebe.",
+  premium: "Plan premium: todas las herramientas.",
+  // Mientras premium no se exija (TF_PREMIUM_OBLIGATORIO), gratis lo tiene todo.
+  gratis: TF_PREMIUM_OBLIGATORIO
+    ? "Plan gratis: ves los chollos y te llegan por correo. Buscar, seguir viajes, alojamiento e " +
+      "Interrail son de premium."
+    : "Plan gratis. Mientras estrenamos la web, todas las herramientas están abiertas.",
+  pendiente: "Tu cuenta se está abriendo: en unos minutos podrás usarla.",
   bloqueado: "Tu cuenta está bloqueada.",
 };
 
-/* ------------------------------------------------------------ entrar / crear */
+const textoDe = (s) =>
+  s.estado === "aprobado" ? TEXTO_ESTADO[s.plan === "premium" ? "premium" : "gratis"] : TEXTO_ESTADO[s.estado] || TEXTO_ESTADO.pendiente;
+
+/* ------------------------------------------------------------ entrar / crear
+
+   UNA SOLA PANTALLA. Correo, contraseña y «Continuar»: si tienes cuenta,
+   entras; si no, se crea en ese momento y se te pregunta cómo llamarte (con
+   un nombre ya puesto, sacado del correo). Con Google configurado, un botón
+   encima y nada más que pensar. `modo` solo cambia el titular: «Crear cuenta»
+   cuando se llega desde un botón que lo decía. */
+const GSI = "https://accounts.google.com/gsi/client";
+let gsiCargando = null;
+
+function cargarGoogle() {
+  if (window.google && window.google.accounts) return Promise.resolve();
+  if (!gsiCargando) {
+    gsiCargando = new Promise((ok, mal) => {
+      const s = document.createElement("script");
+      s.src = GSI;
+      s.async = true;
+      s.onload = ok;
+      s.onerror = () => {
+        gsiCargando = null;
+        mal(new Error("Google no contesta"));
+      };
+      document.head.appendChild(s);
+    });
+  }
+  return gsiCargando;
+}
+
+async function pintarGoogle(caja, alEntrar) {
+  const hueco = caja.querySelector("#nubeGoogle");
+  const id = nubeGoogleId();
+  if (!hueco || !id) return;
+  hueco.hidden = false;
+  caja.querySelector(".login-o").hidden = false;
+  try {
+    await cargarGoogle();
+    window.google.accounts.id.initialize({
+      client_id: id,
+      ux_mode: "popup",
+      callback: async ({ credential }) => alEntrar(await nubeConGoogle(credential)),
+    });
+    const oscuro = document.documentElement.dataset.tema !== "claro";
+    window.google.accounts.id.renderButton(hueco, {
+      theme: oscuro ? "filled_black" : "outline",
+      size: "large",
+      text: "continue_with",
+      shape: "pill",
+      locale: "es",
+      width: Math.min(360, hueco.clientWidth || 320),
+    });
+  } catch {
+    hueco.innerHTML = `<p class="meta">Google no ha cargado. Entra con tu correo.</p>`;
+  }
+}
+
 export function abrirLogin(modo = "entrar") {
-  const registro = modo === "registro";
   const caja = tfModal(`
     <header class="modal-head">
-      <h2>${registro ? "Crear una cuenta" : "Entrar"}</h2>
+      <h2>${modo === "registro" ? "Crea tu cuenta" : "Entra en TripFinder"}</h2>
       <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
-    <div class="nube-pestanas" role="tablist" aria-label="Entrar o crear una cuenta">
-      <button type="button" role="tab" data-modo="entrar" aria-selected="${!registro}">Entrar</button>
-      <button type="button" role="tab" data-modo="registro" aria-selected="${registro}">Crear cuenta</button>
-    </div>
-    <form id="nubeForm" class="modal-form" novalidate>
-      <p class="meta">${
-        registro
-          ? "Los chollos del día son de todos. Tus favoritos, tus seguimientos y tus búsquedas son " +
-            "tuyos. Cuando quien lleva la web apruebe tu cuenta podrás lanzar búsquedas y seguir viajes."
-          : "Los chollos del día son de todos. Tus favoritos, tus seguimientos y tus búsquedas son " +
-            "tuyos: para verlos, entra."
-      }</p>
-      ${
-        registro
-          ? `<label for="nubeNombre">Tu nombre</label>
-      <input id="nubeNombre" name="name" autocomplete="name" maxlength="40" enterkeyhint="next">`
-          : ""
-      }
-      <label for="nubeCorreo">Correo</label>
-      <input id="nubeCorreo" name="email" type="email" autocomplete="email" autocapitalize="none"
-        autocorrect="off" spellcheck="false" enterkeyhint="next">
-      <label for="nubePass">Contraseña</label>
-      ${tfCampoClave("nubePass", registro ? "new-password" : "current-password")}
-      ${registro ? `<p class="meta">De 8 caracteres o más.</p>` : ""}
-      <p class="token-status" id="nubeMsg" role="status"></p>
-      <button class="btn primary" type="submit">${registro ? "Crear la cuenta" : "Entrar"}</button>
-      ${
-        registro
-          ? ""
-          : `<p class="login-pedir"><button class="btn ghost small" type="button" id="nubeOlvide">
-          ¿Olvidaste la contraseña?</button></p>`
-      }
-    </form>`);
+    <div class="login">
+      <p class="meta login-lede">Gratis. Con tu cuenta guardas favoritos y eliges qué correos te llegan.</p>
+      <div id="nubeGoogle" class="login-google" hidden></div>
+      <p class="login-o" hidden><span>o con tu correo</span></p>
+      <form id="nubeForm" class="modal-form login-form" novalidate>
+        <label for="nubeCorreo">Correo</label>
+        <input id="nubeCorreo" name="email" type="email" autocomplete="username email" autocapitalize="none"
+          autocorrect="off" spellcheck="false" enterkeyhint="next" inputmode="email">
+        <label for="nubePass">Contraseña</label>
+        ${tfCampoClave("nubePass", "current-password")}
+        <p class="meta login-pista">Si es tu primera vez, la que elijas ahora (8 caracteres o más).</p>
+        <p class="token-status" id="nubeMsg" role="status"></p>
+        <button class="btn primary login-boton" type="submit">Continuar</button>
+        <p class="login-pedir"><button class="btn ghost small" type="button" id="nubeOlvide">
+          ¿Olvidaste la contraseña?</button></p>
+      </form>
+    </div>`);
 
   const form = caja.querySelector("#nubeForm");
   const msg = caja.querySelector("#nubeMsg");
   const boton = form.querySelector("button[type=submit]");
   tfWireVerClave(caja);
 
-  caja.querySelectorAll("[data-modo]").forEach((b) =>
-    b.addEventListener("click", () => {
-      if (b.dataset.modo !== modo) abrirLogin(b.dataset.modo);
-    })
-  );
-
-  const olvide = caja.querySelector("#nubeOlvide");
-  if (olvide) {
-    olvide.addEventListener("click", async () => {
-      msg.textContent = "Mandando…";
-      const r = await nubeOlvide(caja.querySelector("#nubeCorreo").value);
-      msg.textContent = r.ok
-        ? "Si hay una cuenta con ese correo, le llega ahora un enlace para poner otra contraseña."
-        : r.error;
-    });
+  // El correo de la última vez, para no escribirlo otra vez.
+  try {
+    const ultimo = localStorage.getItem("tf_ultimo_correo");
+    if (ultimo) caja.querySelector("#nubeCorreo").value = ultimo;
+  } catch {
+    /* navegación privada */
   }
+
+  const alEntrar = (r) => {
+    if (!r.ok) {
+      msg.textContent = r.error;
+      if (r.codigo === "clave-mala") caja.querySelector("#nubeOlvide").classList.add("resalta");
+      return;
+    }
+    if (r.nueva) return bienvenida(caja, r.sesion);
+    tfCerrarModal();
+    location.reload();
+  };
+
+  pintarGoogle(caja, alEntrar);
+
+  caja.querySelector("#nubeOlvide").addEventListener("click", async () => {
+    msg.textContent = "Mandando…";
+    const r = await nubeOlvide(caja.querySelector("#nubeCorreo").value);
+    msg.textContent = r.ok
+      ? "Si hay una cuenta con ese correo, le llega ahora un enlace para poner otra contraseña."
+      : r.error;
+  });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (boton.disabled) return;
     const correo = caja.querySelector("#nubeCorreo").value;
-    // Copiar y pegar del móvil se trae espacios de regalo.
-    const clave = caja.querySelector("#nubePass").value;
-    msg.textContent = registro ? "Creando la cuenta…" : "Comprobando…";
-    tfOcupado(boton, true, msg.textContent);
-    const r = registro
-      ? await nubeRegistrar(correo, clave, caja.querySelector("#nubeNombre").value)
-      : await nubeEntrar(correo, clave);
+    msg.textContent = "Un momento…";
+    tfOcupado(boton, true, "Un momento…");
+    const r = await nubeContinuar(correo, caja.querySelector("#nubePass").value);
     tfOcupado(boton, false);
-    if (!r.ok) {
-      msg.textContent = r.error;
-      return;
+    if (r.ok) {
+      try {
+        localStorage.setItem("tf_ultimo_correo", String(correo).trim().toLowerCase());
+      } catch {
+        /* navegación privada */
+      }
     }
-    // Una cuenta nueva, o una que aún no han aprobado, entra pero no puede
-    // lanzar nada: se dice aquí, que es cuando se puede hacer algo, y no al
-    // pulsar un botón que no responde.
-    if (r.sesion.estado !== "aprobado") {
-      const verificar = r.sesion.verificado
-        ? ""
-        : " Te hemos escrito un correo con un enlace para verificar que la dirección es tuya: si ya tenías cuenta de antes, es lo que permite recuperarla.";
-      msg.innerHTML = `<span class="ojo">${esc(TEXTO_ESTADO[r.sesion.estado] || TEXTO_ESTADO.pendiente)}${esc(verificar)}</span>`;
-      boton.textContent = "Entendido";
-      boton.type = "button";
-      boton.onclick = () => {
-        tfCerrarModal();
-        location.reload();
-      };
-      caja.querySelectorAll("[data-cerrar]").forEach((b) => b.addEventListener("click", () => location.reload()));
-      if (typeof tfAnunciar === "function") tfAnunciar(TEXTO_ESTADO[r.sesion.estado]);
-      return;
+    alEntrar(r);
+  });
+
+  const correo = caja.querySelector("#nubeCorreo");
+  if (window.innerWidth > 620) (correo.value ? caja.querySelector("#nubePass") : correo).focus();
+}
+
+/* La cuenta acaba de nacer: cómo te llamamos, y que falta verificar el correo.
+   Un paso, con el nombre ya puesto: «Listo» y a la web. */
+function bienvenida(caja, sesion) {
+  const cuerpo = caja.querySelector(".login");
+  cuerpo.innerHTML = `
+    <form id="nubeBienvenida" class="modal-form">
+      <p class="login-hecho">Cuenta creada.</p>
+      <label for="nubeNombre">¿Cómo te llamamos?</label>
+      <input id="nubeNombre" maxlength="40" autocomplete="given-name" value="${esc(sesion.name)}">
+      <p class="meta">${esc(textoDe(sesion))}${
+        sesion.verificado
+          ? ""
+          : " Te hemos mandado un correo para confirmar la dirección: hasta entonces no te escribimos nada más."
+      }</p>
+      <p class="token-status" id="nubeBienMsg" role="status"></p>
+      <button class="btn primary" type="submit" id="nubeListo">Listo</button>
+    </form>`;
+  const listo = cuerpo.querySelector("#nubeListo");
+  const nombre = cuerpo.querySelector("#nubeNombre");
+  nombre.focus();
+  nombre.select();
+  cuerpo.querySelector("#nubeBienvenida").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const n = nombre.value.trim();
+    if (n && n !== sesion.name) {
+      tfOcupado(listo, true, "Guardando…");
+      const r = await nubeGuardarPerfil(n, sesion.prefs || {});
+      tfOcupado(listo, false);
+      if (!r.ok) {
+        cuerpo.querySelector("#nubeBienMsg").textContent = r.error;
+        return;
+      }
     }
     tfCerrarModal();
     location.reload();
   });
-
-  if (window.innerWidth > 620) (caja.querySelector("#nubeNombre") || caja.querySelector("#nubeCorreo")).focus();
+  caja.querySelectorAll("[data-cerrar]").forEach((b) => b.addEventListener("click", () => location.reload()));
+  if (typeof tfAnunciar === "function") tfAnunciar("Cuenta creada.");
 }
 
 /* ---------------------------------------------------------------- tu cuenta */
@@ -146,9 +223,9 @@ export async function abrirCuenta() {
     <p class="cuenta-quien">
       Entras con <b>${esc(t.correo || "tu correo")}</b>. Tus favoritos, tus seguimientos y tus
       búsquedas solo los ves tú.
-      <span class="${ahora.estado === "aprobado" ? "" : "cuenta-aviso"}" id="nubeEstado">${esc(
-        TEXTO_ESTADO[ahora.estado] || TEXTO_ESTADO.pendiente
-      )}</span>
+      <span class="${nubePuedeLanzar(ahora) ? "cuenta-plan" : "cuenta-aviso"}" id="nubeEstado">${esc(
+        textoDe(ahora)
+      )} <a class="cuenta-planes" href="planes.html">Ver planes</a></span>
       ${ahora.admin ? `<a class="btn ghost small" href="admin.html" id="nubePanel">Panel de cuentas</a>` : ""}
     </p>
 
@@ -174,28 +251,11 @@ export async function abrirCuenta() {
     }
 
     <form id="nubePerfil" class="modal-form">
-      <h3 class="bloque-head">Tus datos y avisos</h3>
+      <h3 class="bloque-head">Tus datos</h3>
       <label for="nubeNombre">Tu nombre</label>
       <input id="nubeNombre" maxlength="40" value="${esc(ahora.name)}" autocomplete="name">
 
-      <label for="nubeChollos">Chollos del día</label>
-      <div class="par-campo">
-        <select id="nubeChollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
-        <span class="par-tope">
-          <span class="par-y">…y solo si bajan de</span>
-          <input id="nubeTope" type="number" min="0" step="10" placeholder="sin tope"
-            aria-label="Precio máximo de los chollos, en euros"
-            value="${prefs.chollos_max_precio ? Math.round(prefs.chollos_max_precio) : ""}">
-          <span class="par-unidad">€</span>
-        </span>
-      </div>
-
-      <label for="nubeSeg">Parte de tus seguimientos</label>
-      <select id="nubeSeg">${tfOpciones(TF_FREQ_SEGUIMIENTOS, prefs.seguimientos || "diario")}</select>
-      <label class="switch sangrada">
-        <input type="checkbox" id="nubeSoloNov"${prefs.seguimientos_solo_novedades ? " checked" : ""}>
-        <span>Solo cuando haya algo nuevo que contar</span>
-      </label>
+      ${tfAvisosHTML("nube", prefs, nubePuedeLanzar(ahora))}
 
       <p class="token-status" id="nubePerfilMsg" role="status"></p>
       <button class="btn primary" type="submit">Guardar</button>
@@ -220,6 +280,7 @@ export async function abrirCuenta() {
     </div>`);
 
   tfWireVerClave(caja);
+  tfAvisosAtar(caja, "nube");
 
   const verificarMsg = caja.querySelector("#nubeVerificarMsg");
   if (verificarMsg) {
@@ -256,15 +317,10 @@ export async function abrirCuenta() {
       msg.textContent = "El nombre no puede quedar vacío.";
       return;
     }
-    const tope = Number(caja.querySelector("#nubeTope").value);
     msg.textContent = "Guardando…";
     tfOcupado(guardar, true, "Guardando…");
-    const r = await nubeGuardarPerfil(nombre, {
-      chollos: caja.querySelector("#nubeChollos").value,
-      chollos_max_precio: tope > 0 ? tope : null,
-      seguimientos: caja.querySelector("#nubeSeg").value,
-      seguimientos_solo_novedades: caja.querySelector("#nubeSoloNov").checked,
-    });
+    // Lo que no son correos (como «me interesa premium») se queda como estaba.
+    const r = await nubeGuardarPerfil(nombre, { ...ahora.prefs, ...tfAvisosLeer(caja, "nube") });
     tfOcupado(guardar, false);
     msg.textContent = r.ok ? "Guardado." : r.error;
   });

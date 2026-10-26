@@ -65,7 +65,8 @@ for (const tema of ["oscuro", "claro"]) {
   test(`los desplegables de tu cuenta se leen (tema ${tema})`, async ({ page }) => {
     await abrirCuenta(page, tema);
     const selects = page.locator("#tfModal select");
-    await expect(selects).toHaveCount(2);
+    // Chollos, seguimientos, qué día y a qué hora.
+    await expect(selects).toHaveCount(4);
 
     const contraste = await page.evaluate((fn) => {
       const medir = eval(fn);
@@ -89,10 +90,10 @@ for (const tema of ["oscuro", "claro"]) {
 /* Dentro de un formulario esto es una casilla con su frase al lado, no uno de
    los chips de la barra de filtros: salía como una pastilla de mono en
    mayúsculas, con la casilla en `opacity: 0` y nada que dijera que se marca. */
-test("la casilla de los seguimientos es una casilla, y se ve", async ({ page }) => {
+test("el interruptor de los correos es una casilla, y se ve", async ({ page }) => {
   await abrirCuenta(page);
-  const fila = page.locator("#tfModal .switch");
-  await expect(fila).toContainText("Solo cuando haya algo nuevo que contar");
+  const fila = page.locator("#tfModal .switch").first();
+  await expect(fila).toContainText("Quiero recibir correos");
 
   const como = await page.evaluate(() => {
     const f = document.querySelector("#tfModal .switch");
@@ -111,11 +112,26 @@ test("la casilla de los seguimientos es una casilla, y se ve", async ({ page }) 
   expect(como.ancho).toBeGreaterThan(10);
   expect(como.opacidad).toBe(1);
 
-  // Y se marca de verdad.
-  const casilla = page.locator("#tfModal .switch input[type=checkbox]");
+  // Y se marca de verdad, y entonces enseña el resto.
+  const casilla = page.locator("#tfAvisos");
   await expect(casilla).not.toBeChecked();
+  await expect(page.locator("#tfChollos")).toBeHidden();
   await casilla.check();
   await expect(casilla).toBeChecked();
+  await expect(page.locator("#tfChollos")).toBeVisible();
+});
+
+test("los correos van apagados, y «qué día» solo sale si la frecuencia lo usa", async ({ page }) => {
+  await abrirCuenta(page);
+  await expect(page.locator("#tfModal .avisos-apagados")).toBeVisible();
+  await page.locator("#tfAvisos").check();
+  await page.locator("#tfChollos").selectOption("diario");
+  await page.locator("#tfSeg").selectOption("diario");
+  await expect(page.locator("#tfDia")).toBeHidden();
+  await page.locator("#tfChollos").selectOption("quincenal");
+  await expect(page.locator("#tfDia")).toBeVisible();
+  const lee = await page.evaluate(() => tfAvisosLeer(document.querySelector("#tfModal"), "tf"));
+  expect(lee).toMatchObject({ avisos: true, chollos: "quincenal", dia: null, franja: "cualquiera" });
 });
 
 /* ------------------------------------- la puerta que faltaba, y el rediseño */
@@ -186,8 +202,9 @@ test.describe("el diálogo de cuenta, rehecho", () => {
   test("cada bloque dice de qué va", async ({ page }) => {
     await abrirCuenta(page);
     const cabeceras = page.locator("#tfModal .bloque-head");
-    await expect(cabeceras).toHaveCount(2);
+    await expect(cabeceras).toHaveCount(3);
     await expect(cabeceras.first()).toHaveText(/tus avisos/i);
-    await expect(cabeceras.nth(1)).toHaveText(/tu contraseña/i);
+    await expect(cabeceras.nth(1)).toHaveText(/correos/i);
+    await expect(cabeceras.nth(2)).toHaveText(/tu contraseña/i);
   });
 });

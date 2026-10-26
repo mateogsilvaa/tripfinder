@@ -27,6 +27,13 @@
 const NUBE_CONFIG = {
   apiKey: "AIzaSyAisQaTaTO0Kn7lBQmJ7YgekpDIGoyz1gA",
   projectId: "trip-a9418",
+  /* ENTRAR CON GOOGLE. Vacío, el botón no sale. Para encenderlo: en Firebase,
+     Authentication → Método de acceso → Google → Activar; ahí mismo, en
+     «Configuración del SDK web», está el «ID de cliente web»
+     (…apps.googleusercontent.com): va aquí. Y en Google Cloud → Credenciales →
+     ese cliente OAuth, en «Orígenes de JavaScript autorizados», la dirección
+     de la web. No es un secreto: el navegador lo enseña igual. */
+  googleClientId: "",
 };
 
 const NUBE_CLAVE = "tf_nube"; // los tokens: refresh, id, cuándo caduca, de quién
@@ -294,6 +301,7 @@ function nubeGuardarSesion(uid, ficha) {
     name: nombre,
     prefs: ficha.prefs || {},
     estado: ficha.estado || "pendiente",
+    plan: nubePlan(ficha),
     admin: ficha.admin === true,
     // A qué cuenta de antes de Firebase se vinculó, si lo hizo. Lo que hizo con
     // aquella —seguimientos, búsquedas— lleva su id como dueño, y con esto sigue
@@ -311,6 +319,16 @@ function nubeGuardarSesion(uid, ficha) {
   }
   return sesion;
 }
+
+/* Gratis ve los chollos; premium, además, lanza búsquedas. Una ficha sin `plan`
+   es de antes de abrir la web —la de un conocido— y es premium, igual que en
+   `firestore.rules`. */
+const nubePlan = (ficha) => (ficha && ficha.plan) || "premium";
+const nubeEsPremium = (s) => !!s && s.estado === "aprobado" && s.plan === "premium";
+/* Premium existe pero TODAVÍA NO SE EXIGE (igual que en firestore.rules y en
+   nube.py): con esto en false, cualquier cuenta aprobada lanza búsquedas. */
+const TF_PREMIUM_OBLIGATORIO = false;
+const nubePuedeLanzar = (s) => !!s && s.estado === "aprobado" && (!TF_PREMIUM_OBLIGATORIO || s.plan === "premium");
 
 function nubeSalir() {
   try {
@@ -366,7 +384,8 @@ async function nubeFichaDe(t, nombreSiFalta) {
     const nombre = (nombreSiFalta || (t.correo || "").split("@")[0] || "cuenta").slice(0, 40);
     try {
       await nubeCommit(t.id, [
-        nubeCrear(`usuarios/${t.uid}`, { nombre, correo: t.correo, estado: "pendiente" }),
+        // La web es abierta: se nace aprobada y gratis. Premium lo da el panel.
+        nubeCrear(`usuarios/${t.uid}`, { nombre, correo: t.correo, estado: "aprobado", plan: "gratis" }),
       ]);
     } catch (e) {
       // Si ya existía (otra pestaña acaba de crearla), se lee y listo.
@@ -374,7 +393,7 @@ async function nubeFichaDe(t, nombreSiFalta) {
     }
     ficha = await nubeLeerDoc(t.id, `usuarios/${t.uid}`);
   }
-  return ficha || { nombre: nombreSiFalta, estado: "pendiente" };
+  return ficha || { nombre: nombreSiFalta, estado: "aprobado", plan: "gratis" };
 }
 
 async function nubeAuth(operacion, cuerpo) {
@@ -447,10 +466,18 @@ async function nubeVerificacion(ficha) {
   return verificado;
 }
 
+/* El nombre de casa, si no se da otro: lo de antes de la arroba, sin números
+   ni puntos y con mayúscula. «ana.garcia91@…» -> «Ana garcia». Se cambia luego
+   en «tu cuenta». */
+function nubeNombreDeCorreo(correo) {
+  const base = String(correo || "").split("@")[0].replace(/[._-]+/g, " ").replace(/\d+/g, "").trim();
+  const n = (base || "viajero").slice(0, 40);
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
 async function nubeRegistrar(correo, clave, nombre) {
   correo = String(correo || "").trim().toLowerCase();
-  nombre = String(nombre || "").trim();
-  if (!nombre) return { ok: false, error: "Falta tu nombre: es como te va a llamar la web." };
+  nombre = String(nombre || "").trim() || nubeNombreDeCorreo(correo);
   if (nombre.length > 40) return { ok: false, error: "El nombre, de 40 caracteres como mucho." };
   if (!nubeValidarCorreo(correo)) return { ok: false, error: NUBE_TEXTOS.INVALID_EMAIL };
   if (String(clave || "").length < NUBE_MIN_CLAVE) return { ok: false, error: NUBE_TEXTOS.WEAK_PASSWORD };
@@ -487,6 +514,62 @@ async function nubeEntrar(correo, clave) {
     const sesion = nubeGuardarSesion(t.uid, ficha);
     if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
     return { ok: true, sesion };
+  } catch (e) {
+    return { ok: false, error: e.message, codigo: e.codigo };
+  }
+}
+
+/* ENTRAR O CREAR, CON UN SOLO BOTÓN. Antes eran dos pestañas y la mitad de los
+   «no me deja entrar» eran gente en la equivocada: registrándose con un correo
+   que ya tenía cuenta, o entrando con uno que no. Ahora se prueba a entrar y,
+   si Firebase dice que esas credenciales no valen, se prueba a crear la
+   cuenta: si el correo ya existe, lo que falla es la contraseña, y se dice
+   eso. Firebase no deja saber si un correo tiene cuenta sin más (protección
+   contra enumeración), y así tampoco hace falta. */
+const NUBE_CREDENCIALES_MALAS = ["INVALID_LOGIN_CREDENTIALS", "INVALID_PASSWORD", "EMAIL_NOT_FOUND"];
+
+async function nubeContinuar(correo, clave) {
+  correo = String(correo || "").trim().toLowerCase();
+  if (!nubeValidarCorreo(correo)) return { ok: false, error: NUBE_TEXTOS.INVALID_EMAIL };
+  if (!clave) return { ok: false, error: "Falta la contraseña." };
+  // Ninguna cuenta de aquí tiene una más corta: se dice sin preguntar a nadie.
+  if (String(clave).length < NUBE_MIN_CLAVE) {
+    return { ok: false, codigo: "clave-mala", error: `La contraseña tiene ${NUBE_MIN_CLAVE} caracteres o más.` };
+  }
+  const dentro = await nubeEntrar(correo, clave);
+  if (dentro.ok || !NUBE_CREDENCIALES_MALAS.includes(dentro.codigo)) return { ...dentro, nueva: false };
+  const nueva = await nubeRegistrar(correo, clave, "");
+  if (nueva.ok) return { ...nueva, nueva: true };
+  if (nueva.codigo === "EMAIL_EXISTS") {
+    return { ok: false, codigo: "clave-mala", error: "Ese correo ya tiene cuenta y la contraseña no es esa." };
+  }
+  return nueva;
+}
+
+/* Con Google: el botón de Google da un `credential` (un token firmado por
+   Google) y Firebase lo cambia por una sesión suya. La primera vez crea la
+   cuenta; el nombre sale del de Google. */
+const nubeGoogleId = () => (nubeConfig() || {}).googleClientId || "";
+
+async function nubeConGoogle(credential) {
+  try {
+    const r = await nubeAuth("signInWithIdp", {
+      postBody: `id_token=${encodeURIComponent(credential)}&providerId=google.com`,
+      requestUri: location.origin,
+      returnSecureToken: true,
+      returnIdpCredential: true,
+    });
+    const t = nubeDeRespuesta(r);
+    nubeGuardarTokens(t);
+    const ficha = await nubeFichaDe(t, r.displayName || r.firstName || nubeNombreDeCorreo(r.email));
+    if (ficha.estado === "bloqueado") {
+      nubeSalir();
+      return { ok: false, error: "Esta cuenta está bloqueada.", codigo: "bloqueada" };
+    }
+    nubeAdoptarDeLasCuentasViejas(t.uid);
+    const sesion = nubeGuardarSesion(t.uid, ficha);
+    if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
+    return { ok: true, sesion, nueva: !!r.isNewUser };
   } catch (e) {
     return { ok: false, error: e.message, codigo: e.codigo };
   }
@@ -556,10 +639,12 @@ async function nubeSincronizar() {
 async function nubeEncargar(tipo, payload) {
   let s = tfSesion();
   if (!s || !s.uid) return { ok: false, reason: "sin-cuenta" };
-  if (s.estado !== "aprobado") {
-    // Quizá te acaban de aprobar: se mira antes de decir que no.
+  if (!nubePuedeLanzar(s)) {
+    // Quizá te acaban de dar premium: se mira antes de decir que no.
     s = (await nubeSincronizar()) || s;
-    if (s.estado !== "aprobado") return { ok: false, reason: s.estado === "bloqueado" ? "bloqueada" : "pendiente" };
+    if (s.estado === "bloqueado") return { ok: false, reason: "bloqueada" };
+    if (s.estado !== "aprobado") return { ok: false, reason: "pendiente" };
+    if (!nubePuedeLanzar(s)) return { ok: false, reason: "gratis" };
   }
   const token = await nubeToken();
   if (!token) return { ok: false, reason: "sin-cuenta" };
@@ -574,9 +659,24 @@ async function nubeEncargar(tipo, payload) {
       const ahora = (await nubeSincronizar()) || s;
       if (ahora.estado === "bloqueado") return { ok: false, reason: "bloqueada" };
       if (ahora.estado !== "aprobado") return { ok: false, reason: "pendiente" };
+      if (!nubePuedeLanzar(ahora)) return { ok: false, reason: "gratis" };
     }
     if (typeof tfApuntar === "function") tfApuntar("encargo", `${tipo}: ${e.codigo}`, e.detalle);
     return { ok: false, reason: e.message };
+  }
+}
+
+/* Un resultado recién salido del scraper, antes de que llegue a Pages (ver
+   `resultados` en firestore.rules). Sin cuenta: es lo mismo que se publica en
+   `data/`. null si no está o no hay Firebase: la web sigue mirando `data/`. */
+async function nubeResultado(clave) {
+  if (!nubeActiva()) return null;
+  const id = String(clave).replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 200);
+  try {
+    const d = await nubeLeerDoc("", `resultados/${id}`);
+    return d && typeof d.json === "string" ? JSON.parse(d.json) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -632,7 +732,8 @@ async function nubeVincular(uid, legado, prefs) {
   if (!token) return { ok: false, error: "Entra primero." };
   try {
     await nubeCommit(token, [
-      nubeCambiar(`usuarios/${uid}`, { estado: "aprobado", legado, prefs: prefs || {} }),
+      // Tener cuenta de antes es ser un conocido: premium.
+      nubeCambiar(`usuarios/${uid}`, { estado: "aprobado", legado, prefs: prefs || {}, plan: "premium" }),
       nubeCambiar(`cuentas_antiguas/${legado}`, { vinculada: uid }),
     ]);
     return { ok: true };
@@ -641,11 +742,14 @@ async function nubeVincular(uid, legado, prefs) {
   }
 }
 
-async function nubeCambiarEstado(uid, estado) {
+/* Estado y, si se da, plan. Aprobar una pendiente de antes de abrir la web la
+   deja gratis: sin `plan`, una aprobada contaría como premium. */
+async function nubeCambiarEstado(uid, estado, plan) {
   const token = await nubeToken();
   if (!token) return { ok: false, error: "Entra primero." };
+  const campos = plan ? { estado, plan } : { estado };
   try {
-    await nubeCommit(token, [nubeCambiar(`usuarios/${uid}`, { estado })]);
+    await nubeCommit(token, [nubeCambiar(`usuarios/${uid}`, campos)]);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
@@ -656,5 +760,14 @@ async function nubeCambiarEstado(uid, estado) {
    te han aprobado, la próxima acción ya lo sabe. */
 if (nubeActiva()) {
   const s = tfSesion();
-  if (s && s.nube) setTimeout(nubeSincronizar, 800);
+  if (s && s.nube) {
+    setTimeout(async () => {
+      const antes = nubePuedeLanzar(s);
+      const ahora = await nubeSincronizar();
+      // Si te acaban de dar premium (o quitártelo), los formularios se pintaron
+      // con lo de antes: apagados, o encendidos sin poder. Se recarga una vez;
+      // a la siguiente ya coincide y no vuelve a pasar.
+      if (ahora && ahora.nube && nubePuedeLanzar(ahora) !== antes) location.reload();
+    }, 800);
+  }
 }

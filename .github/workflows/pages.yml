@@ -54,6 +54,16 @@ jobs:
           rm -f _site/data/state.json
           touch _site/.nojekyll
 
+      # Con dominio propio (variable de repositorio DOMINIO, p. ej.
+      # tripfinder.es) se publica tambien el CNAME. Con el despliegue por
+      # Actions el que manda es Settings -> Pages -> Custom domain, pero asi el
+      # sitio dice de donde es y un fork no hereda el dominio de nadie.
+      - name: Dominio propio
+        if: vars.DOMINIO != ''
+        env:
+          DOMINIO: ${{ vars.DOMINIO }}
+        run: echo "$DOMINIO" > _site/CNAME
+
       # `data/users.json` lleva el email en claro de cada cuenta, y la copia de
       # arriba lo publicaba tal cual: cualquiera que abriera
       # …github.io/tripfinder/data/users.json leia las direcciones. La web no

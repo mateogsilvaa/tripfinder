@@ -17,7 +17,11 @@ import { loadSearches, recogerBusqueda } from "./busqueda.js";
 import { cargarWatches, recogerSeguimiento } from "./seguimientos.js";
 import { marcarFlap } from "./quiz.js";
 import { montarInterrail } from "./interrail.js";
+import { montarPestanas } from "./pestanas.js";
+import { montarAtajos } from "./atajos.js";
 
+montarPestanas();
+montarAtajos();
 init();
 loadSearches();
 cargarWatches();

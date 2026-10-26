@@ -20,16 +20,16 @@
 
 :root {
   /* ---- superficies -------------------------------------------------- */
-  --paper: #100f0e;      /* el fondo de todo */
-  --surface: #191817;    /* paneles y el feed */
-  --surface2: #201f1c;   /* el panel de al lado, y la fila al pasar por encima */
-  --field: #1c1b18;      /* dentro de un formulario */
+  --paper: #0f0f0e;      /* el fondo de todo */
+  --surface: #171715;    /* paneles y el feed */
+  --surface2: #1e1e1b;   /* el panel de al lado, y la fila al pasar por encima */
+  --field: #1a1a18;      /* dentro de un formulario */
 
   /* ---- tinta -------------------------------------------------------- */
-  --ink: #f4f1e8;
-  --muted: #8c8880;      /* texto secundario; 5.4:1 sobre --paper */
-  --line: #34332e;       /* el borde de un contenedor */
-  --hair: #282721;       /* la raya entre dos filas */
+  --ink: #f3f0e8;
+  --muted: #9a968d;      /* texto secundario */
+  --line: #2c2b28;       /* el borde de un contenedor */
+  --hair: #232320;       /* la raya entre dos filas */
 
   /* ---- los dos colores que significan algo --------------------------- */
   --accent: #ff5a22;     /* el precio que ha bajado. RELLENOS */
@@ -53,12 +53,14 @@
 
 
   /* ---- forma -------------------------------------------------------- */
-  --r: 4px;              /* paneles, campos, el feed */
+  --r: 10px;             /* paneles, el feed, las tarjetas */
+  --r-s: 7px;            /* campos y filas dentro de un panel */
   --r-pill: 999px;       /* botones y chips */
-  --r-tag: 3px;          /* el código IATA */
+  --r-tag: 4px;          /* el código IATA */
   --tap-min: 44px;       /* área táctil mínima, aunque se vea más pequeño */
-  --pad-page: 24px;
-  --ancho: 1200px;
+  --pad-page: 20px;
+  --ancho: 1120px;
+  --sombra: 0 1px 0 rgb(0 0 0 / 0.04), 0 8px 24px -12px rgb(0 0 0 / 0.35);
 
   /* ---- tipografía ---------------------------------------------------- */
   --font-sans: "Switzer", "Switzer respaldo", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -66,11 +68,11 @@
   --font-script: "Pinyon Script", "Snell Roundhand", cursive;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
 
-  --fs-display: clamp(40px, 7.6vw, 70px);
-  --fs-title: clamp(38px, 6.6vw, 56px);
-  --fs-heading: 26px;
-  --fs-subhead: 24px;
-  --fs-city: 19px;
+  --fs-display: clamp(30px, 5.2vw, 46px);
+  --fs-title: clamp(28px, 4.6vw, 40px);
+  --fs-heading: 20px;
+  --fs-subhead: 18px;
+  --fs-city: 17px;
   --fs-city-s: 15px;
   --fs-lede: 15px;
   --fs-body: 14px;
@@ -78,8 +80,8 @@
   --fs-ui: 13px;
   --fs-ui-s: 12px;
   --fs-input: 15px;
-  --fs-amount: 50px;
-  --fs-figure: 26px;
+  --fs-amount: 42px;
+  --fs-figure: 22px;
   --fs-cifra: 19px;
   --fs-data: 12.5px;
   --fs-data-s: 11.5px;
@@ -101,18 +103,20 @@
   --velo: rgba(4, 4, 3, 0.72);
 }
 
-/* La carta de día. El `--line` pasa a ser tinta plena a propósito: en claro un
-   gris no separa nada, y el diseño se apoya en el filo negro. */
+/* La carta de día. Antes el `--line` era tinta plena —el filo negro—; en el
+   rediseño compacto pasa a una raya suave: con tanto filo, una pantalla densa
+   parecía una hoja de cálculo. Lo que separa ahora es el blanco de las
+   tarjetas sobre el papel, no el borde. */
 :root[data-tema="claro"] {
-  --paper: #f3f0e9;
-  --surface: #fffdf8;
-  --surface2: #f1ece1;
-  --field: #fffdf8;
+  --paper: #f6f4ef;
+  --surface: #ffffff;
+  --surface2: #f1eee7;
+  --field: #ffffff;
 
   --ink: #16150f;
-  --muted: #6e6a5f;        /* 4.6:1 sobre --surface, el más claro de los tres */
-  --line: #16150f;
-  --hair: #e8e3d7;
+  --muted: #64605a;        /* 4.6:1 sobre --surface2, el más oscuro de los tres */
+  --line: #dcd6ca;
+  --hair: #ebe7de;
 
   --accent: #e8410d;       /* relleno: #12110f encima da 4.7:1 */
   --accent-txt: #c5370b;   /* texto sobre papel: 4.5:1 */
@@ -129,6 +133,7 @@
   --code-ink: #fffdf8;
   --sobre-acento: #12110f;
   --velo: rgba(22, 21, 15, 0.5);
+  --sombra: 0 1px 0 rgb(22 21 15 / 0.03), 0 8px 24px -14px rgb(22 21 15 / 0.18);
 }
 
 /* ==========================================================================
@@ -1747,6 +1752,7 @@ h1 em { font-size: 1.3em; }
 }
 .cuenta-quien b { color: var(--ink); }
 .cuenta-aviso { display: block; margin-top: 8px; color: var(--accent-txt); }
+.cuenta-plan { display: block; margin-top: 8px; color: var(--deep); }
 
 /* Cada bloque dice de qué va antes de empezar, para que no haya que deducirlo
    del primer campo. */
@@ -3394,6 +3400,23 @@ h1 em { font-size: 1.3em; }
 .ir-ruta.corta { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; }
 .ir-ruta.corta h3 { margin: 0; font-size: var(--fs-body); }
 .ir-corta-paradas { margin: 2px 0; font-size: var(--fs-body-s); }
+.ir-corta-idea { margin: 2px 0; font-size: var(--fs-body-s); color: var(--muted); }
+/* Clásica o menos conocida: un rótulo, no un color. El naranja es del precio
+   y el verde de lo que se vigila; esto es tinta y un filete. */
+.ir-tipo {
+  display: inline-block;
+  margin-bottom: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tag);
+  font: 500 var(--fs-caps) / 1.3 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--ink);
+}
+.ir-tipo.alternativa { border-style: dashed; }
+.ir-etiqueta .ir-tipo { margin: 0; padding: 0 5px; }
+.ir-monton { margin: 14px 0 6px; font: 500 var(--fs-meta) / 1.4 var(--font-mono); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .ir-ruta.corta .meta { margin: 0; font: 400 var(--fs-meta) / 1.4 var(--font-mono); color: var(--muted); }
 .ir-ruta.corta .btn { flex: none; }
 .ir-largo { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; color: var(--accent-txt); }
@@ -3641,3 +3664,448 @@ h1 em { font-size: 1.3em; }
   /* Solo el icono: sigue siendo un enlace y se pulsa con el dedo. */
   .marca { min-width: var(--tap-min); min-height: var(--tap-min); justify-content: center; }
 }
+
+/* Los correos de «tu cuenta»: un interruptor y, si se enciende, el resto. */
+fieldset.avisos { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 6px; }
+fieldset.avisos legend { padding: 0; }
+.avisos-opciones { display: grid; gap: 6px; padding-left: 12px; border-left: 2px solid var(--line); }
+.avisos-cuando { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.avisos-cuando > span { display: grid; gap: 4px; }
+
+/* «Salgo el lunes → vuelvo el jueves»: dos desplegables con una flecha. */
+.dias-par { display: flex; align-items: flex-end; gap: 8px; }
+.dias-par > label { flex: 1; display: grid; gap: 4px; }
+.dias-flecha { padding-bottom: 10px; color: var(--muted); font-family: var(--font-mono); }
+
+/* Entrar: Google arriba si está configurado, una raya, y el correo. */
+.login { display: grid; gap: 10px; }
+.login-google { display: flex; justify-content: center; min-height: 44px; }
+.login-o { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--muted); font: 400 var(--fs-meta) / 1 var(--font-mono); }
+.login-o::before, .login-o::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+.login-pista { margin: -2px 0 0; }
+.login-boton { width: 100%; }
+.login-hecho { margin: 0; font-weight: 600; }
+#nubeOlvide.resalta { border-color: var(--accent-txt); color: var(--accent-txt); }
+
+/* Instalar como app: abajo, pequeño, y se va con un toque. */
+.instalar {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 24px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.25);
+  font-size: var(--fs-body-s);
+  animation: instalar-entra 0.25s var(--ease) both;
+}
+.instalar p { flex: 1 1 240px; margin: 0; }
+.instalar-ico { font-family: var(--font-mono); }
+.instalar-pie {
+  border: 0;
+  background: none;
+  padding: 10px 0;
+  min-height: 44px;
+  color: var(--accent-txt);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+@keyframes instalar-entra { from { opacity: 0; transform: translate(-50%, 8px); } }
+@media (prefers-reduced-motion: reduce) { .instalar { animation: none; } }
+
+/* ==========================================================================
+   REDISEÑO COMPACTO (octubre de 2026)
+
+   La misma voz —el naranja es el precio, el verde lo que se vigila, tres
+   tipografías— con menos ruido. Lo que cambia:
+
+     · COMPACTA. Titulares más bajos, menos aire entre bloques, una portada
+       que se recorre en dos pantallas y no en seis.
+     · LAS TARJETAS SEPARAN, NO LOS FILOS. Blanco (o gris) de tarjeta sobre
+       papel, con una raya suave y una sombra que apenas se ve. El filo negro
+       del tema claro se fue: en una pantalla densa hacía hoja de cálculo.
+     · SE NAVEGA COMO UNA APP. Pestañas con icono arriba; en el móvil, la
+       barra de abajo al alcance del pulgar.
+     · DETALLES. Foco visible en todo, selección con el naranja muy rebajado,
+       pestañas que se mueven con el teclado, botones que ceden al pulsarlos.
+
+   Va al final a propósito: pisa lo de arriba sin tener que buscarlo.
+   ========================================================================== */
+
+::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.btn:active, .pestanas [role="tab"]:active, .tab:active { transform: translateY(1px); }
+
+/* ---- la cabecera ------------------------------------------------------ */
+.topbar {
+  background: color-mix(in srgb, var(--paper) 84%, transparent);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom-color: var(--hair);
+}
+.topbar-in { padding: 8px var(--pad-page); gap: 14px; min-height: 56px; }
+.marca-trip { font-size: 23px; }
+.marca-finder { font-size: 17px; }
+.zonas {
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+}
+.zona {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 13px 6px 10px;
+  border-radius: var(--r-pill);
+  transition: color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.zona:hover { color: var(--ink); background: var(--surface2); }
+.zona.activa { color: var(--ink); background: var(--surface2); box-shadow: inset 0 0 0 1px var(--line); }
+.zona-ico { flex: none; width: 16px; height: 16px; }
+.tema { border-color: var(--hair); }
+.cuenta, #tfCuenta { padding: 8px 14px; }
+.flap-boton { padding: 8px 13px; border-color: var(--hair); }
+
+/* La barra de abajo: solo en el móvil (ver más abajo). */
+.tabbar { display: none; }
+
+/* ---- el cuerpo -------------------------------------------------------- */
+main { padding-bottom: 56px; }
+h1 { line-height: 1.02; margin: 6px 0 10px; }
+.masthead { padding: 30px var(--pad-page) 22px; gap: 32px; border-bottom: 0; }
+.masthead .kicker { margin: 0; }
+.masthead .lede { font-size: var(--fs-body); }
+.masthead .lede .trato {
+  margin-left: 4px;
+  color: var(--accent-txt);
+  border-bottom: 1px solid currentColor;
+  white-space: nowrap;
+}
+.stats {
+  background: var(--hair);
+  border-color: var(--hair);
+  border-radius: var(--r);
+  overflow: hidden;
+  box-shadow: var(--sombra);
+}
+.stats > div { background: var(--surface); padding: 10px 14px; }
+
+/* «Cómo funciona», en una franja: los tres pasos se leen de un vistazo. */
+.como { padding-block: 0; }
+.como-titulo {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.como-pasos {
+  gap: 0;
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+.como-pasos li {
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  row-gap: 1px;
+  align-items: baseline;
+  padding: 11px 14px;
+  border: 0;
+  border-radius: 0;
+}
+.como-pasos li + li { border-left: 1px solid var(--hair); }
+.como-pasos li::before {
+  grid-row: span 2;
+  align-self: start;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface2);
+  color: var(--ink);
+}
+.como-pasos span { font-size: var(--fs-ui-s); }
+
+/* ---- el chollo del día y el feed -------------------------------------- */
+.ticket { margin-top: 20px; box-shadow: var(--sombra); }
+.feed { margin-top: 30px; }
+.feed-head { margin-bottom: 10px; }
+.controls { border-color: var(--hair); border-radius: var(--r); background: var(--surface); }
+.brow { transition: background var(--t-micro) var(--ease); }
+
+/* ---- buscar / seguir, en una tarjeta con pestañas ---------------------- */
+.panels.con-pestanas {
+  display: block;
+  margin-top: 30px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  background: var(--surface);
+  box-shadow: var(--sombra);
+  overflow: hidden;
+}
+.pestanas {
+  display: flex;
+  gap: 4px;
+  padding: 6px 6px 0;
+  border-bottom: 1px solid var(--hair);
+}
+.pestanas [role="tab"] {
+  position: relative;
+  padding: 10px 14px 12px;
+  min-height: var(--tap-min);
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--fs-ui);
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--t) var(--ease);
+}
+.pestanas [role="tab"]:hover { color: var(--ink); }
+.pestanas [role="tab"][aria-selected="true"] { color: var(--ink); font-weight: 600; }
+.pestanas [role="tab"][aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--ink);
+}
+#tabSeguir[aria-selected="true"]::after { background: var(--deep); }
+.con-pestanas .herramienta {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 16px 18px 18px;
+  gap: 12px;
+}
+.con-pestanas .finder-lede { margin: 0; }
+.finder-form { border-radius: var(--r-s); overflow: hidden; }
+.observacion { margin-top: 20px; border-radius: var(--r); border-color: var(--hair); }
+
+/* ---- el pie ----------------------------------------------------------- */
+.foot { border-top-color: var(--hair); }
+.foot-enlaces { display: inline-flex; gap: 16px; }
+
+/* ---- los planes ------------------------------------------------------- */
+.planes-main { padding-top: 4px; }
+.planes-estreno {
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r);
+  font-size: var(--fs-body-s);
+  color: var(--muted);
+}
+.planes-estreno b { color: var(--ink); }
+.planes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.plan {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+.plan-premium { border-color: var(--line); box-shadow: var(--sombra); }
+.plan.tuyo::before {
+  content: "tu plan";
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface2);
+  font: 500 var(--fs-caps-l) / 1.2 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+}
+.plan h2 { margin: 0; font-size: var(--fs-subhead); }
+.plan-precio { margin: 6px 0 0; display: flex; align-items: baseline; gap: 8px; }
+.plan-precio b { font: 600 var(--fs-figure) / 1 var(--font-mono); letter-spacing: -0.03em; }
+.plan-precio span { font-size: var(--fs-ui-s); color: var(--muted); }
+.plan-lista { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; flex: 1; }
+.plan-lista li {
+  position: relative;
+  padding-left: 22px;
+  font-size: var(--fs-body-s);
+  line-height: 1.45;
+}
+.plan-lista li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.45em;
+  width: 9px;
+  height: 5px;
+  border-left: 1.6px solid var(--deep);
+  border-bottom: 1.6px solid var(--deep);
+  transform: rotate(-45deg);
+}
+.plan-cta { align-self: flex-start; }
+.plan-nota { margin: -6px 0 0; }
+.planes-faq { max-width: 68ch; margin-top: 30px; }
+.planes-faq h2 { margin: 0 0 8px; font-size: var(--fs-subhead); }
+.planes-faq details { border-top: 1px solid var(--hair); }
+.planes-faq summary { padding: 12px 0; min-height: var(--tap-min); cursor: pointer; font-weight: 500; }
+.planes-faq details p { margin: 0 0 14px; color: var(--muted); font-size: var(--fs-body-s); }
+
+/* ---- el móvil --------------------------------------------------------- */
+@media (max-width: 760px) {
+  .topbar .zonas { display: none; }
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 4px 4px calc(4px + env(safe-area-inset-bottom, 0px));
+    background: color-mix(in srgb, var(--surface) 90%, transparent);
+    -webkit-backdrop-filter: saturate(1.4) blur(14px);
+    backdrop-filter: saturate(1.4) blur(14px);
+    border-top: 1px solid var(--hair);
+  }
+  .tab {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    align-content: center;
+    gap: 3px;
+    min-height: 50px;
+    color: var(--muted);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+  .tab .zona-ico { width: 20px; height: 20px; }
+  .tab.activa { color: var(--ink); }
+  .tab.activa::before {
+    content: "";
+    position: absolute;
+    top: -5px;
+    width: 22px;
+    height: 2px;
+    border-radius: 2px;
+    background: var(--ink);
+  }
+  .tab[data-zona="follows"].activa::before { background: var(--deep); }
+  body { padding-bottom: calc(58px + env(safe-area-inset-bottom, 0px)); }
+  .instalar { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+
+  .masthead { padding: 18px var(--pad-page) 14px; gap: 16px; }
+  .masthead h1 { font-size: 30px; }
+  .como-pasos { grid-template-columns: 1fr; }
+  .como-pasos li + li { border-left: 0; border-top: 1px solid var(--hair); }
+  .planes { grid-template-columns: 1fr; }
+  .pestanas [role="tab"] { flex: 1; }
+}
+
+/* El renglón de encima del titular: un dato, en mono, sin gritar. */
+.antetitulo {
+  margin: 0;
+  font: 500 var(--fs-caps-l) / 1.3 var(--font-mono);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* El chollo del día, sin el hueco: los dos botones secundarios van juntos y
+   los tramos siguen al titular en vez de irse al fondo de la tarjeta. */
+.ticket-izq, .ticket-der { padding: 20px; }
+.ticket-izq { gap: 14px; }
+.ticket-izq .legs { margin-top: 6px; }
+.ticket-der { gap: 14px; justify-content: flex-start; }
+.ticket .actions { grid-template-columns: 1fr 1fr; }
+.ticket .actions > :first-child { grid-column: 1 / -1; }
+.ticket .actions .btn { padding-inline: 12px; }
+
+@media (max-width: 760px) {
+  /* Las cuatro cifras en una fila: en el móvil eran media pantalla. */
+  .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .stats > div { padding: 8px 8px; }
+  .stats dt { font-size: 8.5px; letter-spacing: 0.06em; }
+  .stats dd { font-size: 16px; }
+  .stats .stats-pie { padding: 7px 8px; }
+  /* Los pasos, solo con su titular. */
+  .como-pasos li { padding: 8px 12px; }
+  .como-pasos span { display: none; }
+  .como-pasos li::before { grid-row: auto; width: 18px; height: 18px; }
+}
+.foot-in { align-items: baseline; }
+
+/* Lo de la cabecera que se encoge, solo donde hay ratón: en el móvil el tema y
+   los enlaces del pie siguen llegando a los 44 px del dedo. */
+@media (min-width: 761px) {
+  .tema { width: 36px; height: 36px; }
+}
+@media (max-width: 760px) {
+  .topbar-in { gap: 8px; padding: 9px var(--pad-page) 7px; min-height: 0; }
+  .tema { width: var(--tap-min); height: var(--tap-min); }
+  .cuenta, #tfCuenta { padding: 10px 12px; }
+}
+.foot-enlace { display: inline-flex; align-items: center; min-width: var(--tap-min); min-height: var(--tap-min); justify-content: center; }
+
+/* «Hace falta una cuenta»: el texto y, debajo, los dos botones a su tamaño.
+   En columna, Entrar era una barra naranja de lado a lado. */
+.token-box { flex-direction: row; flex-wrap: wrap; align-items: center; }
+.token-box > strong, .token-box > :not(.btn) { flex-basis: 100%; }
+.token-box .btn { flex: none; }
+.ir-ev-ico svg { display: inline-block; vertical-align: -3px; }
+
+/* El número de lo que sigues, pegado al nombre de la pestaña. Verde: es lo que
+   se vigila, no un precio. */
+.insignia {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  margin-left: 2px;
+  border-radius: var(--r-pill);
+  background: var(--deep);
+  color: var(--paper);
+  font: 600 10px / 1 var(--font-mono);
+  letter-spacing: 0;
+}
+.tab .insignia { position: absolute; top: 4px; left: calc(50% + 6px); margin: 0; }
+
+/* La tecla del atajo, dentro del buscador del feed. */
+.field.con-tecla { position: relative; }
+.tecla {
+  position: absolute;
+  right: 8px;
+  bottom: 10px;
+  min-width: 20px;
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  color: var(--muted);
+  font: 500 var(--fs-meta) / 1 var(--font-mono);
+  text-align: center;
+  pointer-events: none;
+  transition: opacity var(--t) var(--ease);
+}
+.field.con-tecla:focus-within .tecla { opacity: 0; }
+@media (max-width: 760px) { .tecla { display: none; } }
+.cuenta-planes { margin-left: 4px; color: var(--accent-txt); border-bottom: 1px solid currentColor; }

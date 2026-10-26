@@ -48,10 +48,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <span class="marca-trip">Trip</span><span class="marca-finder">finder</span>
       </a>
       <nav class="zonas" aria-label="Zonas">
-        <a href="./" class="zona activa" data-zona="promos" aria-current="page">Chollos</a>
-        <a href="buscar.html" class="zona" data-zona="buscar">Buscar</a>
-        <a href="seguimientos.html" class="zona" data-zona="follows">Mis avisos</a>
-        <a href="interrail.html" class="zona" data-zona="interrail">Interrail</a>
+        <a href="./" class="zona activa" data-zona="promos" aria-current="page"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.3 7.3a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.4"/></svg><span>Chollos</span></a>
+        <a href="buscar.html" class="zona" data-zona="buscar"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.6-4.6"/></svg><span>Buscar</span></a>
+        <a href="seguimientos.html" class="zona" data-zona="follows"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.2 16.5V11a5.8 5.8 0 0 1 11.6 0v5.5l1.4 1.8H4.8z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/></svg><span>Mis avisos</span></a>
+        <a href="interrail.html" class="zona" data-zona="interrail"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3.5" width="12" height="13.5" rx="3.2"/><path d="M6 11.2h12M9.3 20.5 8 21.8M14.7 20.5l1.3 1.3"/><path d="M9.6 14.3h.01M14.4 14.3h.01" stroke-width="2.4"/></svg><span>Interrail</span></a>
       </nav>
       <div class="topbar-hueco"></div>
       <button id="tfDescubrir" class="flap flap-boton" type="button" aria-label="Descubrir tu destino ideal"><span class="flap-txt flap-txt-largo" aria-hidden="true">Ayúdame a elegir</span><span class="flap-txt flap-txt-corto" aria-hidden="true">¿Dónde ir?</span></button>
@@ -61,16 +61,13 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     </div>
   </div><!-- /tf:parte -->
 
-<header class="masthead">
+<header class="masthead compacta">
   <div>
-    <h1>Vuelos <em>baratos</em><br>antes que nadie.</h1>
+    <p class="antetitulo" id="antetitulo">Desde Madrid · se revisa cada 12 h</p>
+    <h1>Vuelos <em>baratos</em> antes que nadie.</h1>
     <p class="lede">
-      Escapadas de fin de semana desde Madrid, por debajo de lo que suelen
-      costar. Se revisan cada doce horas.
-    </p>
-    <p class="trato">
-      Apunta el viaje que te interese y te escribimos cuando baje. ¿No sabes a
-      dónde ir? <a href="#buscar">Ayúdame a elegir</a>.
+      Escapadas de finde por debajo de lo que suelen costar.
+      <a href="#herramientas" class="trato">Buscar un viaje</a>
     </p>
   </div>
   <dl class="stats" id="stats"></dl>
@@ -84,8 +81,8 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <h2 id="comoTitulo" class="como-titulo">Cómo funciona</h2>
   <ol class="como-pasos">
     <li><b>Mira los chollos</b><span>Cada día, los viajes que cuestan menos de lo normal.</span></li>
-    <li><b>Apunta el que te interese</b><span>Con una cuenta gratis. Se revisa solo, cada día.</span></li>
-    <li><b>Te escribimos cuando baje</b><span>Un correo, sin anuncios. Lo desactivas cuando quieras.</span></li>
+    <li><b>Crea tu cuenta gratis</b><span>Guarda favoritos y elige qué correos quieres.</span></li>
+    <li><b>Te escribimos cuando haya chollo</b><span>Solo si lo enciendes. Sin anuncios.</span></li>
   </ol>
 </section>
 
@@ -190,20 +187,14 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 <!-- Las dos herramientas, en compacto. Al usarlas de verdad, la ventana se
      amplía: el formulario se lleva lo escrito a su página completa
      (`data-ampliar`) y allí se lanza la búsqueda o el seguimiento. -->
-<section class="panels">
+<section class="panels con-pestanas" id="herramientas" aria-label="Buscar o seguir un viaje">
+  <div class="pestanas" role="tablist" aria-label="Herramientas">
+    <button type="button" role="tab" id="tabBuscar" aria-controls="buscar" aria-selected="true">Buscar ahora</button>
+    <button type="button" role="tab" id="tabSeguir" aria-controls="seguir" aria-selected="false" tabindex="-1">Seguir un viaje</button>
+  </div>
 
-  <div id="buscar" class="herramienta">
-    <div>
-      <div class="kicker-num">01 · buscar ahora</div>
-      <h3>Dime <em>a dónde</em> quieres ir</h3>
-      <p class="finder-lede">
-        Arriba está lo que hay barato hoy. Aquí dices tú a dónde quieres ir: se
-        recorre fin de semana a fin de semana hasta el año que viene, o para las
-        fechas exactas que le pongas. Se pregunta a <strong>todas las
-        compañías</strong> (Ryanair, Wizz, Iberia, Vueling, easyJet, ITA,
-        Lufthansa…), no solo a las low cost.
-      </p>
-    </div>
+  <div id="buscar" class="herramienta" role="tabpanel" aria-labelledby="tabBuscar">
+    <p class="finder-lede">Finde a finde hasta un año vista, a todas las compañías y no solo a las low cost.</p>
     <form id="finderForm" class="finder-form" data-ampliar="buscar.html">
       <label for="fOrigen">
         <span>¿Desde dónde?</span>
@@ -222,7 +213,8 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
           <option value="weekend">Un finde cualquiera</option>
           <option value="mes">Un mes entero</option>
           <option value="mes-finde">Un mes, solo los findes</option>
-          <option value="tramo">Entre dos fechas</option>
+          <option value="dias">Unos días de la semana</option>
+        <option value="tramo">Entre dos fechas</option>
           <option value="exact">Fechas exactas</option>
           <option value="anytime">Cualquier fecha</option>
         </select>
@@ -232,6 +224,13 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <button type="button" id="destBtn" class="date-btn">Elegir destino</button>
         <input id="fDest" type="hidden">
       </label>
+      <div class="celda dias-par" id="diasWrap" hidden>
+        <label for="fDiaIda"><span>Salgo el</span>
+          <select id="fDiaIda"><option value="0" selected>lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3">jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
+        <span class="dias-flecha" aria-hidden="true">→</span>
+        <label for="fDiaVuelta"><span>Vuelvo el</span>
+          <select id="fDiaVuelta"><option value="0">lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3" selected>jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
+      </div>
       <label class="celda" id="mesWrap" hidden>
         <span>Mes</span>
         <select id="fMes"></select>
@@ -272,22 +271,14 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <a class="btn ghost" href="buscar.html">Abrir la herramienta</a>
     </div>
     <p class="candado-nota">
-      Hace falta una cuenta para buscar y ver tus búsquedas guardadas.
+      Para buscar hace falta una cuenta, gratis.
       <a href="#" data-entrar>Entrar</a>
       <a href="#" data-pedir-cuenta>Crear cuenta</a>
     </p>
   </div>
 
-  <div id="seguir" class="herramienta segunda">
-    <div>
-      <div class="kicker-num">02 · seguir un viaje</div>
-      <h3>Que te avise <em>cuando baje</em></h3>
-      <p class="finder-lede">
-        Esto no busca ahora: se queda apuntado y lo revisa <strong>cada
-        día</strong>. Te escribe solo cuando aparece algo dentro de tu tope, o
-        cuando baja de lo más barato que se haya visto hasta ahora.
-      </p>
-    </div>
+  <div id="seguir" class="herramienta segunda" role="tabpanel" aria-labelledby="tabSeguir" hidden>
+    <p class="finder-lede">Se queda apuntado y se revisa cada día. Te avisa cuando baja de tu tope.</p>
     <form id="watchForm" class="finder-form" data-ampliar="seguimientos.html">
       <label for="wWhere">
         <span>¿A dónde?</span>
@@ -337,7 +328,7 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <a class="btn ghost" href="seguimientos.html">Abrir la herramienta</a>
     </div>
     <p class="candado-nota">
-      Hace falta una cuenta para seguir un viaje y ver tus seguimientos.
+      Para seguir un viaje hace falta una cuenta, gratis.
       <a href="#" data-entrar>Entrar</a>
       <a href="#" data-pedir-cuenta>Crear cuenta</a>
     </p>
@@ -351,8 +342,8 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
     <b id="obsCuenta">—</b>
   </div>
   <p id="obsTexto">
-    Todavía no sigues ningún viaje. Dale a Seguir en cualquier entrada del feed
-    y aquí verás si sube o baja de precio cada vez que se actualicen los datos.
+    Todavía no sigues ningún viaje. Toca la campana de cualquier vuelo y aquí
+    verás si sube o baja.
   </p>
   <p class="observacion-ir">
     <a class="btn ghost small" href="seguimientos.html">Ver los que sigues</a>
@@ -435,10 +426,16 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <div class="foot-in">
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
-  <a class="foot-enlace" href="privacidad.html">Privacidad</a>
+  <span class="foot-enlaces"><a class="foot-enlace" href="planes.html">Planes</a><a class="foot-enlace" href="privacidad.html">Privacidad</a></span>
     <span class="build">build dev</span>
   </div>
 </footer>
+<nav class="tabbar" aria-label="Zonas">
+  <a href="./" class="tab activa" data-zona="promos" aria-current="page"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 12.2V4.5a1 1 0 0 1 1-1h7.7l8.3 8.3a1 1 0 0 1 0 1.4l-7.3 7.3a1 1 0 0 1-1.4 0z"/><circle cx="8" cy="8" r="1.4"/></svg><span>Chollos</span></a>
+  <a href="buscar.html" class="tab" data-zona="buscar"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10.8" cy="10.8" r="6.3"/><path d="m20 20-4.6-4.6"/></svg><span>Buscar</span></a>
+  <a href="seguimientos.html" class="tab" data-zona="follows"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M6.2 16.5V11a5.8 5.8 0 0 1 11.6 0v5.5l1.4 1.8H4.8z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/></svg><span>Mis avisos</span></a>
+  <a href="interrail.html" class="tab" data-zona="interrail"><svg class="zona-ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="6" y="3.5" width="12" height="13.5" rx="3.2"/><path d="M6 11.2h12M9.3 20.5 8 21.8M14.7 20.5l1.3 1.3"/><path d="M9.6 14.3h.01M14.4 14.3h.01" stroke-width="2.4"/></svg><span>Interrail</span></a>
+</nav>
 
 <script src="log.js?v=dev"></script>
 <script src="auth.js?v=dev"></script>

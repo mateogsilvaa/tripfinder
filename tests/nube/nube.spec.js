@@ -1,7 +1,7 @@
 /* Cuentas y encargos con Firebase: la web de verdad contra los emuladores.
 
-   Lo que se prueba es lo que le pasa a una persona: se registra, queda a la
-   espera, no puede lanzar nada, la aprueban y ya puede. Y lo que NO se le deja
+   Lo que se prueba es lo que le pasa a una persona: se registra, entra gratis
+   y ve los chollos, no puede lanzar nada, le dan premium y ya puede. Y lo que NO se le deja
    hacer, que es lo importante. */
 const { test, expect } = require("@playwright/test");
 const E = require("./emulador.js");
@@ -15,11 +15,15 @@ test.beforeEach(async ({ page }) => {
 const clave = "una-clave-larga-1";
 
 /* Registrarse por la pantalla, como lo haría quien llega a la web. */
-async function registrarse(page, { nombre = "Dani", correo = E.correoNuevo(), pass = clave, espera = true } = {}) {
+/* Una sola pantalla: correo, contraseña y «Continuar». Si la cuenta es nueva,
+   un segundo paso pregunta el nombre (ya puesto, sacado del correo) y «Listo»
+   recarga la página. `listo: false` se queda en ese segundo paso. */
+async function registrarse(
+  page,
+  { nombre = "Dani", correo = E.correoNuevo(), pass = clave, espera = true, listo = true } = {}
+) {
   await page.goto("/index.html");
   await page.locator("#tfCuenta").click();
-  await page.locator('[data-modo="registro"]').click();
-  await page.locator("#nubeNombre").fill(nombre);
   await page.locator("#nubeCorreo").fill(correo);
   await page.locator("#nubePass").fill(pass);
   await page.locator("#nubeForm button[type=submit]").click();
@@ -30,37 +34,70 @@ async function registrarse(page, { nombre = "Dani", correo = E.correoNuevo(), pa
       const s = JSON.parse(localStorage.getItem("tf_sesion") || "null");
       return s && s.nube;
     });
+    await expect(page.locator("#nubeBienvenida")).toBeVisible();
+    if (listo) {
+      await page.locator("#nubeNombre").fill(nombre);
+      await Promise.all([page.waitForEvent("load"), page.locator("#nubeListo").click()]);
+    }
   }
   return correo;
 }
 
 const sesion = (page) => page.evaluate(() => JSON.parse(localStorage.getItem("tf_sesion") || "null"));
 
-test("registrarse deja la cuenta pendiente y lo dice", async ({ page }) => {
+test("una sola pantalla: con un correo nuevo, la cuenta se crea y pregunta el nombre", async ({ page }) => {
+  const correo = E.correoNuevo();
+  await registrarse(page, { correo, listo: false });
+  await expect(page.locator("#nubeBienvenida")).toContainText("Cuenta creada");
+  await expect(page.locator("#nubeBienvenida")).toContainText("Plan gratis");
+  // El nombre de casa sale del correo, y se cambia ahí mismo.
+  await expect(page.locator("#nubeNombre")).toHaveValue(/^Prueba/);
+  await page.locator("#nubeNombre").fill("Dani");
+  await Promise.all([page.waitForEvent("load"), page.locator("#nubeListo").click()]);
+  expect((await E.ficha((await sesion(page)).uid)).nombre).toBe("Dani");
+  await expect(page.locator("#tfCuenta")).toContainText("Dani");
+});
+
+test("registrarse abre una cuenta gratis al momento", async ({ page }) => {
   const correo = await registrarse(page);
-  await expect(page.locator("#nubeMsg")).toContainText("pendiente de aprobación");
   const s = await sesion(page);
-  expect(s.estado).toBe("pendiente");
+  expect(s).toMatchObject({ estado: "aprobado", plan: "gratis" });
   expect(s.name).toBe("Dani");
   // La ficha existe en Firestore, con el correo ahí y no en la sesión pública.
   const f = await E.ficha(s.uid);
-  expect(f).toMatchObject({ nombre: "Dani", correo, estado: "pendiente" });
+  expect(f).toMatchObject({ nombre: "Dani", correo, estado: "aprobado", plan: "gratis" });
   expect(f.admin).toBeUndefined();
   expect(JSON.stringify(s)).not.toContain(correo);
 });
 
-test("una cuenta pendiente no puede lanzar nada y no queda ningún encargo", async ({ page }) => {
+test("de momento premium no se exige: una cuenta gratis lanza y el encargo es suyo", async ({ page }) => {
   await registrarse(page);
   const s = await sesion(page);
   const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD" }));
-  expect(r).toMatchObject({ ok: false, reason: "pendiente" });
-  expect(await E.encargosDe(s.uid)).toEqual([]);
+  expect(r.ok).toBe(true);
+  const [e] = await E.encargosDe(s.uid);
+  expect(e).toMatchObject({ tipo: "search", owner: s.uid });
 });
 
-test("al aprobarla, la misma sesión ya puede lanzar y el encargo es suyo", async ({ page }) => {
+test("una cuenta aprobada de antes de los planes es premium", async ({ page }) => {
   await registrarse(page);
   const s = await sesion(page);
-  await E.aprobar(s.uid);
+  // Así quedan las de los conocidos: aprobadas y sin `plan`.
+  await fetch(`http://127.0.0.1:8080/v1/projects/demo-tripfinder/databases/(default)/documents/usuarios/${s.uid}?updateMask.fieldPaths=plan`, {
+    method: "PATCH",
+    headers: { Authorization: "Bearer owner", "Content-Type": "application/json" },
+    body: JSON.stringify({ fields: {} }),
+  });
+  const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD" }));
+  expect(r.ok).toBe(true);
+  // Lo que dice la ficha al sincronizar: sin `plan`, premium.
+  expect((await page.evaluate(() => nubeSincronizar())).plan).toBe("premium");
+});
+
+test("al hacerla premium, la misma sesión ya puede lanzar y el encargo es suyo", async ({ page }) => {
+  await registrarse(page);
+  const s = await sesion(page);
+  await E.hacerPremium(s.uid);
   // Sin recargar ni volver a entrar: al intentarlo la web mira la ficha.
   const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD", destination: "ROM", nota: { a: 1 } }));
   expect(r.ok).toBe(true);
@@ -73,7 +110,7 @@ test("al aprobarla, la misma sesión ya puede lanzar y el encargo es suyo", asyn
 test("un tipo que no es de scraper no se puede encargar", async ({ page }) => {
   await registrarse(page);
   const s = await sesion(page);
-  await E.aprobar(s.uid);
+  await E.hacerPremium(s.uid);
   const r = await page.evaluate(() => tfDispatch("admin_password", { x: 1 }));
   expect(r.ok).toBe(false);
   expect(await E.encargosDe(s.uid)).toEqual([]);
@@ -82,7 +119,7 @@ test("un tipo que no es de scraper no se puede encargar", async ({ page }) => {
 test("más de diez propiedades se rechaza antes de llegar a GitHub", async ({ page }) => {
   await registrarse(page);
   const s = await sesion(page);
-  await E.aprobar(s.uid);
+  await E.hacerPremium(s.uid);
   const once = Object.fromEntries(Array.from({ length: 11 }, (_, i) => [`p${i}`, i]));
   const r = await page.evaluate((p) => tfDispatch("search", p), once);
   expect(r.ok).toBe(false);
@@ -99,21 +136,34 @@ test("entrar con la contraseña mal no entra, con la buena sí", async ({ page }
   await page.locator("#nubeCorreo").fill(correo);
   await page.locator("#nubePass").fill("otra-clave-distinta");
   await page.locator("#nubeForm button[type=submit]").click();
-  await expect(page.locator("#nubeMsg")).toContainText("Correo o contraseña incorrectos");
+  await expect(page.locator("#nubeMsg")).toContainText("la contraseña no es esa");
   expect(await sesion(page)).toBeNull();
 
   await page.locator("#nubePass").fill(clave);
   await page.locator("#nubeForm button[type=submit]").click();
-  await expect(page.locator("#nubeMsg")).toContainText("pendiente de aprobación");
-  expect((await sesion(page)).estado).toBe("pendiente");
+  await page.waitForFunction(() => !!localStorage.getItem("tf_sesion"));
+  expect(await sesion(page)).toMatchObject({ estado: "aprobado", plan: "gratis" });
 });
 
-test("no se puede registrar dos veces el mismo correo", async ({ page }) => {
+test("con un correo que ya tiene cuenta y otra contraseña, no crea otra: dice que la contraseña no es", async ({ page }) => {
   const correo = await registrarse(page);
   await page.evaluate(() => tfSalir());
-  await registrarse(page, { correo, espera: false });
-  await expect(page.locator("#nubeMsg")).toContainText("Ya hay una cuenta con ese correo");
+  await registrarse(page, { correo, pass: "otra-clave-larga-2", espera: false });
+  await expect(page.locator("#nubeMsg")).toContainText("ya tiene cuenta y la contraseña no es esa");
+  await expect(page.locator("#nubeOlvide")).toHaveClass(/resalta/);
   expect(await sesion(page)).toBeNull();
+});
+
+test("con el correo y la contraseña de siempre, Continuar entra sin preguntar nada", async ({ page }) => {
+  const correo = await registrarse(page);
+  await page.evaluate(() => tfSalir());
+  await page.goto("/index.html");
+  await page.locator("#tfCuenta").click();
+  // El correo de la última vez ya está puesto.
+  await expect(page.locator("#nubeCorreo")).toHaveValue(correo);
+  await page.locator("#nubePass").fill(clave);
+  await Promise.all([page.waitForEvent("load"), page.locator("#nubeForm button[type=submit]").click()]);
+  expect((await sesion(page)).nube).toBe(true);
 });
 
 test("las contraseñas cortas y los correos raros se paran antes de llamar", async ({ page }) => {
@@ -121,8 +171,6 @@ test("las contraseñas cortas y los correos raros se paran antes de llamar", asy
   let llamadas = 0;
   page.on("request", (r) => r.url().includes("identitytoolkit") && llamadas++);
   await page.locator("#tfCuenta").click();
-  await page.locator('[data-modo="registro"]').click();
-  await page.locator("#nubeNombre").fill("Dani");
   await page.locator("#nubeCorreo").fill("sin-arroba");
   await page.locator("#nubePass").fill(clave);
   await page.locator("#nubeForm button[type=submit]").click();
@@ -151,7 +199,7 @@ test("una cuenta bloqueada no entra", async ({ page }) => {
 test("la sesión sobrevive a recargar y el token caducado se renueva solo", async ({ page }) => {
   await registrarse(page);
   const s = await sesion(page);
-  await E.aprobar(s.uid);
+  await E.hacerPremium(s.uid);
   await page.evaluate(() => {
     const t = JSON.parse(localStorage.getItem("tf_nube"));
     t.id = "caducado";
@@ -194,33 +242,34 @@ test("un corte de red al renovar no tira la sesión", async ({ page }) => {
   await page.route("**/securetoken.googleapis.com/**", (ruta) => ruta.abort());
   await caducar(page);
   expect(await page.evaluate(() => nubeToken())).toBe("");
-  expect((await sesion(page)).estado).toBe("pendiente");
+  expect((await sesion(page)).estado).toBe("aprobado");
   expect(await page.evaluate(() => localStorage.getItem("tf_nube"))).not.toBeNull();
 });
 
 test("tu cuenta enseña el correo y el estado, y guarda el nombre y los avisos", async ({ page }) => {
   const correo = await registrarse(page);
   const s = await sesion(page);
-  await page.locator(".modal [data-cerrar]").click();
   await page.locator("#tfCuenta").click();
   await expect(page.locator("#tfModal")).toContainText(correo);
-  await expect(page.locator("#nubeEstado")).toContainText("pendiente de aprobación");
+  await expect(page.locator("#nubeEstado")).toContainText("Plan gratis");
   await page.locator("#nubeNombre").fill("Daniela");
+  // Apagados de casa: hay que encenderlos para elegir.
+  await expect(page.locator("#nubeChollos")).toBeHidden();
+  await page.locator("#nubeAvisos").check();
   await page.locator("#nubeChollos").selectOption("diario");
   await page.locator("#nubeTope").fill("120");
   await page.locator("#nubePerfil button[type=submit]").click();
   await expect(page.locator("#nubePerfilMsg")).toHaveText("Guardado.");
   const f = await E.ficha(s.uid);
   expect(f.nombre).toBe("Daniela");
-  expect(f.prefs).toMatchObject({ chollos: "diario", chollos_max_precio: 120 });
+  expect(f.prefs).toMatchObject({ avisos: true, chollos: "diario", chollos_max_precio: 120 });
   // El estado y el correo no se tocan al guardar.
-  expect(f).toMatchObject({ estado: "pendiente", correo });
+  expect(f).toMatchObject({ estado: "aprobado", plan: "gratis", correo });
   expect((await sesion(page)).name).toBe("Daniela");
 });
 
 test("cambiar la contraseña: la vieja deja de valer y la nueva entra", async ({ page }) => {
   const correo = await registrarse(page);
-  await page.locator(".modal [data-cerrar]").click();
   await page.locator("#tfCuenta").click();
   await page.locator("#nubeClaveVieja").fill("la-que-no-es-1");
   await page.locator("#nubeClaveNueva").fill("la-nueva-clave-2");
@@ -253,8 +302,8 @@ test("olvidé la contraseña manda el correo sin decir si la cuenta existe", asy
 test("«Pedir una cuenta» abre el registro", async ({ page }) => {
   await page.goto("/index.html");
   await page.locator("[data-pedir-cuenta]").first().click();
-  await expect(page.locator('[data-modo="registro"]')).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#nubeNombre")).toBeVisible();
+  await expect(page.locator("#tfModal h2")).toHaveText("Crea tu cuenta");
+  await expect(page.locator("#nubeCorreo")).toBeVisible();
 });
 
 test("sin configuración la web sigue con las cuentas de siempre", async ({ browser }) => {
@@ -293,8 +342,8 @@ test("el panel pide entrar y no deja pasar a quien no es administrador", async (
   await ctx.close();
 });
 
-test("el administrador ve a quien pide entrar, lo aprueba y lo bloquea", async ({ browser, page }) => {
-  // Quien pide entrar.
+test("el administrador da premium, lo quita y bloquea", async ({ browser, page }) => {
+  // Quien se acaba de registrar: gratis.
   await registrarse(page, { nombre: "Pidiendo" });
   const pide = await sesion(page);
 
@@ -310,20 +359,22 @@ test("el administrador ve a quien pide entrar, lo aprueba y lo bloquea", async (
   await expect(panel.locator("#nubeCuentas")).toBeVisible();
   const fila = panel.locator(`[data-cuenta="${pide.uid}"]`);
   await expect(fila).toContainText("Pidiendo");
-  await expect(fila).toContainText("Pendiente");
+  await expect(fila).toContainText("Gratis");
   // El administrador no se toca a sí mismo.
   await expect(panel.locator(`[data-cuenta="${jefa.uid}"]`)).toContainText("tú");
   await expect(panel.locator(`[data-cuenta="${jefa.uid}"] [data-estado]`)).toHaveCount(0);
-  // Los pendientes salen los primeros.
-  expect(await panel.locator(".nube-cuenta").first().getAttribute("data-cuenta")).toBe(pide.uid);
 
-  await fila.locator('[data-estado="aprobado"]').click();
-  await expect(panel.locator("#nubeAviso")).toContainText("Pidiendo: aprobada");
-  expect((await E.ficha(pide.uid)).estado).toBe("aprobado");
+  await fila.locator('[data-plan="premium"]').click();
+  await expect(panel.locator("#nubeAviso")).toContainText("Pidiendo: ahora es premium");
+  expect(await E.ficha(pide.uid)).toMatchObject({ estado: "aprobado", plan: "premium" });
 
-  // Y quien pedía ya puede lanzar, sin volver a entrar.
+  // Y ya puede lanzar, sin volver a entrar.
   const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD" }));
   expect(r.ok).toBe(true);
+
+  await panel.locator(`[data-cuenta="${pide.uid}"] [data-plan="gratis"]`).click();
+  await expect(panel.locator("#nubeAviso")).toContainText("Pidiendo: ahora es gratis");
+  expect((await E.ficha(pide.uid)).plan).toBe("gratis");
 
   await panel.locator(`[data-cuenta="${pide.uid}"] [data-estado="bloqueado"]`).click();
   await expect(panel.locator("#nubeAviso")).toContainText("Pidiendo: bloqueada");
@@ -333,31 +384,33 @@ test("el administrador ve a quien pide entrar, lo aprueba y lo bloquea", async (
   await ctx.close();
 });
 
-test("el panel dice cuántas cuentas hay y cuántas esperan", async ({ browser }) => {
+test("el panel dice cuántas cuentas hay y cuántas son premium", async ({ browser }) => {
   const { ctx, page: panel } = await otraPersona(browser);
   await registrarse(panel, { nombre: "Jefa" });
   await E.hacerAdmin((await sesion(panel)).uid);
   await panel.goto("/admin.html");
-  await expect(panel.locator("#stats")).toContainText("pendientes");
-  await expect(panel.locator("#stats")).toContainText("aprobadas");
+  await expect(panel.locator("#stats")).toContainText("premium");
+  await expect(panel.locator("#stats")).toContainText("gratis");
   await ctx.close();
 });
 
 /* ------------------------------------------------------- el formulario de verdad */
-test("buscar sin estar aprobada explica la espera y no apunta nada", async ({ page }) => {
+test("con cuenta gratis, mientras premium no se exija, el buscador funciona", async ({ page }) => {
   await registrarse(page);
-  const s = await sesion(page);
   await page.goto("/buscar.html");
-  await page.locator('button[form="finderForm"]').click();
-  await expect(page.locator(".token-box")).toContainText("pendiente de aprobación");
-  expect(await E.encargosDe(s.uid)).toEqual([]);
+  await expect(page.locator(".premium-nota")).toHaveCount(0);
+  await expect(page.locator('button[form="finderForm"]')).toBeEnabled();
 });
 
-test("buscar con la cuenta aprobada apunta el encargo con lo que sale del formulario", async ({ page }) => {
+test("buscar con la cuenta premium apunta el encargo con lo que sale del formulario", async ({ page }) => {
   await registrarse(page);
   const s = await sesion(page);
-  await E.aprobar(s.uid);
+  await E.hacerPremium(s.uid);
+  // La sesión guardada aún dice gratis: la página lo descubre al cargar y se
+  // recarga sola con el formulario encendido.
   await page.goto("/buscar.html");
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem("tf_sesion") || "{}").plan === "premium");
+  await expect(page.locator('button[form="finderForm"]')).toBeEnabled();
   await page.locator('button[form="finderForm"]').click();
   await expect(page.locator("#searches")).toContainText("preguntando destino a destino");
   const [e] = await E.encargosDe(s.uid);

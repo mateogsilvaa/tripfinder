@@ -62,6 +62,30 @@ python -m tripfinder scan-flights --dry-run
    lo abren solas. Desde ahí creas las cuentas de quien vaya a usarla:
    ver [Cuentas y panel](#cuentas-y-panel).
 
+## Dominio propio
+
+La web está lista para salir con un dominio tuyo en vez de `mateogsilvaa.github.io/tripfinder`.
+Nada del código lleva la dirección escrita: sale de dos **variables de repositorio**
+(`Settings → Secrets and variables → Actions → Variables`, no secretos).
+
+1. **DNS**, en el registrador donde compraste el dominio:
+   - dominio raíz (`tudominio.es`): cuatro registros `A` a `185.199.108.153`, `185.199.109.153`,
+     `185.199.110.153` y `185.199.111.153` (y si quieres IPv6, `AAAA` a
+     `2606:50c0:8000::153`, `…8001::153`, `…8002::153`, `…8003::153`);
+   - subdominio (`www.` o `viajes.`): un `CNAME` a `mateogsilvaa.github.io`.
+2. **GitHub**: `Settings → Pages → Custom domain` con el dominio, y cuando el certificado esté
+   listo (minutos u horas), marca *Enforce HTTPS*.
+3. **Variables**: `DOMINIO` = `tudominio.es` (pages publica el `CNAME`) y `SITE_URL` =
+   `https://tudominio.es` (los enlaces de los correos). Sin ellas, todo sigue en github.io.
+4. **Firebase**: *Authentication → Configuración → Dominios autorizados* → añade el dominio.
+   Sin esto, entrar y registrarse fallan en el dominio nuevo.
+5. **Google Cloud → Credenciales**: si restringiste la clave de la API por referente, añade
+   `https://tudominio.es/*`.
+
+De regalo: con un dominio propio sí se puede verificar en Resend (registros DKIM/SPF), y
+entonces escribe a cualquier dirección, sin el tope de ~500 correos al día de Gmail. Con la
+web abierta al público es lo recomendable.
+
 ## Como te llegan los avisos
 
 `notify.method` en `config/watchlist.yml` elige el transporte, y si falla se prueba el otro. Si
@@ -132,10 +156,12 @@ Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
 
 ## Cuentas y panel
 
-Los chollos del día son un tablón público: los ve igual todo el que entre. Todo
-lo demás —buscar, seguir un viaje, pedir alojamiento, guardar un favorito— se
-apunta a nombre de alguien, así que **sin cuenta no se puede**. Los formularios
-se ven, pero salen apagados y con el botón de entrar al lado.
+Los chollos del día son un tablón público: los ve igual todo el que entre. Crear
+una cuenta es libre y gratis, y con ella se guardan favoritos y llegan los chollos
+por correo. Lo demás —buscar, seguir un viaje, pedir alojamiento, el Interrail—
+es de las **cuentas premium**, que da el administrador (ver
+[Firebase](#firebase-cuentas-y-base-de-datos)). Los formularios se ven, pero salen
+apagados y con el motivo puesto: entrar, o pedir premium.
 
 **El panel** (`/admin.html`, enlazado abajo del todo en cada página) pide una
 contraseña. La primera vez que entras no hay ninguna: la pones ahí mismo. Desde
@@ -162,13 +188,19 @@ error.
 
 ### Qué correos y cada cuánto
 
-Cada cuenta lo decide en su propio botón (arriba a la derecha → tu nombre):
+**Apagados para todo el mundo.** Nadie recibe nada hasta que enciende «Quiero recibir correos»
+en su cuenta; las cuentas de antes tampoco, porque no lo tienen guardado. El buzón de
+`notify.to` del YAML también está apagado salvo `notify.buzon_fijo: true`.
+
+Encendido, cada cuenta elige (arriba a la derecha → tu nombre):
 
 | | Opciones |
 |---|---|
-| **Chollos del día** | en cuanto aparezca · como mucho uno al día · un resumen a la semana · ninguno |
+| **Chollos del día** | en cuanto aparezca · uno al día · dos por semana (lunes y jueves) · semanal · cada dos semanas · mensual · ninguno |
 | …y solo si bajan de | un tope en € opcional, para no recibir lo que no te vas a plantear |
-| **Parte de tus seguimientos** | el de cada día · un resumen a la semana · ninguno |
+| **Parte de tus seguimientos** | el de cada día · dos por semana · semanal · cada dos semanas · mensual · ninguno |
+| **Qué día** | para los semanales, quincenales y mensuales: lunes … domingo, o el que toque |
+| **A qué hora** | el barrido de la mañana, el de la tarde-noche, o me da igual |
 | Solo si hay novedades | calla el parte los días en que se ha mirado y no había nada |
 
 Con "en cuanto aparezca" llega lo que ha salido nuevo hoy. Con un resumen diario
@@ -236,10 +268,35 @@ siendo estática y sin build: habla con Firebase por REST, sin SDK (`web/nube.js
 con eso puesto la web funciona así. Si algún día se vacían los dos, vuelve a las cuentas de
 `data/users.json`, que siguen en el repo hasta que se retire ese sistema:
 
-- **Registrarse:** correo, contraseña y nombre. La cuenta nace `pendiente`: puede mirar la
-  web, no lanzar nada. Hay «¿Olvidaste la contraseña?» y lo manda Firebase.
-- **Aprobar:** quien lleva la web entra en `/admin.html` con su cuenta y pulsa *Aprobar* o
-  *Bloquear*. Los correos están en Firebase, no en el repo.
+- **Entrar o crear, con un botón:** correo, contraseña y «Continuar». Si la cuenta existe,
+  entra; si no, se crea en ese momento y pregunta el nombre (ya relleno con lo de antes de la
+  arroba). Si el correo tiene cuenta y la contraseña no es, lo dice y resalta «¿Olvidaste la
+  contraseña?». Se recuerda el último correo.
+- **Con Google:** el botón sale en cuanto se rellena `googleClientId` en `NUBE_CONFIG`
+  (`web/nube.js`). Para tenerlo: Firebase → Authentication → Método de acceso → Google →
+  Activar, copiar ahí el «ID de cliente web»; y en Google Cloud → Credenciales → ese cliente
+  OAuth, añadir la dirección de la web (y la del dominio propio) en «Orígenes de JavaScript
+  autorizados». No es un secreto.
+- **Registrarse:** abierto a todo el mundo, y la cuenta nace
+  **gratis** (`estado: aprobado`, `plan: gratis`): ve los chollos, guarda favoritos y recibe
+  los chollos por correo en cuanto verifica su dirección (sin verificar no se le escribe, para
+  que nadie use la web para mandar correo al buzón de otro). Hay «¿Olvidaste la contraseña?».
+- **Premium (todavía no se exige):** el plan existe, la cuenta lo enseña y `/admin.html` lo da y
+  lo quita (*Hacer premium* / *Quitar premium* / *Bloquear*), pero de momento cualquier cuenta
+  aprobada lo usa todo. Para exigirlo hay tres interruptores que van juntos: `PREMIUM_OBLIGATORIO`
+  en `nube.py`, `TF_PREMIUM_OBLIGATORIO` en `nube.js` y, en `firestore.rules`, el `create` de
+  `encargos` de `aprobado()` a `premium()`. `planes.html` enseña los dos planes y «Me interesa»
+  apunta `quiere_premium` en la cuenta; el panel cuenta cuántos lo quieren. **Las cuentas aprobadas de antes de abrir la web no tienen
+  `plan` y cuentan como premium**: son las de los conocidos, sin migrar nada. Vincular una
+  cuenta de antes de Firebase también da premium.
+- **Resultados al momento:** cuando termina una búsqueda de alojamiento (de un vuelo o de una
+  parada del Interrail), además de commitearse en `data/stays/` se copia a Firestore
+  (`resultados/stay-<id>`, de lectura pública como el JSON de Pages). La web lo lee de ahí
+  primero, así que el resultado sale en cuanto acaba el scraper, sin esperar el uno a tres
+  minutos del despliegue de Pages. `encargos` borra los de más de tres días. Necesita el mismo
+  secreto `FIREBASE_SERVICE_ACCOUNT`; sin él, todo sigue por Pages como antes.
+- **Lo pendiente:** si queda alguna ficha `pendiente` (de antes, o de una web vieja en la caché
+  de alguien), `tripfinder encargos` la abre como gratis en su siguiente pasada.
 - **Lanzar búsquedas:** el navegador no lleva ya ningún token de GitHub. Apunta un *encargo*
   en Firestore y `encargos.yml` lo recoge cada cinco minutos y levanta el workflow que toque,
   **a nombre de la cuenta que lo pidió** (lo lee de su ficha, no del encargo). Una búsqueda
@@ -302,6 +359,11 @@ apunta un encargo que acaba levantando `custom-search.yml`. En local:
 python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
 ```
 
+**Unos días de la semana, cualquier semana.** «Salgo un lunes y vuelvo un jueves, me da igual
+cuándo»: en *¿Cuándo?* → *Unos días de la semana*, con *Salgo el* y *Vuelvo el*. Se busca ese
+par cada semana del horizonte (o del tramo), las noches salen solas y se descarta lo que vuele
+otros días. En la CLI, `--dias 0-3` (0 es lunes).
+
 ## Lo que cuesta hacer funcionar esto
 
 Actions es gratis e ilimitado en repositorios públicos, y este lo es, así que ninguno de estos
@@ -325,6 +387,30 @@ pillar un chollo antes de que suba.
 Todos los workflows llevan `timeout-minutes`: sin él, uno colgado se queda hasta el límite de
 6 horas de GitHub.
 
+
+## El rediseño compacto (octubre de 2026)
+
+La misma voz con menos ruido. Lo que hay que saber antes de tocar la web:
+
+- **Las tarjetas separan, no los filos.** En claro, `--line` ya no es tinta plena: es una
+  raya suave, y lo que separa es la tarjeta (`--surface`) sobre el papel, con `--sombra`.
+  Esquinas de `--r: 10px` en tarjetas y `--r-s: 7px` en campos.
+- **Se navega como una app.** Arriba, pestañas con icono propio (`ICONOS` en
+  `tools/montar.py`, cuatro trazos a 1.8, nada de librerías ni emojis). En el móvil la
+  cabecera esconde el menú y abajo sale `.tabbar`, el mismo nav con otra maquetación; vive
+  en el pie porque la cabecera es pegajosa y translúcida, y un `position: fixed` dentro de
+  ella se colocaría contra ella.
+- **La portada es corta.** Titular de una línea con antetítulo (que dice de cuándo son los
+  datos), «cómo funciona» como franja, el chollo del día, el feed, y buscar/seguir en UNA
+  tarjeta con pestañas (`js/pestanas.js`: ratón, flechas y `#seguir`).
+- **Detalles.** Insignia verde con cuántos viajes sigues en «Mis avisos»; «/» salta al
+  buscador del feed; foco visible en todo; botones que ceden al pulsarlos; instalar como
+  app se ofrece abajo, pequeño, desde la segunda visita (`log.js`).
+- **Las reglas de siempre siguen**: el naranja es el precio, la manuscrita va contada,
+  todo texto a 4.5:1 sobre las cuatro superficies y 44 px de dedo en el móvil.
+
+La capa del rediseño va al final de `web/styles.css`, marcada: pisa lo de arriba sin tener
+que buscarlo.
 
 ## El panel de salidas: una sola página que se amplía
 

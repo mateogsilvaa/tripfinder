@@ -19,7 +19,7 @@ class Memoria:
     """Un `Almacen` de mentira: dos diccionarios."""
 
     def __init__(self, fichas=None, encargos=None):
-        self.fichas = fichas or {}
+        self.fichas = {k: dict(v) for k, v in (fichas or {}).items()}
         self.encargos = {e["id"]: dict(e) for e in (encargos or [])}
 
     def _estado(self, *estados):
@@ -46,6 +46,12 @@ class Memoria:
     def borrar(self, id_):
         del self.encargos[id_]
 
+    def fichas_pendientes(self):
+        return [{**f, "id": uid} for uid, f in self.fichas.items() if f.get("estado") == "pendiente"]
+
+    def abrir_ficha(self, uid):
+        self.fichas[uid] = {**self.fichas[uid], "estado": "aprobado", "plan": "gratis"}
+
 
 def encargo(id_, owner="ana", tipo="search", payload=None, **extra):
     return {
@@ -63,6 +69,8 @@ FICHAS = {
     "ana": {"nombre": "Ana", "correo": "ana@x.es", "estado": "aprobado"},
     "bea": {"nombre": "Bea", "correo": "bea@x.es", "estado": "pendiente"},
     "cris": {"nombre": "Cris", "correo": "cris@x.es", "estado": "bloqueado"},
+    "gus": {"nombre": "Gus", "correo": "gus@x.es", "estado": "aprobado", "plan": "gratis"},
+    "pia": {"nombre": "Pía", "correo": "pia@x.es", "estado": "aprobado", "plan": "premium"},
 }
 
 
@@ -102,12 +110,61 @@ def test_el_dueno_sale_de_la_ficha_y_no_del_encargo():
     assert buzon.mandados[0][1]["x"] == 1
 
 
-def test_una_cuenta_no_aprobada_no_lanza_nada():
-    a = Memoria(FICHAS, [encargo("e1", "bea"), encargo("e2", "cris"), encargo("e3", "fantasma")])
+def test_una_cuenta_bloqueada_o_que_no_existe_no_lanza_nada():
+    a = Memoria(FICHAS, [encargo("e2", "cris"), encargo("e3", "fantasma")])
     cuenta, buzon = pasar(a)
     assert buzon.mandados == []
-    assert cuenta["rechazado"] == 3
+    assert cuenta["rechazado"] == 2
     assert {e["estado"] for e in a.encargos.values()} == {"rechazado"}
+
+
+def test_una_pendiente_se_abre_en_la_misma_pasada_y_su_encargo_sale():
+    a = Memoria(FICHAS, [encargo("e1", "bea")])
+    cuenta, _ = pasar(a)
+    assert cuenta["abiertas"] == 1 and cuenta["enviado"] == 1
+
+
+def test_de_momento_una_cuenta_gratis_tambien_lanza():
+    assert nube.PREMIUM_OBLIGATORIO is False
+    a = Memoria(FICHAS, [encargo("e1", owner="gus")])
+    cuenta, _ = pasar(a)
+    assert cuenta["enviado"] == 1
+
+
+def test_cuando_se_exija_una_cuenta_gratis_no_lanza_nada(monkeypatch):
+    monkeypatch.setattr(nube, "PREMIUM_OBLIGATORIO", True)
+    a = Memoria(FICHAS, [encargo("e1", owner="gus")])
+    cuenta, buzon = pasar(a)
+    assert cuenta["rechazado"] == 1 and not buzon.mandados
+    assert "premium" in a.encargos["e1"]["motivo"]
+
+
+def test_premium_y_las_aprobadas_de_antes_lanzan():
+    # Ana es de antes de los planes: sin `plan`, y aprobada. Es una conocida.
+    a = Memoria(FICHAS, [encargo("e1", owner="pia"), encargo("e2", owner="ana")])
+    cuenta, _ = pasar(a)
+    assert cuenta["enviado"] == 2
+
+
+def test_las_pendientes_se_abren_a_gratis_y_no_a_premium():
+    a = Memoria(FICHAS)
+    cuenta, _ = pasar(a)
+    assert cuenta["abiertas"] == 1
+    assert a.fichas["bea"]["estado"] == "aprobado" and a.fichas["bea"]["plan"] == "gratis"
+    assert not nube.es_premium(a.fichas["bea"])
+    # Las demás, como estaban.
+    assert a.fichas["cris"]["estado"] == "bloqueado"
+    assert "plan" not in a.fichas["ana"]
+
+
+def test_el_plan_de_cada_ficha():
+    assert nube.es_premium(FICHAS["ana"])
+    assert nube.es_premium(FICHAS["pia"])
+    assert not nube.es_premium(FICHAS["gus"])
+    assert not nube.es_premium(FICHAS["cris"])
+    # Un plan que no existe no es premium: lo mismo que dicen las reglas.
+    assert not nube.es_premium({"estado": "aprobado", "plan": "oro"})
+    assert not nube.es_premium(None)
 
 
 def test_un_tipo_que_no_es_de_scraper_se_rechaza():
@@ -222,7 +279,7 @@ def test_lo_tramitado_se_borra_a_la_semana():
 
 
 def test_sin_encargos_no_pasa_nada():
-    cuenta, buzon = pasar(Memoria(FICHAS))
+    cuenta, buzon = pasar(Memoria({k: v for k, v in FICHAS.items() if v["estado"] != "pendiente"}))
     assert sum(cuenta.values()) == 0 and buzon.mandados == []
 
 
@@ -313,3 +370,56 @@ def test_el_almacen_de_firestore_hace_lo_mismo_que_el_de_memoria():
     # Pasada una semana, se borra.
     nube.procesar(a, visto, datetime.now(UTC) + timedelta(days=8))
     assert not ref.get().exists
+
+
+# ----------------------------------------------------------------- resultados
+class DocFalso:
+    def __init__(self, db, id_):
+        self.db, self.id = db, id_
+
+    def set(self, datos):
+        self.db.guardado[self.id] = datos
+
+
+class ColeccionFalsa:
+    def __init__(self, db):
+        self.db = db
+
+    def document(self, id_):
+        return DocFalso(self.db, id_)
+
+
+class DbFalsa:
+    def __init__(self, falla=False):
+        self.guardado = {}
+        self.falla = falla
+
+    def collection(self, nombre):
+        if self.falla:
+            raise RuntimeError("sin red")
+        assert nombre == "resultados"
+        return ColeccionFalsa(self)
+
+
+def test_un_resultado_se_copia_como_texto_json():
+    import json
+
+    db = DbFalsa()
+    assert nube.publicar_resultado("stay-ryanair-MAD-ROM-20261211", {"stays": [{"name": "Hotel Ñ"}]}, db)
+    (doc,) = db.guardado.values()
+    assert json.loads(doc["json"]) == {"stays": [{"name": "Hotel Ñ"}]}
+    assert "creado" in doc
+
+
+def test_el_id_no_lleva_barras_ni_cosas_raras():
+    assert nube.id_resultado("stay-a/b c") == "stay-a_b_c"
+
+
+def test_un_resultado_enorme_se_queda_solo_en_data():
+    db = DbFalsa()
+    assert not nube.publicar_resultado("x", {"a": "x" * (nube.TOPE_RESULTADO + 1)}, db)
+    assert db.guardado == {}
+
+
+def test_si_firestore_falla_no_tumba_nada():
+    assert nube.publicar_resultado("x", {"a": 1}, DbFalsa(falla=True)) is False

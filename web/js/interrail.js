@@ -31,11 +31,23 @@
 import { POLL_EVERY_MS, esc, escURL, fetchJSON, fmtDate, parseISO } from "./base.js";
 import { ORIGENES } from "./busqueda.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso, wireEntrar } from "./disparador.js";
-import { CIUDADES, CONEXIONES, ESTACIONES, NOCTURNOS, RUTAS, ZONAS } from "./interrail-datos.js";
+import { CIUDADES, CONEXIONES, ESTACIONES, NOCTURNOS, RUTAS, TIPOS, ZONAS } from "./interrail-datos.js";
 import { comoFechaICS, descargar, evento, finDeTramo } from "./compartir.js";
 import { edreamsURL } from "./precios.js";
 
 export { CIUDADES, NOCTURNOS, RUTAS };
+
+/* Los iconos del día a día, de línea y del color del texto: los mismos trazos
+   que los del menú. Antes eran emojis, y un emoji sale distinto en cada
+   sistema y con colores que no son los de la web. */
+const svg = (d) =>
+  `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" stroke-linejoin="round" focusable="false">${d}</svg>`;
+const ICO = {
+  avion: svg('<path d="M10.5 13.5 3.5 11l1.2-1.6 7.3 1 4.2-4.6a2 2 0 0 1 2.9 2.8L14.5 13l1 7.3-1.6 1.2-2.5-7z"/>'),
+  tren: svg('<rect x="6" y="3.5" width="12" height="13.5" rx="3.2"/><path d="M6 11.2h12M9.3 20.5 8 21.8M14.7 20.5l1.3 1.3"/>'),
+  noche: svg('<path d="M19.5 14.5A7.5 7.5 0 0 1 9.5 4.5a7.5 7.5 0 1 0 10 10z"/>'),
+};
 
 /* «2 h 21», «50 min». Sin ceros a la izquierda y sin decir «0 h». */
 export function enHoras(min) {
@@ -658,7 +670,7 @@ function vueloHTML(sentido, r, ctx, v, buscando) {
     : "";
   return `<li class="ir-ev ir-ev-vuelo">
       <span class="ir-ev-dia">${esc(fechaCorta(dia))}</span>
-      <span class="ir-ev-ico" aria-hidden="true">✈</span>
+      <span class="ir-ev-ico" aria-hidden="true">${ICO.avion}</span>
       <div class="ir-ev-cuerpo">
         <p class="ir-ev-titulo">${titulo}</p>
         ${estado}
@@ -770,17 +782,17 @@ function tramoHTML(r, i, p, siguiente) {
   const n = t.noche || t.nocturnoPosible;
   const nocturno = n
     ? t.noche
-      ? `<div class="ir-nocturno"><span>🌙 Noche en el tren: una noche menos de piso.</span>
+      ? `<div class="ir-nocturno"><span>Noche en el tren: una noche menos de piso.</span>
            <button type="button" class="btn ghost small" data-ir-noche="${esc(clave)}">Mejor de día</button></div>`
       : p.noches > 0
-        ? `<div class="ir-nocturno"><span>🌙 Hay tren nocturno (sale ≈ ${esc(n.sale)}, llega ≈ ${esc(n.llega)}):
+        ? `<div class="ir-nocturno"><span>Hay tren nocturno (sale ≈ ${esc(n.sale)}, llega ≈ ${esc(n.llega)}):
              te ahorras una noche de piso; litera con el pase ≈ ${horquilla(n.litera)}.</span>
            <button type="button" class="btn ghost small" data-ir-noche="${esc(clave)}">Ir de noche</button></div>`
         : ""
     : "";
   return `<li class="ir-ev ir-ev-tren${t.noche ? " de-noche" : ""}">
       <span class="ir-ev-dia">${esc(fechaCorta(p.deNoche ? p.checkout : p.sale))}</span>
-      <span class="ir-ev-ico" aria-hidden="true">${t.noche ? "🌙" : "🚆"}</span>
+      <span class="ir-ev-ico" aria-hidden="true">${t.noche ? ICO.noche : ICO.tren}</span>
       <div class="ir-ev-cuerpo">
         <p class="ir-ev-titulo">${esc(p.ciudad)} → ${esc(siguiente.ciudad)}</p>
         <p class="ir-ev-meta">${horas} · billete suelto ≈ ${horquilla(t.billete)}</p>
@@ -926,7 +938,9 @@ function resumenHTML(r, ctx, libres, esperando) {
   return `
     <header class="ir-resumen">
       <div class="ir-res-cab">
-        <p class="ir-etiqueta">${r.propia ? "tu ruta" : "la ruta elegida"}</p>
+        <p class="ir-etiqueta">${r.propia ? "tu ruta" : "la ruta elegida"}${
+          TIPOS[r.tipo] ? ` · <span class="ir-tipo ${esc(r.tipo)}">${esc(TIPOS[r.tipo])}</span>` : ""
+        }</p>
         <h3>${esc(r.nombre)}</h3>
         <p class="ir-res-idea">${esc(r.idea)}</p>
         <ul class="ir-res-datos">
@@ -1019,8 +1033,8 @@ function estadoBusquedaHTML(r, ctx, esperando) {
       de ${plural(conCama(paradasConFechas(r, ctx.ida)).length, "parada", "paradas")}: un par de minutos por
       parada. Puedes cerrar la página, el resultado se guarda.</p>`;
   }
-  if (!haySesion()) {
-    const caja = cajaAcceso({ reason: "sin-cuenta" });
+  if (!haySesion() || (typeof tfEsGratis === "function" && tfEsGratis())) {
+    const caja = cajaAcceso({ reason: haySesion() ? "gratis" : "sin-cuenta" });
     return `<div class="ir-sin-sesion">${caja.html}</div>`;
   }
   return `<div class="ir-pedir">
@@ -1064,6 +1078,27 @@ function tarjeta(r, ctx, libres) {
     </article>`;
 }
 
+/* Las demás, en dos montones: las clásicas, que es lo que se viene buscando, y
+   las menos conocidas, que es lo que no se sabía que se quería. Si todas son de
+   un tipo (o de ninguno, como las rutas propias), una sola lista. */
+function cortasPorTipo(lista, ctx) {
+  const grupos = [
+    ["clasica", "Las clásicas"],
+    ["alternativa", "Menos conocidas: el mismo tren, menos gente y camas más baratas"],
+  ].map(([tipo, titulo]) => [titulo, lista.filter((r) => r.tipo === tipo)]);
+  const sinTipo = lista.filter((r) => !TIPOS[r.tipo]);
+  const llenos = grupos.filter(([, rs]) => rs.length);
+  if (llenos.length < 2) return `<div class="ir-cortas">${lista.map((r) => tarjetaCorta(r, ctx)).join("")}</div>`;
+  return (
+    llenos
+      .map(
+        ([titulo, rs]) => `<h4 class="ir-monton">${esc(titulo)}</h4>
+          <div class="ir-cortas">${rs.map((r) => tarjetaCorta(r, ctx)).join("")}</div>`
+      )
+      .join("") + (sinTipo.length ? `<div class="ir-cortas">${sinTipo.map((r) => tarjetaCorta(r, ctx)).join("")}</div>` : "")
+  );
+}
+
 /* Las demás, en corto: con lo justo para decidir si cambiarse. */
 function tarjetaCorta(r, ctx) {
   const t = totalViaje(r, { ...ctx, camas: CAMAS, vuelos: VUELOS });
@@ -1075,7 +1110,9 @@ function tarjetaCorta(r, ctx) {
   return `
     <article class="ir-ruta corta" id="ruta-${esc(r.id)}">
       <div>
+        ${TIPOS[r.tipo] ? `<span class="ir-tipo ${esc(r.tipo)}">${esc(TIPOS[r.tipo])}</span>` : ""}
         <h3>${esc(r.nombre)}</h3>
+        <p class="ir-corta-idea">${esc(r.idea || "")}</p>
         <p class="ir-corta-paradas">${r.paradas.map((p) => esc(p.ciudad)).join(" → ")}</p>
         <p class="meta">${plural(diasDeBono(r), "día", "días")} de tren · ${plural(noches(r), "noche", "noches")} ·
           ${esc(tren)}</p>
@@ -1142,6 +1179,31 @@ function trazado(r) {
   return cods;
 }
 
+/* Qué nombres caben sin pisarse. Con sesenta ciudades, Gante, Brujas, Amberes
+   y Bruselas caen en un cuadrado de veinte píxeles, y cuatro nombres encima
+   unos de otros no se leen. Se reparten por turnos: primero lo que es tuyo (lo
+   elegido y la ruta), luego las grandes y al final las pequeñas, y cada uno
+   entra solo si no choca con los que ya están. La que se queda sin nombre
+   sigue en el mapa, se puede tocar y lo dice al pasar por encima. */
+function rotulosQueCaben(elegidasSet, enRuta) {
+  const turno = ([cod, c]) => (elegidasSet.has(cod) || enRuta.has(cod) ? 0 : c.pequena ? 2 : 1);
+  const puestas = [];
+  const salen = new Set();
+  const choca = (a) => puestas.some((b) => a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2);
+  Object.entries(CIUDADES)
+    .sort((a, b) => turno(a) - turno(b))
+    .forEach(([cod, c]) => {
+      const x = px(c.lon);
+      const y = py(c.lat);
+      const ancho = c.ciudad.length * (turno([cod, c]) === 2 ? 5 : 6.2);
+      const caja = { x1: x + 6, x2: x + 8 + ancho, y1: y - 7, y2: y + 6 };
+      if (turno([cod, c]) > 0 && choca(caja)) return;
+      puestas.push(caja);
+      salen.add(cod);
+    });
+  return salen;
+}
+
 export function mapaSVG(elegidasSet, ruta) {
   const enRuta = new Set(ruta ? ruta.paradas.map((p) => p.cod) : []);
   const lineas = CONEXIONES.map(([a, b]) => {
@@ -1151,7 +1213,12 @@ export function mapaSVG(elegidasSet, ruta) {
   const camino = trazado(ruta)
     .map((c) => `${px(CIUDADES[c].lon)},${py(CIUDADES[c].lat)}`)
     .join(" ");
+  const rotulos = rotulosQueCaben(elegidasSet, enRuta);
+  // Las pequeñas encima y con menos área de toque: Padua está a diez píxeles
+  // de Venecia y Lucerna a doce de Zúrich. Lo que se pinta después recibe el
+  // toque, y con el radio entero la pequeña tapaba el centro de la grande.
   const nodos = Object.entries(CIUDADES)
+    .sort(([, a], [, b]) => Number(a.pequena) - Number(b.pequena))
     .map(([cod, c]) => {
       const x = px(c.lon);
       const y = py(c.lat);
@@ -1160,9 +1227,10 @@ export function mapaSVG(elegidasSet, ruta) {
       const menor = c.pequena && !sel && !parada;
       return `<g class="ir-nodo${sel ? " sel" : ""}${parada ? " parada" : ""}" data-ir-ciudad="${esc(cod)}"
           role="button" tabindex="0" aria-pressed="${sel}" aria-label="${esc(c.ciudad)}">
-        <circle class="ir-nodo-toque" cx="${x}" cy="${y}" r="13"/>
+        <title>${esc(c.ciudad)}</title>
+        <circle class="ir-nodo-toque" cx="${x}" cy="${y}" r="${c.pequena ? 8 : 13}"/>
         <circle class="ir-nodo-punto" cx="${x}" cy="${y}" r="${sel || parada ? 6 : 4}"/>
-        <text x="${x + 8}" y="${y + 4}"${menor ? ' class="menor"' : ""}>${esc(c.ciudad)}</text>
+        ${rotulos.has(cod) ? `<text x="${x + 8}" y="${y + 4}"${menor ? ' class="menor"' : ""}>${esc(c.ciudad)}</text>` : ""}
       </g>`;
     })
     .join("");
@@ -1251,7 +1319,7 @@ function pintar() {
     (resto.length
       ? `<details class="ir-mas"${abierta ? " open" : ""}>
            <summary>${elegida.propia ? "Rutas hechas que pasan por ahí" : "Otras rutas"} · ${resto.length}</summary>
-           <div class="ir-cortas">${resto.map((r) => tarjetaCorta(r, ctx)).join("")}</div>
+           ${cortasPorTipo(resto, ctx)}
          </details>`
       : "");
   wireEntrar(caja);
