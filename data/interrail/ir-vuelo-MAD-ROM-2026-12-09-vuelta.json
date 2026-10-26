@@ -1,0 +1,96 @@
+{
+  "id": "ir-vuelo-MAD-ROM-2026-12-09-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "FCO",
+    "CIA"
+  ],
+  "fecha": "2026-12-09",
+  "sentido": "vuelta",
+  "generated_at": "2026-10-26",
+  "legs": [
+    {
+      "price": 99.99,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2026-12-09/null/1/0/0/null",
+      "provider": "wizzair",
+      "date": "2026-12-09",
+      "currency": "EUR"
+    },
+    {
+      "provider": "ryanair",
+      "airline": "Ryanair",
+      "origin": "FCO",
+      "destination": "MAD",
+      "date": "2026-12-09",
+      "time": "14:30",
+      "price": 105.89,
+      "currency": "EUR",
+      "destination_name": "Roma",
+      "destination_country": "Italia",
+      "origin_name": "",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-12-09&dateIn=&originIata=FCO&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  ],
+  "dias": {
+    "2026-12-06": {
+      "price": 59.99,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2026-12-06/null/1/0/0/null"
+    },
+    "2026-12-07": {
+      "price": 69.99,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2026-12-07/null/1/0/0/null"
+    },
+    "2026-12-08": {
+      "price": 214.99,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2026-12-08/null/1/0/0/null"
+    },
+    "2026-12-09": {
+      "price": 99.99,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2026-12-09/null/1/0/0/null"
+    },
+    "2026-12-10": {
+      "price": 39.99,
+      "time": "06:00",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/FCO/MAD/2026-12-10/null/1/0/0/null"
+    },
+    "2026-12-11": {
+      "price": 38.35,
+      "time": "15:25",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-12-11&dateIn=&originIata=FCO&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2026-12-12": {
+      "price": 33.99,
+      "time": "17:40",
+      "origin": "FCO",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-12-12&dateIn=&originIata=FCO&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  }
+}
