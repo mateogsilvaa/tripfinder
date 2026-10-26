@@ -17,6 +17,7 @@
     "nubeContinuar": "readonly",
     "nubeConGoogle": "readonly",
     "nubeGoogleId": "readonly",
+    "nubeGooglePopup": "readonly",
     "tfAvisosAtar": "readonly",
     "tfAvisosLeer": "readonly",
     "TF_PREMIUM_OBLIGATORIO": "readonly",

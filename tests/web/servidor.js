@@ -26,6 +26,8 @@ const TIPOS = {
 function resolver(url) {
   let p = decodeURIComponent(new URL(url, "http://x").pathname);
   if (p.endsWith("/")) p += "index.html";
+  // Como GitHub Pages: /condiciones sirve condiciones.html.
+  else if (!path.extname(p)) p += ".html";
   // `..` fuera: esto sirve dos carpetas y nada mas.
   const limpio = path.normalize(p).replace(/^(\.\.[/\\])+/, "");
   if (limpio.startsWith("/data/")) return path.join(DATOS, limpio.slice("/data/".length));

@@ -110,7 +110,7 @@ test("mandarla da un enlace para WhatsApp, y ninguna issue", async ({ page }) =>
   await expect(wa).toBeVisible();
   const texto = decodeURIComponent(new URL(await wa.getAttribute("href")).searchParams.get("text"));
   expect(texto).toContain("lucia");
-  expect(texto).toContain("admin.html#peticion=");
+  expect(texto).toContain("admin#peticion=");
   await expect(page.locator("#pcCopiar")).toBeVisible();
 
   // Ya no hay camino por issue: el repositorio es público y la leería cualquiera.

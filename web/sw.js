@@ -80,7 +80,8 @@ const PIEZAS = [
 const enLaLista = (p) =>
   PIEZAS.some((pieza) => {
     const limpia = pieza.replace(/^\.\//, "");
-    return limpia ? p.endsWith(`/${limpia}`) : p.endsWith("/");
+    // Las páginas se enlazan sin «.html» (/condiciones): valen las dos formas.
+    return limpia ? p.endsWith(`/${limpia}`) || `${p}.html`.endsWith(`/${limpia}`) : p.endsWith("/");
   });
 
 self.addEventListener("install", (ev) => {
@@ -149,7 +150,7 @@ const sinReloj = (url) => {
    con arreglos del panel y en el navegador seguía corriendo el de la semana
    pasada, sin forma de notarlo desde dentro. Un fallo que hace invisibles los
    arreglos es peor que el fallo que arreglaban. */
-const esPanel = (p) => p.endsWith("/admin.html");
+const esPanel = (p) => /\/admin(\.html)?$/.test(p);
 
 self.addEventListener("fetch", (ev) => {
   const req = ev.request;

@@ -393,10 +393,17 @@ async function nubeFichaDe(t, nombreSiFalta) {
     try {
       await nubeCommit(t.id, [
         // La web es abierta: se nace aprobada y gratis. Premium lo da el panel.
-        nubeCrear(`usuarios/${t.uid}`, { nombre, correo: t.correo, estado: "aprobado", plan: "gratis" }),
+        // El correo, tal cual lo firma Firebase en el token: las reglas lo
+        // comparan letra a letra, y una cuenta antigua puede tenerlo con
+        // mayúsculas aunque aquí se escriba en minúsculas.
+        nubeCrear(`usuarios/${t.uid}`, { nombre, correo: nubeCorreoDelToken(t.id) || t.correo, estado: "aprobado", plan: "gratis" }),
       ]);
     } catch (e) {
       // Si ya existía (otra pestaña acaba de crearla), se lee y listo.
+      if (e.codigo === "PERMISSION_DENIED") {
+        if (typeof tfApuntar === "function") tfApuntar("ficha", `crear: ${e.codigo}`, e.detalle);
+        e.message = "Tu cuenta existe, pero no hemos podido crear su ficha. Avisa a quien lleva la web.";
+      }
       if (e.codigo !== "ALREADY_EXISTS") throw e;
     }
     ficha = await nubeLeerDoc(t.id, `usuarios/${t.uid}`);
@@ -431,6 +438,15 @@ async function nubeReenviarVerificacion() {
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
+  }
+}
+
+function nubeCorreoDelToken(idToken) {
+  try {
+    const carga = idToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(carga)).email || "";
+  } catch {
+    return "";
   }
 }
 
@@ -567,20 +583,95 @@ async function nubeConGoogle(credential) {
       returnSecureToken: true,
       returnIdpCredential: true,
     });
-    const t = nubeDeRespuesta(r);
-    nubeGuardarTokens(t);
-    const ficha = await nubeFichaDe(t, r.displayName || r.firstName || nubeNombreDeCorreo(r.email));
-    if (ficha.estado === "bloqueado") {
-      nubeSalir();
-      return { ok: false, error: "Esta cuenta está bloqueada.", codigo: "bloqueada" };
-    }
-    nubeAdoptarDeLasCuentasViejas(t.uid);
-    const sesion = nubeGuardarSesion(t.uid, ficha);
-    if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
-    return { ok: true, sesion, nueva: !!r.isNewUser };
+    return await nubeTrasGoogle(nubeDeRespuesta(r), r.displayName || r.firstName || nubeNombreDeCorreo(r.email), !!r.isNewUser);
   } catch (e) {
     return { ok: false, error: e.message, codigo: e.codigo };
   }
+}
+
+/* SIN ID DE CLIENTE: la ventana de Google de Firebase. Basta con tener Google
+   activado en Firebase (Authentication → Método de acceso) y este dominio en
+   «Dominios autorizados». Se carga solo al pulsar el botón: nadie más paga
+   los 150 KB del SDK. De lo que devuelve se sacan los mismos tokens que da la
+   API REST y a partir de ahí todo sigue igual que con correo. */
+const NUBE_SDK = "https://www.gstatic.com/firebasejs/10.12.2";
+let nubeSdkCargando = null;
+
+function nubeCargarSdk() {
+  if (window.firebase && window.firebase.auth) return Promise.resolve();
+  const uno = (f) =>
+    new Promise((ok, mal) => {
+      const el = document.createElement("script");
+      el.src = `${NUBE_SDK}/${f}`;
+      el.onload = ok;
+      el.onerror = () => mal(new Error("Google no contesta. Prueba con tu correo."));
+      document.head.appendChild(el);
+    });
+  nubeSdkCargando =
+    nubeSdkCargando ||
+    uno("firebase-app-compat.js")
+      .then(() => uno("firebase-auth-compat.js"))
+      .catch((e) => {
+        nubeSdkCargando = null;
+        throw e;
+      });
+  return nubeSdkCargando;
+}
+
+async function nubeGooglePopup() {
+  const c = nubeConfig();
+  if (!c) return { ok: false, error: "Las cuentas no están activas." };
+  try {
+    await nubeCargarSdk();
+    const fb = window.firebase;
+    const app = fb.apps.length
+      ? fb.app()
+      : fb.initializeApp({ apiKey: c.apiKey, projectId: c.projectId, authDomain: c.authDomain || `${c.projectId}.firebaseapp.com` });
+    const auth = app.auth();
+    // Nada de sesión propia del SDK: la sesión es la nuestra, como con correo.
+    await auth.setPersistence(fb.auth.Auth.Persistence.NONE);
+    const proveedor = new fb.auth.GoogleAuthProvider();
+    proveedor.setCustomParameters({ prompt: "select_account" });
+    const r = await auth.signInWithPopup(proveedor);
+    const u = r.user;
+    const t = nubeDeRespuesta({
+      localId: u.uid,
+      idToken: await u.getIdToken(),
+      refreshToken: u.refreshToken,
+      email: u.email,
+    });
+    const nueva = !!(r.additionalUserInfo && r.additionalUserInfo.isNewUser);
+    await auth.signOut().catch(() => {});
+    return await nubeTrasGoogle(t, u.displayName || nubeNombreDeCorreo(u.email), nueva);
+  } catch (e) {
+    const codigo = e.codigo || e.code || "";
+    if (codigo === "auth/popup-closed-by-user" || codigo === "auth/cancelled-popup-request") {
+      return { ok: false, error: "", codigo };
+    }
+    if (codigo === "auth/popup-blocked") {
+      return { ok: false, error: "El navegador ha bloqueado la ventana de Google. Permítela y vuelve a probar.", codigo };
+    }
+    if (codigo === "auth/unauthorized-domain") {
+      return { ok: false, error: "Este dominio no está autorizado en Firebase para entrar con Google.", codigo };
+    }
+    if (codigo === "auth/operation-not-allowed") {
+      return { ok: false, error: "Entrar con Google no está activado en Firebase.", codigo };
+    }
+    return { ok: false, error: e.message, codigo };
+  }
+}
+
+async function nubeTrasGoogle(t, nombre, nueva) {
+  nubeGuardarTokens(t);
+  const ficha = await nubeFichaDe(t, nombre);
+  if (ficha.estado === "bloqueado") {
+    nubeSalir();
+    return { ok: false, error: "Esta cuenta está bloqueada.", codigo: "bloqueada" };
+  }
+  nubeAdoptarDeLasCuentasViejas(t.uid);
+  const sesion = nubeGuardarSesion(t.uid, ficha);
+  if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
+  return { ok: true, sesion, nueva };
 }
 
 async function nubeOlvide(correo) {

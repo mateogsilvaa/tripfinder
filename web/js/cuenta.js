@@ -115,7 +115,7 @@ export function codificarPeticion({ nombre, user, porque, sellado = null }) {
 }
 
 export function enlacePeticion(datos, base = location.href) {
-  return new URL(`admin.html#peticion=${codificarPeticion(datos)}`, base).href;
+  return new URL(`admin#peticion=${codificarPeticion(datos)}`, base).href;
 }
 
 export function mensajePeticion(datos, enlace) {

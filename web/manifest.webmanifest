@@ -17,7 +17,7 @@
     { "src": "iconos/icono-512-recortable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    { "name": "Trazar un viaje", "url": "./buscar.html" },
-    { "name": "En observación", "url": "./seguimientos.html" }
+    { "name": "Trazar un viaje", "url": "./buscar" },
+    { "name": "En observación", "url": "./seguimientos" }
   ]
 }

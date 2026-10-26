@@ -67,9 +67,10 @@ def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
     RESULTADO de usarla. Quien solo queria ver sus busquedas guardadas tenia
     que lanzar una."""
     enlaces = re.findall(r'<a href="([^"]+)"\{', montar.NAV)
-    assert enlaces == ["./", "buscar.html", "seguimientos.html", "interrail.html"], enlaces
+    # Sin «.html»: GitHub Pages sirve /buscar desde buscar.html.
+    assert enlaces == ["./", "buscar", "seguimientos", "interrail"], enlaces
     for destino in enlaces[1:]:
-        assert (WEB / destino).exists(), f"{destino} no existe"
+        assert (WEB / f"{destino}.html").exists(), f"{destino}.html no existe"
 
 
 def test_la_version_de_los_assets_sale_de_un_solo_sitio():
