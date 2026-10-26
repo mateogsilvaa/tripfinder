@@ -1,0 +1,70 @@
+{
+  "id": "ir-vuelo-MAD-PAR-2026-11-30-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "CDG",
+    "ORY",
+    "BVA"
+  ],
+  "fecha": "2026-11-30",
+  "sentido": "vuelta",
+  "generated_at": "2026-10-26",
+  "legs": [
+    {
+      "provider": "ryanair",
+      "airline": "Ryanair",
+      "origin": "BVA",
+      "destination": "MAD",
+      "date": "2026-11-30",
+      "time": "15:55",
+      "price": 49.99,
+      "currency": "EUR",
+      "destination_name": "París",
+      "destination_country": "Francia",
+      "origin_name": "",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-30&dateIn=&originIata=BVA&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  ],
+  "dias": {
+    "2026-11-27": {
+      "price": 63.56,
+      "time": "22:55",
+      "origin": "BVA",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-27&dateIn=&originIata=BVA&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2026-11-28": {
+      "price": 41.43,
+      "time": "16:45",
+      "origin": "BVA",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-28&dateIn=&originIata=BVA&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2026-11-29": {
+      "price": 84.99,
+      "time": "17:40",
+      "origin": "BVA",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-29&dateIn=&originIata=BVA&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2026-11-30": {
+      "price": 49.99,
+      "time": "15:55",
+      "origin": "BVA",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-30&dateIn=&originIata=BVA&destinationIata=MAD&isReturn=false&discount=0"
+    },
+    "2026-12-03": {
+      "price": 22.66,
+      "time": "16:00",
+      "origin": "BVA",
+      "destination": "MAD",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-12-03&dateIn=&originIata=BVA&destinationIata=MAD&isReturn=false&discount=0"
+    }
+  }
+}
