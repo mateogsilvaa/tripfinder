@@ -15,7 +15,8 @@ test.beforeEach(async ({ page }) => {
 const clave = "una-clave-larga-1";
 
 /* Registrarse por la pantalla, como lo haría quien llega a la web. */
-/* Una sola pantalla: correo, contraseña y «Continuar». Si la cuenta es nueva,
+/* Pestaña «Entrar», correo y contraseña: si el correo no tiene cuenta, se crea
+   igual. Si la cuenta es nueva,
    un segundo paso pregunta el nombre (ya puesto, sacado del correo) y «Listo»
    recarga la página. `listo: false` se queda en ese segundo paso. */
 async function registrarse(
@@ -304,7 +305,8 @@ test("olvidé la contraseña manda el correo sin decir si la cuenta existe", asy
 test("«Pedir una cuenta» abre el registro", async ({ page }) => {
   await page.goto("/index.html");
   await page.locator("[data-pedir-cuenta]").first().click();
-  await expect(page.locator("#tfModal h2")).toHaveText("Crea tu cuenta");
+  await expect(page.locator('.login-tabs [aria-selected="true"]')).toHaveText("Crear cuenta");
+  await expect(page.locator("#nubeForm button[type=submit]")).toHaveText("Crear cuenta");
   await expect(page.locator("#nubeCorreo")).toBeVisible();
 });
 

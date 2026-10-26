@@ -124,17 +124,17 @@ test.describe("la ventana que se amplía", () => {
   test("el nav lleva a las cuatro páginas, sin tener que lanzar nada", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     const hrefs = await page.locator(".zona").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-    expect(hrefs).toEqual(["./", "buscar.html", "seguimientos.html", "interrail.html"]);
+    expect(hrefs).toEqual(["./", "buscar", "seguimientos", "interrail"]);
 
     // Y se llega de verdad: se pulsa y se está en la herramienta completa.
-    await page.locator('.zona[href="buscar.html"]').click();
-    await expect(page).toHaveURL(/buscar\.html$/);
+    await page.locator('.zona[href="buscar"]').click();
+    await expect(page).toHaveURL(/buscar$/);
     await expect(page.locator("#finderForm")).toBeVisible();
     // La completa no amplía: ya es la ventana grande.
     expect(await page.locator("#finderForm").getAttribute("data-ampliar")).toBeNull();
 
-    await page.locator('.zona[href="seguimientos.html"]').click();
-    await expect(page).toHaveURL(/seguimientos\.html$/);
+    await page.locator('.zona[href="seguimientos"]').click();
+    await expect(page).toHaveURL(/seguimientos$/);
     await expect(page.locator("#watchForm")).toBeVisible();
   });
 
@@ -144,14 +144,14 @@ test.describe("la ventana que se amplía", () => {
   test("y en un móvil también se ve y se puede pulsar, en la barra de abajo", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
-    for (const href of ["buscar.html", "seguimientos.html"]) {
+    for (const href of ["buscar", "seguimientos"]) {
       const enlace = page.locator(`.tabbar .tab[href="${href}"]`);
       await expect(enlace, `${href} en 390 px`).toBeVisible();
       const caja = await enlace.boundingBox();
       expect(caja.width).toBeGreaterThan(0);
     }
-    await page.locator('.tabbar .tab[href="seguimientos.html"]').click();
-    await expect(page).toHaveURL(/seguimientos\.html$/);
+    await page.locator('.tabbar .tab[href="seguimientos"]').click();
+    await expect(page).toHaveURL(/seguimientos$/);
   });
 
   /* Y desde la portada, sin pasar por el nav: el contador de lo que sigues
@@ -159,14 +159,14 @@ test.describe("la ventana que se amplía", () => {
      entera al lado del botón que la usa. */
   test("la portada también lleva a las dos, sin ejecutar nada", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
-    await expect(page.locator('#observacion a[href="seguimientos.html"]')).toBeVisible();
-    await expect(page.locator('#buscar a[href="buscar.html"]')).toBeVisible();
+    await expect(page.locator('#observacion a[href="seguimientos"]')).toBeVisible();
+    await expect(page.locator('#buscar a[href="buscar"]')).toBeVisible();
     await page.locator("#tabSeguir").click();
-    await expect(page.locator('#seguir a[href="seguimientos.html"]')).toBeVisible();
+    await expect(page.locator('#seguir a[href="seguimientos"]')).toBeVisible();
     await page.locator("#tabBuscar").click();
 
-    await page.locator('#buscar a[href="buscar.html"]').click();
-    await expect(page).toHaveURL(/buscar\.html$/);
+    await page.locator('#buscar a[href="buscar"]').click();
+    await expect(page).toHaveURL(/buscar$/);
     // Sin nada lanzado: no se ha guardado ninguna búsqueda por el camino.
     await expect(page.locator(".saved")).toHaveCount(0);
   });

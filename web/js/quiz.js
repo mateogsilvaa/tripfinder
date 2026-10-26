@@ -542,7 +542,7 @@ async function avisarme(i, boton) {
 
   if (res.ok) {
     estado.innerHTML =
-      'apuntado · se revisa cada día · <a href="seguimientos.html">verlo en observación</a>';
+      'apuntado · se revisa cada día · <a href="seguimientos">verlo en observación</a>';
     if (typeof tfAnunciar === "function") tfAnunciar(`${ciudad} apuntado. Se revisa cada día.`);
     return;
   }

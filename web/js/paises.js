@@ -249,6 +249,7 @@ const ISO = {
    datos; si algún día sale otro, se añade aquí y ya. */
 const ALIAS = {
   algeria: "DZ",
+  chequia: "CZ",
   azerbaijan: "AZ",
   luxembourg: "LU",
   "north macedonia": "MK",

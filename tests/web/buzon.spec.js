@@ -206,7 +206,7 @@ test.describe("lo que viaja en el enlace", () => {
       await abrirForm(page, buzon);
       await rellenar(page);
       const { texto, url, datos } = await mandarPorEnlace(page);
-      expect(url).toContain("/admin.html#peticion=");
+      expect(url).toContain("/admin#peticion=");
       expect(texto).toContain("lucia");
       expect(datos.u).toBe("lucia");
       expect(datos.n).toBe("Lucía Pérez");

@@ -322,7 +322,7 @@ export function terminadaHTML(t, resumen) {
       <div class="term-filas" data-term-filas></div>
       <div class="term-acc">
         <button class="btn primary" type="button" data-term-abrir="${esc(t.slug)}">Abrir la búsqueda</button>
-        <a class="btn ghost small" href="seguimientos.html#watchBox">Seguir estas fechas a diario</a>
+        <a class="btn ghost small" href="seguimientos#watchBox">Seguir estas fechas a diario</a>
       </div>
     </div>`;
 }

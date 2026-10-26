@@ -176,9 +176,9 @@ def _icono(zona: str) -> str:
 
 ZONAS_NAV = (
     ("promos", "./", "Chollos"),
-    ("buscar", "buscar.html", "Buscar"),
-    ("follows", "seguimientos.html", "Mis avisos"),
-    ("interrail", "interrail.html", "Interrail"),
+    ("buscar", "buscar", "Buscar"),
+    ("follows", "seguimientos", "Mis avisos"),
+    ("interrail", "interrail", "Interrail"),
 )
 
 
@@ -218,9 +218,9 @@ GUIONES_PANEL = (
 GUIONES_MINIMO = '<script src="log.js?v={v}"></script>\n'
 
 ENLACE_PRIVACIDAD = (
-    '  <span class="foot-enlaces"><a class="foot-enlace" href="planes.html">Planes</a>'
-    '<a class="foot-enlace" href="privacidad.html">Privacidad</a>'
-    '<a class="foot-enlace" href="condiciones.html">Condiciones</a></span>\n'
+    '  <span class="foot-enlaces"><a class="foot-enlace" href="planes">Planes</a>'
+    '<a class="foot-enlace" href="privacidad">Privacidad</a>'
+    '<a class="foot-enlace" href="condiciones">Condiciones</a></span>\n'
 )
 
 NOTA_404 = (

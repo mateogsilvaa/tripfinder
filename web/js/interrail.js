@@ -1260,6 +1260,24 @@ function pintarMapa(ruta) {
   const caja = document.querySelector("#irMapa");
   if (!caja) return;
   caja.innerHTML = mapaSVG(new Set(elegidas()), ruta);
+  iluminarDePaso(caja.querySelector("svg"));
+}
+
+/* Los países por los que el tren solo pasa (Múnich–Viena cruza Austria antes
+   de parar; París–Milán, Suiza) no salen de las paradas. Se recorre cada tramo
+   de la línea dibujada cada pocos píxeles y se enciende el país que hay debajo. */
+function iluminarDePaso(svg) {
+  const linea = svg && svg.querySelector(".ir-mapa-ruta");
+  if (!linea || typeof linea.getTotalLength !== "function") return;
+  const paises = [...svg.querySelectorAll(".ir-pais")];
+  if (!paises.length || typeof paises[0].isPointInFill !== "function") return;
+  const largo = linea.getTotalLength();
+  for (let d = 0; d <= largo; d += 6) {
+    const { x, y } = linea.getPointAtLength(d);
+    const punto = new DOMPoint(x, y);
+    const pais = paises.find((p) => !p.classList.contains("visita") && p.isPointInFill(punto));
+    if (pais) pais.classList.add("visita");
+  }
 }
 
 function pintarCiudades() {

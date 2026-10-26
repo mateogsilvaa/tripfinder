@@ -26,8 +26,8 @@ for (const pagina of PAGINAS) {
 
     test("el pie lleva la privacidad y los planes", async ({ page }) => {
       await page.goto(pagina);
-      await expect(page.locator('.foot a.foot-enlace[href="privacidad.html"]')).toHaveCount(1);
-      await expect(page.locator('.foot a.foot-enlace[href="planes.html"]')).toHaveCount(1);
+      await expect(page.locator('.foot a.foot-enlace[href="privacidad"]')).toHaveCount(1);
+      await expect(page.locator('.foot a.foot-enlace[href="planes"]')).toHaveCount(1);
     });
   });
 }
