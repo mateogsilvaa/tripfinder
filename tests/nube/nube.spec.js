@@ -258,8 +258,9 @@ test("tu cuenta enseña el correo y el estado, y guarda el nombre y los avisos",
   await page.locator("#nubeAvisos").check();
   await page.locator("#nubeChollos").selectOption("diario");
   await page.locator("#nubeTope").fill("120");
-  await page.locator("#nubePerfil button[type=submit]").click();
+  // Sin botón: se guarda solo al dejar de tocar.
   await expect(page.locator("#nubePerfilMsg")).toHaveText("Guardado.");
+  await expect(page.locator("#cuentaNombreVer")).toHaveText("Daniela");
   const f = await E.ficha(s.uid);
   expect(f.nombre).toBe("Daniela");
   expect(f.prefs).toMatchObject({ avisos: true, chollos: "diario", chollos_max_precio: 120 });
@@ -271,6 +272,7 @@ test("tu cuenta enseña el correo y el estado, y guarda el nombre y los avisos",
 test("cambiar la contraseña: la vieja deja de valer y la nueva entra", async ({ page }) => {
   const correo = await registrarse(page);
   await page.locator("#tfCuenta").click();
+  await page.locator("#nubeClaveCaja summary").click();
   await page.locator("#nubeClaveVieja").fill("la-que-no-es-1");
   await page.locator("#nubeClaveNueva").fill("la-nueva-clave-2");
   await page.locator("#nubeClaveRepe").fill("la-nueva-clave-2");

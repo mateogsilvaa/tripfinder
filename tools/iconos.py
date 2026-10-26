@@ -45,53 +45,43 @@ def _mezcla(fondo: tuple[int, int, int], tinta: tuple[int, int, int], alfa: floa
     return tuple(round(f + (t - f) * alfa) for f, t in zip(fondo, tinta, strict=True))
 
 
+# La marca: la misma flecha de `iconos/marca.svg` (el favicon), en su lienzo
+# de 32. Un solo dibujo para la pestana, el lanzador y la pantalla de inicio.
+FLECHA = [(7, 18.5), (25, 7), (19.8, 25), (15.7, 18.9), (12.8, 23.5), (12.2, 18.3)]
+FONDO_MARCA = (0x16, 0x15, 0x0F)
+SUB = 4  # submuestras por eje: los bordes de la flecha salen suaves
+
+
+def _dentro(x: float, y: float) -> bool:
+    """Par-impar sobre la flecha, en coordenadas del lienzo de 32."""
+    si = False
+    n = len(FLECHA)
+    for i in range(n):
+        (x1, y1), (x2, y2) = FLECHA[i], FLECHA[i - 1]
+        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+            si = not si
+    return si
+
+
 def dibujar(lado: int, maskable: bool = False) -> list[list[tuple[int, int, int]]]:
-    """La carta: graticula de marfil sobre tinta y el punto de Madrid.
+    """La flecha naranja sobre tinta, a sangre: el sistema redondea las esquinas.
 
-    Todo se mide en fracciones del lado, no en pixeles, para que 192 y 512
-    salgan el mismo dibujo y no dos parecidos."""
-    pix = [[TINTA] * lado for _ in range(lado)]
-    margen = (1 - SEGURO) / 2 if maskable else 0.0
-    dentro = 1 - 2 * margen
-
-    def a_px(f: float) -> float:
-        return (margen + f * dentro) * lado
-
-    # El marco (la `.registro` de la web): una linea de marfil por dentro. Va
-    # antes que la graticula porque es quien decide donde acaba.
-    borde = max(1, round(lado / 64))
-    b0, b1 = round(a_px(0.06)), round(a_px(0.94))
-
-    # La graticula: cuatro meridianos y cuatro paralelos, finos y apagados,
-    # igual que la capa `.glow` de la web. RECORTADA AL MARCO: una carta tiene
-    # los meridianos dentro del neatline, no derramandose por la mesa.
-    grosor = max(1, round(lado / 160))
-    for i in range(1, 5):
-        for j in range(grosor):
-            x = round(a_px(i / 5)) + j
-            y = round(a_px(i / 5)) + j
-            for k in range(b0, b1 + 1):
-                if b0 <= x <= b1:
-                    pix[k][x] = _mezcla(TINTA, MARFIL, 0.18)
-                if b0 <= y <= b1:
-                    pix[y][k] = _mezcla(TINTA, MARFIL, 0.18)
-
-    for k in range(b0, b1 + 1):
-        for j in range(borde):
-            for y, x in ((b0 + j, k), (b1 - j, k), (k, b0 + j), (k, b1 - j)):
-                if 0 <= y < lado and 0 <= x < lado:
-                    pix[y][x] = _mezcla(TINTA, MARFIL, 0.55)
-
-    # Madrid, en el centro: el unico punto naranja de todo el sistema.
-    cx = cy = a_px(0.5)
-    r = a_px(0.5) - a_px(0.5 - 0.11)
-    for y in range(lado):
-        for x in range(lado):
-            d = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
-            if d <= r - 1:
-                pix[y][x] = NARANJA
-            elif d <= r:  # un pixel de transicion: sin esto el punto sale dentado
-                pix[y][x] = _mezcla(pix[y][x], NARANJA, r - d)
+    El recortable encoge la flecha a la zona segura para que ninguna mascara la
+    muerda."""
+    pix = [[FONDO_MARCA] * lado for _ in range(lado)]
+    escala = (SEGURO if maskable else 1.0) * 32 / lado
+    desvio = 16 - 16 * (SEGURO if maskable else 1.0)
+    paso = 1 / SUB
+    for py in range(lado):
+        for px in range(lado):
+            n = 0
+            for sy in range(SUB):
+                for sx in range(SUB):
+                    x = (px + (sx + 0.5) * paso) * escala + desvio
+                    y = (py + (sy + 0.5) * paso) * escala + desvio
+                    n += _dentro(x, y)
+            if n:
+                pix[py][px] = _mezcla(FONDO_MARCA, NARANJA, n / SUB**2)
     return pix
 
 

@@ -110,6 +110,9 @@ DESCRIPCIONES = {
         "Qué guarda TripFinder de ti, dónde, y qué se ve públicamente. "
         "Sin anuncios ni rastreadores."
     ),
+    "condiciones.html": (
+        "Las condiciones de uso de TripFinder: qué es, qué no es y qué se pide al usarlo."
+    ),
     "planes.html": (
         "Gratis para ver chollos y recibirlos por correo. Premium para buscar, seguir "
         "viajes, alojamiento e Interrail."
@@ -216,7 +219,8 @@ GUIONES_MINIMO = '<script src="log.js?v={v}"></script>\n'
 
 ENLACE_PRIVACIDAD = (
     '  <span class="foot-enlaces"><a class="foot-enlace" href="planes.html">Planes</a>'
-    '<a class="foot-enlace" href="privacidad.html">Privacidad</a></span>\n'
+    '<a class="foot-enlace" href="privacidad.html">Privacidad</a>'
+    '<a class="foot-enlace" href="condiciones.html">Condiciones</a></span>\n'
 )
 
 NOTA_404 = (
@@ -301,6 +305,20 @@ PAGINAS = {
         "base": "",
         "titulo": "TripFinder · privacidad",
         "meta": f'<meta name="description" content="{DESCRIPCIONES["privacidad.html"]}">',
+        "vivo": "",
+        "zona": None,
+        "nota": NOTA_404,
+        "guiones": GUIONES_MINIMO,
+        "tabbar": TABBAR,
+    },
+    # Las condiciones de uso. Igual que la privacidad: nav para volver y nada más.
+    "condiciones.html": {
+        "manifiesto": "",
+        "nav": NAV,
+        "descubrir": "",
+        "base": "",
+        "titulo": "TripFinder · condiciones de uso",
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["condiciones.html"]}">',
         "vivo": "",
         "zona": None,
         "nota": NOTA_404,

@@ -211,37 +211,38 @@ export async function abrirCuenta() {
   const t = nubeTokens() || {};
   const prefs = ahora.prefs || {};
 
+  const premium = nubeEsPremium(ahora);
   const caja = tfModal(`
     <header class="modal-head">
-      <div>
-        <p class="kicker">tu cuenta</p>
-        <h2>${esc(ahora.name)}</h2>
-      </div>
+      <h2>Mi cuenta</h2>
       <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
 
-    <p class="cuenta-quien">
-      Entras con <b>${esc(t.correo || "tu correo")}</b>. Tus favoritos, tus seguimientos y tus
-      búsquedas solo los ves tú.
-      <span class="${nubePuedeLanzar(ahora) ? "cuenta-plan" : "cuenta-aviso"}" id="nubeEstado">${esc(
-        textoDe(ahora)
-      )} <a class="cuenta-planes" href="planes.html">Ver planes</a></span>
-      ${ahora.admin ? `<a class="btn ghost small" href="admin.html" id="nubePanel">Panel de cuentas</a>` : ""}
-    </p>
+    <section class="cuenta-ficha">
+      <span class="cuenta-avatar" aria-hidden="true">${esc((ahora.name || "?").slice(0, 1).toUpperCase())}</span>
+      <span class="cuenta-ficha-txt">
+        <b id="cuentaNombreVer">${esc(ahora.name)}</b>
+        <span>${esc(t.correo || "")}</span>
+      </span>
+      <a class="plan-chip${premium ? " premium" : ""}" href="planes.html" title="Ver los planes">${
+        premium ? "Premium" : "Gratis"
+      }</a>
+    </section>
+    <p class="cuenta-linea" id="nubeEstado">${esc(textoDe(ahora))}
+      <a class="cuenta-planes" href="planes.html">Ver planes</a></p>
 
     ${
       ahora.legado
-        ? `<p class="cuenta-quien" id="nubeVinculada">Tu cuenta de antes está vinculada a esta:
-           tus seguimientos, tus búsquedas guardadas y tus avisos son los de siempre.</p>`
+        ? `<p class="cuenta-linea" id="nubeVinculada">Tu cuenta de antes está vinculada a esta:
+           tus seguimientos, búsquedas y avisos son los de siempre.</p>`
         : ""
     }
     ${
       ahora.verificado
         ? ""
         : `<div class="nube-verificar" id="nubeVerificar">
-             <p class="cuenta-quien"><b>Falta verificar tu correo.</b> Te hemos escrito un enlace:
-               pínchalo y vuelve aquí. Si ya tenías una cuenta de antes, es lo que permite
-               recuperarla con todo lo que tenía.</p>
+             <p class="cuenta-linea"><b>Falta verificar tu correo.</b> Pincha el enlace que te hemos
+               mandado: hasta entonces no te escribimos nada.</p>
              <p class="controls">
                <button class="btn ghost small" type="button" id="nubeYaVerifique">Ya lo he verificado</button>
                <button class="btn ghost small" type="button" id="nubeReenviar">Reenviar el correo</button>
@@ -250,33 +251,33 @@ export async function abrirCuenta() {
            </div>`
     }
 
-    <form id="nubePerfil" class="modal-form">
-      <h3 class="bloque-head">Tus datos</h3>
-      <label for="nubeNombre">Tu nombre</label>
+    <form id="nubePerfil" class="modal-form cuenta-bloque">
+      <label class="bloque-head" for="nubeNombre">Cómo te llamamos</label>
       <input id="nubeNombre" maxlength="40" value="${esc(ahora.name)}" autocomplete="name">
 
       ${tfAvisosHTML("nube", prefs, nubePuedeLanzar(ahora))}
 
-      <p class="token-status" id="nubePerfilMsg" role="status"></p>
-      <button class="btn primary" type="submit">Guardar</button>
+      <p class="cuenta-guardado" id="nubePerfilMsg" role="status">Los cambios se guardan solos.</p>
+      <button type="submit" hidden>Guardar</button>
     </form>
 
-    <form id="nubeClaveForm" class="modal-form tf-bloque">
-      <h3 class="bloque-head">Tu contraseña</h3>
-      <label for="nubeClaveVieja">La de ahora</label>
-      ${tfCampoClave("nubeClaveVieja")}
-      <label for="nubeClaveNueva">La nueva</label>
-      ${tfCampoClave("nubeClaveNueva", "new-password")}
-      <label for="nubeClaveRepe">Otra vez, para no jugársela</label>
-      ${tfCampoClave("nubeClaveRepe", "new-password")}
-      <p class="token-status" id="nubeClaveMsg" role="status"></p>
-      <button class="btn primary" type="submit">Cambiar la contraseña</button>
-      <p class="meta">¿La has olvidado? Cierra la sesión y usa «¿Olvidaste la contraseña?» al entrar.</p>
-    </form>
+    <details class="cuenta-bloque" id="nubeClaveCaja">
+      <summary>Cambiar la contraseña</summary>
+      <form id="nubeClaveForm" class="modal-form">
+        <label for="nubeClaveVieja">La de ahora</label>
+        ${tfCampoClave("nubeClaveVieja")}
+        <label for="nubeClaveNueva">La nueva (8 caracteres o más)</label>
+        ${tfCampoClave("nubeClaveNueva", "new-password")}
+        <label for="nubeClaveRepe">Repite la nueva</label>
+        ${tfCampoClave("nubeClaveRepe", "new-password")}
+        <p class="token-status" id="nubeClaveMsg" role="status"></p>
+        <button class="btn primary" type="submit">Cambiar la contraseña</button>
+      </form>
+    </details>
 
     <div class="cuenta-salir">
+      ${ahora.admin ? `<a class="btn ghost small" href="admin.html" id="nubePanel">Panel de cuentas</a>` : ""}
       <button class="quitar" type="button" id="nubeSalir">Salir de la cuenta</button>
-      <span class="meta">En este navegador. Lo tuyo se queda donde está.</span>
     </div>`);
 
   tfWireVerClave(caja);
@@ -307,22 +308,35 @@ export async function abrirCuenta() {
     location.reload();
   });
 
-  const guardar = caja.querySelector("#nubePerfil button[type=submit]");
-  caja.querySelector("#nubePerfil").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (guardar.disabled) return;
-    const msg = caja.querySelector("#nubePerfilMsg");
+  /* SE GUARDA SOLO. Cada cambio espera un momento (por si sigues tocando) y se
+     guarda; debajo se dice «Guardando…» y «Guardado.». Un botón de guardar al
+     final de un formulario largo es el sitio donde se pierden los cambios. */
+  const form = caja.querySelector("#nubePerfil");
+  const msg = caja.querySelector("#nubePerfilMsg");
+  let espera = null;
+  const guardar = async () => {
+    clearTimeout(espera);
     const nombre = caja.querySelector("#nubeNombre").value.trim();
     if (!nombre) {
       msg.textContent = "El nombre no puede quedar vacío.";
       return;
     }
     msg.textContent = "Guardando…";
-    tfOcupado(guardar, true, "Guardando…");
     // Lo que no son correos (como «me interesa premium») se queda como estaba.
     const r = await nubeGuardarPerfil(nombre, { ...ahora.prefs, ...tfAvisosLeer(caja, "nube") });
-    tfOcupado(guardar, false);
     msg.textContent = r.ok ? "Guardado." : r.error;
+    if (r.ok) caja.querySelector("#cuentaNombreVer").textContent = nombre;
+  };
+  const pronto = () => {
+    clearTimeout(espera);
+    msg.textContent = "…";
+    espera = setTimeout(guardar, 700);
+  };
+  form.addEventListener("input", pronto);
+  form.addEventListener("change", pronto);
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    guardar();
   });
 
   const cambiar = caja.querySelector("#nubeClaveForm button[type=submit]");
