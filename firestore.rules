@@ -144,7 +144,11 @@ service cloud.firestore {
         && request.resource.data.creado == request.time
         && request.resource.data.tipo in ['search', 'stay', 'interrail', 'watch', 'unwatch', 'delete_search']
         && request.resource.data.payload is map
-        && request.resource.data.payload.size() <= 10;
+        && request.resource.data.payload.size() <= 10
+        // El Interrail a medida (`ruta: tuya`) es premium; las rutas hechas, no.
+        && (request.resource.data.tipo != 'interrail'
+          || request.resource.data.payload.get('ruta', '') != 'tuya'
+          || premium());
 
       // Ver cómo van los tuyos. Las consultas tienen que filtrar por `owner`.
       allow get, list: if entra() && (resource.data.owner == request.auth.uid || admin());

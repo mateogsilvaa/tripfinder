@@ -423,3 +423,19 @@ def test_un_resultado_enorme_se_queda_solo_en_data():
 
 def test_si_firestore_falla_no_tumba_nada():
     assert nube.publicar_resultado("x", {"a": 1}, DbFalsa(falla=True)) is False
+
+
+def test_el_interrail_a_medida_es_de_premium_y_las_rutas_hechas_no():
+    a = Memoria(
+        FICHAS,
+        [
+            encargo("e1", owner="gus", tipo="interrail", payload={"ruta": "tuya"}),
+            encargo("e2", owner="gus", tipo="interrail", payload={"ruta": "clasica"}),
+            encargo("e3", owner="pia", tipo="interrail", payload={"ruta": "tuya"}),
+        ],
+    )
+    pasar(a)
+    assert a.encargos["e1"]["estado"] == "rechazado"
+    assert "premium" in a.encargos["e1"]["motivo"]
+    assert a.encargos["e2"]["estado"] == "enviado"
+    assert a.encargos["e3"]["estado"] == "enviado"
