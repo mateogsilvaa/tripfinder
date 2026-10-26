@@ -21,6 +21,11 @@
       "muestras": 3,
       "nombre": "Oslo"
     },
+    "PRG": {
+      "noche": 30.0,
+      "muestras": 3,
+      "nombre": "Praga"
+    },
     "RAK": {
       "noche": 27.0,
       "muestras": 3,
@@ -55,6 +60,10 @@
     },
     "Polonia": {
       "noche": 47.67,
+      "muestras": 3
+    },
+    "República Checa": {
+      "noche": 30.0,
       "muestras": 3
     }
   }
