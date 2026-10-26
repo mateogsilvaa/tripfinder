@@ -1426,6 +1426,7 @@ function programarBusqueda(r, ctx, libres) {
   if (ctx.tengoPase && !cabeEnPase(r, ctx.dias)) return;
   if (Number.isFinite(libres) && noches(r) > libres) return;
   if (pendiente(r, ctx) || faltanDe(r, ctx).nada || AUTO_FALLIDAS.has(claveRuta(r, ctx))) return;
+  if (soloPremium(r)) return avisoPremium(r);
   temporizador = setTimeout(() => {
     // Lo que se ve puede haber cambiado en el respiro: se vuelve a mirar.
     const ahora = estado();
@@ -1435,10 +1436,34 @@ function programarBusqueda(r, ctx, libres) {
   }, RESPIRO_MS);
 }
 
+/* LA RUTA A MEDIDA ES PREMIUM. Las rutas hechas se buscan con cualquier
+   cuenta; la tuya (las ciudades que eliges en el mapa) es del plan premium.
+   Lo mismo dicen las reglas de Firestore y `nube.py`: esto solo lo explica. */
+const esPremiumAhora = () => {
+  const s = typeof tfSesion === "function" ? tfSesion() : null;
+  if (!s) return false;
+  // Sin Firebase no hay planes: las cuentas de siempre lo tienen todo.
+  if (!s.nube) return true;
+  // Como en las reglas: una aprobada sin `plan` es de antes de los planes, premium.
+  return s.estado === "aprobado" && (s.plan || "premium") === "premium";
+};
+const soloPremium = (r) => r.id === "tuya" && !esPremiumAhora();
+
+function avisoPremium(r) {
+  const hueco = document.querySelector(`#ruta-${r.id} .ir-acceso`);
+  if (!hueco) return;
+  hueco.innerHTML = `<p class="status wait">Buscar tu ruta a medida es del plan <b>premium</b>.
+    Las rutas hechas de abajo se buscan gratis. <a href="planes">Ver planes</a></p>`;
+}
+
 async function pedir(r, boton, sola = false) {
   const ctx = estado();
   const { paradas, vuelos } = faltanDe(r, ctx);
   if (!paradas.length && !vuelos.length) return;
+  if (soloPremium(r)) {
+    if (!sola) avisoPremium(r);
+    return;
+  }
   if (boton) boton.disabled = true;
   const res = await dispatch("interrail", {
     ruta: r.id,

@@ -94,6 +94,7 @@ const NUBE_TEXTOS = {
   API_KEY_INVALID: "La clave de Firebase de esta web no es válida.",
   CREDENTIAL_TOO_OLD_LOGIN_AGAIN: "Por seguridad, vuelve a entrar y repítelo.",
   PERMISSION_DENIED: "Esta cuenta no tiene permiso para eso.",
+  REFERER_BLOCKED: "Las cuentas todavía no están activadas en este dominio. Prueba en un rato.",
   red: "No hay conexión con la base de datos.",
   sesion: "Este navegador no deja guardar la sesión.",
 };
@@ -112,6 +113,9 @@ function nubeCodigo(datos, estado) {
   const e = (datos && datos.error) || {};
   const crudo = String(e.message || "");
   if (/API key not valid/i.test(crudo)) return "API_KEY_INVALID";
+  // La clave de Firebase tiene una lista de webs desde las que vale y esta no
+  // está: no es la cuenta, es la configuración de la clave en Google Cloud.
+  if (/referer.*blocked/i.test(crudo)) return "REFERER_BLOCKED";
   const msg = crudo.split(" : ")[0].trim();
   if (/^[A-Z][A-Z_]+$/.test(msg)) return msg;
   return e.status || `HTTP_${estado}`;
@@ -650,6 +654,9 @@ async function nubeGooglePopup() {
     }
     if (codigo === "auth/popup-blocked") {
       return { ok: false, error: "El navegador ha bloqueado la ventana de Google. Permítela y vuelve a probar.", codigo };
+    }
+    if (codigo.startsWith("auth/requests-from-referer")) {
+      return { ok: false, error: NUBE_TEXTOS.REFERER_BLOCKED, codigo };
     }
     if (codigo === "auth/unauthorized-domain") {
       return { ok: false, error: "Este dominio no está autorizado en Firebase para entrar con Google.", codigo };

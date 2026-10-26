@@ -266,6 +266,8 @@ def _tramitar(
         return cerrar("rechazado", "la cuenta no está aprobada")
     if PREMIUM_OBLIGATORIO and not es_premium(ficha):
         return cerrar("rechazado", "la cuenta es gratis: lanzar búsquedas es de premium")
+    if tipo == "interrail" and (e.get("payload") or {}).get("ruta") == "tuya" and not es_premium(ficha):
+        return cerrar("rechazado", "el Interrail a medida es de premium")
 
     # Lo que se acaba de mandar en esta misma pasada ya cuenta: `cerrar` lo ha
     # apuntado como enviado con `procesado = ahora`, así que sale en la consulta.

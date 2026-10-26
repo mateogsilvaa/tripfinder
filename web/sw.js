@@ -197,7 +197,11 @@ self.addEventListener("fetch", (ev) => {
       // instalar se guardan las rutas peladas y las páginas las piden con su
       // `?v=`.
       const cache = await caches.open(ARMAZON);
-      const guardado = await cache.match(req, { ignoreSearch: true });
+      // Un `?v=` que no es el de este worker lo pide una página publicada
+      // DESPUÉS que él: la caché tiene la versión de antes, y mezclar un
+      // `nube.js` viejo con un `nube-ui.js` nuevo rompe la cuenta. A la red.
+      const v = url.searchParams.get("v");
+      const guardado = v && v !== VERSION ? null : await cache.match(req, { ignoreSearch: true });
       if (guardado) return guardado;
       try {
         const r = await fetch(req);

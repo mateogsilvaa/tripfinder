@@ -19,7 +19,7 @@ const TEXTO_ESTADO = {
   gratis: TF_PREMIUM_OBLIGATORIO
     ? "Plan gratis: ves los chollos y te llegan por correo. Buscar, seguir viajes, alojamiento e " +
       "Interrail son de premium."
-    : "Plan gratis. Mientras estrenamos la web, todas las herramientas están abiertas.",
+    : "Plan gratis. Mientras estrenamos la web casi todo está abierto; el Interrail a medida es de premium.",
   pendiente: "Tu cuenta se está abriendo: en unos minutos podrás usarla.",
   bloqueado: "Tu cuenta está bloqueada.",
 };
@@ -64,6 +64,11 @@ async function pintarGoogle(caja, alEntrar) {
   if (!id) {
     const boton = hueco.querySelector("#nubeGoogleBtn");
     boton.addEventListener("click", async () => {
+      if (typeof nubeGooglePopup !== "function") {
+        // La página es de una versión y nube.js de otra (caché): recargar lo junta.
+        location.reload();
+        return;
+      }
       tfOcupado(boton, true, "Abriendo Google…");
       const r = await nubeGooglePopup();
       tfOcupado(boton, false);
