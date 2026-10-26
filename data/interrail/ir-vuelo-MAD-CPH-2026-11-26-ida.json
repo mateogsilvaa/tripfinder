@@ -1,0 +1,68 @@
+{
+  "id": "ir-vuelo-MAD-CPH-2026-11-26-ida",
+  "origen": "MAD",
+  "aeropuertos": [
+    "CPH"
+  ],
+  "fecha": "2026-11-26",
+  "sentido": "ida",
+  "generated_at": "2026-10-26",
+  "legs": [
+    {
+      "provider": "ryanair",
+      "airline": "Ryanair",
+      "origin": "MAD",
+      "destination": "CPH",
+      "date": "2026-11-26",
+      "time": "10:10",
+      "price": 102.99,
+      "currency": "EUR",
+      "destination_name": "Copenhagen",
+      "destination_country": "Dinamarca",
+      "origin_name": "",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-26&dateIn=&originIata=MAD&destinationIata=CPH&isReturn=false&discount=0"
+    }
+  ],
+  "dias": {
+    "2026-11-23": {
+      "price": 128.59,
+      "time": "21:30",
+      "origin": "MAD",
+      "destination": "CPH",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-23&dateIn=&originIata=MAD&destinationIata=CPH&isReturn=false&discount=0"
+    },
+    "2026-11-25": {
+      "price": 60.99,
+      "time": "10:15",
+      "origin": "MAD",
+      "destination": "CPH",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-25&dateIn=&originIata=MAD&destinationIata=CPH&isReturn=false&discount=0"
+    },
+    "2026-11-26": {
+      "price": 102.99,
+      "time": "10:10",
+      "origin": "MAD",
+      "destination": "CPH",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-26&dateIn=&originIata=MAD&destinationIata=CPH&isReturn=false&discount=0"
+    },
+    "2026-11-27": {
+      "price": 112.12,
+      "time": "06:30",
+      "origin": "MAD",
+      "destination": "CPH",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-27&dateIn=&originIata=MAD&destinationIata=CPH&isReturn=false&discount=0"
+    },
+    "2026-11-28": {
+      "price": 85.19,
+      "time": "10:45",
+      "origin": "MAD",
+      "destination": "CPH",
+      "airline": "Ryanair",
+      "deep_link": "https://www.ryanair.com/es/es/trip/flights/select?adults=1&teens=0&children=0&infants=0&dateOut=2026-11-28&dateIn=&originIata=MAD&destinationIata=CPH&isReturn=false&discount=0"
+    }
+  }
+}
