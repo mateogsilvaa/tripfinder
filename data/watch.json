@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-26",
+  "updated": "2026-10-27",
   "watches": [
     {
       "id": "narita-6-120250a6",
@@ -38,6 +38,26 @@
       "created": "2026-10-21",
       "best_price": null,
       "last_checked": "2026-10-26",
+      "active": true,
+      "last_offers": []
+    },
+    {
+      "id": "estonia-12-sExZcFJudzd9pn8KxMagDeBO1Yi2",
+      "label": "Estonia · 12 meses · avisa bajo 100 € · 1 pers.",
+      "destination": "Estonia",
+      "depart": "",
+      "return_date": "",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 1,
+      "max_price": 100.0,
+      "source": "formulario",
+      "owner": "sExZcFJudzd9pn8KxMagDeBO1Yi2",
+      "owner_name": "mateoo",
+      "created": "2026-10-27",
+      "best_price": null,
+      "last_checked": "",
       "active": true,
       "last_offers": []
     }
