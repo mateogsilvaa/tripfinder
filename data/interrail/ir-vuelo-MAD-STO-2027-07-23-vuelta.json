@@ -1,0 +1,14 @@
+{
+  "id": "ir-vuelo-MAD-STO-2027-07-23-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "ARN",
+    "NYO",
+    "BMA"
+  ],
+  "fecha": "2027-07-23",
+  "sentido": "vuelta",
+  "generated_at": "2026-10-28",
+  "legs": [],
+  "dias": {}
+}
