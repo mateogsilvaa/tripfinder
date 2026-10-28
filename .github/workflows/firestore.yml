@@ -1,0 +1,72 @@
+# Publica las reglas de Firestore y sus índices (y la política TTL de
+# `actividad`) cada vez que cambian en main, o a mano.
+#
+# Antes había que acordarse de lanzar `firebase deploy --only firestore` desde
+# un ordenador con sesión, y unas reglas nuevas en el repo y viejas en Firebase
+# son la peor combinación: la web pide algo que la base de datos le niega.
+#
+# Antes de publicar se pasan las pruebas de las reglas contra el emulador: lo
+# que sale de aquí es lo que decide quién lee los datos de quién.
+#
+# Usa el mismo secreto que la cola de encargos, FIREBASE_SERVICE_ACCOUNT. Esa
+# cuenta de servicio necesita el rol «Administrador de Firebase Rules» (y el de
+# «Administrador de índices de Cloud Datastore» para el TTL); sin él, el paso
+# de publicar falla y lo dice.
+name: reglas de Firestore
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - firestore.indexes.json
+      - firebase.json
+      - .github/workflows/firestore.yml
+  workflow_dispatch:
+
+concurrency:
+  group: firestore-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/firebase/package-lock.json
+
+      # El emulador de Firestore es un jar y firebase-tools 15 pide Java 21.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - run: npm ci --prefix tests/firebase
+
+      - name: Probar las reglas contra el emulador
+        run: npm run reglas --prefix tests/firebase
+
+      - name: Publicar en Firebase
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Falta el secreto FIREBASE_SERVICE_ACCOUNT."
+            exit 1
+          fi
+          clave="$RUNNER_TEMP/cuenta.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$clave"
+          proyecto=$(jq -r .project_id "$clave")
+          export GOOGLE_APPLICATION_CREDENTIALS="$clave"
+          tests/firebase/node_modules/.bin/firebase deploy \
+            --only firestore --project "$proyecto" --non-interactive --force
+          rm -f "$clave"

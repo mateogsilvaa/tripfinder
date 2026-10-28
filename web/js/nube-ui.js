@@ -274,11 +274,13 @@ export async function abrirCuenta() {
 
   const premium = nubeEsPremium(ahora);
   const caja = tfModal(`
-    <header class="modal-head">
+    <header class="modal-head cuenta-cab">
       <h2>Mi cuenta</h2>
       <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
     </header>
 
+    <div class="cuenta-rejilla">
+    <aside class="cuenta-lado">
     <section class="cuenta-ficha">
       <span class="cuenta-avatar" aria-hidden="true">${esc((ahora.name || "?").slice(0, 1).toUpperCase())}</span>
       <span class="cuenta-ficha-txt">
@@ -311,8 +313,11 @@ export async function abrirCuenta() {
              <p class="token-status" id="nubeVerificarMsg" role="status"></p>
            </div>`
     }
+    </aside>
 
+    <div class="cuenta-main">
     <form id="nubePerfil" class="modal-form cuenta-bloque">
+      <h3 class="cuenta-seccion">Tu perfil</h3>
       <label class="bloque-head" for="nubeNombre">Cómo te llamamos</label>
       <input id="nubeNombre" maxlength="40" value="${esc(ahora.name)}" autocomplete="name">
 
@@ -323,7 +328,7 @@ export async function abrirCuenta() {
     </form>
 
     <details class="cuenta-bloque" id="nubeClaveCaja">
-      <summary>Cambiar la contraseña</summary>
+      <summary><span class="cuenta-seccion">Seguridad</span> Cambiar la contraseña</summary>
       <form id="nubeClaveForm" class="modal-form">
         <label for="nubeClaveVieja">La de ahora</label>
         ${tfCampoClave("nubeClaveVieja")}
@@ -335,10 +340,12 @@ export async function abrirCuenta() {
         <button class="btn primary" type="submit">Cambiar la contraseña</button>
       </form>
     </details>
+    </div>
 
     <div class="cuenta-salir">
       ${ahora.admin ? `<a class="btn ghost small" href="admin" id="nubePanel">Panel de cuentas</a>` : ""}
       <button class="quitar" type="button" id="nubeSalir">Salir de la cuenta</button>
+    </div>
     </div>`);
 
   tfWireVerClave(caja);
