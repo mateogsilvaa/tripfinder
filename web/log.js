@@ -105,8 +105,11 @@ window.fetch = async function (...args) {
     // La etiqueta dice a donde vas, no donde estas: la carta de dia o la de noche.
     if (texto) texto.textContent = oscuro ? "día" : "noche";
     boton.setAttribute("aria-pressed", String(oscuro));
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", oscuro ? "#0b1720" : "#f2efe6");
+    // Los mismos que el <head>: la barra del sistema (y la de la app
+    // instalada) del color del papel, no de otro azul que no sale en ningún sitio.
+    document
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((m) => m.setAttribute("content", oscuro ? "#100f0e" : "#f3f0e9"));
   };
 
   boton.addEventListener("click", () => {

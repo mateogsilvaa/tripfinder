@@ -4344,3 +4344,153 @@ body:has(.privacidad) .masthead .lede { margin-inline: auto; }
 .sem7-dia.vuelta { background: var(--deep); border-color: var(--deep); color: var(--paper); }
 .sem7-resumen { margin: 0; font-size: var(--fs-body-s); color: var(--muted); }
 .sem7-resumen b { color: var(--ink); font-weight: 600; }
+
+/* ==========================================================================
+   LA BARRA, REHECHA
+   El test, el tema y la cuenta eran tres cosas de tres tamaños: una píldora
+   de texto, un círculo con un «☀» de sistema y una píldora rellena que en el
+   móvil se estiraba en un óvalo de 52 px. Ahora los tres son de la misma
+   familia: la misma altura, el mismo borde, iconos de trazo como los del menú,
+   y la cuenta, un avatar redondo con tu inicial.
+   ========================================================================== */
+.barra-ico { flex: none; width: 16px; height: 16px; }
+.flap-boton { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 14px; }
+.flap-boton .barra-ico { color: var(--accent-txt); }
+.tema { color: var(--ink); }
+.tema svg { width: 17px; height: 17px; display: block; }
+.tema-luna { display: none !important; }
+:root[data-tema="claro"] .tema-sol { display: none !important; }
+:root[data-tema="claro"] .tema-luna { display: block !important; }
+
+#tfCuenta { height: 38px; padding: 0 14px 0 12px; gap: 8px; }
+#tfCuenta.dentro { padding: 0 14px 0 4px; background: var(--surface); border-color: var(--hair); color: var(--ink); }
+#tfCuenta.dentro > b {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--sobre-acento);
+  font: 700 13px / 1 var(--font-sans);
+}
+#tfCuenta.dentro:hover { background: var(--surface2); border-color: var(--line); color: var(--ink); }
+#tfCuenta.dentro:hover > b { background: var(--ink); color: var(--paper); }
+
+@media (max-width: 760px) {
+  .topbar-in {
+    flex-wrap: nowrap;
+    gap: 8px;
+    min-height: 60px;
+    padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 8px;
+  }
+  .topbar .marca { padding: 0; min-width: 0; }
+  .topbar .flap-boton, .topbar .tema, .topbar #tfCuenta {
+    height: var(--tap-min);
+    min-height: var(--tap-min);
+    margin: 0;
+  }
+  .topbar .flap-boton { padding: 0 13px; font-size: 13px; gap: 6px; border-color: var(--line); }
+  .topbar .tema { width: var(--tap-min); border-color: var(--line); }
+  /* Con sesión, solo el avatar: un círculo del tamaño del dedo. */
+  .topbar #tfCuenta.dentro { width: var(--tap-min); padding: 0; justify-content: center; background: none; border-color: var(--line); }
+  .topbar #tfCuenta.dentro > b { display: grid; width: 34px; height: 34px; font-size: 14px; }
+  .topbar #tfCuenta.dentro .cuenta-txt { display: none; }
+  /* Sin sesión, el icono de persona en el mismo círculo: con «Entrar» al lado
+     no cabían la marca, el test y el tema en 390 px, y el test se montaba
+     encima del tema. La palabra se queda para el lector de pantalla. */
+  .topbar #tfCuenta:not(.dentro) { width: var(--tap-min); padding: 0; justify-content: center; }
+  .topbar #tfCuenta:not(.dentro) .barra-ico { width: 18px; height: 18px; }
+  .topbar #tfCuenta:not(.dentro) .cuenta-txt {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
+  .topbar .marca { flex: 0 1 auto; overflow: hidden; }
+  .topbar .flap-boton { flex: none; }
+
+  /* LA BARRA DE ABAJO, COMO UNA APP: el icono de la zona en la que estás va
+     en su píldora, y no una rayita de 2 px que no se veía. */
+  .tabbar { padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .tab { min-height: 54px; gap: 4px; font-size: 11px; }
+  .tab .zona-ico { width: 22px; height: 22px; padding: 4px 16px; box-sizing: content-box; border-radius: var(--r-pill); transition: background var(--t) var(--ease); }
+  .tab.activa::before { display: none; }
+  .tab.activa .zona-ico { background: color-mix(in srgb, var(--ink) 12%, transparent); }
+  .tab[data-zona="follows"].activa .zona-ico { background: color-mix(in srgb, var(--deep) 22%, transparent); color: var(--deep); }
+  .tab.activa { font-weight: 600; }
+  body { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+
+  /* LOS DIÁLOGOS, COMO HOJAS. Una caja flotante con margen en un móvil corta
+     por abajo lo que más importa (el «Guardar», la última respuesta del
+     test). Suben desde abajo, ocupan el ancho y ruedan por dentro. */
+  .modal { place-items: end stretch; padding: 0; }
+  .modal-caja, #destModal .modal-caja {
+    width: 100%;
+    max-width: none;
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+    border-radius: 18px 18px 0 0;
+    border-bottom: 0;
+    padding: 8px 18px calc(18px + env(safe-area-inset-bottom, 0px));
+    animation: tf-rise var(--t-med) var(--ease);
+  }
+  .modal-caja::before {
+    content: "";
+    align-self: center;
+    flex: none;
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--line);
+    margin: 2px 0 -6px;
+  }
+  .modal-head { position: sticky; top: -8px; z-index: 1; background: var(--surface); padding-top: 8px; }
+}
+
+/* ---- EL TEST, EN TARJETAS ---------------------------------------------
+   Eran renglones uno debajo de otro: diez preguntas con cinco o seis
+   respuestas cada una, y en el ordenador una columna larga en el centro de la
+   pantalla. Ahora cada respuesta es una tarjeta que se toca entera, en dos
+   columnas donde caben. */
+#tfModal .modal-caja.quiz-caja, .quiz-caja { width: min(760px, 100%); max-width: none; }
+.quiz-opciones { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: 8px; }
+.quiz-opcion,
+.quiz-opciones .quiz-opcion:last-child {
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface2);
+  transition: border-color var(--t) var(--ease), background var(--t) var(--ease), color var(--t) var(--ease);
+}
+.quiz-opcion:hover, .quiz-opcion:focus-visible { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface2)); }
+.quiz-opcion .quiz-tecla { margin-top: 2px; }
+
+/* ---- LOS FORMULARIOS, EN FILA EN EL ORDENADOR -------------------------
+   Con dos columnas fijas, buscar y seguir salían como una lista de campos uno
+   encima de otro en una pantalla de 1.200 px. Con sitio, los campos se ponen
+   en fila como en cualquier buscador de vuelos, y bajan a la siguiente solo
+   cuando no caben. La fila de cifras (noches, tope, personas) se suma a la
+   misma fila. */
+@media (min-width: 900px) {
+  .finder-form { display: flex; flex-wrap: wrap; }
+  .finder-form > label, .finder-form > .celda { flex: 1 1 190px; }
+  .finder-form > .party { display: contents; }
+  .finder-form > .party > label {
+    flex: 1 1 110px;
+    background: var(--field);
+    padding: 10px 12px;
+    justify-content: flex-start;
+  }
+  .finder-form > .party > label[hidden] { display: none; }
+  .finder-form > .dias-par.con-semana { flex-basis: 100%; }
+  .finder-form > [data-sola] { flex-basis: 190px; }
+
+  /* El Interrail: el pase y el viaje, uno al lado del otro; el mapa, debajo
+     a lo ancho. */
+  .ir-form { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: stretch; }
+  .ir-form > .ir-bloque-mapa, .ir-form > .ir-calcular { grid-column: 1 / -1; }
+}
+
+/* El móvil más estrecho: la marca se queda en el avión. */
+@media (max-width: 370px) {
+  .topbar .marca-trip, .topbar .marca-finder { display: none; }
+  .topbar .marca { min-width: var(--tap-min); min-height: var(--tap-min); align-items: center; justify-content: center; }
+}

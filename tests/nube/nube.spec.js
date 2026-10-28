@@ -468,7 +468,7 @@ test("una sesión de las cuentas de antes no cuenta como haber entrado", async (
   expect(await page.evaluate(() => tfSesion())).toBeNull();
   expect(await page.evaluate(() => tfUid())).toBe("");
   // Sale como quien no ha entrado, y no como «pendiente de aprobación».
-  await expect(page.locator("#tfCuenta")).toContainText("entrar");
+  await expect(page.locator("#tfCuenta")).toContainText(/entrar/i);
   const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD" }));
   expect(r).toMatchObject({ ok: false, reason: "sin-cuenta" });
 });
