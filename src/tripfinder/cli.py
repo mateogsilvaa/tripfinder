@@ -1276,8 +1276,19 @@ def cmd_watch(args: argparse.Namespace) -> int:
         # El id lleva la cuenta dentro: sin eso, dos personas siguiendo "Roma
         # en marzo" comparten id y la segunda pisa el seguimiento de la primera.
         sufijo = f"-{primer_dueno(args.owner).replace('u-', '')}" if args.owner else ""
-        ident = (
-            args.id or f"{(args.dest or 'todos').lower()}-{args.depart or args.months}{sufijo}"
+        # Y lo que lo distingue de otro al mismo sitio: la ventana, los dias y
+        # el origen, solo cuando los hay (los de siempre conservan su id).
+        extra = "".join(
+            f"-{v}"
+            for v in (
+                (args.desde or "").replace("-", ""),
+                f"d{args.dias.replace('-', '')}" if args.dias else "",
+                (args.origin or "").lower() if (args.origin or "MAD").upper() != "MAD" else "",
+            )
+            if v
+        )
+        ident = args.id or (
+            f"{(args.dest or 'todos').lower()}-{args.depart or args.months}{extra}{sufijo}"
         )
         W.anadir(
             W.Watch(
@@ -1286,6 +1297,10 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 destination=args.dest or "",
                 depart=args.depart or "",
                 return_date=getattr(args, "return") or "",
+                origin=(args.origin or "MAD").upper(),
+                desde=args.desde or "",
+                hasta=args.hasta or "",
+                dias=args.dias or "",
                 months=args.months,
                 nights=args.nights or "2-3",
                 weekend_only=not args.any_day,
@@ -1912,6 +1927,10 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--label")
     v.add_argument("--depart")
     v.add_argument("--return", dest="return")
+    v.add_argument("--origin", default="", help="IATA de salida (por defecto, Madrid)")
+    v.add_argument("--desde", default="", help="Ventana: primer dia en que se puede salir")
+    v.add_argument("--hasta", default="", help="Ventana: ultimo dia")
+    v.add_argument("--dias", default="", help="Dos dias de la semana, '0-3' = lunes a jueves")
     v.add_argument("--nights")
     v.add_argument("--months", type=int, default=6)
     v.add_argument("--adults", type=int)

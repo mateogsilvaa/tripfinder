@@ -398,6 +398,40 @@ test("el panel dice cuántas cuentas hay y cuántas son premium", async ({ brows
   await ctx.close();
 });
 
+test("el panel cuenta entradas, errores y el tiempo de cada pantalla", async ({ browser, page }) => {
+  // Alguien entra, pasa un rato en buscar y le salta un error.
+  await registrarse(page, { nombre: "Usa" });
+  const usa = await sesion(page);
+  await page.goto("/buscar.html");
+  await page.waitForTimeout(3200);
+  await page.evaluate(() => {
+    tfApuntar("js", "algo se ha roto", "buscar.js:1:1");
+    tfApuntar("js", "algo se ha roto", "buscar.js:1:1");
+  });
+  await page.goto("/index.html");
+  await page.waitForTimeout(3000);
+
+  const { ctx, page: panel } = await otraPersona(browser);
+  await registrarse(panel, { nombre: "Jefa" });
+  await E.hacerAdmin((await sesion(panel)).uid);
+  await panel.goto("/admin.html");
+  const act = panel.locator("#admActividad");
+  await expect(act.locator(".adm-cifras")).toContainText("inicios de sesión");
+  await expect(act).toContainText("Usa");
+  await expect(act.locator(".adm-barras")).toContainText("buscar");
+  // El mismo error dos veces en una página se manda una.
+  const error = act.locator(".adm-errores li", { hasText: "js: algo se ha roto" });
+  await expect(error).toHaveCount(1);
+  await expect(error.locator(".adm-veces")).toHaveText("1×");
+  await expect(panel.locator(`[data-cuenta="${usa.uid}"]`)).toContainText("entró");
+
+  // Y la lista de cuentas se busca.
+  await panel.locator("#admBuscar").fill("usa");
+  await expect(panel.locator(`[data-cuenta="${usa.uid}"]`)).toBeVisible();
+  await expect(panel.locator("#nubeCuentas [data-cuenta]:visible")).toHaveCount(1);
+  await ctx.close();
+});
+
 /* ------------------------------------------------------- el formulario de verdad */
 test("con cuenta gratis, mientras premium no se exija, el buscador funciona", async ({ page }) => {
   await registrarse(page);
@@ -434,7 +468,7 @@ test("una sesión de las cuentas de antes no cuenta como haber entrado", async (
   expect(await page.evaluate(() => tfSesion())).toBeNull();
   expect(await page.evaluate(() => tfUid())).toBe("");
   // Sale como quien no ha entrado, y no como «pendiente de aprobación».
-  await expect(page.locator("#tfCuenta")).toContainText("entrar");
+  await expect(page.locator("#tfCuenta")).toContainText(/entrar/i);
   const r = await page.evaluate(() => tfDispatch("search", { origin: "MAD" }));
   expect(r).toMatchObject({ ok: false, reason: "sin-cuenta" });
 });

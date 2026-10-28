@@ -543,7 +543,9 @@ function tfPintarBarra() {
   boton.innerHTML = s
     ? `<b aria-hidden="true">${tfEsc((s.name || s.user || "?").slice(0, 1).toUpperCase())}</b>
        <span class="cuenta-txt">${tfEsc(s.name || s.user)}</span>`
-    : `<b aria-hidden="true">○</b><span class="cuenta-txt">entrar</span>`;
+    : `<svg class="barra-ico" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+         stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8.5" r="3.8"/>
+         <path d="M4.8 20.2a7.2 7.2 0 0 1 14.4 0"/></svg><span class="cuenta-txt">Entrar</span>`;
   boton.title = s ? "Tu cuenta" : "Entrar con tu cuenta";
   boton.addEventListener("click", () => (tfSesion() ? tfAbrirCuenta() : tfAbrirLogin()));
   // Detrás del de tema: en la barra el orden es marca · zonas · en vivo ·

@@ -107,5 +107,6 @@ test("el selector de destino también las lleva", async ({ page }) => {
   await page.selectOption("#fWhere", "one");
   await page.click("#destBtn");
   await expect(page.locator("#destModal")).toBeVisible();
+  await page.click("[data-lista-entera]");
   await expect(page.locator("#destList .pais-todo .bandera").first()).toBeVisible();
 });

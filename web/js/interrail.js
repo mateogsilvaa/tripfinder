@@ -13,8 +13,16 @@
       camino más corto del mapa (`interrail-datos.js`). Sin ninguna, se
       proponen las rutas hechas.
 
-   LA BÚSQUEDA EMPIEZA SOLA. La ruta elegida —la tuya, o la primera que
-   cabe— busca en cuanto está clara, sin botón: los dos vuelos, de ida sola, y
+   NO SE CALCULA NADA HASTA QUE TERMINAS DE ELEGIR. Antes cada toque en el
+   mapa repintaba las rutas y, con dos ciudades, lanzaba ya la búsqueda: se
+   buscaba un viaje que todavía no era el tuyo. Ahora el formulario se rellena
+   entero y se pulsa «Calcular mi viaje». Lo calculado se apunta con su huella
+   (`huella`): si cambias algo del formulario, las rutas se recogen y el botón
+   pide volver a calcular. Lo que se toca DENTRO de la ruta ya calculada —más
+   noches, parar en una ciudad, mover el vuelo— no cuenta como volver a empezar.
+
+   LUEGO, LA BÚSQUEDA EMPIEZA SOLA. La ruta elegida —la tuya, o la primera que
+   cabe— busca en cuanto está calculada: los dos vuelos, de ida sola, y
    pisos enteros cerca del centro en cada parada. Hace falta sesión, porque
    cada búsqueda es un encargo a GitHub a tu nombre; sin ella se dice y se deja
    entrar ahí mismo. Cambiar de ruta, de fechas o de noches busca lo que falte,
@@ -195,6 +203,7 @@ const CLAVE_AJUSTES = tfClave("tf_ir_ajustes");
 const CLAVE_CIUDADES = tfClave("tf_ir_ciudades");
 const CLAVE_RUTA = tfClave("tf_ir_ruta");
 const CLAVE_FORM = tfClave("tf_ir_form");
+const CLAVE_LISTO = tfClave("tf_ir_listo");
 
 const leer = (clave, defecto = {}) => {
   try {
@@ -1138,6 +1147,21 @@ function estado() {
   };
 }
 
+/* Lo que identifica un formulario terminado. El pase manda en los días y la
+   edad solo cuenta sin pase: cambiar lo que no se usa no obliga a recalcular. */
+export function huella(ctx) {
+  return JSON.stringify([
+    ctx.tengoPase ? `pase${ctx.dias}` : ctx.edad,
+    ctx.ida,
+    ctx.vuelta,
+    ctx.adultos,
+    ctx.origen,
+    [...ctx.ciudades].sort(),
+  ]);
+}
+const calculado = (ctx) => leer(CLAVE_LISTO, "") === huella(ctx);
+const confirmar = () => guardar(CLAVE_LISTO, huella(estado()));
+
 /* Todas las rutas de la pantalla, la elegida la primera. */
 export function rutasDe(ctx, libres = null) {
   const propia =
@@ -1315,10 +1339,26 @@ function pintar() {
   document.querySelector("#irDiasWrap")?.toggleAttribute("hidden", !ctx.tengoPase);
   document.querySelector("#irEdadWrap")?.toggleAttribute("hidden", ctx.tengoPase);
 
+  pintarBotonCalcular(ctx, libres);
   if (ctx.vuelta && libres === null) {
     if (pista) pista.textContent = "La vuelta es antes que la ida: cámbiala para ver las rutas.";
     caja.innerHTML = "";
     pintarMapa(null);
+    return;
+  }
+  if (!calculado(ctx)) {
+    clearTimeout(temporizador);
+    clearInterval(sondeo);
+    pintarMapa(null);
+    if (pista) pista.textContent = "";
+    const antes = leer(CLAVE_LISTO, "");
+    caja.innerHTML = `<div class="ir-espera">
+      <p><b>${antes ? "Has cambiado el viaje." : "Cuando lo tengas todo, calcula."}</b>
+      ${
+        antes
+          ? "Las rutas de antes ya no son las tuyas: pulsa «Calcular mi viaje» para rehacerlas."
+          : "Elige el pase, las fechas y las ciudades a tu ritmo: no se busca nada hasta que pulses «Calcular mi viaje»."
+      }</p></div>`;
     return;
   }
   const lista = rutasDe(ctx, libres);
@@ -1357,6 +1397,31 @@ function pintar() {
   wireEntrar(caja);
   cargar(lista, ctx);
   programarBusqueda(elegida, ctx, libres);
+  if (!sondeo) vigilar();
+}
+
+/* El botón de calcular: dice qué se va a calcular y si lo de abajo está al día. */
+function pintarBotonCalcular(ctx, libres) {
+  const boton = document.querySelector("#irCalcular");
+  const nota = document.querySelector("#irCalcularNota");
+  if (!boton) return;
+  const n = ctx.ciudades.length;
+  const roto = ctx.vuelta && libres === null;
+  const listo = calculado(ctx) && !roto;
+  boton.disabled = !!roto || !parseISO(ctx.ida);
+  boton.textContent = listo ? "Calculado ✓" : leer(CLAVE_LISTO, "") ? "Volver a calcular" : "Calcular mi viaje";
+  boton.classList.toggle("hecho", listo);
+  if (nota) {
+    nota.textContent = roto
+      ? "La vuelta es antes que la ida."
+      : !parseISO(ctx.ida)
+        ? "Falta el día de ida."
+        : n >= MIN_PARADAS
+          ? `Tu ruta por ${plural(n, "ciudad", "ciudades")}, ${ctx.adultos === 1 ? "1 persona" : `${ctx.adultos} personas`}.`
+          : n === 1
+            ? "Con una ciudad te proponemos rutas hechas que pasan por ella."
+            : "Sin ciudades elegidas te proponemos rutas hechas.";
+  }
 }
 
 async function indice(ruta, campo) {
@@ -1403,11 +1468,17 @@ function vigilar() {
   clearInterval(sondeo);
   sondeo = setInterval(() => {
     const ctx = estado();
+    if (!calculado(ctx)) {
+      clearInterval(sondeo);
+      sondeo = null;
+      return;
+    }
     const libres = nochesEntre(ctx.ida, ctx.vuelta);
     const lista = rutasDe(ctx, libres);
     const quedan = lista.some((r) => pendiente(r, ctx) && !faltanDe(r, ctx).nada);
     if (!quedan) {
       clearInterval(sondeo);
+      sondeo = null;
       return;
     }
     cargar(lista, ctx);
@@ -1430,6 +1501,7 @@ function programarBusqueda(r, ctx, libres) {
   temporizador = setTimeout(() => {
     // Lo que se ve puede haber cambiado en el respiro: se vuelve a mirar.
     const ahora = estado();
+    if (!calculado(ahora)) return;
     const lista = rutasDe(ahora, nochesEntre(ahora.ida, ahora.vuelta));
     const sigue = laElegida(lista);
     if (sigue && claveRuta(sigue, ahora) === claveRuta(r, ctx)) pedir(sigue, null, true);
@@ -1514,6 +1586,7 @@ function accion(tipo, rutaId, cod) {
     // En la tuya, quitar una ciudad es desmarcarla: la ruta se reordena sola.
     const lista = elegidas();
     guardarElegidas(tipo === "quitar" ? lista.filter((c) => c !== cod) : [...lista, cod]);
+    confirmar();
     pintarCiudades();
     ABIERTOS.add(rutaId);
     pintar();
@@ -1565,6 +1638,8 @@ function moverVuelo(sentido, dia) {
     // cambian y la ruta podría dejar de caber por un día.
     const vuelta = document.querySelector("#irVuelta");
     if (vuelta && vuelta.value && libres !== null) vuelta.value = sumarDias(dia, libres);
+    // Mover el vuelo es retocar lo calculado, no empezar otro viaje.
+    confirmar();
     ida.dispatchEvent(new Event("change", { bubbles: true }));
     return;
   }
@@ -1627,6 +1702,8 @@ function leerPlanDeLaDireccion() {
     ajustar(id, () => ({}));
   }
   recordarFormulario();
+  // Un plan compartido ya está terminado: se enseña calculado.
+  confirmar();
 }
 
 async function compartirPlan(boton) {
@@ -1818,7 +1895,14 @@ export function montarInterrail() {
     recordarFormulario();
     pintar();
   });
-  form.addEventListener("submit", (e) => e.preventDefault());
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const ctx = estado();
+    if (!parseISO(ctx.ida) || (ctx.vuelta && nochesEntre(ctx.ida, ctx.vuelta) === null)) return;
+    confirmar();
+    pintar();
+    document.querySelector("#irHint")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 
   const alTocar = (e) => {
     const nodo = e.target.closest("[data-ir-ciudad]");
@@ -1877,6 +1961,7 @@ export function montarInterrail() {
       guardarElegidas([...base, parar.dataset.irParar]);
       ajustar("tuya", () => ({}));
       guardar(CLAVE_RUTA, "tuya");
+      confirmar();
       pintarCiudades();
       pintar();
       return;

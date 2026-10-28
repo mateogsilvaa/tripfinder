@@ -144,9 +144,15 @@ MANIFIESTO = (
 # decoracion —van con `aria-hidden`— y el `?` de al lado es un boton de verdad,
 # alcanzable con el tabulador. Solo en las paginas publicas: en el panel y en
 # la 404 no hay nada que descubrir.
+# Con su icono, una brújula: en el móvil el botón se queda en eso y en «¿Dónde
+# ir?», a la misma altura que el tema y la cuenta.
 DESCUBRIR = (
     '<button id="tfDescubrir" class="flap flap-boton" type="button"'
     ' aria-label="Descubrir tu destino ideal">'
+    '<svg class="barra-ico" viewBox="0 0 24 24" width="16" height="16" fill="none"'
+    ' stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"'
+    ' aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="8.5"/>'
+    '<path d="m15.2 8.8-1.9 4.5-4.5 1.9 1.9-4.5z"/></svg>'
     '<span class="flap-txt flap-txt-largo" aria-hidden="true">Ayúdame a elegir</span>'
     '<span class="flap-txt flap-txt-corto" aria-hidden="true">¿Dónde ir?</span></button>'
 )

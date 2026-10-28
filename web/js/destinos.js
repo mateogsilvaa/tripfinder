@@ -1,14 +1,18 @@
 /* destinos.js — La lamina de destinos: cargar el listado, filtrar y elegir. */
 
 import { $, esc, fetchJSON, fmtEUR, on } from "./base.js";
-import { banderaDe } from "./paises.js";
+import { banderaDe, isoDe } from "./paises.js";
+import { ALTO as ALTO_MUNDO, ANCHO as ANCHO_MUNDO, PAISES as PAISES_MUNDO } from "./mapa-mundo.js";
 
 let destinoPara = "fDest";
 
 /* --------------------------------------------------- selector de destino
    El mapa de puntos quedaba precioso y era inutil: sin costas ni fronteras no
-   se sabe que es cada punto. Para ELEGIR funciona mejor una lista que se
-   busca escribiendo, agrupada por pais y con el pais entero seleccionable. */
+   se sabe que es cada punto. Ahora el mapa es el de verdad —los paises de
+   Natural Earth, el mismo del filtro del feed— y es lo primero que se ve: las
+   regiones arriba, el mapamundi debajo, y al tocar un pais salen sus ciudades
+   (o el pais entero). La lista de 3.000 aeropuertos ya no se suelta de golpe:
+   sale al escribir, o al pedirla entera abajo del todo. */
 let DESTINOS = null;
 
 /* Las busquedas lanzadas se guardan en el navegador hasta que aparecen en el
@@ -106,11 +110,16 @@ function hora(ms) {
    definicion: si se escribieran aqui a mano, el dia que se añada una region la
    web ofreceria una que la busqueda no entiende. */
 let REGIONES_LISTA = null;
+const REGION_AEROPUERTOS = {};
+const ISO_DE_CODIGO = {};
 
 async function cargarRegiones() {
   if (REGIONES_LISTA) return REGIONES_LISTA;
   try {
     const mapa = await fetchJSON("data/regiones.json");
+    for (const [clave, { c }] of Object.entries(mapa)) {
+      REGION_AEROPUERTOS[clave] = c.match(/.{3}/g) || [];
+    }
     REGIONES_LISTA = Object.entries(mapa)
       .map(([clave, { n, c }]) => ({ clave, nombre: n, cuantos: Math.floor(c.length / 3) }))
       .sort((a, b) => a.nombre.localeCompare(b.nombre));
@@ -132,7 +141,7 @@ function regionesHTML(q) {
         ${lista
           .map(
             (r) =>
-              `<button type="button" class="ciudad region" data-valor="${esc(r.nombre)}">
+              `<button type="button" class="ciudad region" data-valor="${esc(r.nombre)}" data-region="${esc(r.clave)}">
                  ${esc(r.nombre)} <i>${r.cuantos}</i></button>`
           )
           .join("")}
@@ -151,6 +160,8 @@ async function cargarDestinos() {
   const porPais = {};
   lista.forEach((a) => {
     (porPais[a.pais || "Otros"] ||= []).push({ code: a.code, ciudad: a.ciudad });
+    const iso = isoDe(a.pais || "");
+    if (iso) ISO_DE_CODIGO[a.code] = iso;
   });
   DESTINOS = Object.entries(porPais)
     .map(([pais, aeropuertos]) => ({
@@ -161,44 +172,131 @@ async function cargarDestinos() {
   return DESTINOS;
 }
 
+/* El bloque de un pais: «todo el pais» y sus ciudades. */
+function paisHTML(p, aeropuertos = p.aeropuertos) {
+  return `
+    <div class="pais" data-pais-iso="${esc(isoDe(p.pais))}">
+      <button type="button" class="pais-todo" data-valor="${esc(p.pais)}">
+        <span>${
+          banderaDe(p.pais) ? `<i class="bandera" aria-hidden="true">${banderaDe(p.pais)}</i>` : ""
+        }${esc(p.pais)}</span>
+        <em>todo el país · ${p.aeropuertos.length} aeropuertos</em>
+      </button>
+      <div class="ciudades">
+        ${aeropuertos
+          .map(
+            (a) =>
+              `<button type="button" class="ciudad" data-valor="${esc(a.ciudad)}">
+                 ${esc(a.ciudad)} <i>${esc(a.code)}</i></button>`
+          )
+          .join("")}
+      </div>
+    </div>`;
+}
+
+/* Que pais del mapa es cada pais del listado. Los nombres llegan en ingles o
+   en español (`isoDe` los casa); dos nombres del mismo pais se juntan. */
+function porIso() {
+  const m = {};
+  for (const p of DESTINOS || []) {
+    const iso = isoDe(p.pais);
+    if (iso) (m[iso] ||= []).push(p);
+  }
+  return m;
+}
+
+let PAIS_MAPA = "";
+let LISTA_ENTERA = false;
+
+function mapaHTML() {
+  const hay = porIso();
+  return `
+    <div class="dest-mapa">
+      <svg class="mundo-svg" viewBox="0 0 ${ANCHO_MUNDO} ${ALTO_MUNDO}" role="group"
+        aria-label="Mapamundi: toca un país para ver sus ciudades">
+        ${PAISES_MUNDO.map((p) =>
+          hay[p.iso]
+            ? `<path class="mp con${p.iso === PAIS_MAPA ? " sel" : ""}" data-mapa-iso="${p.iso}" d="${p.d}"
+                tabindex="0" role="button" aria-pressed="${p.iso === PAIS_MAPA}"
+                aria-label="${esc(p.nombre)}"><title>${esc(p.nombre)}</title></path>`
+            : `<path class="mp" d="${p.d}" aria-hidden="true"></path>`
+        ).join("")}
+      </svg>
+      <p class="dest-mapa-pie">${
+        PAIS_MAPA
+          ? ""
+          : "Toca un país para ver sus ciudades, o escribe arriba."
+      }</p>
+    </div>`;
+}
+
 function pintarDestinos(filtro = "") {
   const q = filtro.trim().toLowerCase();
-  const html = (DESTINOS || [])
-    .map((p) => {
-      const coincidePais = p.pais.toLowerCase().includes(q);
-      const aeropuertos = coincidePais
-        ? p.aeropuertos
-        : p.aeropuertos.filter(
-            (a) => a.ciudad.toLowerCase().includes(q) || a.code.toLowerCase() === q
-          );
-      if (!aeropuertos.length) return "";
-      return `
-        <div class="pais">
-          <button type="button" class="pais-todo" data-valor="${esc(p.pais)}">
-            <span>${
-              banderaDe(p.pais)
-                ? `<i class="bandera" aria-hidden="true">${banderaDe(p.pais)}</i>`
-                : ""
-            }${esc(p.pais)}</span>
-            <em>todo el país · ${p.aeropuertos.length} aeropuertos</em>
-          </button>
-          <div class="ciudades">
-            ${aeropuertos
-              .map(
-                (a) =>
-                  `<button type="button" class="ciudad" data-valor="${esc(a.ciudad)}">
-                     ${esc(a.ciudad)} <i>${esc(a.code)}</i></button>`
-              )
-              .join("")}
-          </div>
-        </div>`;
-    })
-    .join("");
-  const todo = regionesHTML(q) + html;
+  let cuerpo;
+  if (q) {
+    cuerpo = (DESTINOS || [])
+      .map((p) => {
+        const coincidePais = p.pais.toLowerCase().includes(q);
+        const aeropuertos = coincidePais
+          ? p.aeropuertos
+          : p.aeropuertos.filter((a) => a.ciudad.toLowerCase().includes(q) || a.code.toLowerCase() === q);
+        return aeropuertos.length ? paisHTML(p, aeropuertos) : "";
+      })
+      .join("");
+  } else {
+    const elegido = PAIS_MAPA ? porIso()[PAIS_MAPA] || [] : [];
+    cuerpo =
+      mapaHTML() +
+      elegido.map((p) => paisHTML(p)).join("") +
+      (LISTA_ENTERA
+        ? (DESTINOS || []).filter((p) => !elegido.includes(p)).map((p) => paisHTML(p)).join("")
+        : `<p class="dest-entera"><button type="button" class="btn ghost small" data-lista-entera>Ver todos los
+            países en una lista</button></p>`);
+  }
+  const todo = regionesHTML(q) + cuerpo;
   $("#destList").innerHTML = todo || '<p class="meta">Nada con ese nombre.</p>';
   $("#destList")
     .querySelectorAll("[data-valor]")
     .forEach((b) => b.addEventListener("click", () => elegirDestino(b.dataset.valor)));
+  const tocar = (iso) => {
+    PAIS_MAPA = PAIS_MAPA === iso ? "" : iso;
+    pintarDestinos($("#destSearch").value);
+    const bloque = $("#destList").querySelector(`.pais[data-pais-iso="${PAIS_MAPA}"]`);
+    if (bloque) bloque.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    $("#destList").querySelector(`[data-mapa-iso="${iso}"]`)?.focus({ preventScroll: true });
+  };
+  $("#destList")
+    .querySelectorAll("[data-mapa-iso]")
+    .forEach((el) => {
+      el.addEventListener("click", () => tocar(el.dataset.mapaIso));
+      el.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        tocar(el.dataset.mapaIso);
+      });
+    });
+  $("#destList")
+    .querySelector("[data-lista-entera]")
+    ?.addEventListener("click", () => {
+      LISTA_ENTERA = true;
+      pintarDestinos("");
+    });
+  // Al pasar por una región, sus países se encienden en el mapa.
+  $("#destList")
+    .querySelectorAll(".ciudad.region")
+    .forEach((b) => {
+      const isos = new Set(
+        (REGION_AEROPUERTOS[b.dataset.region] || []).map((c) => ISO_DE_CODIGO[c]).filter(Boolean)
+      );
+      const luz = (si) =>
+        $("#destList")
+          .querySelectorAll("[data-mapa-iso]")
+          .forEach((el) => el.classList.toggle("region-luz", si && isos.has(el.dataset.mapaIso)));
+      b.addEventListener("mouseenter", () => luz(true));
+      b.addEventListener("mouseleave", () => luz(false));
+      b.addEventListener("focus", () => luz(true));
+      b.addEventListener("blur", () => luz(false));
+    });
 }
 
 function elegirDestino(valor) {
@@ -233,6 +331,8 @@ function rotular(campo, boton) {
    que tocaba cada llamador; ahora viaja con la llamada. */
 export function abrirDestinos(para = "fDest") {
   destinoPara = para;
+  PAIS_MAPA = "";
+  LISTA_ENTERA = false;
   $("#destModal").hidden = false;
   tfAbrirDialogo($("#destModal"), {
     foco: () => $("#destSearch"),

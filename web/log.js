@@ -29,6 +29,15 @@ function tfApuntar(tipo, mensaje, detalle = "") {
   } catch {
     /* si no cabe, se descarta lo mas viejo en el siguiente intento */
   }
+  // Y al panel, si hay Firebase: lo de este navegador solo lo ve quien lo usa,
+  // y un «no me funciona» de otro no llegaba nunca.
+  if (typeof nubeApuntarError === "function") {
+    try {
+      nubeApuntarError(tipo, mensaje, detalle);
+    } catch {
+      /* el registro nunca rompe la página */
+    }
+  }
 }
 
 function tfVaciarLog() {
@@ -61,6 +70,8 @@ function tfEsRuido(url, status) {
 }
 
 const tfFetchOriginal = window.fetch;
+// Para lo que no debe apuntarse a si mismo si falla (la actividad de nube.js).
+window.tfFetchSinLog = (...args) => tfFetchOriginal.apply(window, args);
 window.fetch = async function (...args) {
   const url = typeof args[0] === "string" ? args[0] : (args[0] && args[0].url) || "";
   try {
@@ -94,8 +105,11 @@ window.fetch = async function (...args) {
     // La etiqueta dice a donde vas, no donde estas: la carta de dia o la de noche.
     if (texto) texto.textContent = oscuro ? "día" : "noche";
     boton.setAttribute("aria-pressed", String(oscuro));
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", oscuro ? "#0b1720" : "#f2efe6");
+    // Los mismos que el <head>: la barra del sistema (y la de la app
+    // instalada) del color del papel, no de otro azul que no sale en ningún sitio.
+    document
+      .querySelectorAll('meta[name="theme-color"]')
+      .forEach((m) => m.setAttribute("content", oscuro ? "#100f0e" : "#f3f0e9"));
   };
 
   boton.addEventListener("click", () => {
