@@ -40,6 +40,7 @@
 | `users.yml` | `repository_dispatch: user_* / admin_* / site_token / claim` | Las cuentas: altas, contraseñas, preferencias, el token del sitio cifrado y el **buzón** (`admin_buzon`): el par de claves con el que quien pide una cuenta cierra su correo y su contraseña y el panel las abre. La pública se publica; la privada va cifrada con la clave maestra, igual que el token. |
 | `pages.yml` | push a `main` sobre `web/`, `data/` o `tools/montar.py` | Monta el sitio: comprueba las partes, sella la versión, quita lo que no es página y publica sin los emails. |
 | `probar-correo.yml` | a mano | Manda un chollo de mentira para saber si las credenciales del correo han quedado bien **sin esperar al barrido de las 08:00**. Cuenta caracteres de cada secreto, nunca los imprime. |
+| `firestore.yml` | push a `main` sobre `firestore.rules`, `firestore.indexes.json` o `firebase.json`, o a mano | Prueba las reglas contra el emulador y las publica en Firebase (`firebase deploy --only firestore`, con la política TTL de `actividad`) con la cuenta de servicio de `FIREBASE_SERVICE_ACCOUNT`. Así las reglas del repo y las de Firebase no se separan. |
 | `ci.yml` | cada push y cada pull request | Lo que decide si algo entra: ruff, pytest, montaje, contraste, oxlint y humo de frontend. |
 
 ## La hora de los cron

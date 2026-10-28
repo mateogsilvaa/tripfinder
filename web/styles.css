@@ -4494,3 +4494,60 @@ body:has(.privacidad) .masthead .lede { margin-inline: auto; }
   .topbar .marca-trip, .topbar .marca-finder { display: none; }
   .topbar .marca { min-width: var(--tap-min); min-height: var(--tap-min); align-items: center; justify-content: center; }
 }
+
+/* ---- MI CUENTA, EN EL ORDENADOR ---------------------------------------
+   Era una columna estrecha de 560 px con todo apilado: la ficha, el aviso de
+   verificar, el nombre, los correos y la contraseña plegada al fondo, y había
+   que rodar para llegar a «Salir». Con sitio, a dos columnas: a la izquierda
+   quién eres (avatar grande, plan, estado, salir); a la derecha lo que se
+   cambia, cada cosa en su tarjeta. En el móvil sigue todo en una columna. */
+.cuenta-seccion { margin: 0 0 4px; font: 600 var(--fs-body, 15px) / 1.3 var(--font-sans); color: var(--ink); }
+summary .cuenta-seccion { display: block; }
+#tfModal .modal-caja:has(.cuenta-rejilla) .cuenta-bloque:first-child { margin-top: 0; }
+
+@media (min-width: 900px) {
+  #tfModal .modal-caja:has(.cuenta-rejilla) { width: min(920px, calc(100vw - 48px)); max-width: none; }
+  .cuenta-rejilla {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    grid-template-areas: "lado main" "salir main";
+    grid-template-rows: auto 1fr;
+    gap: 0 28px;
+    align-items: start;
+  }
+  .cuenta-lado { grid-area: lado; display: grid; gap: 12px; }
+  .cuenta-lado .cuenta-linea { margin: 0; }
+  .cuenta-main { grid-area: main; display: grid; gap: 14px; }
+  .cuenta-rejilla > .cuenta-salir {
+    grid-area: salir;
+    align-self: end;
+    display: grid;
+    justify-items: start;
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid var(--hair);
+  }
+
+  /* La ficha, de pie: el avatar grande y el plan debajo del nombre. */
+  .cuenta-lado .cuenta-ficha { flex-direction: column; align-items: flex-start; gap: 10px; padding: 18px; }
+  .cuenta-lado .cuenta-avatar { width: 64px; height: 64px; font-size: 26px; background: var(--accent); color: var(--sobre-acento); }
+  .cuenta-lado .cuenta-ficha-txt { width: 100%; }
+  .cuenta-lado .cuenta-ficha-txt b { font-size: var(--fs-subhead, 20px); }
+  .cuenta-lado .nube-verificar { padding: 12px; }
+  .cuenta-lado .nube-verificar .controls { flex-direction: column; align-items: stretch; }
+
+  /* Lo que se cambia, en tarjetas. */
+  .cuenta-main .cuenta-bloque {
+    margin: 0;
+    padding: 18px;
+    border: 1px solid var(--hair);
+    border-radius: var(--r);
+    background: var(--surface2);
+  }
+  .cuenta-main details.cuenta-bloque > summary { cursor: pointer; color: var(--muted); }
+  .cuenta-main details.cuenta-bloque[open] > summary { margin-bottom: 12px; }
+}
+#nubeClaveCaja > summary { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+#nubeClaveCaja > summary::-webkit-details-marker { display: none; }
+.nube-verificar .controls { border: 0; padding: 0; margin: 8px 0 0; background: none; }
