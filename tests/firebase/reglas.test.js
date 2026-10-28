@@ -393,3 +393,56 @@ test("nadie borra ni crea cuentas antiguas desde el navegador, ni el administrad
   await assertFails(setDoc(doc(jefe, "cuentas_antiguas/u-cccccccc"), { correo: "x@x.es" }));
   await assertFails(deleteDoc(doc(jefe, "cuentas_antiguas/u-aaaaaaaa")));
 });
+
+/* --------------------------------------------------------------- actividad */
+const caduca = () => new Date(Date.now() + 90 * 24 * 3600 * 1000);
+const act = (extra = {}) => ({
+  tipo: "pantalla",
+  uid: null,
+  pantalla: "buscar",
+  segundos: 42,
+  visitas: 1,
+  creado: serverTimestamp(),
+  caduca: caduca(),
+  ...extra,
+});
+
+test("actividad: sin cuenta se apunta tiempo y errores, pero sin uid", async () => {
+  await assertSucceeds(setDoc(doc(anonimo(), "actividad/a1"), act()));
+  const error = { tipo: "error", uid: null, pantalla: "portada", mensaje: "js: x is undefined", creado: serverTimestamp(), caduca: caduca() };
+  await assertSucceeds(setDoc(doc(anonimo(), "actividad/a2"), error));
+  await assertFails(setDoc(doc(anonimo(), "actividad/a3"), act({ uid: "ana" })));
+});
+
+test("actividad: con cuenta, solo con tu uid; y entrar solo con cuenta", async () => {
+  const ana = como("ana", "ana@x.es");
+  await assertSucceeds(setDoc(doc(ana, "actividad/b1"), act({ uid: "ana" })));
+  await assertFails(setDoc(doc(ana, "actividad/b2"), act({ uid: "gus" })));
+  const entrada = { tipo: "entrada", uid: "ana", pantalla: "portada", metodo: "correo", creado: serverTimestamp(), caduca: caduca() };
+  await assertSucceeds(setDoc(doc(ana, "actividad/b3"), entrada));
+  await assertFails(setDoc(doc(anonimo(), "actividad/b4"), { ...entrada, uid: null }));
+});
+
+test("actividad: ni campos de más, ni segundos absurdos, ni que no caduque", async () => {
+  const db = anonimo();
+  await assertFails(setDoc(doc(db, "actividad/c1"), act({ admin: true })));
+  await assertFails(setDoc(doc(db, "actividad/c2"), act({ segundos: -5 })));
+  await assertFails(setDoc(doc(db, "actividad/c3"), act({ segundos: 10 ** 7 })));
+  await assertFails(setDoc(doc(db, "actividad/c4"), act({ caduca: new Date(Date.now() + 400 * 24 * 3600 * 1000) })));
+  await assertFails(setDoc(doc(db, "actividad/c5"), act({ tipo: "otra" })));
+  await assertFails(setDoc(doc(db, "actividad/c6"), act({ creado: new Date(2020, 0, 1) })));
+});
+
+test("actividad: solo la lee el administrador, y nadie la cambia ni la borra", async () => {
+  await entorno.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "actividad/d1"), { tipo: "pantalla", uid: "ana", pantalla: "buscar", creado: new Date(), caduca: caduca() });
+  });
+  for (const db of [anonimo(), como("ana", "ana@x.es")]) {
+    await assertFails(getDoc(doc(db, "actividad/d1")));
+    await assertFails(getDocs(collection(db, "actividad")));
+  }
+  const jefe = como("jefe", "jefe@x.es");
+  await assertSucceeds(getDocs(collection(jefe, "actividad")));
+  await assertFails(updateDoc(doc(jefe, "actividad/d1"), { segundos: 1 }));
+  await assertFails(deleteDoc(doc(jefe, "actividad/d1")));
+});

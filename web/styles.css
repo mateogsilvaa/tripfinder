@@ -3303,6 +3303,14 @@ h1 em { font-size: 1.3em; }
 .ir-form { display: grid; gap: 14px; margin: 18px 0 10px; }
 .ir-bloque { border: 1px solid var(--hair); border-radius: var(--r); padding: 12px 14px 14px; margin: 0; min-width: 0; }
 .ir-bloque legend { padding: 0 6px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+/* El cuarto paso: calcular. Hasta pulsarlo no se pinta ninguna ruta ni se busca nada. */
+.ir-calcular { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.ir-calcular .btn { min-width: 200px; }
+.ir-calcular .btn.hecho { background: transparent; color: var(--deep); border-color: var(--deep); }
+.ir-calcular-nota { margin: 0; color: var(--muted); font-size: var(--fs-body-s); }
+.ir-espera { border: 1px dashed var(--hair); border-radius: var(--r); padding: 16px 18px; color: var(--muted); }
+.ir-espera p { margin: 0; }
+.ir-espera b { color: var(--ink); display: block; margin-bottom: 4px; }
 .ir-paso {
   display: inline-grid;
   place-items: center;
@@ -4255,3 +4263,39 @@ body:has(.privacidad) .masthead .lede { margin-inline: auto; }
   .acciones-fila > .btn { flex: 1 1 auto; justify-content: center; }
 }
 .login-google-btn.btn { background: var(--ink); color: var(--paper); border-color: var(--ink); font-weight: 600; }
+
+/* ------------------------------------------------------------ EL PANEL
+   La actividad (entradas, errores, tiempo por pantalla) y la lista de cuentas
+   con su buscador. Cajas de superficie en rejilla: dos columnas en escritorio,
+   una en el móvil. */
+.adm-bloque { margin-top: 28px; }
+.adm-cab { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 12px; }
+.adm-cab .watch-head { margin: 0; }
+.adm-periodo { display: flex; flex-wrap: wrap; gap: 6px; }
+.adm-periodo .mundo-chip[aria-checked="true"] { background: var(--deep); border-color: var(--deep); color: var(--paper); }
+.adm-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
+.adm-filtros input, .adm-filtros select { min-height: 38px; }
+.adm-filtros input { min-width: 220px; }
+.adm-cifras { margin: 0 0 14px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.adm-rejilla { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.adm-caja { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; min-width: 0; }
+.adm-caja h4 { margin: 0 0 10px; font-size: var(--fs-body-s, 14px); font-weight: 600; }
+.adm-ancha { grid-column: 1 / -1; }
+.adm-barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.adm-barras li { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 2px 10px; align-items: center; }
+.adm-barra-nom { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-barra { height: 8px; border-radius: var(--r-pill); background: var(--hair); overflow: hidden; }
+.adm-barra i { display: block; height: 100%; background: var(--deep); border-radius: inherit; }
+.adm-barra-dato { grid-column: 2; font: 400 var(--fs-meta, 12px) / 1.4 var(--font-mono); color: var(--muted); }
+.adm-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 360px; overflow: auto; }
+.adm-lista li { display: grid; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--hair); }
+.adm-lista li:last-child { border-bottom: 0; }
+.adm-errores summary { cursor: pointer; overflow-wrap: anywhere; }
+.adm-veces { color: var(--accent-txt); font-family: var(--font-mono); }
+.adm-detalle { white-space: pre-wrap; overflow-wrap: anywhere; font: 400 12px / 1.45 var(--font-mono); color: var(--muted); margin: 8px 0 0; }
+@media (max-width: 760px) {
+  .adm-rejilla { grid-template-columns: 1fr; }
+  .adm-filtros, .adm-filtros input, .adm-filtros select { width: 100%; min-width: 0; }
+  .adm-barras li { grid-template-columns: 1fr; }
+  .adm-barra-dato { grid-column: 1; }
+}

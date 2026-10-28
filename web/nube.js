@@ -520,6 +520,7 @@ async function nubeRegistrar(correo, clave, nombre) {
     nubeAdoptarDeLasCuentasViejas(t.uid);
     const sesion = nubeGuardarSesion(t.uid, ficha);
     if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
+    nubeApuntarEntrada("registro");
     return { ok: true, sesion };
   } catch (e) {
     return { ok: false, error: e.message, codigo: e.codigo };
@@ -541,6 +542,7 @@ async function nubeEntrar(correo, clave) {
     nubeAdoptarDeLasCuentasViejas(t.uid);
     const sesion = nubeGuardarSesion(t.uid, ficha);
     if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
+    nubeApuntarEntrada("correo");
     return { ok: true, sesion };
   } catch (e) {
     return { ok: false, error: e.message, codigo: e.codigo };
@@ -678,6 +680,7 @@ async function nubeTrasGoogle(t, nombre, nueva) {
   nubeAdoptarDeLasCuentasViejas(t.uid);
   const sesion = nubeGuardarSesion(t.uid, ficha);
   if (typeof tfAdoptarAnonimos === "function") tfAdoptarAnonimos(t.uid);
+  nubeApuntarEntrada(nueva ? "registro" : "google");
   return { ok: true, sesion, nueva };
 }
 
@@ -860,6 +863,197 @@ async function nubeCambiarEstado(uid, estado, plan) {
   } catch (e) {
     return { ok: false, error: e.message };
   }
+}
+
+/* -------------------------------------------------------------- la actividad
+   Lo que el panel necesita para saber cómo se usa la web: quién entra, qué
+   falla y cuánto rato se pasa en cada pantalla. Va a `actividad/{id}` en
+   Firestore, que solo lee el administrador (ver firestore.rules), y caduca sola
+   a los noventa días (`caduca`, con una política TTL en firestore.indexes.json).
+
+   NADA DE LO QUE SE APUNTA IDENTIFICA A QUIEN NO TIENE CUENTA. Sin sesión va
+   sin `uid`: la pantalla, los segundos y, si es un error, el mensaje. Con
+   sesión, el `uid`, que es lo mismo que el panel ya ve en la lista de cuentas.
+
+   EL TIEMPO SE CUENTA EN ESTE NAVEGADOR Y SE MANDA DE A POCO. Cada pantalla
+   suma los segundos en que la pestaña está a la vista; al esconderla (cambiar
+   de pestaña, cerrar, pasar la app a segundo plano) se manda lo sumado en una
+   sola escritura, con `keepalive` para que salga aunque la página se cierre.
+   Si no sale, se queda guardado y sale en la siguiente. */
+const NUBE_ACT_TIEMPOS = "tf_act_tiempos";
+const NUBE_ACT_DIA = "tf_act_dia";
+const NUBE_ACT_VIDA_MS = 90 * 24 * 3600 * 1000;
+const NUBE_ACT_MAX_ERRORES = 5; // por carga de página: un bucle no llena la base
+let NUBE_ACT_ERRORES = 0;
+const NUBE_ACT_VISTOS = new Set();
+
+function nubePantalla(ruta = location.pathname) {
+  const ultimo = String(ruta).split("/").filter(Boolean).pop() || "";
+  const nombre = ultimo.replace(/\.html$/, "");
+  // En github.io la web cuelga de /tripfinder/: esa raíz es la portada.
+  return !nombre || nombre === "index" || nombre === "tripfinder" ? "portada" : nombre.slice(0, 60);
+}
+
+async function nubeApuntar(tipo, campos = {}, keepalive = false) {
+  if (!nubeActiva()) return false;
+  const s = typeof tfSesion === "function" ? tfSesion() : null;
+  const uid = s && s.nube ? s.uid : null;
+  let token = "";
+  if (uid) {
+    try {
+      token = await nubeToken();
+    } catch {
+      token = "";
+    }
+  }
+  const doc = {
+    tipo,
+    uid: token ? uid : null,
+    pantalla: nubePantalla(),
+    ...campos,
+    caduca: new Date(Date.now() + NUBE_ACT_VIDA_MS),
+  };
+  const cabeceras = { "Content-Type": "application/json" };
+  if (token) cabeceras.Authorization = `Bearer ${token}`;
+  try {
+    // A pelo y no con `nubeLlamar`: esto no debe apuntarse a sí mismo como
+    // error de red si falla (log.js envuelve `fetch`), y necesita `keepalive`.
+    const r = await (window.tfFetchSinLog || fetch)(`${nubeRutas().fs}/v1/${nubeBase()}:commit`, {
+      method: "POST",
+      headers: cabeceras,
+      body: JSON.stringify({ writes: [nubeCrear(`actividad/${nubeNuevoId()}`, doc)] }),
+      keepalive,
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+function nubeApuntarEntrada(metodo) {
+  try {
+    localStorage.setItem(NUBE_ACT_DIA, new Date().toISOString().slice(0, 10));
+  } catch {
+    /* nada */
+  }
+  nubeApuntar("entrada", { metodo });
+}
+
+/* Un error del navegador (lo llama `tfApuntar` en log.js). Cinco por página
+   como mucho, y el mismo mensaje una sola vez. */
+function nubeApuntarError(tipoError, mensaje, detalle) {
+  const clave = `${tipoError}|${mensaje}`;
+  if (NUBE_ACT_ERRORES >= NUBE_ACT_MAX_ERRORES || NUBE_ACT_VISTOS.has(clave)) return;
+  NUBE_ACT_ERRORES += 1;
+  NUBE_ACT_VISTOS.add(clave);
+  nubeApuntar("error", {
+    mensaje: `${tipoError}: ${String(mensaje || "")}`.slice(0, 300),
+    detalle: String(detalle || "").slice(0, 500),
+    navegador: navigator.userAgent.slice(0, 160),
+  });
+}
+
+function nubeLeerTiempos() {
+  try {
+    const t = JSON.parse(localStorage.getItem(NUBE_ACT_TIEMPOS) || "{}");
+    return t && typeof t === "object" ? t : {};
+  } catch {
+    return {};
+  }
+}
+
+function nubeGuardarTiempos(t) {
+  try {
+    localStorage.setItem(NUBE_ACT_TIEMPOS, JSON.stringify(t));
+  } catch {
+    /* navegación privada: se pierde ese rato, y ya */
+  }
+}
+
+let NUBE_VISTA_DESDE = 0;
+let NUBE_VISITA_CONTADA = false;
+
+function nubeSumarTiempo() {
+  if (!NUBE_VISTA_DESDE) return;
+  const seg = Math.round((Date.now() - NUBE_VISTA_DESDE) / 1000);
+  NUBE_VISTA_DESDE = 0;
+  const t = nubeLeerTiempos();
+  const p = nubePantalla();
+  const fila = t[p] || { s: 0, v: 0 };
+  // Más de una hora seguida es una pestaña olvidada, no alguien leyendo.
+  fila.s += Math.min(seg, 3600);
+  if (!NUBE_VISITA_CONTADA) {
+    fila.v += 1;
+    NUBE_VISITA_CONTADA = true;
+  }
+  t[p] = fila;
+  nubeGuardarTiempos(t);
+}
+
+async function nubeMandarTiempos(keepalive = false) {
+  const t = nubeLeerTiempos();
+  const filas = Object.entries(t).filter(([, f]) => f && (f.s >= 3 || f.v > 0));
+  if (!filas.length) return;
+  // Se vacía antes de mandar: si otra pestaña manda a la vez, no se cuenta dos veces.
+  nubeGuardarTiempos({});
+  for (const [pantalla, f] of filas) {
+    const ok = await nubeApuntar(
+      "pantalla",
+      { pantalla, segundos: Math.max(0, Math.round(f.s)), visitas: Math.max(0, f.v | 0) },
+      keepalive
+    );
+    if (!ok) {
+      const ahora = nubeLeerTiempos();
+      const a = ahora[pantalla] || { s: 0, v: 0 };
+      ahora[pantalla] = { s: a.s + f.s, v: a.v + f.v };
+      nubeGuardarTiempos(ahora);
+    }
+  }
+}
+
+if (nubeActiva() && typeof document !== "undefined") {
+  if (document.visibilityState === "visible") NUBE_VISTA_DESDE = Date.now();
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      NUBE_VISTA_DESDE = Date.now();
+    } else {
+      nubeSumarTiempo();
+      nubeMandarTiempos(true);
+    }
+  });
+  window.addEventListener("pagehide", () => {
+    nubeSumarTiempo();
+    nubeMandarTiempos(true);
+  });
+  // Lo que se quedó sin mandar la otra vez, y la vuelta del día de quien ya
+  // tenía sesión: sin esto, quien no cierra sesión nunca «entraría».
+  setTimeout(() => {
+    nubeMandarTiempos();
+    const s = typeof tfSesion === "function" ? tfSesion() : null;
+    if (!s || !s.nube) return;
+    const hoy = new Date().toISOString().slice(0, 10);
+    let ultimo = "";
+    try {
+      ultimo = localStorage.getItem(NUBE_ACT_DIA) || "";
+    } catch {
+      /* nada */
+    }
+    if (ultimo !== hoy) nubeApuntarEntrada("vuelve");
+  }, 2500);
+}
+
+/* Solo el administrador: lo apuntado desde `desde`, lo más nuevo primero. */
+async function nubeActividad(desde, limite = 3000) {
+  const token = await nubeToken();
+  if (!token) return [];
+  return nubeConsultar(token, {
+    from: [{ collectionId: "actividad" }],
+    where: {
+      fieldFilter: { field: { fieldPath: "creado" }, op: "GREATER_THAN_OR_EQUAL", value: { timestampValue: desde.toISOString() } },
+    },
+    orderBy: [{ field: { fieldPath: "creado" }, direction: "DESCENDING" }],
+    limit: limite,
+  });
 }
 
 /* Al cargar cada página con sesión de Firebase se mira la ficha, sin esperar: si

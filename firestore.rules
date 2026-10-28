@@ -14,6 +14,8 @@ rules_version = '2';
      usuarios/{uid}        la ficha de cada cuenta: nombre, correo, estado
      cuentas_antiguas/{id} las cuentas de antes de Firebase (solo el administrador)
      encargos/{id}         lo que se le pide a un scraper (la cola)
+     actividad/{id}        entradas, errores y tiempo por pantalla (solo lo lee
+                           el administrador)
 
    La web está abierta a todo el mundo: una cuenta recién registrada nace
    `aprobado` y con `plan: gratis`. El plan premium existe —lo da el
@@ -130,6 +132,34 @@ service cloud.firestore {
     // solo lo escribe la cuenta de servicio.
     match /resultados/{id} {
       allow get: if true;
+    }
+
+    // Cómo se usa la web, para el panel: quién entra (`entrada`), qué falla
+    // (`error`) y cuánto se está en cada pantalla (`pantalla`). Se escribe
+    // también sin cuenta —el tiempo y los errores de quien solo mira—, pero sin
+    // `uid`; con `uid`, solo el tuyo. Nada se cambia ni se borra después: caduca
+    // solo (`caduca`, política TTL) y solo lo lee el administrador.
+    match /actividad/{id} {
+      function d() {
+        return request.resource.data;
+      }
+      allow create: if d().keys().hasOnly(['tipo', 'uid', 'pantalla', 'segundos', 'visitas', 'metodo',
+            'mensaje', 'detalle', 'navegador', 'creado', 'caduca'])
+        && d().keys().hasAll(['tipo', 'uid', 'pantalla', 'creado', 'caduca'])
+        && d().tipo in ['entrada', 'error', 'pantalla']
+        && d().creado == request.time
+        && d().caduca is timestamp
+        && d().caduca < request.time + duration.value(100, 'd')
+        && d().pantalla is string && d().pantalla.size() <= 60
+        && (d().uid == null || (entra() && d().uid == request.auth.uid))
+        && (d().tipo != 'entrada' || (entra() && d().uid == request.auth.uid))
+        && (!('segundos' in d()) || (d().segundos is int && d().segundos >= 0 && d().segundos <= 86400))
+        && (!('visitas' in d()) || (d().visitas is int && d().visitas >= 0 && d().visitas <= 1000))
+        && (!('metodo' in d()) || (d().metodo is string && d().metodo.size() <= 20))
+        && (!('mensaje' in d()) || (d().mensaje is string && d().mensaje.size() <= 300))
+        && (!('detalle' in d()) || (d().detalle is string && d().detalle.size() <= 500))
+        && (!('navegador' in d()) || (d().navegador is string && d().navegador.size() <= 160));
+      allow get, list: if admin();
     }
 
     match /encargos/{id} {

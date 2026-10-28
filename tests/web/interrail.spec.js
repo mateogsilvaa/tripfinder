@@ -65,18 +65,26 @@ const servir = async (page, { camas = {}, vuelos = {} } = {}) => {
   });
 };
 
+/* Nada se calcula hasta pulsar el botón: se rellena todo y luego se calcula. */
+const calcular = async (page) => {
+  await page.click("#irCalcular");
+  await expect(page.locator("#irRutas .ir-ruta").first()).toBeVisible();
+};
+
 const abrir = async (page, { ida = IDA } = {}) => {
   await page.goto("/interrail.html", { waitUntil: "domcontentloaded" });
-  await expect(page.locator("#irRutas .ir-ruta").first()).toBeVisible();
+  await expect(page.locator("#irRutas .ir-espera")).toBeVisible();
   if (ida !== null) {
     await page.fill("#irIda", ida);
     await page.dispatchEvent("#irIda", "change");
   }
+  await calcular(page);
 };
 
-/* Se eligen en el mapa, tocando el círculo de cada ciudad. */
+/* Se eligen en el mapa, tocando el círculo de cada ciudad, y se calcula. */
 const elegir = async (page, ...cods) => {
   for (const c of cods) await page.locator(`#irMapa [data-ir-ciudad="${c}"] .ir-nodo-toque`).click();
+  await calcular(page);
 };
 /* Las otras rutas van plegadas: se abre y se elige. */
 const otraRuta = async (page, id) => {
@@ -132,6 +140,7 @@ test.describe("el pase", () => {
   test("con el pase ya comprado: no se cuenta, y se pregunta de cuántos días", async ({ page }) => {
     await abrir(page);
     await page.locator('input[name="irPase"][value="si"]').check();
+    await calcular(page);
     await expect(page.locator("#irDiasWrap")).toBeVisible();
     await expect(page.locator("#irEdadWrap")).toBeHidden();
     const precio = page.locator(".ir-ruta.elegida .ir-precio");
@@ -144,6 +153,7 @@ test.describe("el pase", () => {
     // Suiza no tiene ni una reserva: con el pase, el tren sale a cero.
     await abrir(page);
     await page.locator('input[name="irPase"][value="si"]').check();
+    await calcular(page);
     await otraRuta(page, "suiza");
     await expect(page.locator(".ir-ruta.elegida .ir-precio dd")).toHaveText("≈ 0 €");
   });
@@ -152,6 +162,7 @@ test.describe("el pase", () => {
     await abrir(page);
     await page.locator('input[name="irPase"][value="si"]').check();
     await page.selectOption("#irDias", "4");
+    await calcular(page);
     // La vuelta grande gasta seis días de tren: con un pase de cuatro no sale.
     await expect(page.locator("#ruta-vuelta")).toHaveCount(0);
     await expect(page.locator("#irHint")).toContainText("caben en tu pase de 4 días");
@@ -171,6 +182,7 @@ test.describe("el pase", () => {
     const sin = page.locator(".ir-ruta.elegida .ir-precio dl > div").nth(1).locator("dd");
     const [conA, sinA] = [await con.textContent(), await sin.textContent()];
     await page.selectOption("#irEdad", "joven");
+    await calcular(page);
     await expect(con).not.toHaveText(conA);
     await expect(sin).toHaveText(sinA);
   });
@@ -264,6 +276,39 @@ test.describe("las ciudades por las que quieres pasar", () => {
     expect(r.esLaMejor).toBe(true);
     // Nápoles, en una punta: no se baja a Nápoles para volver a subir.
     expect([r.orden[0], r.orden[3]]).toContain("NAP");
+  });
+});
+
+/* ------------------------------------------------ calcular al terminar */
+
+test.describe("no calcula hasta que terminas", () => {
+  test("elegir ciudades no pinta rutas ni lanza nada: espera al botón", async ({ page }) => {
+    await conSesion(page);
+    const enviados = await contarEncargos(page);
+    await servir(page);
+    await page.goto("/interrail.html", { waitUntil: "domcontentloaded" });
+    await page.fill("#irIda", IDA);
+    await page.dispatchEvent("#irIda", "change");
+    for (const c of ["VIE", "BUD", "PRG"]) {
+      await page.locator(`#irMapa [data-ir-ciudad="${c}"] .ir-nodo-toque`).click();
+      await page.waitForTimeout(1200);
+    }
+    await page.waitForTimeout(2000);
+    await expect(page.locator("#irRutas .ir-ruta")).toHaveCount(0);
+    await expect(page.locator("#irCalcularNota")).toContainText("3 ciudades");
+    expect(enviados).toEqual([]);
+    await calcular(page);
+    await expect.poll(() => enviados.length, { timeout: 8000 }).toBe(1);
+  });
+
+  test("cambiar algo después recoge las rutas y pide volver a calcular", async ({ page }) => {
+    await abrir(page);
+    await page.selectOption("#irPersonas", "3");
+    await expect(page.locator("#irRutas .ir-ruta")).toHaveCount(0);
+    await expect(page.locator("#irRutas .ir-espera")).toContainText("Has cambiado el viaje");
+    await expect(page.locator("#irCalcular")).toHaveText("Volver a calcular");
+    await calcular(page);
+    await expect(page.locator("#irCalcular")).toHaveText("Calculado ✓");
   });
 });
 
@@ -454,9 +499,10 @@ test.describe("las fechas", () => {
     await expect(page.locator("#irHint")).toContainText("La vuelta es antes que la ida");
   });
 
-  test("sale con una fecha puesta, para que se vea entero sin tocar nada", async ({ page }) => {
+  test("sale con una fecha puesta, y con un toque se ve entero", async ({ page }) => {
     await page.goto("/interrail.html");
     await expect(page.locator("#irIda")).not.toHaveValue("");
+    await calcular(page);
     await expect(page.locator(".ir-ruta.elegida .ir-ev-vuelo a.btn").first()).toBeVisible();
   });
 });
@@ -607,6 +653,7 @@ test.describe("los horarios, compartir y el calendario", () => {
     await abrir(page);
     await elegir(page, "PRG", "VIE");
     await page.locator('input[name="irPase"][value="si"]').check();
+    await calcular(page);
     const url = await page.evaluate(async () => {
       const m = await import("./js/interrail.js");
       return m.enlacePlan(
