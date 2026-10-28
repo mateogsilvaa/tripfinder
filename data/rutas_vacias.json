@@ -13,14 +13,6 @@
       "barridos": 2,
       "ultima": "2026-10-27"
     },
-    "MAD-NRT": {
-      "barridos": 1,
-      "ultima": "2026-10-28"
-    },
-    "MAD-OTP": {
-      "barridos": 1,
-      "ultima": "2026-10-28"
-    },
     "MAD-PLQ": {
       "barridos": 2,
       "ultima": "2026-10-27"
@@ -29,17 +21,9 @@
       "barridos": 2,
       "ultima": "2026-10-27"
     },
-    "MAD-TLL": {
-      "barridos": 1,
-      "ultima": "2026-10-28"
-    },
     "MAD-URE": {
       "barridos": 2,
       "ultima": "2026-10-27"
-    },
-    "MAD-VNO": {
-      "barridos": 1,
-      "ultima": "2026-10-28"
     }
   }
 }
