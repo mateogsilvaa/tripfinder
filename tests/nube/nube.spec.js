@@ -420,7 +420,7 @@ test("el panel cuenta entradas, errores y el tiempo de cada pantalla", async ({ 
   await expect(act).toContainText("Usa");
   await expect(act.locator(".adm-barras")).toContainText("buscar");
   // El mismo error dos veces en una página se manda una.
-  const error = act.locator(".adm-errores li", { hasText: "js: algo se ha roto" });
+  const error = panel.locator("#admErrores .adm-errores li", { hasText: "js: algo se ha roto" });
   await expect(error).toHaveCount(1);
   await expect(error.locator(".adm-veces")).toHaveText("1×");
   await expect(panel.locator(`[data-cuenta="${usa.uid}"]`)).toContainText("entró");

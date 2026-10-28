@@ -35,8 +35,9 @@ export async function montarNube() {
   const caja = $("#nubeAdmin");
   if (!caja) return;
   caja.hidden = false;
+  document.body.classList.add("adm-nube");
   const lede = $("#lede");
-  if (lede) lede.textContent = "Aquí ves quién hay en la web y das o quitas premium.";
+  if (lede) lede.textContent = "Quién hay en la web, cómo la usa y qué falla.";
 
   // Con sesión se mira la ficha de ahora: quizá te acaban de hacer administrador.
   const s = tfSesion() && tfSesion().nube ? await nubeSincronizar() : null;
@@ -137,16 +138,19 @@ async function lista(caja, yo, aviso = "") {
   const sinVincular = antiguas.filter((a) => !a.vinculada && a.activa !== false);
   const cuenta = (e) => cuentas.filter((c) => c.estado === e).length;
   const premium = cuentas.filter((c) => c.estado === "aprobado" && nubePlan(c) === "premium").length;
+  const nuevas7 = cuentas.filter((c) => tiempo(c.creado) > Date.now() - 7 * 864e5).length;
+  const kpi = (n, rotulo, extra = "", caliente = false) =>
+    `<div class="adm-kpi${caliente ? " hot" : ""}"><dd>${n}</dd><dt>${rotulo}</dt>${
+      extra ? `<span class="adm-kpi-extra">${extra}</span>` : ""
+    }</div>`;
   $("#stats").innerHTML =
-    `<div><dd>${cuentas.length}</dd><dt>cuentas</dt></div>` +
-    `<div><dd>${premium}</dd><dt>premium</dt></div>` +
-    `<div><dd>${cuenta("aprobado") - premium}</dd><dt>gratis</dt></div>` +
-    `<div><dd>${cuentas.filter((c) => c.prefs && c.prefs.quiere_premium).length}</dd><dt>quieren premium</dt></div>` +
-    (cuenta("pendiente") ? `<div><dd class="hot">${cuenta("pendiente")}</dd><dt>pendientes</dt></div>` : "") +
-    (cuenta("bloqueado") ? `<div><dd>${cuenta("bloqueado")}</dd><dt>bloqueadas</dt></div>` : "") +
-    (sinVincular.length
-      ? `<div><dd class="hot">${sinVincular.length}</dd><dt>cuentas de antes sin vincular</dt></div>`
-      : "");
+    kpi(cuentas.length, "cuentas", nuevas7 ? `+${nuevas7} esta semana` : "") +
+    kpi(premium, "premium") +
+    kpi(cuenta("aprobado") - premium, "gratis") +
+    kpi(cuentas.filter((c) => c.prefs && c.prefs.quiere_premium && nubePlan(c) !== "premium").length, "quieren premium") +
+    (cuenta("pendiente") ? kpi(cuenta("pendiente"), "pendientes", "", true) : "") +
+    (cuenta("bloqueado") ? kpi(cuenta("bloqueado"), "bloqueadas") : "") +
+    (sinVincular.length ? kpi(sinVincular.length, "cuentas de antes sin vincular", "", true) : "");
 
   const ordenadas = [...cuentas].sort(
     (a, b) =>
@@ -154,31 +158,51 @@ async function lista(caja, yo, aviso = "") {
       (b.creado instanceof Date ? b.creado.getTime() : 0) - (a.creado instanceof Date ? a.creado.getTime() : 0)
   );
 
+  const icono = (d) =>
+    `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+  // Las cifras de las cuentas van debajo del saludo, no en la cabecera de la
+  // página. Antes de repintar se devuelven a su sitio: el `innerHTML` de abajo
+  // se llevaría el nodo por delante.
+  const stats = $("#stats");
+  if (stats && caja.contains(stats)) $(".masthead")?.append(stats);
   caja.innerHTML = `
-    <section class="controls" style="margin-top:26px">
-      <button class="btn ghost" type="button" id="nubeRecargar">Recargar</button>
-      <button class="btn ghost" type="button" id="nubeAdminSalir">Salir</button>
-      <a class="btn ghost" href="./">← Volver a la web</a>
-    </section>
-    <div class="hint" id="nubeAviso" role="status">${esc(aviso)}</div>
+    <div class="adm-sup">
+      <div class="adm-quien">
+        <span class="adm-avatar grande" aria-hidden="true">${esc((yo.name || "?").slice(0, 1).toUpperCase())}</span>
+        <span><b>Hola, ${esc(yo.name || "admin")}</b><small>Administración de TripFinder</small></span>
+      </div>
+      <div class="adm-acciones">
+        <button class="btn ghost small" type="button" id="nubeRecargar">${icono(
+          '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'
+        )} Recargar</button>
+        <a class="btn ghost small" href="./">← Volver a la web</a>
+        <button class="btn ghost small" type="button" id="nubeAdminSalir">Salir</button>
+      </div>
+    </div>
+    <div id="admStatsHueco"></div>
+    <nav class="adm-nav" aria-label="Secciones del panel">
+      <a href="#admActividad">Actividad</a><a href="#admCuentasSec">Cuentas</a><a href="#admErrores">Errores</a>
+    </nav>
+    <div class="adm-aviso" id="nubeAviso" role="status">${esc(aviso)}</div>
 
     <section class="adm-bloque" id="admActividad" aria-labelledby="admActTit">
       <div class="adm-cab">
-        <h3 class="watch-head" id="admActTit">Actividad</h3>
+        <h3 class="adm-tit" id="admActTit">Actividad</h3>
         <div class="adm-periodo" role="radiogroup" aria-label="Periodo">${PERIODOS.map(
           ([dias, rotulo]) =>
-            `<button type="button" class="mundo-chip" role="radio" data-periodo="${dias}"
+            `<button type="button" class="adm-seg" role="radio" data-periodo="${dias}"
               aria-checked="${dias === periodo ? "true" : "false"}">${rotulo}</button>`
         ).join("")}</div>
       </div>
       <div id="admActCuerpo"><p class="meta"><span class="spin"></span>Leyendo la actividad…</p></div>
     </section>
 
-    <section class="adm-bloque" aria-labelledby="admCuentasTit">
+    <section class="adm-bloque" id="admCuentasSec" aria-labelledby="admCuentasTit">
       <div class="adm-cab">
-        <h3 class="watch-head" id="admCuentasTit">Cuentas · ${cuentas.length}</h3>
+        <h3 class="adm-tit" id="admCuentasTit">Cuentas · ${cuentas.length}</h3>
         <div class="adm-filtros">
-          <input type="search" id="admBuscar" placeholder="Nombre o correo…" autocomplete="off"
+          <input type="search" id="admBuscar" placeholder="Buscar por nombre o correo…" autocomplete="off"
             aria-label="Buscar una cuenta">
           <select id="admFiltro" aria-label="Qué cuentas">
             <option value="">Todas</option>
@@ -198,12 +222,24 @@ async function lista(caja, yo, aviso = "") {
           </select>
         </div>
       </div>
-      <section class="rows" id="nubeCuentas">${
-        ordenadas.length
-          ? ordenadas.map((c) => fila(c, yo, sinVincular)).join("")
-          : `<p class="meta">Todavía no se ha registrado nadie.</p>`
-      }</section>
+      <div class="adm-tabla">
+        <div class="adm-fila adm-fila-cab" aria-hidden="true">
+          <span>Cuenta</span><span>Plan</span><span>Estado</span><span>Última entrada</span><span></span>
+        </div>
+        <section class="adm-filas" id="nubeCuentas">${
+          ordenadas.length
+            ? ordenadas.map((c) => fila(c, yo, sinVincular)).join("")
+            : `<p class="meta">Todavía no se ha registrado nadie.</p>`
+        }</section>
+      </div>
+    </section>
+
+    <section class="adm-bloque" id="admErrores" aria-labelledby="admErrTit">
+      <div class="adm-cab"><h3 class="adm-tit" id="admErrTit">Errores</h3></div>
+      <div id="admErrCuerpo"><p class="meta"><span class="spin"></span>Leyendo…</p></div>
     </section>`;
+
+  if (stats) caja.querySelector("#admStatsHueco")?.replaceWith(stats);
 
   const filtrar = () => {
     const q = normal(caja.querySelector("#admBuscar").value);
@@ -317,24 +353,31 @@ function fila(c, yo, sinVincular = []) {
          ${mismo ? `<span class="meta">Su correo coincide con una cuenta de antes.</span>` : ""}`
       : `<span class="meta">Para vincularla con una cuenta de antes, antes tiene que verificar su correo.</span>`;
   }
-  const etiquetaVerif = c.verificado
-    ? ` · correo verificado`
-    : ` · <span class="ojo">correo sin verificar</span>`;
+  const estadoTxt = c.estado === "aprobado" ? "Activa" : texto;
   return `
-    <div class="brow cuenta-row nube-cuenta ${esc(clase)}" data-cuenta="${esc(c.id)}">
-      <span class="iata">${esc(String(c.nombre || "?").slice(0, 3).toUpperCase())}</span>
-      <span class="dest-cell">
-        <span class="city">${esc(c.nombre)}${c.admin ? " · admin" : ""}</span>
-        <span class="country">${esc(c.correo)}<br>${esc(
-          c.estado === "aprobado" ? (plan === "premium" ? "Premium" : "Gratis") : texto
-        )}${etiquetaVerif}${
-          fecha(c.creado) ? ` · desde ${esc(fecha(c.creado))}` : ""
-        }${c.legado ? " · vinculada con una cuenta de antes" : ""}<span data-ultima></span>${
-          c.prefs && c.prefs.quiere_premium && nubePlan(c) !== "premium" ? " · quiere premium" : ""
-        }</span>
-        ${vincular}
+    <div class="adm-fila nube-cuenta ${esc(clase)}" data-cuenta="${esc(c.id)}">
+      <span class="adm-persona">
+        <span class="adm-avatar" aria-hidden="true">${esc(String(c.nombre || "?").slice(0, 1).toUpperCase())}</span>
+        <span class="adm-persona-txt">
+          <b>${esc(c.nombre)}${c.admin ? ' <i class="adm-badge admin">admin</i>' : ""}</b>
+          <small>${esc(c.correo)}</small>
+        </span>
       </span>
-      <span class="peticion-acc">${acciones}</span>
+      <span class="adm-col" data-rot="Plan">${
+        c.estado === "aprobado"
+          ? `<i class="adm-badge ${plan === "premium" ? "premium" : "gratis"}">${plan === "premium" ? "Premium" : "Gratis"}</i>`
+          : "—"
+      }${c.prefs && c.prefs.quiere_premium && plan !== "premium" ? ' <i class="adm-badge quiere">quiere premium</i>' : ""}</span>
+      <span class="adm-col" data-rot="Estado">
+        <i class="adm-badge est-${esc(clase)}">${esc(estadoTxt)}</i>
+        <small class="${c.verificado ? "" : "ojo"}">${c.verificado ? "correo verificado" : "correo sin verificar"}</small>
+      </span>
+      <span class="adm-col" data-rot="Última entrada">
+        <span data-ultima>—</span>
+        <small>${fecha(c.creado) ? `desde ${esc(fecha(c.creado))}` : ""}${c.legado ? " · vinculada con una cuenta de antes" : ""}</small>
+      </span>
+      <span class="adm-col adm-acc peticion-acc">${acciones}</span>
+      ${vincular ? `<span class="adm-vincular">${vincular}</span>` : ""}
     </div>`;
 }
 
@@ -444,33 +487,101 @@ export function resumirActividad(filas) {
   };
 }
 
+/* La actividad, día a día (o por horas en «24 h»): una columna por tramo con
+   las pantallas vistas, y encima, en naranja, cuántos han entrado. */
+function porTramos(filas) {
+  const horas = periodo === 1;
+  const n = horas ? 24 : Math.min(periodo, 30);
+  const paso = horas ? 3600e3 : 864e5;
+  const ahora = new Date();
+  const fin = horas
+    ? new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), ahora.getHours() + 1).getTime()
+    : new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + 1).getTime();
+  const tramos = Array.from({ length: n }, (_, i) => ({ desde: fin - (n - i) * paso, vistas: 0, entradas: 0 }));
+  for (const f of filas) {
+    const i = Math.floor((tiempo(f.creado) - (fin - n * paso)) / paso);
+    if (i < 0 || i >= n) continue;
+    if (f.tipo === "pantalla") tramos[i].vistas += Number(f.visitas) || 0;
+    if (f.tipo === "entrada") tramos[i].entradas += 1;
+  }
+  const rot = (t) => {
+    const d = new Date(t.desde);
+    return horas ? `${d.getHours()} h` : d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+  };
+  return { tramos, rot, cada: horas ? 3 : n > 14 ? 5 : n > 7 ? 2 : 1 };
+}
+
+function graficaHTML(filas) {
+  const { tramos, rot, cada } = porTramos(filas);
+  const max = Math.max(1, ...tramos.map((t) => t.vistas + t.entradas));
+  return `
+    <div class="adm-grafica" role="img" aria-label="Pantallas vistas e inicios de sesión por ${
+      periodo === 1 ? "hora" : "día"
+    }">
+      ${tramos
+        .map(
+          (t, i) => `<div class="adm-col-g" title="${esc(rot(t))}: ${t.vistas} pantallas, ${t.entradas} entradas">
+            <span class="adm-g-barras">
+              <i class="g-entradas" style="height:${(t.entradas / max) * 100}%"></i>
+              <i class="g-vistas" style="height:${(t.vistas / max) * 100}%"></i>
+            </span>
+            <small>${i % cada === 0 || i === tramos.length - 1 ? esc(rot(t)) : ""}</small>
+          </div>`
+        )
+        .join("")}
+    </div>
+    <p class="adm-leyenda"><span class="m-vistas"></span> pantallas vistas <span class="m-entradas"></span> inicios de sesión</p>`;
+}
+
+const NO_PUBLICADAS = `<div class="adm-alerta">
+    <b>La actividad todavía no se puede leer.</b>
+    Faltan por publicar las reglas nuevas de Firestore. En cuanto se publiquen
+    (<code>firebase deploy --only firestore</code>), aquí aparecen las entradas, el tiempo por pantalla y
+    los errores. Mientras, la web funciona igual y las cuentas de abajo se gestionan como siempre.
+  </div>`;
+
 async function actividad(caja, cuentas, alTerminar) {
   const cuerpo = caja.querySelector("#admActCuerpo");
+  const errCuerpo = caja.querySelector("#admErrCuerpo");
   if (!cuerpo) return;
   cuerpo.innerHTML = `<p class="meta"><span class="spin"></span>Leyendo la actividad…</p>`;
   let filas;
   try {
     filas = await nubeActividad(new Date(Date.now() - periodo * 864e5));
   } catch (e) {
-    cuerpo.innerHTML = `<p class="meta">No se pudo leer la actividad: ${esc(e.message)}. Si acabas de
-      actualizar la web, publica las reglas nuevas de Firestore (<code>firebase deploy --only firestore</code>).</p>`;
+    cuerpo.innerHTML =
+      e.codigo === "PERMISSION_DENIED" || e.estado === 403
+        ? NO_PUBLICADAS
+        : `<div class="adm-alerta"><b>No se pudo leer la actividad.</b> ${esc(e.message)}</div>`;
+    if (errCuerpo) errCuerpo.innerHTML = `<p class="meta">Sin la actividad no hay errores que enseñar.</p>`;
+    if (alTerminar) alTerminar();
     return;
   }
   const r = resumirActividad(filas);
   Object.assign(ULTIMA, r.ultima);
   const nombre = Object.fromEntries(cuentas.map((c) => [c.id, c.nombre || c.correo]));
   const max = Math.max(1, ...r.pantallas.map((p) => p.segundos));
+  const sinNada = !filas.length;
 
   cuerpo.innerHTML = `
-    <dl class="stats adm-cifras">
-      <div><dd>${r.personas}</dd><dt>personas han entrado</dt></div>
-      <div><dd>${r.entradas.length}</dd><dt>inicios de sesión</dt></div>
-      <div><dd>${r.visitas}</dd><dt>pantallas vistas</dt></div>
-      <div><dd>${esc(duracion(r.segundos))}</dd><dt>de uso en total</dt></div>
-      <div><dd${r.errores.length ? ' class="hot"' : ""}>${r.errores.length}</dd><dt>errores</dt></div>
+    <dl class="adm-kpis adm-cifras">
+      <div class="adm-kpi"><dd>${r.personas}</dd><dt>personas han entrado</dt></div>
+      <div class="adm-kpi"><dd>${r.entradas.length}</dd><dt>inicios de sesión</dt></div>
+      <div class="adm-kpi"><dd>${r.visitas}</dd><dt>pantallas vistas</dt></div>
+      <div class="adm-kpi"><dd>${esc(duracion(r.segundos))}</dd><dt>de uso en total</dt></div>
+      <div class="adm-kpi${r.errores.length ? " hot" : ""}"><dd>${r.errores.length}</dd><dt>errores</dt></div>
     </dl>
-
+    ${
+      sinNada
+        ? `<div class="adm-alerta suave"><b>Todavía no hay actividad en este periodo.</b> Se empieza a contar
+            desde que se publicaron las reglas: en cuanto alguien abra la web, sale aquí.</div>`
+        : ""
+    }
     <div class="adm-rejilla">
+      <section class="adm-caja adm-ancha">
+        <h4>Uso ${periodo === 1 ? "por horas" : "por días"}</h4>
+        ${graficaHTML(filas)}
+      </section>
       <section class="adm-caja">
         <h4>Tiempo por pantalla</h4>
         ${
@@ -489,18 +600,20 @@ async function actividad(caja, cuentas, alTerminar) {
             : `<p class="meta">Nada todavía en este periodo.</p>`
         }
       </section>
-
       <section class="adm-caja">
-        <h4>Inicios de sesión</h4>
+        <h4>Últimos inicios de sesión</h4>
         ${
           r.entradas.length
             ? `<ul class="adm-lista">${r.entradas
                 .slice(0, 25)
                 .map(
-                  (f) => `<li><b>${esc(nombre[f.uid] || f.uid || "?")}</b>
-                    <span class="meta">${esc(METODOS[f.metodo] || f.metodo || "")} · ${esc(haceRato(f.creado))} · ${esc(
-                      f.pantalla
-                    )}</span></li>`
+                  (f) => `<li>
+                    <span class="adm-avatar mini" aria-hidden="true">${esc(
+                      String(nombre[f.uid] || "?").slice(0, 1).toUpperCase()
+                    )}</span>
+                    <span><b>${esc(nombre[f.uid] || f.uid || "?")}</b>
+                    <small>${esc(METODOS[f.metodo] || f.metodo || "")} · ${esc(f.pantalla)}</small></span>
+                    <time>${esc(haceRato(f.creado))}</time></li>`
                 )
                 .join("")}</ul>${
                 r.entradas.length > 25 ? `<p class="meta">Y ${r.entradas.length - 25} más.</p>` : ""
@@ -508,29 +621,27 @@ async function actividad(caja, cuentas, alTerminar) {
             : `<p class="meta">Nadie ha entrado en este periodo.</p>`
         }
       </section>
-
-      <section class="adm-caja adm-ancha">
-        <h4>Errores</h4>
-        ${
-          r.tiposError.length
-            ? `<ul class="adm-lista adm-errores">${r.tiposError
-                .slice(0, 20)
-                .map(
-                  (e) => `<li><details><summary><b class="adm-veces">${e.veces}×</b> ${esc(e.mensaje)}
-                    <span class="meta">· ${esc(haceRato(e.ultima))} · ${esc([...e.pantallas].join(", "))}</span></summary>
-                    ${e.detalle ? `<pre class="adm-detalle">${esc(e.detalle)}</pre>` : ""}</details></li>`
-                )
-                .join("")}</ul>`
-            : `<p class="meta">Ningún error en este periodo.</p>`
-        }
-      </section>
     </div>`;
+
+  if (errCuerpo) {
+    errCuerpo.innerHTML = r.tiposError.length
+      ? `<ul class="adm-lista adm-errores">${r.tiposError
+          .slice(0, 30)
+          .map(
+            (e) => `<li><details><summary><b class="adm-veces">${e.veces}×</b>
+              <span class="adm-err-txt">${esc(e.mensaje)}</span>
+              <small>${esc(haceRato(e.ultima))} · ${esc([...e.pantallas].join(", "))}</small></summary>
+              ${e.detalle ? `<pre class="adm-detalle">${esc(e.detalle)}</pre>` : ""}</details></li>`
+          )
+          .join("")}</ul>`
+      : `<p class="meta">Ningún error en este periodo. 🎉</p>`;
+  }
 
   // La última entrada de cada cuenta, en su fila.
   caja.querySelectorAll("#nubeCuentas [data-cuenta]").forEach((el) => {
     const hueco = el.querySelector("[data-ultima]");
     const ms = ULTIMA[el.dataset.cuenta];
-    if (hueco) hueco.textContent = ms ? ` · entró ${haceRato(new Date(ms))}` : "";
+    if (hueco) hueco.textContent = ms ? `entró ${haceRato(new Date(ms))}` : "—";
   });
   if (alTerminar) alTerminar();
 }

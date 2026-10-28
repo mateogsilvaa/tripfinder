@@ -941,7 +941,15 @@ function nubeApuntarEntrada(metodo) {
 
 /* Un error del navegador (lo llama `tfApuntar` en log.js). Cinco por página
    como mucho, y el mismo mensaje una sola vez. */
+/* Lo que NO es un fallo: entrar con una contraseña mal (Firebase contesta 400),
+   la ficha que aún no existe al registrarse (404) o un token caducado que se
+   renueva solo. Llenaban el panel de «errores» que eran el flujo normal. */
+const NUBE_RUIDO = /(identitytoolkit|securetoken)\.googleapis\.com|^red: 404 en .*\/documents\//;
+
 function nubeApuntarError(tipoError, mensaje, detalle) {
+  // Sin la query: la de Firebase lleva la clave de la API, que no pinta nada en el panel.
+  mensaje = String(mensaje || "").replace(/\?[^\s]*/g, "");
+  if (NUBE_RUIDO.test(`${tipoError}: ${mensaje}`)) return;
   const clave = `${tipoError}|${mensaje}`;
   if (NUBE_ACT_ERRORES >= NUBE_ACT_MAX_ERRORES || NUBE_ACT_VISTOS.has(clave)) return;
   NUBE_ACT_ERRORES += 1;
