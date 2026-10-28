@@ -26,6 +26,8 @@ import {
 } from "./disparador.js";
 import { boardRow, wireRows } from "./ofertas.js";
 import { esperarCambios } from "./busqueda.js";
+import { CON_MES, DIAS_CORTOS, FLEXIBLES, llenarMeses, llenarOrigenes, mesEnTramo } from "./opciones.js";
+import { montarSemana } from "./semana.js";
 import { abrirDestinos } from "./destinos.js";
 import { CAMPOS_SEGUIR, ampliar, recogerAmpliado } from "./ampliar.js";
 import { desde } from "./alojamiento.js";
@@ -36,11 +38,23 @@ import { desde } from "./alojamiento.js";
 
 on("#wDestBtn", "click", () => abrirDestinos("wDest"));
 
+/* SEGUIR TIENE LAS MISMAS PREGUNTAS QUE BUSCAR. Antes eran tres —un finde, una
+   fecha o cualquiera— y desde Madrid: quien buscaba «los findes de marzo desde
+   Valencia» no lo podía dejar apuntado. Ahora son las mismas siete de buscar,
+   con el mismo origen, y viajan igual (`viaje.desde/hasta/dias/origin`). */
 const HINTS_W = {
   "any|weekend": "Cualquier destino, cualquier finde: avisa cuando algo baje del tope.",
+  "any|mes": "Ese mes, donde sea: avisa del día más barato que baje del tope.",
+  "any|mes-finde": "Los findes de ese mes, donde sea.",
+  "any|dias": "Esos dos días, cualquier semana, donde sea.",
+  "any|tramo": "Dentro de ese tramo, donde sea.",
   "any|exact": "Cualquier destino, para esas fechas exactas.",
   "any|anytime": "Cualquier destino y cualquier fecha del horizonte.",
   "one|weekend": "Ese destino, el finde que sea.",
+  "one|mes": "Ese destino en ese mes, el día que baje.",
+  "one|mes-finde": "Ese destino, los findes de ese mes.",
+  "one|dias": "Ese destino, saliendo y volviendo esos días, la semana que baje.",
+  "one|tramo": "Ese destino, dentro del tramo que has marcado.",
   "one|exact": "Ese destino, para esas fechas exactas.",
   "one|anytime": "Ese destino, cualquier día.",
 };
@@ -49,10 +63,24 @@ function syncWatch() {
   if (!existe("#watchForm")) return;
   const donde = $("#wWhere").value;
   const cuando = $("#wWhen").value;
+  if (existe("#wOrigen")) llenarOrigenes($("#wOrigen"));
   $("#wDestWrap").hidden = donde !== "one";
-  $("#wDateWrap").hidden = cuando !== "exact";
-  $("#wMonthsWrap").hidden = cuando === "exact";
-  if (cuando !== "exact") $("#wCal").hidden = true;
+  if (existe("#wMesWrap")) {
+    llenarMeses($("#wMes"));
+    $("#wMesWrap").hidden = !CON_MES.has(cuando);
+  }
+  if (existe("#wDiasWrap")) {
+    $("#wDiasWrap").hidden = cuando !== "dias";
+    montarSemana($("#wDiasWrap"), $("#wDiaIda"), $("#wDiaVuelta"));
+  }
+  $("#wDateWrap").hidden = cuando !== "exact" && cuando !== "tramo";
+  if (existe("#wDepartRot")) {
+    $("#wDepartRot").textContent = cuando === "tramo" ? "Entre" : "Fechas";
+    $("#wDateBtn").dataset.modo = cuando === "tramo" ? "tramo" : "fechas";
+  }
+  if (existe("#wNightsWrap")) $("#wNightsWrap").hidden = cuando === "exact" || cuando === "dias";
+  $("#wMonthsWrap").hidden = cuando === "exact" || FLEXIBLES.has(cuando);
+  if (cuando !== "exact" && cuando !== "tramo") $("#wCal").hidden = true;
   $("#watchHint").textContent = HINTS_W[`${donde}|${cuando}`] || "";
   cuadrarRejilla($("#watchForm"));
 }
@@ -65,15 +93,45 @@ on("#watchForm", "submit", async (e) => {
   if (ampliar(e.currentTarget, CAMPOS_SEGUIR)) return;
   const donde = $("#wWhere").value;
   const cuando = $("#wWhen").value;
+  const val = (sel) => (existe(sel) ? $(sel).value.trim() : "");
   const dest = donde === "one" ? $("#wDest").value.trim() : "";
   const fecha = cuando === "exact" ? $("#wDepart").value : "";
   const vuelta = cuando === "exact" ? $("#wReturn").value : "";
   if (donde === "one" && !dest) return;
   if (cuando === "exact" && !fecha) return;
+  if (cuando === "tramo" && !($("#wDepart").value && $("#wReturn").value)) {
+    $("#watchHint").textContent = "Marca los dos extremos del tramo en el calendario.";
+    $("#wCal").hidden = false;
+    $("#wDateBtn").focus();
+    return;
+  }
+  const ventana = CON_MES.has(cuando)
+    ? mesEnTramo(val("#wMes"))
+    : cuando === "tramo"
+      ? { desde: $("#wDepart").value, hasta: $("#wReturn").value }
+      : { desde: "", hasta: "" };
+  const mesTxt = CON_MES.has(cuando) ? $("#wMes").selectedOptions[0]?.textContent.trim() || val("#wMes") : "";
+  const dias = cuando === "dias" ? `${val("#wDiaIda")}-${val("#wDiaVuelta")}` : "";
+  const meses = $("#wMonths").value || 6;
+  const origen = val("#wOrigen").toUpperCase();
   const personasW = Number($("#wAdults").value) || 1;
+  const cuandoTxt =
+    cuando === "exact"
+      ? `${fmtDate(fecha)}${vuelta ? ` → ${fmtDate(vuelta)}` : ""}`
+      : cuando === "mes"
+        ? mesTxt
+        : cuando === "mes-finde"
+          ? `findes de ${mesTxt}`
+          : cuando === "tramo"
+            ? `${fmtDate(ventana.desde)} → ${fmtDate(ventana.hasta)}`
+            : cuando === "dias"
+              ? `${DIAS_CORTOS[val("#wDiaIda")]} → ${DIAS_CORTOS[val("#wDiaVuelta")]} · ${meses} meses`
+              : cuando === "weekend"
+                ? `findes · ${meses} meses`
+                : `${meses} meses`;
   const etiqueta = [
-    dest || "Donde sea",
-    fecha ? `${fmtDate(fecha)}${vuelta ? ` → ${fmtDate(vuelta)}` : ""}` : `${$("#wMonths").value || 6} meses`,
+    origen && origen !== "MAD" ? `${dest || "Donde sea"} (desde ${origen})` : dest || "Donde sea",
+    cuandoTxt,
     `avisa bajo ${$("#wMax").value} €`,
     personasW > 1 ? `${personasW} pers.` : "1 pers.",
   ].join(" · ");
@@ -88,12 +146,17 @@ on("#watchForm", "submit", async (e) => {
     // destino concreto devolvia un 422 y no se guardaba nada.
     viaje: {
       dest,
+      origin: origen,
       depart: fecha,
       return_date: vuelta,
+      desde: ventana.desde,
+      hasta: ventana.hasta,
+      dias,
+      nights: cuando === "exact" || cuando === "dias" ? "" : val("#wNights") || "2-3",
       max_price: $("#wMax").value,
-      months: $("#wMonths").value || "6",
+      months: String(meses),
       adults: $("#wAdults").value || "2",
-      weekend: cuando === "weekend" ? "si" : "no",
+      weekend: cuando === "weekend" || cuando === "mes-finde" ? "si" : "no",
     },
   });
   if (r.ok) {
@@ -178,7 +241,11 @@ export async function cargarWatches() {
         <div class="watch" data-abrir="${esc(w.id)}">
           <b>${esc(w.label || w.destination || "Donde sea")}</b>
           <span class="meta">${
-            w.depart ? esc(w.depart) : `próximos ${w.months} meses`
+            w.depart
+              ? esc(w.depart)
+              : w.desde
+                ? `del ${esc(fmtDate(w.desde))} al ${esc(fmtDate(w.hasta || w.desde))}`
+                : `próximos ${w.months} meses`
           }${w.max_price ? ` · hasta ${Math.round(w.max_price)} €` : ""}${
           w.best_price ? ` · mejor visto ${Math.round(w.best_price)} €` : ""
         }${w.last_checked ? ` · revisado ${esc(desde(w.last_checked))}` : ""}${

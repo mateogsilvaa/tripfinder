@@ -33,11 +33,16 @@ export const CAMPOS_BUSCAR = {
 };
 
 export const CAMPOS_SEGUIR = {
+  origen: "#wOrigen",
   donde: "#wWhere",
   cuando: "#wWhen",
   dest: "#wDest",
+  mes: "#wMes",
+  diaIda: "#wDiaIda",
+  diaVuelta: "#wDiaVuelta",
   depart: "#wDepart",
   regreso: "#wReturn",
+  noches: "#wNights",
   meses: "#wMonths",
   tope: "#wMax",
   personas: "#wAdults",

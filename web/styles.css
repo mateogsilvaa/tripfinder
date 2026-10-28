@@ -4299,3 +4299,48 @@ body:has(.privacidad) .masthead .lede { margin-inline: auto; }
   .adm-barras li { grid-template-columns: 1fr; }
   .adm-barra-dato { grid-column: 1; }
 }
+
+/* EL SELECTOR DE DESTINO, CON MAPA. Las regiones arriba, el mapamundi en medio
+   y, al tocar un país, sus ciudades debajo. Más ancho que un modal normal: un
+   mapamundi en 560 px no deja tocar Bélgica. */
+#destModal .modal-caja { width: min(900px, 100%); }
+.dest-mapa { padding: 4px 0 8px; }
+.dest-mapa .mundo-svg { max-height: 52vh; }
+.dest-mapa .mp:not(.con) { cursor: default; }
+.dest-mapa .mp.region-luz { fill: color-mix(in srgb, var(--deep) 55%, var(--paper)); }
+.dest-mapa-pie { margin: 8px 0 0; font-size: var(--fs-body-s); color: var(--muted); }
+.dest-mapa-pie:empty { display: none; }
+.dest-entera { margin: 10px 0 0; border-top: 1px solid var(--hair); padding-top: 12px; }
+.mundo-zonas { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mundo-zonas-rot { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-right: 4px; }
+
+/* «UNOS DÍAS DE LA SEMANA»: la semana en una fila (`semana.js`). Los dos
+   desplegables siguen debajo, escondidos a la vista y no al lector de
+   pantalla: son la fuente de verdad. */
+.dias-par.con-semana { display: grid; gap: 8px; grid-column: 1 / -1; }
+.dias-par.con-semana > label, .dias-par.con-semana > .dias-flecha {
+  position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.sem7 { display: grid; gap: 10px; }
+.sem7-atajos { display: flex; flex-wrap: wrap; gap: 6px; }
+.sem7-atajo {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  min-height: 36px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: none; color: var(--ink); font-size: var(--fs-ui-s); cursor: pointer;
+}
+.sem7-atajo small { font: 400 var(--fs-meta) var(--font-mono); color: var(--muted); }
+.sem7-atajo[aria-pressed="true"] { border-color: var(--deep); color: var(--deep); }
+.sem7-dias { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; max-width: 520px; }
+.sem7-dia {
+  min-height: var(--tap-min); border: 1px solid var(--line); border-radius: var(--r-s);
+  background: transparent; color: var(--ink); font: 600 var(--fs-ui) var(--font-sans); cursor: pointer;
+  transition: background var(--t-micro, 0.12s) var(--ease, ease), border-color var(--t-micro, 0.12s) var(--ease, ease);
+}
+.sem7-dia:hover { border-color: var(--muted); }
+.sem7-dia.dentro { background: color-mix(in srgb, var(--deep) 18%, transparent); border-color: transparent; }
+.sem7-dia.ida { background: var(--accent); border-color: var(--accent); color: var(--sobre-acento); }
+.sem7-dia.vuelta { background: var(--deep); border-color: var(--deep); color: var(--paper); }
+.sem7-resumen { margin: 0; font-size: var(--fs-body-s); color: var(--muted); }
+.sem7-resumen b { color: var(--ink); font-weight: 600; }

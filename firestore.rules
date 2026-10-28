@@ -146,7 +146,7 @@ service cloud.firestore {
       allow create: if d().keys().hasOnly(['tipo', 'uid', 'pantalla', 'segundos', 'visitas', 'metodo',
             'mensaje', 'detalle', 'navegador', 'creado', 'caduca'])
         && d().keys().hasAll(['tipo', 'uid', 'pantalla', 'creado', 'caduca'])
-        && d().tipo in ['entrada', 'error', 'pantalla']
+        && (d().tipo == 'entrada' || d().tipo == 'error' || d().tipo == 'pantalla')
         && d().creado == request.time
         && d().caduca is timestamp
         && d().caduca < request.time + duration.value(100, 'd')

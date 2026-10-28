@@ -34,6 +34,14 @@ class Watch:
     destination: str = ""  # vacio = cualquier destino
     depart: str = ""  # fecha exacta, o vacio
     return_date: str = ""
+    # Lo mismo que puede pedir una busqueda (ver `SearchRequest`): de donde se
+    # sale, una ventana ("en marzo", "del 3 al 19") y dos dias fijos de la
+    # semana ("0-3", de lunes a jueves). Vacio = lo de siempre: Madrid, el
+    # horizonte entero y el finde.
+    origin: str = "MAD"
+    desde: str = ""
+    hasta: str = ""
+    dias: str = ""
     months: int = 6
     nights: str = "2-3"
     weekend_only: bool = True
@@ -58,8 +66,11 @@ class Watch:
 
     @property
     def caducado(self) -> bool:
-        """Un seguimiento con fecha fija deja de tener sentido cuando pasa."""
-        return bool(self.depart) and self.depart < date.today().isoformat()
+        """Un seguimiento con fecha fija, o con una ventana, deja de tener sentido cuando pasa."""
+        hoy = date.today().isoformat()
+        if self.depart:
+            return self.depart < hoy
+        return bool(self.hasta) and self.hasta < hoy
 
 
 def _cargar() -> list[Watch]:
@@ -178,6 +189,10 @@ def revisar(w: Watch, cfg: Config, history: dict) -> tuple[list[FlightOffer], Wa
         adults=w.adults,
         depart=w.depart,
         return_date=w.return_date,
+        origin=w.origin or "MAD",
+        desde=w.desde,
+        hasta=w.hasta,
+        dias=w.dias,
     )
     try:
         resultado = run_search(req, cfg, history, max_queries=12)

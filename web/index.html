@@ -280,6 +280,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <div id="seguir" class="herramienta segunda" role="tabpanel" aria-labelledby="tabSeguir" hidden>
     <p class="finder-lede">Se queda apuntado y se revisa cada día. Te avisa cuando baja de tu tope.</p>
     <form id="watchForm" class="finder-form" data-ampliar="seguimientos.html">
+      <label for="wOrigen">
+        <span>¿Desde dónde?</span>
+        <select id="wOrigen"></select>
+      </label>
       <label for="wWhere">
         <span>¿A dónde?</span>
         <select id="wWhere">
@@ -290,8 +294,12 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <label for="wWhen">
         <span>¿Cuándo?</span>
         <select id="wWhen">
-          <option value="weekend">Cualquier finde</option>
-          <option value="exact">Una fecha concreta</option>
+          <option value="weekend">Un finde cualquiera</option>
+          <option value="mes">Un mes entero</option>
+          <option value="mes-finde">Un mes, solo los findes</option>
+          <option value="dias">Unos días de la semana</option>
+          <option value="tramo">Entre dos fechas</option>
+          <option value="exact">Fechas exactas</option>
           <option value="anytime">Cualquier fecha</option>
         </select>
       </label>
@@ -300,13 +308,28 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
         <button type="button" id="wDestBtn" class="date-btn">Elegir destino</button>
         <input id="wDest" type="hidden">
       </label>
+      <div class="celda dias-par" id="wDiasWrap" hidden>
+        <label for="wDiaIda"><span>Salgo el</span>
+          <select id="wDiaIda"><option value="0" selected>lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3">jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
+        <span class="dias-flecha" aria-hidden="true">→</span>
+        <label for="wDiaVuelta"><span>Vuelvo el</span>
+          <select id="wDiaVuelta"><option value="0">lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3" selected>jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
+      </div>
+      <label class="celda" id="wMesWrap" hidden>
+        <span>Mes</span>
+        <select id="wMes"></select>
+      </label>
       <label class="celda" id="wDateWrap" hidden>
-        <span>Fechas</span>
+        <span id="wDepartRot">Fechas</span>
         <button type="button" id="wDateBtn" class="date-btn">Elegir en el calendario</button>
         <input id="wDepart" type="hidden">
         <input id="wReturn" type="hidden">
       </label>
       <div class="party">
+        <label for="wNights" id="wNightsWrap">
+          <span>Noches</span>
+          <input id="wNights" class="cifra" value="2-3" size="5">
+        </label>
         <label for="wMonths" id="wMonthsWrap">
           <span>Meses vista</span>
           <input id="wMonths" class="cifra" type="number" min="1" max="12" value="6">

@@ -572,9 +572,12 @@ test.describe("lo que pide la portada", () => {
     // Ningún destino del fixture es de Asia, así que no debe salir.
     expect(opciones).not.toContain("Asia");
 
-    // Y filtra de verdad.
+    // Y filtra de verdad, desde el mapa.
     const antes = await page.locator(".brow").count();
-    await page.selectOption("#cont", "Europa");
+    await page.click("#mundoBtn");
+    await page.locator(".mundo-zona", { hasText: "Europa" }).click();
+    await page.locator(".mundo-pie [data-cerrar]").click();
+    await expect(page.locator("#cont")).toHaveValue("Europa");
     await expect(page.locator(".brow")).toHaveCount(antes);
     await expect(page.locator(".ticket")).toBeVisible();
   });
@@ -1212,6 +1215,8 @@ test.describe("el selector de destinos", () => {
 
   test("agrupa por país y deja elegir el país entero", async ({ page }) => {
     await abrir(page);
+    // De entrada se ve el mapa; la lista entera, si se pide.
+    await page.click("[data-lista-entera]");
     expect(await page.locator("#destList .pais").count()).toBeGreaterThan(1);
     await expect(page.locator("#destList .pais-todo").first()).toBeVisible();
   });

@@ -398,22 +398,41 @@ function montarHoja() {
   renderHoja(0);
 }
 
-/* EL MAPAMUNDI. Un campo más en los filtros, al lado de «Zona»: un botón que
-   dice qué países hay elegidos y abre el mapa (`mundo.js`). Cada toque repinta
-   el feed por el mismo camino que cualquier otro filtro: el `input` de #cont. */
+/* EL MAPAMUNDI. El único filtro de sitio: sustituye al desplegable «Zona»,
+   que se queda escondido como fuente de verdad (lo rellena
+   `data/continentes.json` y su `input` es lo que repinta el feed). El botón
+   dice qué hay elegido y abre el mapa (`mundo.js`), con las zonas arriba. */
 function montarPaises() {
   if (existe("#mundoBtn") || !existe("#cont")) return;
-  $("#cont").closest(".field").insertAdjacentHTML(
+  const campo = $("#cont").closest(".field");
+  const zonas = () =>
+    [...$("#cont").options].filter((o) => o.value).map((o) => ({ valor: o.value, nombre: o.textContent }));
+  const nombreZona = () => (zonas().find((z) => z.valor === $("#cont").value) || {}).nombre || "";
+  campo.insertAdjacentHTML(
     "afterend",
-    `<div class="field"><label for="mundoBtn">Países</label>
-      <button type="button" id="mundoBtn" class="mundo-btn">${esc(rotuloPaises())}</button></div>`
+    `<div class="field"><label for="mundoBtn">Zona</label>
+      <button type="button" id="mundoBtn" class="mundo-btn">${esc(rotuloPaises(nombreZona()))}</button></div>`
   );
+  campo.hidden = true;
+  const rotular = () => ($("#mundoBtn").textContent = rotuloPaises(nombreZona()));
+  $("#cont").addEventListener("input", rotular);
   $("#mundoBtn").addEventListener("click", () => {
     const conChollo = new Set(OFFERS.map((o) => isoDe(o.destination_country)).filter(Boolean));
-    abrirMundo(conChollo, () => {
-      $("#mundoBtn").textContent = rotuloPaises();
-      $("#cont").dispatchEvent(new Event("input", { bubbles: true }));
-    });
+    abrirMundo(
+      conChollo,
+      () => {
+        rotular();
+        $("#cont").dispatchEvent(new Event("input", { bubbles: true }));
+      },
+      {
+        zonas: zonas(),
+        zona: $("#cont").value,
+        alZona: (v) => {
+          $("#cont").value = v;
+          $("#cont").dispatchEvent(new Event("input", { bubbles: true }));
+        },
+      }
+    );
   });
 }
 

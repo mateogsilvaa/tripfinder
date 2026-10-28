@@ -58,6 +58,8 @@ const PIEZAS = [
   "./js/busqueda.js",
   "./js/destinos.js",
   "./js/seguimientos.js",
+  "./js/semana.js",
+  "./js/opciones.js",
   "./js/calendario.js",
   "./js/quiz.js",
   "./js/planes.js",

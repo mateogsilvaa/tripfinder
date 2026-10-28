@@ -18,65 +18,86 @@ const enPantalla = (page) =>
     ].map((e) => e.firstChild.textContent.trim())
   );
 
+/* La zona ya no es un desplegable: se elige en el mapa, arriba de los
+   países. El `<select>` sigue escondido como fuente de verdad. */
+const abrirMapa = async (page) => {
+  await page.goto("/index.html", { waitUntil: "domcontentloaded" });
+  await expect(page.locator(".brow").first()).toBeVisible();
+  await page.click("#mundoBtn");
+  await expect(page.locator(".mundo-zonas")).toBeVisible();
+};
+const zona = (page, nombre) => page.locator(".mundo-zona", { hasText: nombre });
+
 test.describe("el filtro del tablón", () => {
-  test("ofrece las regiones aparte, y solo las que hoy tienen vuelo", async ({ page }) => {
+  test("ya no hay desplegable de zona: está en el mapa", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await expect(page.locator(".brow").first()).toBeVisible();
+    await expect(page.locator("#cont")).toBeHidden();
+    await expect(page.locator("#mundoBtn")).toBeVisible();
+  });
 
-    const grupo = page.locator("#cont optgroup[label='Regiones']");
-    await expect(grupo).toHaveCount(1);
-
+  test("ofrece las regiones, y solo las que hoy tienen vuelo", async ({ page }) => {
+    await abrirMapa(page);
     // ACE es la Península Ibérica y MAN las Islas Británicas; el Caribe y los
-    // Balcanes están en el fichero y no en el tablón, así que no se ofrecen:
-    // un desplegable con opciones que no dan nada es peor que no tenerlo.
-    const opciones = await grupo.locator("option").allTextContents();
-    expect(opciones).toEqual(["La Península Ibérica", "Las Islas Británicas"]);
+    // Balcanes están en el fichero y no en el tablón, así que no se ofrecen.
+    await expect(zona(page, "La Península Ibérica")).toHaveCount(1);
+    await expect(zona(page, "Las Islas Británicas")).toHaveCount(1);
+    await expect(zona(page, "Los Balcanes")).toHaveCount(0);
+    await expect(zona(page, "El Caribe")).toHaveCount(0);
   });
 
   test("las regiones se enseñan con su tilde y se guardan sin ella", async ({ page }) => {
-    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
-    await expect(page.locator(".brow").first()).toBeVisible();
-    const op = page.locator("#cont option", { hasText: "Las Islas Británicas" });
-    await expect(op).toHaveAttribute("value", "r:las islas britanicas");
+    await abrirMapa(page);
+    await expect(zona(page, "Las Islas Británicas")).toHaveAttribute("data-zona", "r:las islas britanicas");
   });
 
   test("elegir una región deja solo sus países", async ({ page }) => {
-    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
-    await expect(page.locator(".brow").first()).toBeVisible();
+    await abrirMapa(page);
     expect(await enPantalla(page)).toEqual(["Manchester", "Bergamo", "Lanzarote"]);
 
-    await page.selectOption("#cont", "r:las islas britanicas");
+    await zona(page, "Las Islas Británicas").click();
     await expect.poll(() => enPantalla(page)).toEqual(["Manchester"]);
+    await expect(page.locator("#cont")).toHaveValue("r:las islas britanicas");
 
     // Y la de al lado enseña otra cosa, no la misma lista recortada.
-    await page.selectOption("#cont", "r:la peninsula iberica");
+    await zona(page, "La Península Ibérica").click();
     await expect.poll(() => enPantalla(page)).toEqual(["Lanzarote"]);
+    await expect(zona(page, "Las Islas Británicas")).toHaveAttribute("aria-pressed", "false");
   });
 
   test("y el continente de siempre sigue funcionando", async ({ page }) => {
-    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
-    await expect(page.locator(".brow").first()).toBeVisible();
-    await page.selectOption("#cont", "Europa");
+    await abrirMapa(page);
+    await zona(page, "Europa").click();
     // Los tres vuelos del ejemplo son europeos: la región recorta, el
     // continente no.
     await expect.poll(() => enPantalla(page)).toEqual(["Manchester", "Bergamo", "Lanzarote"]);
   });
 
-  test("volver a «Todos» devuelve el tablón entero", async ({ page }) => {
-    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
-    await expect(page.locator(".brow").first()).toBeVisible();
-    await page.selectOption("#cont", "r:la peninsula iberica");
+  test("tocar otra vez la zona, o quitar el filtro, devuelve el tablón entero", async ({ page }) => {
+    await abrirMapa(page);
+    await zona(page, "La Península Ibérica").click();
     await expect.poll(() => enPantalla(page)).toEqual(["Lanzarote"]);
-    await page.selectOption("#cont", "");
+    await zona(page, "La Península Ibérica").click();
     await expect.poll(() => enPantalla(page)).toEqual(["Manchester", "Bergamo", "Lanzarote"]);
+    await zona(page, "La Península Ibérica").click();
+    await page.click("[data-mundo-limpiar]");
+    await expect.poll(() => enPantalla(page)).toEqual(["Manchester", "Bergamo", "Lanzarote"]);
+    await page.locator(".mundo-pie [data-cerrar]").click();
+    await expect(page.locator("#mundoBtn")).toHaveText("Todos");
+  });
+
+  test("el botón dice la zona elegida", async ({ page }) => {
+    await abrirMapa(page);
+    await zona(page, "Las Islas Británicas").click();
+    await page.locator(".mundo-pie [data-cerrar]").click();
+    await expect(page.locator("#mundoBtn")).toHaveText("Las Islas Británicas");
   });
 
   test("si no hay fichero de regiones el filtro no se rompe", async ({ page }) => {
     await page.route("**/data/regiones.json*", (r) => r.fulfill({ status: 404, body: "" }));
-    await page.goto("/index.html", { waitUntil: "domcontentloaded" });
-    await expect(page.locator(".brow").first()).toBeVisible();
+    await abrirMapa(page);
     await expect(page.locator("#cont optgroup")).toHaveCount(0);
-    await expect(page.locator("#cont option", { hasText: "Europa" })).toHaveCount(1);
+    await expect(zona(page, "Europa")).toHaveCount(1);
   });
 });
 
@@ -139,5 +160,45 @@ test.describe("el selector de destino", () => {
     await page.fill("#destSearch", "espa");
     await expect(page.locator("#destList .ciudad.region")).toHaveCount(0);
     await expect(page.locator("#destList .pais:not(.regiones)").first()).toBeVisible();
+  });
+});
+
+test.describe("el selector de destino, con mapa", () => {
+  const abrir = async (page) => {
+    await page.addInitScript(() => {
+      try {
+        localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-p", user: "p", name: "P" }));
+        localStorage.setItem("tf_token", "ghp_de_mentira");
+      } catch (e) { /* nada */ }
+    });
+    await page.goto("/buscar.html", { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#finderForm:not(.candado)", { timeout: 10000 });
+    await page.selectOption("#fWhere", "one");
+    await page.click("#destBtn");
+    await expect(page.locator("#destModal")).toBeVisible();
+  };
+
+  test("se abre con el mapa, no con la lista de todos los aeropuertos", async ({ page }) => {
+    await abrir(page);
+    await expect(page.locator("#destList .dest-mapa svg")).toBeVisible();
+    await expect(page.locator("#destList .pais:not(.regiones)")).toHaveCount(0);
+  });
+
+  test("tocar un país enseña sus ciudades, y se elige una", async ({ page }) => {
+    await abrir(page);
+    await page.locator('#destList [data-mapa-iso="IT"]').dispatchEvent("click");
+    const italia = page.locator('#destList .pais[data-pais-iso="IT"]');
+    await expect(italia).toBeVisible();
+    await expect(italia.locator(".pais-todo")).toContainText("Italia");
+    await italia.locator(".ciudad").first().click();
+    await expect(page.locator("#destModal")).toBeHidden();
+    await expect(page.locator("#fDest")).not.toHaveValue("");
+  });
+
+  test("y la lista entera sigue ahí, si se pide", async ({ page }) => {
+    await abrir(page);
+    await page.click("[data-lista-entera]");
+    // Los nueve países del listado de ejemplo.
+    await expect(page.locator("#destList .pais:not(.regiones)")).toHaveCount(9);
   });
 });
