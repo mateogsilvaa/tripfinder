@@ -30,6 +30,7 @@ export const CAMPOS_BUSCAR = {
   meses: "#fMonths",
   tope: "#fMax",
   personas: "#fAdults",
+  horas: "#fHoras",
 };
 
 export const CAMPOS_SEGUIR = {
@@ -46,6 +47,7 @@ export const CAMPOS_SEGUIR = {
   meses: "#wMonths",
   tope: "#wMax",
   personas: "#wAdults",
+  horas: "#wHoras",
 };
 
 /* UNA CASILLA NO SE LEE CON `.value`. Un `checkbox` tiene `value` («on») pase

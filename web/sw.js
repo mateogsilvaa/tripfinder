@@ -61,6 +61,7 @@ const PIEZAS = [
   "./js/destinos.js",
   "./js/seguimientos.js",
   "./js/semana.js",
+  "./js/horas.js",
   "./js/opciones.js",
   "./js/calendario.js",
   "./js/quiz.js",

@@ -47,6 +47,7 @@ import {
 import { cargarWatches } from "./seguimientos.js";
 import { desde } from "./alojamiento.js";
 import { montarSemana } from "./semana.js";
+import { montarHoras, textoHoras } from "./horas.js";
 import { CON_MES, DIAS_CORTOS, FLEXIBLES, llenarMeses, llenarOrigenes, mesEnTramo } from "./opciones.js";
 
 export { ORIGENES } from "./opciones.js";
@@ -189,6 +190,7 @@ function syncFinder() {
     if (!puedeCamas) $("#fCamas").checked = false;
   }
   // Con dos días fijos las noches salen solas: de lunes a jueves son tres.
+  if (existe("#fHorasWrap")) montarHoras($("#fHorasWrap"), $("#fHoras"));
   if (existe("#diasWrap")) {
     $("#diasWrap").hidden = cuando !== "dias";
     montarSemana($("#diasWrap"), $("#fDiaIda"), $("#fDiaVuelta"));
@@ -281,7 +283,10 @@ on("#finderForm", "submit", async (e) => {
       cuandoTxt,
       `hasta ${$("#fMax").value} €`,
       personas > 1 ? `${personas} pers.` : "1 pers.",
-    ].join(" · "),
+      existe("#fHoras") ? textoHoras($("#fHoras").value) : "",
+    ]
+      .filter(Boolean)
+      .join(" · "),
     owner: tfUid(),
     max_price: $("#fMax").value,
     nights: $("#fNights").value.trim() || "2-3",
@@ -305,6 +310,7 @@ on("#finderForm", "submit", async (e) => {
       hasta: ventana.hasta,
       camas: $("#fCamas") && $("#fCamas").checked ? "si" : "",
       dias: cuando === "dias" ? `${$("#fDiaIda").value}-${$("#fDiaVuelta").value}` : "",
+      horas: existe("#fHoras") ? $("#fHoras").value : "",
     },
   };
 

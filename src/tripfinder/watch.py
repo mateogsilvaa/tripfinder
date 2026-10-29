@@ -42,6 +42,8 @@ class Watch:
     desde: str = ""
     hasta: str = ""
     dias: str = ""
+    # Las horas que prefieres (ver `SearchRequest.horas`).
+    horas: str = ""
     months: int = 6
     nights: str = "2-3"
     weekend_only: bool = True
@@ -193,6 +195,7 @@ def revisar(w: Watch, cfg: Config, history: dict) -> tuple[list[FlightOffer], Wa
         desde=w.desde,
         hasta=w.hasta,
         dias=w.dias,
+        horas=w.horas,
     )
     try:
         resultado = run_search(req, cfg, history, max_queries=12)

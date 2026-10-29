@@ -116,7 +116,12 @@ export const statPie = (etiqueta, valor) =>
 export function cuadrarRejilla(form) {
   if (!form) return;
   const celdas = [...form.children].filter(
-    (c) => !c.hidden && !c.classList.contains("party") && getComputedStyle(c).display !== "none"
+    (c) =>
+      !c.hidden &&
+      !c.classList.contains("party") &&
+      // Las horas van siempre a lo ancho, debajo: no cuentan para emparejar.
+      !c.classList.contains("horas-wrap") &&
+      getComputedStyle(c).display !== "none"
   );
   form.querySelectorAll(":scope > [data-sola]").forEach((c) => delete c.dataset.sola);
   if (celdas.length % 2 === 1) celdas[celdas.length - 1].dataset.sola = "1";

@@ -4922,3 +4922,40 @@ b.t0 { color: #ff8a5c; } b.t1 { color: #4fd6b0; } b.t2 { color: #e0b54a; } b.t3 
 }
 .hop-msj.mio .hop-burbuja p, .hop-msj.mio .hop-burbuja time { color: var(--paper); }
 .hop-burbuja p { color: var(--ink); }
+
+/* LAS HORAS QUE PREFIERES: plegadas en una fila que dice lo elegido; al abrir,
+   cuatro tramos con sus franjas a un toque. */
+.finder-form > .horas-wrap { grid-column: 1 / -1; flex-basis: 100%; padding: 0; }
+.horas > summary {
+  display: flex; align-items: center; gap: 8px; min-height: var(--tap-min); padding: 10px 12px;
+  cursor: pointer; list-style: none;
+}
+.horas > summary::-webkit-details-marker { display: none; }
+.horas > summary::after { content: "›"; margin-left: auto; color: var(--muted); transition: transform var(--t) var(--ease); }
+.horas[open] > summary::after { transform: rotate(90deg); }
+.horas-tit { font: 400 var(--fs-caps) / 1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.horas-resumen { font-weight: 600; font-size: var(--fs-ui-s); }
+.horas:not(.con-horas) .horas-resumen { color: var(--muted); font-weight: 400; }
+.horas.con-horas .horas-resumen { color: var(--deep); }
+.horas-filas { display: grid; gap: 12px; padding: 4px 12px 14px; }
+.horas-fila { display: grid; grid-template-columns: 150px minmax(0, 1fr); align-items: center; gap: 6px 12px; }
+.horas-rot { font-size: var(--fs-ui-s); color: var(--muted); }
+.horas-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.horas-chip {
+  display: inline-flex; align-items: baseline; gap: 6px; min-height: 36px; padding: 6px 12px;
+  border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--ink);
+  font-size: var(--fs-ui-s); cursor: pointer;
+}
+.horas-chip small { font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); }
+.horas-chip[aria-checked="true"] { border-color: var(--deep); background: color-mix(in srgb, var(--deep) 14%, transparent); color: var(--ink); }
+.horas-chip[data-franja=""][aria-checked="true"] { background: none; border-color: var(--muted); }
+.horas-mano { grid-column: 2; display: flex; align-items: center; gap: 8px; }
+.horas-mano[hidden] { display: none; }
+.horas-mano select { min-height: 36px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--field); color: var(--ink); width: auto; font-weight: 400; }
+.horas-nota { margin: 0; font-size: var(--fs-meta, 12px); color: var(--muted); }
+@media (max-width: 760px) {
+  .horas-fila { grid-template-columns: 1fr; }
+  .horas-mano { grid-column: 1; }
+  .horas-chip { min-height: var(--tap-min); }
+}
+.horas-mano label { padding: 0; background: none; }
