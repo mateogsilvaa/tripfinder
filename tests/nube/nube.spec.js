@@ -360,6 +360,8 @@ test("el administrador da premium, lo quita y bloquea", async ({ browser, page }
   await E.hacerAdmin(jefa.uid);
 
   await panel.goto("/admin.html");
+  // Tres pestañas: resumen, cuentas y errores.
+  await panel.locator('[data-tab="cuentas"]').click();
   await expect(panel.locator("#nubeCuentas")).toBeVisible();
   const fila = panel.locator(`[data-cuenta="${pide.uid}"]`);
   await expect(fila).toContainText("Pidiendo");
@@ -368,6 +370,7 @@ test("el administrador da premium, lo quita y bloquea", async ({ browser, page }
   await expect(panel.locator(`[data-cuenta="${jefa.uid}"]`)).toContainText("tú");
   await expect(panel.locator(`[data-cuenta="${jefa.uid}"] [data-estado]`)).toHaveCount(0);
 
+  await expect(fila.locator('[data-plan="gratis"]')).toHaveAttribute("aria-pressed", "true");
   await fila.locator('[data-plan="premium"]').click();
   await expect(panel.locator("#nubeAviso")).toContainText("Pidiendo: ahora es premium");
   expect(await E.ficha(pide.uid)).toMatchObject({ estado: "aprobado", plan: "premium" });
@@ -393,8 +396,8 @@ test("el panel dice cuántas cuentas hay y cuántas son premium", async ({ brows
   await registrarse(panel, { nombre: "Jefa" });
   await E.hacerAdmin((await sesion(panel)).uid);
   await panel.goto("/admin.html");
-  await expect(panel.locator("#stats")).toContainText("premium");
-  await expect(panel.locator("#stats")).toContainText("gratis");
+  await expect(panel.locator("#admPlanes")).toContainText("Premium");
+  await expect(panel.locator("#admPlanes")).toContainText("Gratis");
   await ctx.close();
 });
 
@@ -418,7 +421,7 @@ test("el panel cuenta entradas, errores y el tiempo de cada pantalla", async ({ 
   const act = panel.locator("#admActividad");
   await expect(act.locator(".adm-cifras")).toContainText("inicios de sesión");
   await expect(act).toContainText("Usa");
-  await expect(act.locator(".adm-barras")).toContainText("buscar");
+  await expect(act.locator(".adm-pantallas")).toContainText("buscar");
   // El mismo error dos veces en una página se manda una.
   const error = panel.locator("#admErrores .adm-errores li", { hasText: "js: algo se ha roto" });
   await expect(error).toHaveCount(1);
@@ -426,6 +429,7 @@ test("el panel cuenta entradas, errores y el tiempo de cada pantalla", async ({ 
   await expect(panel.locator(`[data-cuenta="${usa.uid}"]`)).toContainText("entró");
 
   // Y la lista de cuentas se busca.
+  await panel.locator('[data-tab="cuentas"]').click();
   await panel.locator("#admBuscar").fill("usa");
   await expect(panel.locator(`[data-cuenta="${usa.uid}"]`)).toBeVisible();
   await expect(panel.locator("#nubeCuentas [data-cuenta]:visible")).toHaveCount(1);

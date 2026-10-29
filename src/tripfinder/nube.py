@@ -331,9 +331,8 @@ def cuentas_para_avisos(db: Any | None = None) -> tuple[list[Any], dict[str, str
 
     Devuelve `(cuentas, alias)`:
 
-    - `cuentas`: las cuentas nuevas aprobadas MÁS las de antes de Firebase que
-      todavía no se han vinculado. Estas últimas siguen recibiendo sus avisos con
-      lo que eligieron: no pierden nada por tardar en entrar con Firebase.
+    - `cuentas`: las cuentas aprobadas. Las de antes de Firebase que nunca se
+      vincularon ya no cuentan: tuvieron tiempo, y si vuelven, son nuevas.
     - `alias`: de cada cuenta antigua vinculada, a qué cuenta nueva corresponde.
       Los seguimientos viejos llevan como `owner` el id de antes, y con esto el
       parte llega igual a su dueño.
@@ -368,19 +367,6 @@ def cuentas_para_avisos(db: Any | None = None) -> tuple[list[Any], dict[str, str
             )
             if f.get("legado"):
                 alias[str(f["legado"])] = d.id
-        for d in db.collection("cuentas_antiguas").stream():
-            f = d.to_dict() or {}
-            if f.get("vinculada") or not f.get("activa", True) or not f.get("correo"):
-                continue
-            cuentas.append(
-                U.User(
-                    id=d.id,
-                    user=str(f.get("usuario") or d.id),
-                    name=str(f.get("nombre") or ""),
-                    email=str(f["correo"]),
-                    prefs=U.prefs_validas(f.get("prefs")),
-                )
-            )
         return cuentas, alias
     except Exception as exc:  # noqa: BLE001 - un fallo aqui no puede tumbar el barrido
         motivo = type(exc).__name__
