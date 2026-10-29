@@ -550,7 +550,7 @@ const FASES = [
   [2, "Dónde no", "no"],
   [3, "Buscar", "lupa"],
   [4, "Votar", "si"],
-  [5, "El plan", "corona"],
+  [5, "El plan", "pin"],
 ];
 const ESPERA_VUELOS_MS = 8 * 60e3; // lo que suele tardar un barrido
 const ESPERA_CAMA_MS = 3 * 60e3;
@@ -802,9 +802,10 @@ function pintarFases(app) {
   pintarSi(
     $("#hopFases", app),
     `<ol class="hopx-fases-lista" style="--hecho:${(actual - 1) / (FASES.length - 1)}">${FASES.map(
-      ([n, t]) => `<li class="${n < actual ? "hecho" : ""}${n === actual ? " actual" : ""}${n === estado.ver ? " viendo" : ""}">
+      ([n, t, i]) => `<li class="${n < actual ? "hecho" : ""}${n === actual ? " actual" : ""}${n === estado.ver ? " viendo" : ""}">
           <button type="button" data-ver-fase="${n}" ${n === estado.ver ? 'aria-current="step"' : ""}>
-            <span class="hopx-fases-n">${n < actual ? ico("si", 14) : n}</span><span>${t}</span>
+            <span class="hopx-fases-ico">${ico(n < actual ? "si" : i, 18)}</span>
+            <span class="hopx-fases-n">${n < actual ? "hecho" : n === actual ? "ahora" : `paso ${n}`}</span><span>${t}</span>
           </button>
         </li>`
     ).join("")}</ol>`
@@ -943,17 +944,38 @@ function pintarFase1(app) {
   );
 }
 
+/* Un día como en un calendario de pared: el día de la semana, el número
+   grande y el mes. */
+function diaHTML(iso) {
+  const d = parseISO(iso);
+  if (!d) return "";
+  return `<span class="hopx-dia"><small>${esc(d.toLocaleDateString("es-ES", { weekday: "short" }).replace(".", ""))}</small><b>${d.getDate()}</b><small>${esc(
+    d.toLocaleDateString("es-ES", { month: "short" }).replace(".", "")
+  )}</small></span>`;
+}
+
+/* Ida y vuelta, con las noches en medio. */
+function tramoHTML(ida, vuelta) {
+  const n = noches(ida, vuelta);
+  return `<div class="hopx-tramo" aria-label="${esc(fmtDate(ida, true))} a ${esc(fmtDate(vuelta, true))}">${diaHTML(ida)}<span class="hopx-tramo-linea"><em>${
+    n ? `${n} noche${n === 1 ? "" : "s"}` : ""
+  }</em></span>${diaHTML(vuelta)}</div>`;
+}
+
+/* La ruta: de dónde a dónde, con el avión en medio. */
+function rutaHTML(origen, destino) {
+  if (!destino) return "";
+  return `<div class="hopx-ruta" aria-hidden="true"><b>${esc(origen || "MAD")}</b><span class="hopx-ruta-linea">${ico(
+    "avion",
+    14
+  )}</span><b>${esc(destino)}</b></div>`;
+}
+
 function cartaFechas(p, lider) {
-  const dias = noches(p.ida, p.vuelta);
   return `<article class="hopx-fechas-carta${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
       ${lider ? `<span class="hopx-lider">la más votada</span>` : ""}
-      <p class="hopx-fechas-grande">${esc(fmtDate(p.ida, true))}<span>→</span>${esc(fmtDate(p.vuelta, true))}</p>
-      <p class="hop-letra">${[
-        p.titulo && !p.titulo.startsWith(fmtDate(p.ida)) ? esc(p.titulo) : "",
-        dias ? `${dias} noche${dias === 1 ? "" : "s"}` : "",
-      ]
-        .filter(Boolean)
-        .join(" · ")}</p>
+      ${tramoHTML(p.ida, p.vuelta)}
+      ${p.titulo && !p.titulo.startsWith(fmtDate(p.ida)) ? `<p class="hopx-fechas-nombre">${esc(p.titulo)}</p>` : ""}
       ${medidorHTML(p)}
       ${votarHTML(p)}
       <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span>${borrarHTML(p)}</div>
@@ -1530,25 +1552,17 @@ const borrarHTML = (p) =>
     : "";
 
 function cartaGuardada(p, puesto, lider) {
-  const dias = noches(p.ida, p.vuelta);
   const total = (Number.isFinite(p.precio) ? p.precio : 0) + (Number.isFinite(p.cama_precio) ? p.cama_precio : 0);
   return `<article class="hopx-carta${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
       <div class="hopx-carta-foto">
         ${huecoFoto({ iata: p.iata, ciudad: p.titulo, pais: p.pais }, tono(p.iata || p.titulo))}
         ${lider ? `<span class="hopx-lider">la más votada</span>` : `<span class="hopx-puesto">${puesto}</span>`}
         <span class="hopx-precio">${total ? euros(total) : "—"}<small>por cabeza</small></span>
-        <div class="hopx-carta-nombre"><b>${esc(p.titulo)}</b><small>${esc(p.pais || p.destino || "")}${
-          p.iata ? ` · <span class="iata">${esc(p.iata)}</span>` : ""
-        }</small></div>
+        <div class="hopx-carta-nombre"><b>${esc(p.titulo)}</b><small>${esc(p.pais || p.destino || "")}</small></div>
       </div>
       <div class="hopx-carta-cuerpo">
-        ${
-          p.ida
-            ? `<p class="hopx-fechas">${ico("calendario", 15)} ${esc(fmtDate(p.ida, true))} – ${esc(fmtDate(p.vuelta, true))}${
-                dias ? ` · <b>${dias} noche${dias === 1 ? "" : "s"}</b>` : ""
-              }</p>`
-            : ""
-        }
+        ${rutaHTML(p.origen, p.iata)}
+        ${p.ida && p.vuelta ? tramoHTML(p.ida, p.vuelta) : ""}
         ${
           p.horario || p.compania
             ? `<p class="hopx-dato">${ico("avion", 15)} <span>${esc([p.horario, p.compania].filter(Boolean).join(" · "))}${
@@ -1644,7 +1658,9 @@ function pintarFase5(app) {
       <div class="hopx-plan-velo">
         <p class="hopx-kicker">El plan</p>
         <h3>${esc(plan.titulo)}</h3>
-        <p class="hopx-plan-pais">${esc(plan.pais || "")}${plan.iata ? ` · ${esc(plan.iata)}` : ""}</p>
+        <p class="hopx-plan-pais">${esc(plan.pais || "")}</p>
+        ${rutaHTML(de && de.origen, plan.iata)}
+        ${plan.ida && plan.vuelta ? tramoHTML(plan.ida, plan.vuelta) : ""}
       </div>
       <div class="hopx-plan-datos">
         <dl class="hopx-plan-dl">
