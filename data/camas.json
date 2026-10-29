@@ -41,6 +41,11 @@
       "muestras": 3,
       "nombre": "Marrakech"
     },
+    "TIA": {
+      "noche": 40.67,
+      "muestras": 3,
+      "nombre": "Tirana"
+    },
     "WAW": {
       "noche": 47.67,
       "muestras": 3,
@@ -48,6 +53,10 @@
     }
   },
   "paises": {
+    "Albania": {
+      "noche": 40.67,
+      "muestras": 3
+    },
     "España": {
       "noche": 62.0,
       "muestras": 3
