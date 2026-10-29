@@ -60,11 +60,12 @@ test("con el enlace se une cualquiera, y se propone, se vota y se habla", async 
 
   const gus = await persona(browser, "Gus");
   await gus.page.goto(`/hop.html?j=${id}`);
-  await expect(gus.page.locator(".hop-unirse")).toContainText("La organiza Ana");
+  await expect(gus.page.locator(".hop-unirse")).toContainText("Lo organiza Ana");
   await gus.page.locator("#hopUnirme").click();
   await expect(gus.page.locator(".hop-top h2")).toHaveText("Escapada");
 
   // Gus propone un viaje.
+  await gus.page.locator("#hopOtras summary").click();
   await gus.page.locator('[data-nueva="viaje"]').click();
   await gus.page.locator("#hopPropForm [name=titulo]").fill("Lisboa barata");
   await gus.page.locator("#hopPropForm [name=destino]").fill("Lisboa");
@@ -82,6 +83,7 @@ test("con el enlace se une cualquiera, y se propone, se vota y se habla", async 
 
   // Ana lo ve todo, vota y contesta.
   await ana.page.goto(`/hop.html?j=${id}`);
+  await ana.page.locator("#hopOtras summary").click();
   const suya = ana.page.locator(".hop-prop", { hasText: "Lisboa barata" });
   await expect(suya.locator('[data-voto="si"] b')).toHaveText("1");
   await expect(suya).toContainText("Falta: Ana");
@@ -126,5 +128,87 @@ test("quien lo crea lo borra, y entonces puede crear otro", async ({ browser }) 
   await ana.page.locator("#hopBorrar").click();
   await ana.page.waitForURL(/hop$/);
   await expect(ana.page.locator("#hopCrear")).toBeVisible();
+  await ana.ctx.close();
+});
+
+/* El corazón del HOP: se busca desde el grupo, los resultados entran como
+   tarjetas, se votan (también en «votar rápido») y el más votado sale en el
+   resumen; con él se busca dónde dormir, que se vota igual. El workflow se
+   hace a mano: se publica en `resultados/` lo que dejaría al acabar. */
+test("buscar en grupo: los vuelos llegan como tarjetas, se votan y arman el viaje", async ({ browser }) => {
+  test.setTimeout(90000);
+  const ana = await persona(browser, "Ana");
+  await E.hacerPremium(ana.uid);
+  await crear(ana.page, "Finde");
+  const id = new URL(ana.page.url()).searchParams.get("j");
+  const gus = await persona(browser, "Gus");
+  await gus.page.goto(`/hop.html?j=${id}`);
+  await gus.page.locator("#hopUnirme").click();
+  await expect(gus.page.locator(".hop-top h2")).toHaveText("Finde");
+
+  // Ana busca: donde sea, un finde, 2 personas (los del grupo).
+  await ana.page.reload();
+  await expect(ana.page.locator("#hopBuscarForm [name=personasVer]")).toHaveText("2");
+  await ana.page.locator('#hopBuscarForm [data-seg="donde"] [data-v="any"]').click();
+  await ana.page.locator("#hopBuscarForm button[type=submit]").click();
+  await expect(ana.page.locator(".hop-buscando")).toContainText("Buscando vuelos");
+  const [encargo] = await E.encargosDe(ana.uid);
+  expect(encargo).toMatchObject({ tipo: "search" });
+  expect(encargo.payload.adults).toBe("2");
+  const clave = encargo.payload.viaje.clave;
+  expect(clave).toMatch(/^[a-z0-9-]+$/);
+
+  // Gus lo ve en marcha sin tocar nada.
+  await gus.page.reload();
+  await expect(gus.page.locator(".hop-buscando")).toContainText("lo lanzó Ana");
+
+  const oferta = (id, ciudad, pais, precio) => ({
+    id, provider: "ryanair", origin: "MAD", destination: id.slice(0, 3), destination_name: ciudad,
+    destination_country: pais, depart_date: "2026-12-11", return_date: "2026-12-13", depart_time: "07:10",
+    arrive_time: "09:00", nights: 2, price: precio, airline: "Ryanair", deep_link: "https://www.ryanair.com/x", adults: 2,
+  });
+  await E.publicarResultado(`busqueda-${clave}`, {
+    label: "x",
+    offers: [oferta("OPO-1", "Oporto", "Portugal", 80), oferta("BCN-1", "Barcelona", "España", 60), oferta("ROM-1", "Roma", "Italia", 140)],
+  });
+  // Entran solos, en la siguiente vuelta del sondeo.
+  await expect(gus.page.locator("#hopVuelos .hop-vuelo")).toHaveCount(3, { timeout: 20000 });
+  await expect(gus.page.locator("#hopVuelos")).toContainText("Oporto");
+  await expect(gus.page.locator("#hopVuelos")).toContainText("40 €"); // por persona
+
+  // Gus vota rápido: Oporto sí, el resto no.
+  await gus.page.locator('[data-rapido="vuelo"]').click();
+  const capa = gus.page.locator(".hop-rapido");
+  for (let i = 0; i < 3; i++) {
+    await expect(capa.locator(".hop-rapido-cab")).toContainText(`${i + 1} de 3`);
+    const txt = await capa.locator(".hop-rapido-tarjeta").textContent();
+    await capa.locator(txt.includes("Oporto") ? '[data-rv="si"]' : '[data-rv="no"]').click();
+  }
+  await expect(capa).toContainText("¡Ya está!");
+  await capa.locator("[data-cerrar-rapido]").click();
+  await expect(gus.page.locator("#hopResumen")).toContainText("Oporto");
+  await expect(gus.page.locator("#hopResumen")).toContainText("1 de 2");
+
+  // Ana lo ve y vota también; luego busca dónde dormir.
+  await ana.page.reload();
+  const opo = ana.page.locator("#hopVuelos .hop-vuelo", { hasText: "Oporto" });
+  await opo.locator('[data-voto="si"]').click();
+  await expect(ana.page.locator("#hopResumen")).toContainText("2 de 2");
+  await ana.page.locator("[data-hop-cama]").click();
+  await expect(ana.page.locator("#hopCamas .hop-buscando")).toBeVisible();
+  const stay = (await E.encargosDe(ana.uid)).find((e) => e.tipo === "stay");
+  expect(stay.payload).toMatchObject({ offer_id: "OPO-1", checkin: "2026-12-11", adults: "2" });
+  await E.publicarResultado("stay-OPO-1", {
+    stays: [
+      { provider: "booking", name: "Casa do Rio", url: "https://www.booking.com/a", price_total: 180, rating: 9.1, km_centro: 0.6 },
+      { provider: "booking", name: "Hostal Ribeira", url: "https://www.booking.com/b", price_total: 90, rating: 8.2 },
+    ],
+  });
+  await expect(ana.page.locator("#hopCamas .hop-cama")).toHaveCount(2, { timeout: 20000 });
+  await ana.page.locator("#hopCamas .hop-cama", { hasText: "Casa do Rio" }).locator('[data-voto="si"]').click();
+  // El resumen: vuelo + cama, por persona: 40 + 90.
+  await expect(ana.page.locator("#hopResumen")).toContainText("Casa do Rio");
+  await expect(ana.page.locator(".hop-pase-total")).toContainText("130 €");
+  await gus.ctx.close();
   await ana.ctx.close();
 });

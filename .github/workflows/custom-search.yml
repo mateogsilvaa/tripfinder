@@ -58,6 +58,7 @@ jobs:
           P_CAMAS: ${{ github.event.client_payload.viaje.camas }}
           P_DIAS: ${{ github.event.client_payload.viaje.dias }}
           P_HORAS: ${{ github.event.client_payload.viaje.horas }}
+          P_CLAVE: ${{ github.event.client_payload.viaje.clave }}
           P_OWNER: ${{ github.event.client_payload.owner }}
           P_OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
@@ -67,7 +68,7 @@ jobs:
             echo "nights=$P_NIGHTS"; echo "months=$P_MONTHS"; echo "weekend=$P_WEEKEND"
             echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
             echo "desde=$P_DESDE"; echo "hasta=$P_HASTA"; echo "origin=$P_ORIGIN"
-            echo "camas=$P_CAMAS"; echo "dias=$P_DIAS"; echo "horas=$P_HORAS"
+            echo "camas=$P_CAMAS"; echo "dias=$P_DIAS"; echo "horas=$P_HORAS"; echo "clave=$P_CLAVE"
             echo "owner=$P_OWNER"; echo "owner_name=$P_OWNER_NAME"
           } >> "$GITHUB_OUTPUT"
 
@@ -89,6 +90,9 @@ jobs:
           HASTA: ${{ steps.parse.outputs.hasta }}
           DIAS: ${{ steps.parse.outputs.dias }}
           HORAS: ${{ steps.parse.outputs.horas }}
+          CLAVE: ${{ steps.parse.outputs.clave }}
+          # Para dejar el resultado de un HOP tambien en Firestore (si no hay, no pasa nada).
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           OWNER: ${{ steps.parse.outputs.owner }}
           OWNER_NAME: ${{ steps.parse.outputs.owner_name }}
         run: |
@@ -106,6 +110,8 @@ jobs:
           if [ -n "$DIAS" ];      then args+=(--dias "$DIAS"); fi
           # Las horas que prefieres: "6-12,,16-24," (salida y llegada de ida y vuelta).
           if [ -n "$HORAS" ];     then args+=(--horas "$HORAS"); fi
+          # La busqueda de un HOP: el resultado tambien a Firestore, para el grupo.
+          if [ -n "$CLAVE" ];     then args+=(--clave "$CLAVE"); fi
           # De donde sales. Va dentro de `viaje` por lo mismo que las fechas:
           # `client_payload` solo admite diez propiedades de primer nivel.
           if [ -n "$ORIGIN" ];    then args+=(--origin "$ORIGIN"); fi

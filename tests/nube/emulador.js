@@ -98,10 +98,21 @@ async function verificarCorreo(uid) {
   if (!r.ok) throw new Error(`no se pudo verificar: ${r.status}`);
 }
 
+/* Lo que deja el workflow al acabar una búsqueda: `resultados/{clave}` con el
+   JSON en texto, como `nube.publicar_resultado`. */
+async function publicarResultado(clave, datos) {
+  const r = await fetch(`${FS}/resultados/${clave}`, {
+    method: "PATCH",
+    headers: DUENO,
+    body: JSON.stringify({ fields: { json: { stringValue: JSON.stringify(datos) } } }),
+  });
+  if (!r.ok) throw new Error(`no se pudo publicar: ${r.status}`);
+}
+
 let n = 0;
 const correoNuevo = () => `prueba${Date.now()}${n++}@ejemplo.es`;
 
 module.exports = {
   CONFIG, ficha, poner, aprobar, hacerPremium, hacerAdmin, encargosDe, borrarCuenta, correoNuevo,
-  sembrarAntigua, antigua, verificarCorreo,
+  sembrarAntigua, antigua, verificarCorreo, publicarResultado,
 };
