@@ -18,8 +18,9 @@ AHORA = datetime(2026, 10, 1, 12, 0, tzinfo=UTC)
 class Memoria:
     """Un `Almacen` de mentira: dos diccionarios."""
 
-    def __init__(self, fichas=None, encargos=None):
+    def __init__(self, fichas=None, encargos=None, hops=None):
         self.fichas = {k: dict(v) for k, v in (fichas or {}).items()}
+        self.hops = dict(hops or {})
         self.encargos = {e["id"]: dict(e) for e in (encargos or [])}
 
     def _estado(self, *estados):
@@ -36,6 +37,9 @@ class Memoria:
 
     def ficha(self, uid):
         return self.fichas.get(uid)
+
+    def hop(self, id_):
+        return self.hops.get(id_)
 
     def enviados_de(self, uid):
         return [e for e in self._estado("enviado", "enviando") if e.get("owner") == uid]
@@ -137,6 +141,28 @@ def test_cuando_se_exija_una_cuenta_gratis_no_lanza_nada(monkeypatch):
     cuenta, buzon = pasar(a)
     assert cuenta["rechazado"] == 1 and not buzon.mandados
     assert "premium" in a.encargos["e1"]["motivo"]
+
+
+def test_cuando_se_exija_en_su_hop_busca_cualquiera_del_grupo(monkeypatch):
+    monkeypatch.setattr(nube, "PREMIUM_OBLIGATORIO", True)
+    hops = {"h1": {"miembros": ["pia", "gus"]}, "h2": {"miembros": ["pia"]}}
+    a = Memoria(
+        FICHAS,
+        [
+            encargo("vuelos", owner="gus", payload={"dest": "", "viaje": {"origin": "MAD", "hop": "h1"}}),
+            encargo("cama", owner="gus", tipo="stay", payload={"offer_id": "x", "hop": "h1"}),
+            # En un HOP que no es suyo, o fuera de las búsquedas, no cuela.
+            encargo("ajeno", owner="gus", payload={"viaje": {"hop": "h2"}}),
+            encargo("aviso", owner="gus", tipo="watch", payload={"hop": "h1"}),
+            encargo("raro", owner="gus", payload={"viaje": {"hop": "../usuarios/pia"}}),
+        ],
+        hops,
+    )
+    pasar(a)
+    estados = {k: e["estado"] for k, e in a.encargos.items()}
+    assert estados == {
+        "vuelos": "enviado", "cama": "enviado", "ajeno": "rechazado", "aviso": "rechazado", "raro": "rechazado",
+    }
 
 
 def test_premium_y_las_aprobadas_de_antes_lanzan():

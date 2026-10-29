@@ -26,6 +26,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Any, Protocol
@@ -89,6 +90,8 @@ class Almacen(Protocol):
 
     def ficha(self, uid: str) -> dict[str, Any] | None: ...
 
+    def hop(self, id_: str) -> dict[str, Any] | None: ...
+
     def enviados_de(self, uid: str) -> list[dict[str, Any]]: ...
 
     def actualizar(self, id_: str, **campos: Any) -> None: ...
@@ -149,6 +152,10 @@ class AlmacenFirestore:
 
     def ficha(self, uid: str) -> dict[str, Any] | None:
         d = self.db.collection("usuarios").document(uid).get()
+        return d.to_dict() if d.exists else None
+
+    def hop(self, id_: str) -> dict[str, Any] | None:
+        d = self.db.collection("hops").document(id_).get()
         return d.to_dict() if d.exists else None
 
     def enviados_de(self, uid: str) -> list[dict[str, Any]]:
@@ -265,7 +272,7 @@ def _tramitar(
     # llegar aquí pueden haberla bloqueado o haberle quitado el premium.
     if not ficha or ficha.get("estado") != "aprobado":
         return cerrar("rechazado", "la cuenta no está aprobada")
-    if PREMIUM_OBLIGATORIO and not es_premium(ficha):
+    if PREMIUM_OBLIGATORIO and not es_premium(ficha) and not _para_su_hop(almacen, uid, e):
         return cerrar("rechazado", "la cuenta es gratis: lanzar búsquedas es de premium")
     if tipo == "interrail" and (e.get("payload") or {}).get("ruta") == "tuya" and not es_premium(ficha):
         return cerrar("rechazado", "el Interrail a medida es de premium")
@@ -295,6 +302,27 @@ def _tramitar(
     except Exception as err:  # noqa: BLE001 - un encargo roto no frena a los demás
         return cerrar("error", str(err))
     return cerrar("enviado")
+
+
+def _para_su_hop(almacen: Almacen, uid: str, e: dict[str, Any]) -> bool:
+    """Una búsqueda (o su cama) lanzada desde un HOP del que es miembro.
+
+    En un HOP busca cualquiera del grupo, sea gratis o premium: crear el HOP
+    ya es de premium, y lo que se busca dentro es para todos. El id viaja en
+    `payload.viaje.hop` (vuelos) o en `payload.hop` (camas), y lo que manda es
+    el HOP de verdad, no lo que diga el encargo."""
+    if e.get("tipo") not in ("search", "stay"):
+        return False
+    payload = e.get("payload") or {}
+    viaje = payload.get("viaje") if isinstance(payload.get("viaje"), dict) else {}
+    id_ = payload.get("hop") or viaje.get("hop")
+    if not isinstance(id_, str) or not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", id_):
+        return False
+    try:
+        hop = almacen.hop(id_)
+    except Exception:  # noqa: BLE001 - sin poder mirarlo, como si no lo fuera
+        return False
+    return bool(hop) and uid in (hop.get("miembros") or [])
 
 
 # ------------------------------------------- a quién se le manda cada aviso

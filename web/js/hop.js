@@ -23,7 +23,7 @@ import { abrirDestinos } from "./destinos.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { montarHoras, textoHoras } from "./horas.js";
 import { ORIGENES } from "./opciones.js";
-import { banderaDe } from "./paises.js";
+import { creditoHTML, fotosDe, huecoFoto, ponerFotos } from "./fotos.js";
 
 const $ = (s, raiz = document) => raiz.querySelector(s);
 const CADA_CHAT_MS = 4000;
@@ -31,9 +31,9 @@ const CADA_PROPUESTAS_MS = 8000;
 const PROPUESTA_PENDIENTE = "tf_hop_propuesta";
 
 const VOTOS = [
-  ["si", "Me encaja", "👍"],
-  ["quiza", "Puede", "🤔"],
-  ["no", "No puedo", "👎"],
+  ["si", "Me apunto"],
+  ["quiza", "Puede"],
+  ["no", "Paso"],
 ];
 
 let estado = { id: "", hop: null, propuestas: [], mensajes: [], filtro: "todas", vista: "props", buscar: false };
@@ -166,9 +166,9 @@ function vistaSinCuenta(app) {
 
 function ilustracion() {
   return `<div class="hop-ilus" aria-hidden="true">
-      <div class="hop-ilus-tarjeta"><b>Puente de mayo</b><span>👍 4 · 🤔 1</span></div>
-      <div class="hop-ilus-tarjeta dos"><b>Roma · 89 €</b><span>👍 3 · 👎 2</span></div>
-      <div class="hop-ilus-burbuja">¿Roma o Lisboa? 🍝</div>
+      <div class="hop-ilus-tarjeta t1"><b>Oporto</b><span>48 € · 4 se apuntan</span><i style="--n:.8"></i></div>
+      <div class="hop-ilus-tarjeta dos t4"><b>Roma</b><span>72 € · 2 se apuntan</span><i style="--n:.4"></i></div>
+      <div class="hop-ilus-burbuja">¿Oporto o Roma?</div>
     </div>`;
 }
 
@@ -358,21 +358,31 @@ function pintarHop(app, pendiente) {
   const miembros = hop.miembros || [];
   const mia = hop.creador === s.uid;
   const nueva = new URLSearchParams(location.search).get("nueva") === "1";
+  const quedan = Math.max(0, Math.ceil((parseISO(hop.fin) - parseISO(hoyISO())) / 864e5));
+  const gente =
+    miembros.length <= 3
+      ? miembros.map((u) => nombres[u] || "?").join(", ")
+      : `${miembros.slice(0, 2).map((u) => nombres[u] || "?").join(", ")} y ${miembros.length - 2} más`;
   app.innerHTML = `
     <a class="hop-volver" href="hop">← Tus HOP</a>
-    <header class="hop-top">
-      <div class="hop-top-txt">
+    <header class="hopx-portada">
+      <div id="hopPortadaFoto" class="hopx-portada-foto" data-de="" aria-hidden="true"></div>
+      <div class="hopx-portada-velo">
+        <p class="hopx-kicker">HOP · ${
+          quedan > 0 ? `quedan ${quedan} día${quedan === 1 ? "" : "s"} para decidir` : "hoy es el último día"
+        } · hasta el ${esc(fmtDate(hop.fin, true))}</p>
         <h2>${esc(hop.nombre)}</h2>
         ${hop.descripcion ? `<p class="hop-desc">${esc(hop.descripcion)}</p>` : ""}
-        <p class="hop-letra">Hasta el ${esc(fmtDate(hop.fin, true))} · ${miembros.length} persona${
-          miembros.length === 1 ? "" : "s"
-        } · se borra solo al pasar la fecha</p>
-        <div class="hop-avs">${miembros
-          .map((u) => avatar(u, `${nombres[u] || "?"}${u === hop.creador ? " (organiza)" : ""}`))
-          .join("")}</div>
+        <div class="hopx-gente">
+          <div class="hop-avs">${miembros
+            .slice(0, 8)
+            .map((u) => avatar(u, `${nombres[u] || "?"}${u === hop.creador ? " (organiza)" : ""}`))
+            .join("")}</div>
+          <span>${esc(gente)}</span>
+        </div>
       </div>
-      <div class="hop-top-acc">
-        <button class="btn primary small" type="button" id="hopInvitar">Invitar</button>
+      <div class="hopx-portada-acc">
+        <button class="btn primary small" type="button" id="hopInvitar">${ico("enlace", 16)} Invitar</button>
         ${
           mia
             ? `<button class="btn ghost small" type="button" id="hopEditar">Editar</button>
@@ -382,11 +392,12 @@ function pintarHop(app, pendiente) {
       </div>
     </header>
     <div class="hop-invitacion" id="hopInvitacion" ${nueva ? "" : "hidden"}>
-      <span>${nueva ? "<b>¡HOP creado!</b> Pasa este enlace a los tuyos para que entren:" : "El enlace para entrar:"}</span>
+      <span>${nueva ? "<b>HOP creado.</b> Pasa este enlace a los tuyos para que entren:" : "El enlace para entrar:"}</span>
       <code id="hopEnlace">${esc(enlaceHop(hop.id))}</code>
       <button class="btn ghost small" type="button" id="hopCopiar">Copiar</button>
     </div>
     <div class="hop-editar" id="hopEditarCaja" hidden></div>
+    <nav id="hopRail" aria-label="Cómo va el viaje"></nav>
 
     <div class="hop-pestanas" role="tablist" aria-label="Partes del HOP">
       <button type="button" role="tab" data-vista="props" aria-selected="${estado.vista === "props"}">El viaje</button>
@@ -395,21 +406,22 @@ function pintarHop(app, pendiente) {
     <div class="hop-cuerpo" data-vista="${estado.vista}">
       <section class="hop-props hop-plan" aria-label="El viaje">
         <div id="hopResumen"></div>
-        <section class="hop-paso" aria-labelledby="hopPasoVueloTit">
-          <div class="hop-paso-cab">
-            <span class="hop-paso-n" aria-hidden="true">1</span>
-            <h3 id="hopPasoVueloTit">El vuelo</h3>
-            <span class="hop-paso-estado" id="hopEstadoVuelo"></span>
-          </div>
+        <section class="hopx-bloque" id="hopBloqueVuelo" aria-labelledby="hopPasoVueloTit">
+          <header class="hopx-bloque-cab">
+            <span class="hopx-n" aria-hidden="true">01</span>
+            <h3 id="hopPasoVueloTit">¿A dónde vamos?</h3>
+            <span class="hopx-estado" id="hopEstadoVuelo"></span>
+          </header>
           <div id="hopBuscar"></div>
           <div id="hopVuelos"></div>
         </section>
-        <section class="hop-paso" aria-labelledby="hopPasoCamaTit">
-          <div class="hop-paso-cab">
-            <span class="hop-paso-n" aria-hidden="true">2</span>
-            <h3 id="hopPasoCamaTit">Dónde dormir</h3>
-            <span class="hop-paso-estado" id="hopEstadoCama"></span>
-          </div>
+        <section class="hopx-bloque" id="hopBloqueCama" aria-labelledby="hopPasoCamaTit">
+          <header class="hopx-bloque-cab">
+            <span class="hopx-n" aria-hidden="true">02</span>
+            <h3 id="hopPasoCamaTit">¿Dónde dormimos?</h3>
+            <span class="hopx-estado" id="hopEstadoCama"></span>
+          </header>
+          <div id="hopCamasCab"></div>
           <div id="hopCamas"></div>
         </section>
         <details class="hop-otras" id="hopOtras">
@@ -423,9 +435,8 @@ function pintarHop(app, pendiente) {
                 ["viaje", "Viajes"],
               ]
                 .map(
-                  (
-                    [v, r]
-                  ) => `<button type="button" role="radio" data-filtro="${v}" aria-checked="${estado.filtro === v}">${r}</button>`
+                  ([v, r]) =>
+                    `<button type="button" role="radio" data-filtro="${v}" aria-checked="${estado.filtro === v}">${r}</button>`
                 )
                 .join("")}
             </div>
@@ -439,7 +450,7 @@ function pintarHop(app, pendiente) {
         </details>
       </section>
       <section class="hop-chat" aria-labelledby="hopChatTit">
-        <h3 id="hopChatTit">Chat</h3>
+        <h3 id="hopChatTit">Chat del grupo</h3>
         <div class="hop-mensajes" id="hopMensajes" aria-live="polite"></div>
         <form class="hop-escribir" id="hopEscribir">
           <textarea name="texto" rows="1" maxlength="1000" placeholder="Escribe al grupo…" aria-label="Mensaje"></textarea>
@@ -721,9 +732,9 @@ function pintarPropuestas(app) {
           ${p.url && escURL(p.url) !== "#" ? `<a class="hop-prop-enlace" href="${escURL(p.url)}" target="_blank" rel="noopener">Ver el viaje ↗</a>` : ""}
           <div class="hop-votos" role="group" aria-label="Tu voto">
             ${VOTOS.map(
-              ([v, rot, ico]) =>
+              ([v, rot]) =>
                 `<button type="button" class="hop-voto v-${v}" data-voto="${v}" aria-pressed="${mio === v}">
-                  <span aria-hidden="true">${ico}</span> ${rot} <b>${n[v]}</b></button>`
+                  ${ico(v, 15)} ${rot} <b>${n[v]}</b></button>`
             ).join("")}
           </div>
           <div class="hop-barra" aria-hidden="true">
@@ -812,7 +823,7 @@ function pintarMensajes(app, bajar = false) {
   const s = yo();
   const estabaAbajo = caja.scrollHeight - caja.scrollTop - caja.clientHeight < 120;
   if (!estado.mensajes.length) {
-    caja.innerHTML = `<p class="hop-chat-vacio">Aquí se habla del viaje. Di hola 👋</p>`;
+    caja.innerHTML = `<p class="hop-chat-vacio">Aquí se habla del viaje. Di hola.</p>`;
     return;
   }
   let anterior = "";
@@ -835,9 +846,13 @@ function pintarMensajes(app, bajar = false) {
 }
 
 /* ===================================================================== EL VIAJE
-   El buscador del grupo, las tarjetas que se votan y el resumen que va
-   saliendo. Todo se pinta desde `estado` (las propuestas y el HOP) en cada
-   vuelta del sondeo, así que lo que vota uno lo ven los demás en segundos. */
+   El buscador del grupo, las cartas que se votan y el plan que va saliendo.
+   Todo se pinta desde `estado` (las propuestas y el HOP) en cada vuelta del
+   sondeo, así que lo que vota uno lo ven los demás en segundos.
+
+   Cada trozo se repinta SOLO SI HA CAMBIADO (`pintarSi`): el sondeo pasa cada
+   pocos segundos y repintar igual borraría las fotos ya puestas, el foco del
+   teclado y lo que estés escribiendo. */
 const MAX_VUELOS = 12;
 const MAX_CAMAS = 9;
 const ESPERA_VUELOS_MS = 8 * 60e3; // lo que suele tardar un barrido
@@ -846,12 +861,14 @@ const CADUCA_BUSQUEDA_MS = 35 * 60e3; // más que esto, algo ha ido mal
 const importando = new Set();
 
 const deTipo = (t) => estado.propuestas.filter((p) => p.tipo === t);
-const ordenadas = (lista) =>
-  [...lista].sort((a, b) => nota(b) - nota(a) || (a.precio ?? 1e9) - (b.precio ?? 1e9));
+const porVotos = (a, b) => nota(b) - nota(a) || (a.precio ?? 1e9) - (b.precio ?? 1e9);
+const porPrecio = (a, b) => (a.precio ?? 1e9) - (b.precio ?? 1e9) || nota(b) - nota(a);
+const ordenadas = (lista, orden = "votos") => [...lista].sort(orden === "precio" ? porPrecio : porVotos);
 const ganadora = (t) => ordenadas(deTipo(t)).find((p) => puntos(p).si > 0) || null;
 const personasHop = () => Math.min(8, Math.max(1, (estado.hop.miembros || []).length));
 const euros = (n) => `${Math.round(n)} €`;
 const sinVotar = (lista) => lista.filter((p) => !(p.votos || {})[yo().uid]);
+const enlaceOk = (u) => !!u && escURL(u) !== "#";
 
 function hashCorto(t) {
   let h = 0;
@@ -859,66 +876,144 @@ function hashCorto(t) {
   return h.toString(36);
 }
 
+function pintarSi(caja, html) {
+  if (!caja) return false;
+  const huella = hashCorto(html);
+  if (caja.dataset.huella === huella) return false;
+  caja.dataset.huella = huella;
+  caja.innerHTML = html;
+  return true;
+}
+
+/* Los dibujos: trazos de 24 × 24, del color del texto. Nada de emojis, que
+   cada sistema pinta a su manera y en una carta de destino se comen la foto. */
+const TRAZOS = {
+  avion: '<path d="M21 3 3 10.4l7.2 2.4L12.6 20z"/><path d="m10.2 12.8 4.6-4.6"/>',
+  cama: '<path d="M3 18.5V8M21 18.5V13a3 3 0 0 0-3-3h-7v5"/><path d="M3 15h18"/><circle cx="7" cy="11.5" r="1.8"/>',
+  lupa: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/>',
+  si: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  no: '<path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/>',
+  quiza: '<path d="M9 9.2a3.2 3.2 0 1 1 4.6 2.9c-.9.4-1.6 1.2-1.6 2.2v.4"/><path d="M12 18.4v.1"/>',
+  cartas: '<rect x="8" y="3" width="12" height="16" rx="2"/><path d="M5.5 6.6 4 7.1a1.6 1.6 0 0 0-1 2l3.5 10.6a1.6 1.6 0 0 0 2 1l5.5-1.8"/>',
+  candado: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  calendario: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  corona: '<path d="m3.5 8 4.4 3.8L12 5l4.1 6.8L20.5 8l-1.8 10H5.3z"/>',
+  globo: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.7 2.6 14.3 0 17M12 3.5c-2.6 2.7-2.6 14.3 0 17"/>',
+  pin: '<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+  fuera: '<path d="M7 17 17 7M9 7h8v8"/>',
+  reloj: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  gente: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 19.5a5.5 5.5 0 0 0-3-4.9"/>',
+  enlace: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  ajustes: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+};
+const ico = (n, tam = 18) =>
+  `<svg class="ico" viewBox="0 0 24 24" width="${tam}" height="${tam}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${TRAZOS[n] || ""}</svg>`;
+
 export function pintarViaje(app) {
   if (!$("#hopResumen", app)) return;
+  pintarPortada(app);
+  pintarRail(app);
   pintarResumen(app);
   pintarBuscar(app);
   pintarVuelos(app);
   pintarCamas(app);
+  ponerFotos(app);
 }
 
-/* -------------------------------------------------------------- el resumen */
+/* -------------------------------------------------- la portada y los pasos */
+function pintarPortada(app) {
+  const hueco = $("#hopPortadaFoto", app);
+  if (!hueco) return;
+  const v = ganadora("vuelo") || ordenadas(deTipo("vuelo"))[0];
+  const clave = v ? `${v.iata}|${v.titulo}` : "";
+  if (hueco.dataset.de === clave) return;
+  hueco.dataset.de = clave;
+  hueco.outerHTML = v
+    ? huecoFoto({ iata: v.iata, ciudad: v.titulo, pais: v.pais }, "hopx-portada-foto").replace(
+        "<div ",
+        `<div id="hopPortadaFoto" data-de="${esc(clave)}" `
+      )
+    : `<div id="hopPortadaFoto" class="hopx-portada-foto" data-de="" aria-hidden="true"></div>`;
+}
+
+function pintarRail(app) {
+  const vuelos = deTipo("vuelo").length > 0;
+  const v = !!ganadora("vuelo");
+  const camas = deTipo("cama").length > 0;
+  const c = !!ganadora("cama");
+  const pasos = [
+    ["Buscar", vuelos, "#hopBloqueVuelo"],
+    ["Votar destino", v, "#hopVuelos"],
+    ["Dónde dormir", camas, "#hopBloqueCama"],
+    ["Plan cerrado", c, "#hopResumen"],
+  ];
+  const actual = pasos.findIndex(([, hecho]) => !hecho);
+  const hechos = pasos.filter(([, h]) => h).length;
+  pintarSi(
+    $("#hopRail", app),
+    `<ol class="hopx-rail" style="--hecho:${hechos / (pasos.length - 1)}">${pasos
+      .map(
+        ([t, hecho, ancla], i) =>
+          `<li class="${hecho ? "hecho" : ""}${i === actual ? " actual" : ""}">
+            <a href="${ancla}"><span class="hopx-rail-n">${hecho ? ico("si", 14) : i + 1}</span><span>${t}</span></a>
+          </li>`
+      )
+      .join("")}</ol>`
+  );
+}
+
+/* --------------------------------------------------------------- el plan */
 function pintarResumen(app) {
   const caja = $("#hopResumen", app);
   const v = ganadora("vuelo");
-  const c = ganadora("cama");
-  const n = (estado.hop.miembros || []).length;
-  const pasos = [
-    ["Buscad vuelos", deTipo("vuelo").length > 0],
-    ["Votad el que más os guste", !!v],
-    ["Buscad dónde dormir", deTipo("cama").length > 0],
-    ["Votad la cama", !!c],
-  ];
   if (!v) {
-    caja.innerHTML = `<div class="hop-pase hop-pase-vacio">
-        <p class="hop-pase-kicker">el viaje</p>
-        <h3>Aún sin decidir</h3>
-        <p>Se arma solo: buscad vuelos aquí abajo, votad las tarjetas y lo que más guste al grupo sale aquí.</p>
-        <ol class="hop-pasitos">${pasos
-          .map(([t, hecho], i) => `<li class="${hecho ? "hecho" : ""}"><b>${hecho ? "✓" : i + 1}</b>${t}</li>`)
-          .join("")}</ol>
-      </div>`;
+    pintarSi(caja, "");
     return;
   }
+  const c = ganadora("cama");
+  const n = (estado.hop.miembros || []).length;
+  const nombres = estado.hop.nombres || {};
   const nv = puntos(v);
+  const faltan = (estado.hop.miembros || []).filter((u) => !(v.votos || {})[u]);
   const precioCama = c && Number.isFinite(c.precio) ? c.precio : null;
   const total = (Number.isFinite(v.precio) ? v.precio : 0) + (precioCama || 0);
   const dias = noches(v.ida, v.vuelta);
-  caja.innerHTML = `<div class="hop-pase">
-      <div class="hop-pase-izq ${tono(v.iata || v.titulo)}">
-        <p class="hop-pase-kicker">el viaje · lo que más gusta</p>
-        <h3><span class="hop-bandera" aria-hidden="true">${banderaDe(v.pais || "") || "✈"}</span>${esc(v.titulo)}</h3>
-        <p class="hop-pase-fechas">${esc(fmtDate(v.ida, true))} → ${esc(fmtDate(v.vuelta, true))}${
-          dias ? ` · ${dias} noche${dias === 1 ? "" : "s"}` : ""
-        }</p>
-        ${v.horario ? `<p class="hop-pase-dato">✈ ${esc(v.horario)}${v.compania ? ` · ${esc(v.compania)}` : ""}</p>` : ""}
-        <p class="hop-pase-dato">🛏 ${
-          c ? `${esc(c.titulo)}` : `<span class="hop-falta">Falta dónde dormir</span>`
-        }</p>
-        <p class="hop-pase-votos">👍 ${nv.si} de ${n}${nv.quiza ? ` · 🤔 ${nv.quiza}` : ""}${nv.no ? ` · 👎 ${nv.no}` : ""}</p>
+  pintarSi(
+    caja,
+    `<article class="hopx-plan">
+      ${huecoFoto({ iata: v.iata, ciudad: v.titulo, pais: v.pais }, `hopx-plan-foto ${tono(v.iata || v.titulo)}`)}
+      <div class="hopx-plan-velo">
+        <p class="hopx-kicker">${c ? "El plan" : "El plan, de momento"}</p>
+        <h3>${esc(v.titulo)}</h3>
+        <p class="hopx-plan-pais">${esc(v.pais || "")}${v.iata ? ` · ${esc(v.iata)}` : ""}</p>
       </div>
-      <div class="hop-pase-der">
-        <p class="hop-pase-kicker">por persona</p>
-        <p class="hop-pase-total">≈ ${euros(total)}</p>
-        <p class="hop-pase-desglose">vuelo ${Number.isFinite(v.precio) ? euros(v.precio) : "—"}${
-          precioCama !== null ? ` + cama ${euros(precioCama)}` : ""
+      <div class="hopx-plan-datos">
+        <dl class="hopx-plan-dl">
+          <div><dt>Ida</dt><dd>${esc(fmtDate(v.ida, true))}</dd></div>
+          <div><dt>Vuelta</dt><dd>${esc(fmtDate(v.vuelta, true))}</dd></div>
+          <div><dt>Noches</dt><dd>${dias || "—"}</dd></div>
+          <div><dt>Vuelo</dt><dd>${esc(v.compania || "—")}</dd></div>
+          <div class="ancho"><dt>Dormir</dt><dd>${
+            c ? esc(c.titulo) : `<a href="#hopBloqueCama" class="hopx-falta">sin elegir todavía</a>`
+          }</dd></div>
+        </dl>
+        <div class="hopx-plan-total">
+          <span>por cabeza</span>
+          <b>${euros(total)}</b>
+          <small>vuelo ${Number.isFinite(v.precio) ? euros(v.precio) : "—"}${
+            precioCama !== null ? ` + dormir ${euros(precioCama)}` : ""
+          }</small>
+        </div>
+        <p class="hopx-plan-apoyo">${ico("si", 16)} <b>${nv.si} de ${n}</b> se apuntan${
+          faltan.length ? ` · falta${faltan.length === 1 ? "" : "n"} ${esc(faltan.map((u) => nombres[u] || "?").join(", "))}` : ""
         }</p>
-        <div class="hop-pase-acc">
-          ${v.url && escURL(v.url) !== "#" ? `<a class="btn primary small" href="${escURL(v.url)}" target="_blank" rel="noopener">Reservar vuelo ↗</a>` : ""}
-          ${c && c.url && escURL(c.url) !== "#" ? `<a class="btn ghost small" href="${escURL(c.url)}" target="_blank" rel="noopener">Ver la cama ↗</a>` : ""}
+        <div class="hopx-plan-acc">
+          ${enlaceOk(v.url) ? `<a class="btn primary small" href="${escURL(v.url)}" target="_blank" rel="noopener">Reservar el vuelo ${ico("fuera", 14)}</a>` : ""}
+          ${c && enlaceOk(c.url) ? `<a class="btn ghost small" href="${escURL(c.url)}" target="_blank" rel="noopener">Ver el alojamiento ${ico("fuera", 14)}</a>` : ""}
         </div>
       </div>
-    </div>`;
+    </article>`
+  );
 }
 
 /* -------------------------------------------------------------- el buscador */
@@ -933,14 +1028,18 @@ function progresoHTML(b, tipico, que) {
   const pct = Math.min(95, Math.round((b.pasado / tipico) * 100));
   const min = Math.max(1, Math.round(b.pasado / 60000));
   const quedan = Math.max(0, Math.round((tipico - b.pasado) / 60000));
-  return `<div class="hop-buscando">
-      <div class="hop-avion" aria-hidden="true"><span>✈</span></div>
-      <p><b>Buscando ${que} para el grupo…</b> lo lanzó ${esc(b.nombre || "alguien")} hace ${min} min.
-        ${quedan ? `Suele tardar unos ${quedan} min más.` : "Está al caer."}</p>
-      <div class="hop-barra-progreso" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"
-        aria-label="Progreso de la búsqueda"><i style="width:${pct}%"></i></div>
-      <p class="hop-letra">${esc(b.texto || "")}</p>
-      <p class="hop-letra">Podéis cerrar la página: los resultados entran solos y os esperan aquí.</p>
+  return `<div class="hop-buscando hopx-buscando">
+      <div class="hopx-radar" aria-hidden="true"><i></i><i></i><i></i><span>${ico(que === "vuelos" ? "avion" : "cama", 22)}</span></div>
+      <div class="hopx-buscando-txt">
+        <p><b>Buscando ${que} para el grupo…</b></p>
+        <p class="hop-letra">Lo lanzó ${esc(b.nombre || "alguien")} hace ${min} min · ${
+          quedan ? `suele tardar unos ${quedan} min más` : "está al caer"
+        }</p>
+        <div class="hop-barra-progreso" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"
+          aria-label="Progreso de la búsqueda"><i style="width:${pct}%"></i></div>
+        <p class="hop-letra">${esc(b.texto || "")}</p>
+        <p class="hop-letra">Podéis cerrar la página: los resultados entran solos y os esperan aquí.</p>
+      </div>
     </div>`;
 }
 
@@ -951,35 +1050,37 @@ function pintarBuscar(app) {
   const vuelos = deTipo("vuelo");
   if (b && b.pasado < CADUCA_BUSQUEDA_MS) {
     estadoTxt.textContent = "buscando…";
-    if (!caja.querySelector(".hop-buscando")) caja.innerHTML = progresoHTML(b, ESPERA_VUELOS_MS, "vuelos");
-    else {
-      const nuevo = document.createElement("div");
-      nuevo.innerHTML = progresoHTML(b, ESPERA_VUELOS_MS, "vuelos");
-      caja.querySelector(".hop-buscando").replaceWith(nuevo.firstElementChild);
-    }
+    pintarSi(caja, progresoHTML(b, ESPERA_VUELOS_MS, "vuelos"));
     return;
   }
   const v = ganadora("vuelo");
-  estadoTxt.textContent = v ? `✓ ${v.titulo}` : vuelos.length ? `${vuelos.length} opciones · a votar` : "";
+  estadoTxt.textContent = v ? `va ganando ${v.titulo}` : vuelos.length ? `${vuelos.length} destinos para votar` : "";
   const ultima = estado.hop.busqueda;
   if (vuelos.length && !estado.buscar) {
-    caja.innerHTML = `<div class="hop-buscar-plegado">
-        <span>${
-          b
-            ? "La última búsqueda tardó demasiado."
-            : ultima && ultima.estado === "vacia"
-              ? "La última búsqueda no encontró nada."
-              : `Última búsqueda: ${esc((ultima && ultima.texto) || "")}`
-        }</span>
-        <button class="btn ghost small" type="button" data-hop-abrir-buscar>🔎 Nueva búsqueda</button>
-      </div>`;
-    caja.querySelector("[data-hop-abrir-buscar]").addEventListener("click", () => {
-      estado.buscar = true;
-      pintarBuscar(app);
-    });
+    if (
+      pintarSi(
+        caja,
+        `<div class="hopx-plegado">
+          <span>${ico("lupa", 16)} ${
+            b
+              ? "La última búsqueda tardó demasiado."
+              : ultima && ultima.estado === "vacia"
+                ? "La última búsqueda no encontró nada."
+                : esc((ultima && ultima.texto) || "")
+          }</span>
+          <button class="btn ghost small" type="button" data-hop-abrir-buscar>Buscar otra cosa</button>
+        </div>`
+      )
+    ) {
+      caja.querySelector("[data-hop-abrir-buscar]").addEventListener("click", () => {
+        estado.buscar = true;
+        pintarBuscar(app);
+      });
+    }
     return;
   }
   if (caja.querySelector("#hopBuscarForm")) return; // no se repinta un formulario a medio rellenar
+  caja.dataset.huella = "";
   caja.innerHTML = formBuscar(b, ultima);
   montarFormBuscar(app, caja);
 }
@@ -991,65 +1092,51 @@ function sumarDiasISO(iso, n) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
+const TOPES = [50, 80, 100, 150, 200, 300, 500, 800];
+
+/* El buscador es UNA FRASE: «Salimos de Madrid hacia cualquier sitio un finde,
+   sin pasar de 150 € por cabeza. Somos 4.» Cada trozo subrayado se toca y se
+   cambia. Se lee de un vistazo qué se va a buscar, que en un grupo es lo que
+   importa: el que lo lanza no tiene que explicarlo en el chat. */
 function formBuscar(atascada, ultima) {
   const fin = estado.hop.fin;
   const n = personasHop();
-  return `<form class="hop-buscar" id="hopBuscarForm" novalidate>
+  const sel = (nombre, opciones, elegida, etiqueta) =>
+    `<select class="hopx-pieza" name="${nombre}" aria-label="${etiqueta}">${opciones
+      .map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(elegida) ? " selected" : ""}>${esc(t)}</option>`)
+      .join("")}</select>`;
+  const fecha = (nombre, etiqueta, valor = "") =>
+    `<input class="hopx-pieza" type="date" name="${nombre}" aria-label="${etiqueta}" min="${manana()}" max="${esc(fin)}" value="${esc(valor)}">`;
+  return `<form class="hopx-buscar" id="hopBuscarForm" novalidate>
       ${
         atascada
           ? `<div class="hop-aviso error">La última búsqueda tardó demasiado y no llegó nada. Probad otra vez.</div>`
           : ultima && ultima.estado === "vacia"
             ? `<div class="hop-aviso">La última búsqueda no encontró nada dentro del tope. Probad con más presupuesto
                 u otras fechas.</div>`
-            : `<p class="hop-buscar-lede">Decid de dónde salís y cuándo podéis: buscamos en <b>todas las compañías</b>
-                y los resultados os salen aquí para votarlos.</p>`
+            : ""
       }
-      <div class="hop-campos">
-        <label class="hop-campo"><span>Salís de</span>
-          <select name="origen">${ORIGENES.map(([c, nom]) => `<option value="${c}">${esc(nom)} (${c})</option>`).join("")}</select>
-        </label>
-        <div class="hop-campo"><span>¿A dónde?</span>
-          <div class="hop-seg" data-seg="donde" role="radiogroup" aria-label="A dónde">
-            <button type="button" role="radio" data-v="any" aria-checked="true">🌍 Donde sea</button>
-            <button type="button" role="radio" data-v="one" aria-checked="false">📍 Un sitio</button>
-          </div>
-          <button type="button" class="hop-dest" id="hopDestBtn" hidden>Elegir destino</button>
-          <input type="hidden" id="hopDest">
-        </div>
-        <div class="hop-campo hop-ancho"><span>¿Cuándo?</span>
-          <div class="hop-seg" data-seg="cuando" role="radiogroup" aria-label="Cuándo">
-            <button type="button" role="radio" data-v="findes" aria-checked="true">🗓 Un finde</button>
-            <button type="button" role="radio" data-v="fechas" aria-checked="false">📅 Unas fechas</button>
-            <button type="button" role="radio" data-v="tramo" aria-checked="false">↔ Entre dos fechas</button>
-          </div>
-          <div class="hop-fechas" data-para="fechas" hidden>
-            <label><span>Ida</span><input type="date" name="ida" min="${manana()}" max="${esc(fin)}"></label>
-            <label><span>Vuelta</span><input type="date" name="vuelta" min="${manana()}" max="${esc(fin)}"></label>
-          </div>
-          <div class="hop-fechas" data-para="tramo" hidden>
-            <label><span>Desde</span><input type="date" name="desde" min="${manana()}" max="${esc(fin)}"></label>
-            <label><span>Hasta</span><input type="date" name="hasta" min="${manana()}" max="${esc(fin)}" value="${esc(fin)}"></label>
-            <label><span>Noches</span><select name="noches">${[2, 3, 4, 5, 7]
-              .map((x) => `<option value="${x}"${x === 3 ? " selected" : ""}>${x}</option>`)
-              .join("")}</select></label>
-          </div>
-          <small class="hop-letra" data-cuando-nota>Todos los findes de aquí al ${esc(fmtDate(fin))}.</small>
-        </div>
-        <label class="hop-campo"><span>Tope por persona · <output name="topeVer">150 €</output></span>
-          <input type="range" name="tope" min="30" max="800" step="10" value="150">
-        </label>
-        <div class="hop-campo"><span>Personas</span>
-          <div class="hop-stepper">
-            <button type="button" data-paso="-1" aria-label="Una persona menos">−</button>
-            <output name="personasVer">${n}</output>
-            <button type="button" data-paso="1" aria-label="Una persona más">+</button>
-          </div>
-          <input type="hidden" name="personas" value="${n}">
-        </div>
-      </div>
+      <p class="hopx-frase">
+        Salimos de ${sel("origen", ORIGENES.map(([c, nom]) => [c, nom]), "MAD", "De dónde salís")}
+        hacia ${sel("donde", [["any", "cualquier sitio"], ["one", "un sitio concreto…"]], "any", "A dónde")}
+        ${sel(
+          "cuando",
+          [["findes", "un finde"], ["fechas", "en unas fechas"], ["tramo", "unos días"]],
+          "findes",
+          "Cuándo"
+        )}<span class="hopx-trozo" data-para="fechas" hidden>: del ${fecha("ida", "Ida")} al ${fecha("vuelta", "Vuelta")}</span><span
+          class="hopx-trozo" data-para="tramo" hidden> (${sel("noches", [2, 3, 4, 5, 7].map((x) => [x, `${x} noches`]), 3, "Noches")})
+          entre el ${fecha("desde", "Desde")} y el ${fecha("hasta", "Hasta", fin)}</span><span class="hopx-trozo" data-para="findes"> antes del ${esc(
+            fmtDate(fin)
+          )}</span>,
+        sin pasar de ${sel("tope", TOPES.map((x) => [x, `${x} €`]), 150, "Tope por persona")} por cabeza.
+        Somos ${sel("personas", [1, 2, 3, 4, 5, 6, 7, 8].map((x) => [x, String(x)]), n, "Cuántos sois")}.
+      </p>
+      <input type="hidden" id="hopDest">
       <div class="hop-horas" id="hopHorasWrap"><input type="hidden" id="hopHoras"></div>
-      <div class="hop-buscar-pie">
-        <button class="btn primary hop-lanzar" type="submit">🔎 Buscar para el grupo</button>
+      <div class="hopx-buscar-pie">
+        <button class="btn primary hopx-lanzar" type="submit">${ico("lupa")} Buscar para el grupo</button>
+        <span class="hop-letra">Miramos todas las compañías. Tarda unos minutos y os llega a todos.</span>
         ${deTipo("vuelo").length ? `<button class="btn ghost small" type="button" data-hop-cerrar-buscar>Cancelar</button>` : ""}
         <p class="hop-msg" role="status"></p>
       </div>
@@ -1058,37 +1145,24 @@ function formBuscar(atascada, ultima) {
 
 function montarFormBuscar(app, caja) {
   const form = $("#hopBuscarForm", caja);
-  const seg = (nombre) => form.querySelector(`[data-seg="${nombre}"] [aria-checked="true"]`)?.dataset.v;
-  form.elements.origen.value = (estado.hop.busqueda && estado.hop.busqueda.origen) || "MAD";
-  form.querySelectorAll(".hop-seg").forEach((g) =>
-    g.addEventListener("click", (e) => {
-      const b = e.target.closest("[data-v]");
-      if (!b) return;
-      g.querySelectorAll("[data-v]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
-      sincronizar();
-    })
-  );
+  const f = form.elements;
+  const ultima = estado.hop.busqueda;
+  if (ultima && ultima.origen && [...f.origen.options].some((o) => o.value === ultima.origen)) f.origen.value = ultima.origen;
+  const destino = $("#hopDest", form);
+  const opcionUna = f.donde.querySelector('option[value="one"]');
   const sincronizar = () => {
-    const donde = seg("donde");
-    const cuando = seg("cuando");
-    $("#hopDestBtn", form).hidden = donde !== "one";
-    form.querySelectorAll("[data-para]").forEach((x) => (x.hidden = x.dataset.para !== cuando));
-    form.querySelector("[data-cuando-nota]").hidden = cuando !== "findes";
+    form.querySelectorAll("[data-para]").forEach((x) => (x.hidden = x.dataset.para !== f.cuando.value));
   };
   sincronizar();
-  $("#hopDestBtn", form).addEventListener("click", () => abrirDestinos("hopDest"));
-  $("#hopDest", form).addEventListener("change", (e) => {
-    $("#hopDestBtn", form).textContent = e.target.value || "Elegir destino";
+  f.cuando.addEventListener("change", sincronizar);
+  f.donde.addEventListener("change", () => {
+    if (f.donde.value === "one") abrirDestinos("hopDest");
   });
-  const tope = form.elements.tope;
-  tope.addEventListener("input", () => (form.elements.topeVer.value = `${tope.value} €`));
-  form.querySelectorAll("[data-paso]").forEach((b) =>
-    b.addEventListener("click", () => {
-      const n = Math.min(8, Math.max(1, Number(form.elements.personas.value) + Number(b.dataset.paso)));
-      form.elements.personas.value = String(n);
-      form.elements.personasVer.value = String(n);
-    })
-  );
+  destino.addEventListener("change", () => {
+    const v = destino.value.trim();
+    opcionUna.textContent = v || "un sitio concreto…";
+    f.donde.value = v ? "one" : "any";
+  });
   montarHoras($("#hopHorasWrap", form), $("#hopHoras", form));
   form.querySelector("[data-hop-cerrar-buscar]")?.addEventListener("click", () => {
     estado.buscar = false;
@@ -1098,19 +1172,19 @@ function montarFormBuscar(app, caja) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const msg = form.querySelector(".hop-msg");
-    const donde = seg("donde");
-    const cuando = seg("cuando");
-    const dest = donde === "one" ? $("#hopDest", form).value.trim() : "";
-    if (donde === "one" && !dest) return (msg.textContent = "Elegid el destino, o marcad «Donde sea».");
-    const f = form.elements;
+    const dest = f.donde.value === "one" ? destino.value.trim() : "";
+    if (f.donde.value === "one" && !dest) {
+      abrirDestinos("hopDest");
+      return (msg.textContent = "Elegid el destino, o dejad «cualquier sitio».");
+    }
     const viaje = { origin: f.origen.value, depart: "", return_date: "", desde: "", hasta: "", camas: "", dias: "" };
     let weekend = "si";
     let nights = "2-3";
-    let cuandoTxt = `findes hasta el ${fmtDate(estado.hop.fin)}`;
-    if (cuando === "findes") {
+    let cuandoTxt = `un finde antes del ${fmtDate(estado.hop.fin)}`;
+    if (f.cuando.value === "findes") {
       viaje.desde = manana();
       viaje.hasta = estado.hop.fin;
-    } else if (cuando === "fechas") {
+    } else if (f.cuando.value === "fechas") {
       if (!f.ida.value || !f.vuelta.value || f.vuelta.value <= f.ida.value) {
         return (msg.textContent = "Marcad la ida y la vuelta (la vuelta, después).");
       }
@@ -1132,9 +1206,10 @@ function montarFormBuscar(app, caja) {
     if (horas) viaje.horas = horas;
     const clave = `${estado.id.slice(0, 12).toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString(36)}`;
     viaje.clave = clave;
+    viaje.hop = estado.id;
     const personas = Number(f.personas.value) || personasHop();
     const texto = [
-      `${dest || "Donde sea"}${f.origen.value !== "MAD" ? ` desde ${f.origen.value}` : ""}`,
+      `${dest || "Cualquier sitio"}${f.origen.value !== "MAD" ? ` desde ${f.origen.value}` : ""}`,
       cuandoTxt,
       `hasta ${f.tope.value} €`,
       `${personas} pers.`,
@@ -1170,14 +1245,15 @@ function montarFormBuscar(app, caja) {
     estado.hop.busqueda = apunte;
     estado.buscar = false;
     caja.innerHTML = "";
+    caja.dataset.huella = "";
     pintarViaje(app);
     nubeHopApuntar(estado.id, "busqueda", apunte);
     if (typeof tfAnunciar === "function") tfAnunciar("Búsqueda lanzada para el grupo. Tarda unos minutos.");
   });
 }
 
-/* Lo que está en marcha: se mira si ya ha llegado y, si sí, entra como tarjetas.
-   Lo hace el primero del grupo que lo ve; si lo ven dos a la vez, las tarjetas
+/* Lo que está en marcha: se mira si ya ha llegado y, si sí, entra como cartas.
+   Lo hace el primero del grupo que lo ve; si lo ven dos a la vez, las cartas
    llevan un id fijo y la segunda no duplica nada. */
 async function comprobarBusquedas(app) {
   const b = enMarcha("busqueda");
@@ -1192,7 +1268,7 @@ async function comprobarBusquedas(app) {
           estado: n ? "lista" : "vacia", n,
         });
         if (typeof tfAnunciar === "function") {
-          tfAnunciar(n ? `Han llegado ${n} vuelos para votar.` : "La búsqueda no encontró vuelos dentro del tope.");
+          tfAnunciar(n ? `Han llegado ${n} destinos para votar.` : "La búsqueda no encontró vuelos dentro del tope.");
         }
         await cargarPropuestas(app);
       }
@@ -1277,7 +1353,7 @@ async function importarVuelos(ofertas) {
 
 async function importarCamas(stays) {
   const lista = stays.slice(0, MAX_CAMAS);
-  const pax = Math.max(1, Number((estado.hop.cama && estado.hop.cama.texto || "").match(/(\d+) pers/)?.[1]) || personasHop());
+  const pax = Math.max(1, Number(((estado.hop.cama && estado.hop.cama.texto) || "").match(/(\d+) pers/)?.[1]) || personasHop());
   await Promise.all(
     lista.map((c) =>
       nubeProponer(estado.id, {
@@ -1290,7 +1366,7 @@ async function importarCamas(stays) {
         foto: c.image || (Array.isArray(c.images) ? c.images[0] : "") || "",
         nota: [
           Number.isFinite(c.km_centro) ? `${String(c.km_centro).replace(".", ",")} km del centro` : "",
-          c.rating ? `★ ${c.rating}${c.reviews ? ` (${c.reviews})` : ""}` : "",
+          c.rating ? `nota ${c.rating}${c.reviews ? ` (${c.reviews})` : ""}` : "",
           c.provider ? c.provider : "",
         ]
           .filter(Boolean)
@@ -1302,49 +1378,38 @@ async function importarCamas(stays) {
   return lista.length;
 }
 
-/* ----------------------------------------------------- las tarjetas de vuelos */
-function votosHTML(p, compacto = false) {
+/* ------------------------------------------------------------ las cartas */
+const ROTULOS = { si: "Me apunto", quiza: "Puede", no: "Paso" };
+
+function votarHTML(p) {
   const n = puntos(p);
   const mio = (p.votos || {})[yo().uid] || "";
-  return `<div class="hop-votos${compacto ? " compacto" : ""}" role="group" aria-label="Tu voto">
-      ${VOTOS.map(
-        ([v, rot, ico]) =>
-          `<button type="button" class="hop-voto v-${v}" data-voto="${v}" aria-pressed="${mio === v}" title="${rot}">
-            <span aria-hidden="true">${ico}</span><span class="${compacto ? "solo-lector" : ""}">${rot}</span> <b>${n[v]}</b></button>`
-      ).join("")}
+  return `<div class="hopx-votar" role="group" aria-label="Tu voto">
+      ${["si", "quiza", "no"]
+        .map(
+          (v) => `<button type="button" class="hopx-voto v-${v}" data-voto="${v}" aria-pressed="${mio === v}"
+              title="${ROTULOS[v]}">${ico(v, 16)}<span>${ROTULOS[v]}</span><b>${n[v]}</b></button>`
+        )
+        .join("")}
     </div>`;
+}
+
+function medidorHTML(p) {
+  const n = puntos(p);
+  const total = Math.max(1, (estado.hop.miembros || []).length);
+  const falta = Math.max(0, total - n.si - n.quiza - n.no);
+  return `<div class="hopx-medidor" aria-hidden="true"><i class="m-si" style="flex:${n.si}"></i><i class="m-quiza" style="flex:${n.quiza}"></i><i class="m-no" style="flex:${n.no}"></i><i class="m-falta" style="flex:${falta}"></i></div>`;
 }
 
 function quienesHTML(p) {
   const nombres = estado.hop.nombres || {};
   const si = Object.entries(p.votos || {}).filter(([, v]) => v === "si").map(([u]) => u);
   return si.length
-    ? `<span class="hop-avs mini">${si.map((u) => avatar(u, nombres[u] || "?")).join("")}</span>`
-    : "";
-}
-
-function tarjetaVuelo(p, puesto) {
-  const dias = noches(p.ida, p.vuelta);
-  return `<article class="hop-vuelo${puesto === 1 && puntos(p).si ? " top" : ""}" data-prop="${esc(p.id)}">
-      <div class="hop-vuelo-foto ${tono(p.iata || p.titulo)}">
-        ${puesto <= 3 && puntos(p).si ? `<span class="hop-puesto">#${puesto}</span>` : ""}
-        <span class="hop-bandera" aria-hidden="true">${banderaDe(p.pais || "") || "✈"}</span>
-        <b>${esc(p.titulo)}</b>
-        <small>${esc(p.pais || p.destino || "")}${p.iata ? ` · ${esc(p.iata)}` : ""}</small>
-        <span class="hop-vuelo-precio">${Number.isFinite(p.precio) ? euros(p.precio) : "—"}<small>/pers.</small></span>
-      </div>
-      <div class="hop-vuelo-cuerpo">
-        <p class="hop-vuelo-fechas">${esc(fmtDate(p.ida, true))} → ${esc(fmtDate(p.vuelta, true))}${
-          dias ? ` · <b>${dias} noche${dias === 1 ? "" : "s"}</b>` : ""
-        }</p>
-        ${p.horario ? `<p class="hop-vuelo-dato">${esc(p.horario)}</p>` : ""}
-        <p class="hop-vuelo-dato">${esc(p.compania || "")}${
-          p.url && escURL(p.url) !== "#" ? ` · <a href="${escURL(p.url)}" target="_blank" rel="noopener">ver ↗</a>` : ""
-        }</p>
-        ${votosHTML(p, true)}
-        <div class="hop-vuelo-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span></div>
-      </div>
-    </article>`;
+    ? `<span class="hop-avs mini" title="Se apuntan: ${esc(si.map((u) => nombres[u] || "?").join(", "))}">${si
+        .slice(0, 5)
+        .map((u) => avatar(u, nombres[u] || "?"))
+        .join("")}</span>`
+    : `<span></span>`;
 }
 
 function faltanTxt(p) {
@@ -1352,81 +1417,130 @@ function faltanTxt(p) {
   return falta ? `falta${falta === 1 ? "" : "n"} ${falta}` : "han votado todos";
 }
 
-function pintarVuelos(app) {
-  const caja = $("#hopVuelos", app);
-  const lista = ordenadas(deTipo("vuelo"));
-  if (!lista.length) {
-    caja.innerHTML = "";
-    return;
-  }
+function cartaVuelo(p, puesto, lider) {
+  const dias = noches(p.ida, p.vuelta);
+  return `<article class="hopx-carta${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
+      <div class="hopx-carta-foto">
+        ${huecoFoto({ iata: p.iata, ciudad: p.titulo, pais: p.pais }, tono(p.iata || p.titulo))}
+        <span class="hopx-marca" aria-hidden="true">${esc(p.iata || "")}</span>
+        ${lider ? `<span class="hopx-lider">${ico("corona", 14)} va ganando</span>` : `<span class="hopx-puesto">${puesto}</span>`}
+        <span class="hopx-precio">${Number.isFinite(p.precio) ? euros(p.precio) : "—"}<small>por cabeza</small></span>
+        <div class="hopx-carta-nombre"><b>${esc(p.titulo)}</b><small>${esc(p.pais || p.destino || "")}</small></div>
+      </div>
+      <div class="hopx-carta-cuerpo">
+        <p class="hopx-fechas">${ico("calendario", 15)} ${esc(fmtDate(p.ida, true))} – ${esc(fmtDate(p.vuelta, true))}${
+          dias ? ` · <b>${dias} noche${dias === 1 ? "" : "s"}</b>` : ""
+        }</p>
+        <p class="hopx-dato">${ico("avion", 15)} <span>${esc([p.horario, p.compania].filter(Boolean).join(" · "))}${
+          enlaceOk(p.url) ? ` · <a href="${escURL(p.url)}" target="_blank" rel="noopener">ver</a>` : ""
+        }</span></p>
+        ${medidorHTML(p)}
+        ${votarHTML(p)}
+        <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span></div>
+      </div>
+    </article>`;
+}
+
+function cartaCama(p, puesto, lider) {
+  const v = ganadora("vuelo");
+  const foto = enlaceOk(p.foto)
+    ? `<div class="foto-lugar con-foto" style="background-image:url('${escURL(p.foto)}')" aria-hidden="true"></div>`
+    : v
+      ? huecoFoto({ iata: v.iata, ciudad: v.titulo, pais: v.pais }, tono(p.titulo))
+      : `<div class="foto-lugar ${tono(p.titulo)}" aria-hidden="true"></div>`;
+  return `<article class="hopx-carta hopx-cama${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
+      <div class="hopx-carta-foto">
+        ${foto}
+        ${lider ? `<span class="hopx-lider">${ico("corona", 14)} va ganando</span>` : `<span class="hopx-puesto">${puesto}</span>`}
+        <span class="hopx-precio">${Number.isFinite(p.precio) ? euros(p.precio) : "—"}<small>por cabeza</small></span>
+      </div>
+      <div class="hopx-carta-cuerpo">
+        <p class="hopx-cama-nombre">${esc(p.titulo)}</p>
+        ${p.destino ? `<p class="hopx-dato">${ico("pin", 15)} <span>${esc(p.destino)}</span></p>` : ""}
+        ${p.nota || enlaceOk(p.url) ? `<p class="hopx-dato">${ico("cama", 15)} <span>${esc(p.nota || "")}${
+          enlaceOk(p.url) ? `${p.nota ? " · " : ""}<a href="${escURL(p.url)}" target="_blank" rel="noopener">ver el sitio</a>` : ""
+        }</span></p>` : ""}
+        ${medidorHTML(p)}
+        ${votarHTML(p)}
+        <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span></div>
+      </div>
+    </article>`;
+}
+
+function barraMazo(tipo, lista) {
   const pendientes = sinVotar(lista).length;
-  caja.innerHTML = `<div class="hop-mazo-cab">
-      <p><b>${lista.length} vuelos</b> · ordenados por lo que más gusta</p>
+  const orden = estado.orden || "votos";
+  return `<div class="hopx-barra">
+      <p><b>${lista.length} ${tipo === "cama" ? "sitios" : "destinos"}</b></p>
+      <div class="hop-filtro" role="radiogroup" aria-label="Ordenar">
+        <button type="button" role="radio" data-orden="votos" aria-checked="${orden === "votos"}">Más votados</button>
+        <button type="button" role="radio" data-orden="precio" aria-checked="${orden === "precio"}">Más baratos</button>
+      </div>
       ${
         pendientes
-          ? `<button class="btn primary small" type="button" data-rapido="vuelo">⚡ Votar rápido · ${pendientes}</button>`
-          : `<span class="hop-chip">✓ ya has votado todos</span>`
+          ? `<button class="btn primary small hopx-deslizar" type="button" data-rapido="${tipo}">${ico("cartas", 16)} Votar deslizando <i>${pendientes}</i></button>`
+          : `<span class="hop-chip">${ico("si", 14)} ya has votado todo</span>`
       }
-    </div>
-    <div class="hop-mazo">${lista.map((p, i) => tarjetaVuelo(p, i + 1)).join("")}</div>`;
-  caja.querySelector("[data-rapido]")?.addEventListener("click", () => votarRapido(app, "vuelo"));
+    </div>`;
+}
+
+function pintarMazo(app, caja, tipo, carta) {
+  const lista = ordenadas(deTipo(tipo), estado.orden);
+  if (!lista.length) {
+    pintarSi(caja, "");
+    return;
+  }
+  const lider = ganadora(tipo);
+  if (
+    pintarSi(
+      caja,
+      barraMazo(tipo, lista) +
+        `<div class="hopx-mazo">${lista.map((p, i) => carta(p, i + 1, p === lider)).join("")}</div>`
+    )
+  ) {
+    caja.querySelector("[data-rapido]")?.addEventListener("click", () => votarDeslizando(app, tipo));
+    caja.querySelectorAll("[data-orden]").forEach((b) =>
+      b.addEventListener("click", () => {
+        estado.orden = b.dataset.orden;
+        pintarViaje(app);
+      })
+    );
+  }
+}
+
+function pintarVuelos(app) {
+  pintarMazo(app, $("#hopVuelos", app), "vuelo", cartaVuelo);
 }
 
 /* ------------------------------------------------------- dónde dormir */
 function pintarCamas(app) {
-  const caja = $("#hopCamas", app);
+  const caja = $("#hopCamasCab", app);
   const estadoTxt = $("#hopEstadoCama", app);
   const v = ganadora("vuelo");
   const c = enMarcha("cama");
-  const camas = ordenadas(deTipo("cama"));
+  const camas = deTipo("cama");
   const gana = ganadora("cama");
-  estadoTxt.textContent = c ? "buscando…" : gana ? `✓ ${gana.titulo}` : camas.length ? `${camas.length} opciones` : "";
+  estadoTxt.textContent = c ? "buscando…" : gana ? `va ganando ${gana.titulo}` : camas.length ? `${camas.length} sitios` : "";
   let cabeza = "";
   if (c && c.pasado < CADUCA_BUSQUEDA_MS) {
     cabeza = progresoHTML(c, ESPERA_CAMA_MS, "dónde dormir");
   } else if (!v) {
-    cabeza = `<div class="hop-bloqueado">🔒 Primero, el vuelo: en cuanto uno tenga un 👍, se busca cama para esas fechas.</div>`;
+    cabeza = `<div class="hopx-bloqueado">${ico("candado", 20)}<p><b>Primero, el destino.</b> En cuanto un destino tenga
+      un «me apunto», se busca alojamiento para esas fechas.</p></div>`;
   } else if (!(estado.hop.cama && estado.hop.cama.oferta === v.oferta && estado.hop.cama.estado !== "buscando")) {
-    cabeza = `<div class="hop-cta">
-        <p>El vuelo que más gusta es <b>${esc(v.titulo)}</b>, ${esc(fmtDate(v.ida))} → ${esc(fmtDate(v.vuelta))}.</p>
-        <button class="btn primary" type="button" data-hop-cama>🛏 Buscar dónde dormir para ${personasHop()}</button>
-        <p class="hop-msg" role="status"></p>
+    cabeza = `<div class="hopx-cta">
+        ${huecoFoto({ iata: v.iata, ciudad: v.titulo, pais: v.pais }, `hopx-cta-foto ${tono(v.iata || v.titulo)}`)}
+        <div class="hopx-cta-txt">
+          <p>Va ganando <b>${esc(v.titulo)}</b>, del ${esc(fmtDate(v.ida))} al ${esc(fmtDate(v.vuelta))}.</p>
+          <button class="btn primary" type="button" data-hop-cama>${ico("cama")} Buscar dónde dormir para ${personasHop()}</button>
+          <p class="hop-msg" role="status"></p>
+        </div>
       </div>`;
   }
-  caja.innerHTML =
-    cabeza +
-    (camas.length
-      ? `<div class="hop-mazo-cab">
-          <p><b>${camas.length} sitios</b> · el precio es por persona</p>
-          ${
-            sinVotar(camas).length
-              ? `<button class="btn primary small" type="button" data-rapido="cama">⚡ Votar rápido · ${sinVotar(camas).length}</button>`
-              : ""
-          }
-        </div>
-        <div class="hop-mazo camas">${camas.map((p, i) => tarjetaCama(p, i + 1)).join("")}</div>`
-      : "");
-  caja.querySelector("[data-rapido]")?.addEventListener("click", () => votarRapido(app, "cama"));
-  caja.querySelector("[data-hop-cama]")?.addEventListener("click", (e) => buscarCama(app, v, e.currentTarget));
-}
-
-function tarjetaCama(p, puesto) {
-  return `<article class="hop-vuelo hop-cama${puesto === 1 && puntos(p).si ? " top" : ""}" data-prop="${esc(p.id)}">
-      <div class="hop-vuelo-foto hop-cama-foto ${tono(p.titulo)}"${
-        p.foto && escURL(p.foto) !== "#" ? ` style="background-image:url('${escURL(p.foto)}')"` : ""
-      }>
-        ${puesto <= 3 && puntos(p).si ? `<span class="hop-puesto">#${puesto}</span>` : ""}
-        <span class="hop-vuelo-precio">${Number.isFinite(p.precio) ? euros(p.precio) : "—"}<small>/pers.</small></span>
-      </div>
-      <div class="hop-vuelo-cuerpo">
-        <p class="hop-cama-nombre">${esc(p.titulo)}</p>
-        ${p.destino ? `<p class="hop-vuelo-dato">${esc(p.destino)}</p>` : ""}
-        ${p.nota ? `<p class="hop-vuelo-dato">${esc(p.nota)}</p>` : ""}
-        ${p.url && escURL(p.url) !== "#" ? `<p class="hop-vuelo-dato"><a href="${escURL(p.url)}" target="_blank" rel="noopener">ver el sitio ↗</a></p>` : ""}
-        ${votosHTML(p, true)}
-        <div class="hop-vuelo-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span></div>
-      </div>
-    </article>`;
+  if (pintarSi(caja, cabeza)) {
+    caja.querySelector("[data-hop-cama]")?.addEventListener("click", (e) => buscarCama(app, v, e.currentTarget));
+  }
+  pintarMazo(app, $("#hopCamas", app), "cama", cartaCama);
 }
 
 async function buscarCama(app, v, boton) {
@@ -1441,6 +1555,7 @@ async function buscarCama(app, v, boton) {
     checkin: v.ida,
     checkout: v.vuelta || "",
     adults: String(n),
+    hop: estado.id,
   });
   boton.disabled = false;
   if (!r.ok) {
@@ -1465,58 +1580,189 @@ async function buscarCama(app, v, boton) {
   nubeHopApuntar(estado.id, "cama", apunte);
 }
 
-/* ---------------------------------------------------------- votar rápido
-   Una tarjeta grande cada vez, con tres botones (o ← ↓ →): lo que haces con
-   el pulgar en cualquier app de citas, para no tener que bajar por doce
-   tarjetas buscando cuál te falta. */
-function votarRapido(app, tipo) {
+/* ---------------------------------------------------------- votar deslizando
+   Una carta grande cada vez: a la derecha, me apunto; a la izquierda, paso;
+   hacia arriba, puede. Con el dedo, con el ratón, con los tres botones o con
+   las flechas. Tocando la foto (a izquierda o derecha) se pasan las fotos del
+   sitio, que para decidir un destino valen más que el nombre. */
+const UMBRAL = 90;
+
+function votarDeslizando(app, tipo) {
   const cola = sinVotar(ordenadas(deTipo(tipo)));
   if (!cola.length) return;
   let i = 0;
   const capa = document.createElement("div");
-  capa.className = "hop-rapido";
+  capa.className = "hopx-desliza";
   capa.setAttribute("role", "dialog");
   capa.setAttribute("aria-modal", "true");
-  capa.setAttribute("aria-label", "Votar rápido");
+  capa.setAttribute("aria-label", "Votar deslizando");
   document.body.appendChild(capa);
+  document.documentElement.classList.add("sin-scroll");
+  const antesFoco = document.activeElement;
   const cerrar = () => {
     document.removeEventListener("keydown", teclas);
     capa.remove();
+    document.documentElement.classList.remove("sin-scroll");
     pintarViaje(app);
+    if (antesFoco && antesFoco.isConnected) antesFoco.focus();
   };
+
+  const cartaGrande = (p, atras = false) => {
+    const dias = noches(p.ida, p.vuelta);
+    const foto =
+      tipo === "cama" && enlaceOk(p.foto)
+        ? `<div class="foto-lugar con-foto" style="background-image:url('${escURL(p.foto)}')"></div>`
+        : `<div class="foto-lugar ${tono(p.iata || p.titulo)}"></div>`;
+    return `<div class="hopx-dcarta${atras ? " atras" : ""}" ${atras ? 'aria-hidden="true"' : ""}>
+        <div class="hopx-dcarta-foto">
+          ${foto}
+          <span class="hopx-marca" aria-hidden="true">${esc(p.iata || "")}</span>
+          <div class="hopx-fotos-barras"></div>
+          <span class="hopx-sello s-si">Me apunto</span>
+          <span class="hopx-sello s-no">Paso</span>
+          <span class="hopx-sello s-quiza">Puede</span>
+          <div class="hopx-dcarta-velo">
+            <b>${esc(p.titulo)}</b>
+            <small>${esc(tipo === "cama" ? p.destino || "" : p.pais || "")}</small>
+          </div>
+          <span class="hopx-precio">${Number.isFinite(p.precio) ? euros(p.precio) : "—"}<small>por cabeza</small></span>
+        </div>
+        <div class="hopx-dcarta-datos">
+          ${
+            tipo === "cama"
+              ? `<p>${esc(p.nota || "")}</p>`
+              : `<p>${ico("calendario", 15)} ${esc(fmtDate(p.ida, true))} – ${esc(fmtDate(p.vuelta, true))}${
+                  dias ? ` · ${dias} noche${dias === 1 ? "" : "s"}` : ""
+                }</p>
+                 <p>${ico("avion", 15)} ${esc([p.horario, p.compania].filter(Boolean).join(" · "))}</p>`
+          }
+        </div>
+      </div>`;
+  };
+
   const pintar = () => {
     const p = cola[i];
     if (!p) {
-      capa.innerHTML = `<div class="hop-rapido-caja fin">
-          <p class="hop-rapido-emoji" aria-hidden="true">🎉</p>
-          <h3>¡Ya está!</h3>
-          <p>Has votado todo. Lo que más guste al grupo sube al resumen.</p>
-          <button class="btn primary" type="button" data-cerrar-rapido>Volver al viaje</button>
+      const top = ordenadas(deTipo(tipo)).slice(0, 3);
+      capa.innerHTML = `<div class="hopx-desliza-caja fin">
+          <span class="hopx-fin-ico">${ico("si", 34)}</span>
+          <h3>Votado</h3>
+          <p>Así va el grupo:</p>
+          <ol class="hopx-podio">${top
+            .map((x) => `<li><b>${esc(x.titulo)}</b><span>${puntos(x).si} se apuntan</span></li>`)
+            .join("")}</ol>
+          <button class="btn primary" type="button" data-cerrar>Volver al viaje</button>
         </div>`;
-      capa.querySelector("[data-cerrar-rapido]").addEventListener("click", cerrar);
-      capa.querySelector("[data-cerrar-rapido]").focus();
+      capa.querySelector("[data-cerrar]").addEventListener("click", cerrar);
+      capa.querySelector("[data-cerrar]").focus();
       return;
     }
-    capa.innerHTML = `<div class="hop-rapido-caja">
-        <div class="hop-rapido-cab"><span>${i + 1} de ${cola.length}</span>
-          <button type="button" class="quitar" data-cerrar-rapido aria-label="Cerrar">cerrar</button></div>
-        <div class="hop-rapido-tarjeta">${tipo === "cama" ? tarjetaCama(p, 99) : tarjetaVuelo(p, 99)}</div>
-        <div class="hop-rapido-botones">
-          <button type="button" class="hop-rapido-b no" data-rv="no" aria-label="No puedo">✖<small>No</small></button>
-          <button type="button" class="hop-rapido-b quiza" data-rv="quiza" aria-label="Puede">🤔<small>Puede</small></button>
-          <button type="button" class="hop-rapido-b si" data-rv="si" aria-label="Me encaja">❤<small>Me encaja</small></button>
+    capa.innerHTML = `<div class="hopx-desliza-caja">
+        <div class="hopx-desliza-cab">
+          <span class="hopx-progreso" aria-label="${i + 1} de ${cola.length}"><span>${i + 1} de ${cola.length}</span>
+            <i style="width:${(i / cola.length) * 100}%"></i></span>
+          <button type="button" class="hopx-cerrar" data-cerrar aria-label="Cerrar">${ico("no", 18)}</button>
         </div>
-        <p class="hop-letra hop-rapido-teclas">Con el teclado: ← no · ↓ puede · → me encaja</p>
+        <div class="hopx-pila">
+          ${cola[i + 1] ? cartaGrande(cola[i + 1], true) : ""}
+          ${cartaGrande(p)}
+        </div>
+        <div class="hopx-desliza-botones">
+          <button type="button" class="hopx-redondo no" data-rv="no" aria-label="Paso">${ico("no", 28)}</button>
+          <button type="button" class="hopx-redondo quiza" data-rv="quiza" aria-label="Puede">${ico("quiza", 26)}</button>
+          <button type="button" class="hopx-redondo si" data-rv="si" aria-label="Me apunto">${ico("si", 30)}</button>
+        </div>
+        <p class="hop-letra hopx-teclas">Desliza la carta, o con el teclado: ← paso · ↑ puede · → me apunto</p>
       </div>`;
-    capa.querySelector(".hop-rapido-tarjeta .hop-votos")?.remove();
-    capa.querySelector("[data-cerrar-rapido]").addEventListener("click", cerrar);
+    capa.querySelector("[data-cerrar]").addEventListener("click", cerrar);
     capa.querySelectorAll("[data-rv]").forEach((b) => b.addEventListener("click", () => votarYSeguir(b.dataset.rv)));
-    capa.querySelector('[data-rv="si"]').focus();
+    const carta = capa.querySelector(".hopx-dcarta:not(.atras)");
+    if (tipo === "vuelo") galeriaEnCarta(carta, p);
+    else ponerFotos(carta);
+    arrastrable(carta);
+    capa.querySelector('[data-rv="si"]').focus({ preventScroll: true });
   };
+
+  // Las fotos del sitio dentro de la carta, con sus rayitas arriba.
+  const galeriaEnCarta = (carta, p) => {
+    const hueco = carta.querySelector(".foto-lugar");
+    const barras = carta.querySelector(".hopx-fotos-barras");
+    fotosDe({ iata: p.iata, ciudad: p.titulo, pais: p.pais }, 5).then((fotos) => {
+      if (!fotos.length || !carta.isConnected) return;
+      let k = 0;
+      const poner = () => {
+        hueco.style.backgroundImage = `url("${fotos[k].src.replace(/"/g, "%22")}")`;
+        hueco.classList.add("con-foto");
+        hueco.innerHTML = creditoHTML(fotos[k]);
+        barras.innerHTML = fotos.length > 1 ? fotos.map((_, j) => `<i class="${j === k ? "si" : ""}"></i>`).join("") : "";
+      };
+      poner();
+      carta.dataset.fotos = String(fotos.length);
+      carta.cambiarFoto = (paso) => {
+        k = (k + paso + fotos.length) % fotos.length;
+        poner();
+      };
+    });
+  };
+
+  const arrastrable = (carta) => {
+    let x0 = 0;
+    let y0 = 0;
+    let dx = 0;
+    let dy = 0;
+    let moviendo = false;
+    const mover = () => {
+      carta.style.transform = `translate(${dx}px, ${dy}px) rotate(${dx / 14}deg)`;
+      const fuerza = (v) => Math.min(1, Math.abs(v) / UMBRAL);
+      carta.style.setProperty("--si", dx > 0 ? fuerza(dx) : 0);
+      carta.style.setProperty("--no", dx < 0 ? fuerza(dx) : 0);
+      carta.style.setProperty("--quiza", dy < 0 && Math.abs(dy) > Math.abs(dx) ? fuerza(dy) : 0);
+    };
+    carta.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("a")) return;
+      moviendo = true;
+      x0 = e.clientX;
+      y0 = e.clientY;
+      dx = dy = 0;
+      carta.setPointerCapture(e.pointerId);
+      carta.classList.add("moviendo");
+    });
+    carta.addEventListener("pointermove", (e) => {
+      if (!moviendo) return;
+      dx = e.clientX - x0;
+      dy = e.clientY - y0;
+      mover();
+    });
+    const soltar = (e) => {
+      if (!moviendo) return;
+      moviendo = false;
+      carta.classList.remove("moviendo");
+      if (dx > UMBRAL) return votarYSeguir("si");
+      if (dx < -UMBRAL) return votarYSeguir("no");
+      if (dy < -UMBRAL) return votarYSeguir("quiza");
+      // Un toque sin arrastrar: en la foto, pasa a la siguiente o la anterior.
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6 && carta.cambiarFoto && e.target.closest(".hopx-dcarta-foto")) {
+        const r = carta.getBoundingClientRect();
+        carta.cambiarFoto(e.clientX - r.left > r.width / 2 ? 1 : -1);
+      }
+      dx = dy = 0;
+      carta.style.transform = "";
+      mover();
+    };
+    carta.addEventListener("pointerup", soltar);
+    carta.addEventListener("pointercancel", soltar);
+  };
+
+  let ocupado = false;
   const votarYSeguir = (voto) => {
+    if (ocupado || !cola[i]) return;
+    ocupado = true;
     const p = cola[i];
-    const tarjeta = capa.querySelector(".hop-rapido-tarjeta");
-    if (tarjeta) tarjeta.classList.add(`sale-${voto}`);
+    const carta = capa.querySelector(".hopx-dcarta:not(.atras)");
+    if (carta) {
+      carta.style.transform = "";
+      carta.classList.add(`sale-${voto}`);
+    }
     p.votos = { ...p.votos, [yo().uid]: voto };
     nubeVotar(estado.id, p.id, voto).then((r) => {
       if (!r.ok) {
@@ -1526,13 +1772,14 @@ function votarRapido(app, tipo) {
     });
     setTimeout(() => {
       i += 1;
+      ocupado = false;
       pintar();
-    }, 220);
+    }, 260);
   };
   const teclas = (e) => {
     if (e.key === "Escape") return cerrar();
     if (!cola[i]) return;
-    const voto = { ArrowLeft: "no", ArrowDown: "quiza", ArrowRight: "si" }[e.key];
+    const voto = { ArrowLeft: "no", ArrowUp: "quiza", ArrowDown: "quiza", ArrowRight: "si" }[e.key];
     if (voto) {
       e.preventDefault();
       votarYSeguir(voto);
