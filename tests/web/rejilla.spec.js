@@ -26,15 +26,22 @@ test("la última celda sola ocupa la fila entera, y deja de hacerlo cuando ya no
   });
   await page.goto("/buscar.html");
   const form = await page.locator("#finderForm").boundingBox();
-  let w = await anchos(page, "#finderForm");
-  expect(w.length % 2).toBe(1);
-  expect(w[w.length - 1]).toBeGreaterThan(form.width - 4);
-
-  // Con «Un mes entero» aparece el mes: cuatro celdas, dos filas completas.
+  // Sea cual sea el número de celdas: si es impar, la última ocupa la fila
+  // entera; si es par, ninguna pasa de media fila.
+  const cuadra = async () => {
+    const w = await anchos(page, "#finderForm");
+    if (w.length % 2) expect(w[w.length - 1]).toBeGreaterThan(form.width - 4);
+    else expect(Math.max(...w)).toBeLessThan(form.width / 2 + 4);
+    return w.length;
+  };
+  // Donde sea y un finde: origen, a dónde, por dónde y cuándo.
+  const antes = await cuadra();
+  // Con «Un mes entero» aparece el mes: una celda más, y sigue sin huecos.
   await page.selectOption("#fWhen", "mes");
-  w = await anchos(page, "#finderForm");
-  expect(w.length % 2).toBe(0);
-  expect(Math.max(...w)).toBeLessThan(form.width / 2 + 4);
+  expect(await cuadra()).toBe(antes + 1);
+  // Y con un sitio concreto, «¿Por dónde?» se va y entra el destino.
+  await page.selectOption("#fWhere", "one");
+  await cuadra();
 });
 
 /* En el ordenador, los campos van en fila, como en cualquier buscador de

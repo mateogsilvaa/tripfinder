@@ -1124,6 +1124,8 @@ def cmd_search(args: argparse.Namespace) -> int:
         hasta=args.hasta or "",
         dias=getattr(args, "dias", "") or "",
         horas=getattr(args, "horas", "") or "",
+        solo=getattr(args, "solo", "") or "",
+        sin=getattr(args, "sin", "") or "",
         owner=primer_dueno(args.owner),
         owner_name=args.owner_name or "",
     )
@@ -1940,6 +1942,8 @@ def build_parser() -> argparse.ArgumentParser:
         default="",
         help="Franjas: salida ida, llegada ida, salida vuelta, llegada vuelta. '6-12,,16-24,'",
     )
+    b.add_argument("--solo", default="", help="Solo estos destinos, en codigos IATA: 'OPOLISFAO' u 'OPO,LIS'")
+    b.add_argument("--sin", default="", help="Ninguno de estos destinos, en codigos IATA")
     b.add_argument("--adults", type=int)
     b.add_argument("--summary-out")
     b.add_argument("--owner", default="", help="Id de la cuenta que la pide")

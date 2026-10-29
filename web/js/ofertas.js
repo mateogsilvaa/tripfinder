@@ -1,6 +1,6 @@
 /* ofertas.js — La hoja del dia: cargar el scan, filtrar, y pintar la plancha y el indice. */
 
-import { huecoFoto, montarGaleria, ponerFotos } from "./fotos.js";
+import { huecoFoto, ponerFotos } from "./fotos.js";
 import { abrirMundo, paisesElegidos, rotuloPaises } from "./mundo.js";
 import {
   $,
@@ -709,15 +709,13 @@ function detalleHTML(o) {
           : ""
       }
       ${botonesHTML(o)}
-    </div>
-    <div class="galeria" data-galeria hidden></div>`;
+    </div>`;
 }
 
 /* El detalle se pinta dos veces: una al abrirlo y otra cuando llega el
    historico de precios, asi que sus botones se cablean aparte. */
 function wireDetalle(caja, o) {
   wireCompartir(caja, () => o);
-  montarGaleria(caja.querySelector("[data-galeria]"), o);
   caja.querySelectorAll("[data-stay]").forEach((b) =>
     b.addEventListener("click", (ev) => {
       ev.stopPropagation();
@@ -764,7 +762,7 @@ export function wireRows(raiz = document) {
   wireCompartir(raiz, (id) => OFFERS.find((x) => x.id === id) || SEARCH_OFFERS[id]);
   raiz.querySelectorAll(".brow[data-open]").forEach((fila) => {
     fila.addEventListener("click", (ev) => {
-      if (ev.target.closest("a, button, .galeria")) return; // los enlaces y las fotos hacen lo suyo
+      if (ev.target.closest("a, button")) return; // los enlaces hacen lo suyo
       toggleRow(fila);
     });
     fila.addEventListener("keydown", (ev) => {

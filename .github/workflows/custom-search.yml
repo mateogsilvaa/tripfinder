@@ -59,6 +59,8 @@ jobs:
           P_DIAS: ${{ github.event.client_payload.viaje.dias }}
           P_HORAS: ${{ github.event.client_payload.viaje.horas }}
           P_CLAVE: ${{ github.event.client_payload.viaje.clave }}
+          P_SOLO: ${{ github.event.client_payload.viaje.solo }}
+          P_SIN: ${{ github.event.client_payload.viaje.sin }}
           P_OWNER: ${{ github.event.client_payload.owner }}
           P_OWNER_NAME: ${{ github.event.client_payload.owner_name }}
         run: |
@@ -69,6 +71,9 @@ jobs:
             echo "adults=$P_ADULTS"; echo "depart=$P_DEPART"; echo "return_date=$P_RETURN"
             echo "desde=$P_DESDE"; echo "hasta=$P_HASTA"; echo "origin=$P_ORIGIN"
             echo "camas=$P_CAMAS"; echo "dias=$P_DIAS"; echo "horas=$P_HORAS"; echo "clave=$P_CLAVE"
+            # Solo codigos IATA: lo demas se tira aqui, antes de tocar nada.
+            echo "solo=$(printf '%s' "$P_SOLO" | tr -cd 'A-Za-z,' | head -c 8000)"
+            echo "sin=$(printf '%s' "$P_SIN" | tr -cd 'A-Za-z,' | head -c 8000)"
             echo "owner=$P_OWNER"; echo "owner_name=$P_OWNER_NAME"
           } >> "$GITHUB_OUTPUT"
 
@@ -91,6 +96,8 @@ jobs:
           DIAS: ${{ steps.parse.outputs.dias }}
           HORAS: ${{ steps.parse.outputs.horas }}
           CLAVE: ${{ steps.parse.outputs.clave }}
+          SOLO: ${{ steps.parse.outputs.solo }}
+          SIN: ${{ steps.parse.outputs.sin }}
           # Para dejar el resultado de un HOP tambien en Firestore (si no hay, no pasa nada).
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           OWNER: ${{ steps.parse.outputs.owner }}
@@ -112,6 +119,9 @@ jobs:
           if [ -n "$HORAS" ];     then args+=(--horas "$HORAS"); fi
           # La busqueda de un HOP: el resultado tambien a Firestore, para el grupo.
           if [ -n "$CLAVE" ];     then args+=(--clave "$CLAVE"); fi
+          # Afinar el «donde sea»: solo estos destinos, o todos menos estos.
+          if [ -n "$SOLO" ];      then args+=(--solo "$SOLO"); fi
+          if [ -n "$SIN" ];       then args+=(--sin "$SIN"); fi
           # De donde sales. Va dentro de `viaje` por lo mismo que las fechas:
           # `client_payload` solo admite diez propiedades de primer nivel.
           if [ -n "$ORIGIN" ];    then args+=(--origin "$ORIGIN"); fi

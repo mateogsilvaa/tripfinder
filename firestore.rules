@@ -204,6 +204,40 @@ service cloud.firestore {
         && (!('estado' in m) || m.estado in ['buscando', 'lista', 'vacia']));
     }
 
+    // Las fases del HOP. Las fechas que se fijan (fase 1) y el plan del
+    // ganador, que se puede retocar (fase 5).
+    function fechasOk(m) {
+      return m == null || (m is map && m.keys().hasOnly(['ida', 'vuelta'])
+        && (!('ida' in m) || esFecha(m.ida)) && (!('vuelta' in m) || esFecha(m.vuelta)));
+    }
+    function textoOk(m, k, n) {
+      return !(k in m) || (m[k] is string && m[k].size() <= n);
+    }
+    function enlaceOk(m, k) {
+      return !(k in m) || (m[k] is string && m[k].size() <= 500 && (m[k] == '' || m[k].matches('^https://.+')));
+    }
+    function planOk(m) {
+      return m == null || (m is map
+        && m.keys().hasOnly(['de', 'titulo', 'pais', 'iata', 'ida', 'vuelta', 'precio', 'compania', 'url',
+              'cama', 'cama_url', 'cama_precio', 'nota', 'por', 'nombre'])
+        && textoOk(m, 'de', 120) && textoOk(m, 'titulo', 80) && textoOk(m, 'pais', 60) && textoOk(m, 'iata', 8)
+        && textoOk(m, 'compania', 60) && textoOk(m, 'cama', 120) && textoOk(m, 'nota', 500)
+        && textoOk(m, 'nombre', 40) && textoOk(m, 'por', 128)
+        && (!('ida' in m) || m.ida == '' || esFecha(m.ida))
+        && (!('vuelta' in m) || m.vuelta == '' || esFecha(m.vuelta))
+        && (!('precio' in m) || (m.precio is number && m.precio >= 0 && m.precio <= 100000))
+        && (!('cama_precio' in m) || (m.cama_precio is number && m.cama_precio >= 0 && m.cama_precio <= 100000))
+        && enlaceOk(m, 'url') && enlaceOk(m, 'cama_url'));
+    }
+    // Lo que no quiere cada cual: hasta tres ciudades, y cada uno toca solo
+    // las suyas.
+    function vetoOk(v) {
+      return v is list && v.size() <= 3
+        && (v.size() < 1 || (v[0] is string && v[0].size() <= 80))
+        && (v.size() < 2 || (v[1] is string && v[1].size() <= 80))
+        && (v.size() < 3 || (v[2] is string && v[2].size() <= 80));
+    }
+
     match /hops/{hopId} {
       function j() {
         return request.resource.data;
@@ -254,6 +288,19 @@ service cloud.firestore {
           && j().diff(resource.data).affectedKeys().hasOnly(['busqueda', 'cama'])
           && enMarcha(j().get('busqueda', null))
           && enMarcha(j().get('cama', null)))
+        // Las fases: cualquier miembro pasa de una a otra, fija las fechas y
+        // retoca el plan del ganador.
+        || (request.auth.uid in resource.data.miembros
+          && j().diff(resource.data).affectedKeys().hasOnly(['fase', 'fechas', 'plan'])
+          && (!('fase' in j()) || (j().fase is int && j().fase >= 1 && j().fase <= 5))
+          && fechasOk(j().get('fechas', null))
+          && planOk(j().get('plan', null)))
+        // Los vetos: cada cual los suyos, hasta tres.
+        || (request.auth.uid in resource.data.miembros
+          && j().diff(resource.data).affectedKeys().hasOnly(['vetos'])
+          && j().vetos is map
+          && j().vetos.diff(resource.data.get('vetos', {})).affectedKeys().hasOnly([request.auth.uid])
+          && (!(request.auth.uid in j().vetos) || vetoOk(j().vetos[request.auth.uid])))
         // Salirse: quitarse a uno mismo. Quien la creó no se sale: la borra.
         || (request.auth.uid in resource.data.miembros
           && request.auth.uid != resource.data.creador
@@ -273,7 +320,7 @@ service cloud.firestore {
         allow read: if miembro(hopId);
         allow create: if miembro(hopId)
           && p().keys().hasOnly(['tipo', 'titulo', 'nota', 'destino', 'ida', 'vuelta', 'precio', 'url', 'autor', 'nombre', 'votos', 'creado',
-                'compania', 'horario', 'oferta', 'iata', 'pais', 'foto', 'origen'])
+                'compania', 'horario', 'oferta', 'iata', 'pais', 'foto', 'origen', 'cama', 'cama_url', 'cama_precio'])
           && p().keys().hasAll(['tipo', 'titulo', 'autor', 'votos', 'creado'])
           && (p().tipo == 'fechas' || p().tipo == 'viaje' || p().tipo == 'vuelo' || p().tipo == 'cama')
           && p().autor == request.auth.uid
@@ -293,7 +340,10 @@ service cloud.firestore {
           && (!('iata' in p()) || (p().iata is string && p().iata.size() <= 8))
           && (!('origen' in p()) || (p().origen is string && p().origen.size() <= 8))
           && (!('pais' in p()) || (p().pais is string && p().pais.size() <= 60))
-          && (!('foto' in p()) || (p().foto is string && p().foto.size() <= 500 && p().foto.matches('^https://.+')));
+          && (!('foto' in p()) || (p().foto is string && p().foto.size() <= 500 && p().foto.matches('^https://.+')))
+          && (!('cama' in p()) || (p().cama is string && p().cama.size() <= 120))
+          && (!('cama_url' in p()) || (p().cama_url is string && p().cama_url.size() <= 500 && p().cama_url.matches('^https://.+')))
+          && (!('cama_precio' in p()) || (p().cama_precio is number && p().cama_precio >= 0 && p().cama_precio <= 100000));
         // Votar: cada cual su voto (sí, quizá o no), o quitarlo.
         allow update: if miembro(hopId)
           && p().diff(resource.data).affectedKeys().hasOnly(['votos'])

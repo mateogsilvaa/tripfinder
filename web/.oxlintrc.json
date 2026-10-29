@@ -96,7 +96,9 @@
     "nubeBorrarPropuesta": "readonly",
     "nubeMensajes": "readonly",
     "nubeMandarMensaje": "readonly",
-    "nubeHopApuntar": "readonly"
+    "nubeHopApuntar": "readonly",
+    "nubeHopCambiar": "readonly",
+    "nubeHopVetar": "readonly"
   },
   "rules": {
     "no-unused-vars": [

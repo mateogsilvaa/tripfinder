@@ -15,9 +15,9 @@
      vez que se abre.
    · DE TRES EN TRES: las peticiones van en fila, y solo cuando la tarjeta se
      va a ver (`IntersectionObserver`).
-   · EN LAS PRUEBAS NO SALEN (`navigator.webdriver`), salvo que la prueba las
-     pida con `window.TF_FOTOS = true` y conteste ella a Wikipedia: una foto
-     que llega de fuera cuando quiere no puede decidir si una prueba pasa.
+   · APAGADAS (`ENCENDIDAS`, más abajo). Y en las pruebas tampoco salen
+     (`navigator.webdriver`), salvo que la prueba las pida con
+     `window.TF_FOTOS = true` y conteste ella a Wikipedia.
    · El crédito va siempre con la foto: es lo que pide su licencia. */
 import { esc, escURL } from "./base.js";
 
@@ -58,7 +58,14 @@ const ARTICULOS = {
 const NO_ES_FOTO =
   /flag|bandera|escudo|coat[_ ]of[_ ]arms|blas[oó]n|wappen|mapa|map[_ .-]|location|locator|localizaci|logo|icon|seal|sello|plano|diagram|signature|firma|pictogram|s[ií]mbolo|symbol|commons-|wiki|portal|question|disambig|edit-|stub/i;
 
-const enPrueba = () => typeof navigator !== "undefined" && navigator.webdriver && !window.TF_FOTOS;
+/* APAGADAS de momento: las fotos de Wikipedia no convencen y se van a poner a
+   mano, empezando por las ciudades que más salen. Con esto en false no se
+   pide nada a Wikipedia y cada hueco se queda con el color de su sitio. Una
+   prueba las enciende con `window.TF_FOTOS = true`. */
+const ENCENDIDAS = false;
+const enPrueba = () =>
+  typeof window === "undefined" ||
+  (!window.TF_FOTOS && (!ENCENDIDAS || (typeof navigator !== "undefined" && navigator.webdriver)));
 
 export const lugarDe = (o) => ({
   iata: String(o.iata || o.destination || "").toUpperCase(),
@@ -252,25 +259,4 @@ export function ponerFotos(raiz = document) {
       { rootMargin: "300px" }
     );
   huecos.forEach((h) => mirador.observe(h));
-}
-
-/* La galería de un destino: una tira de fotos que se pasa con el dedo. */
-export async function montarGaleria(caja, lugar, n = 6) {
-  if (!caja) return;
-  const fotos = await fotosDe(lugar, n);
-  if (!fotos.length) {
-    caja.remove();
-    return;
-  }
-  const l = lugarDe(lugar);
-  caja.innerHTML = `<p class="galeria-tit">${esc(l.ciudad)} en fotos</p>
-    <div class="galeria-tira">${fotos
-      .map(
-        (f) => `<figure class="galeria-foto">
-          <img src="${escURL(f.src)}" alt="" loading="lazy" width="${f.w}" height="${f.h}">
-          <figcaption>${creditoHTML(f)}</figcaption>
-        </figure>`
-      )
-      .join("")}</div>`;
-  caja.hidden = false;
 }

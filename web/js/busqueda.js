@@ -44,6 +44,7 @@ import {
   terminadaHTML,
   terminadas,
 } from "./destinos.js";
+import { codigosDelFiltro, montarFiltroDestinos, textoFiltro } from "./filtro-destinos.js";
 import { cargarWatches } from "./seguimientos.js";
 import { desde } from "./alojamiento.js";
 import { montarSemana } from "./semana.js";
@@ -161,6 +162,11 @@ function syncFinder() {
   const cuando = $("#fWhen").value;
   // Ida y vuelta comparten ya un solo control, asi que #returnWrap no existe.
   $("#destWrap").hidden = donde !== "one";
+  // Afinar el «donde sea»: solo unos países, o todos menos unos.
+  if (existe("#filtroWrap")) {
+    $("#filtroWrap").hidden = donde !== "any";
+    montarFiltroDestinos($("#filtroWrap"), $("#fFiltro"));
+  }
   llenarOrigenes();
   if (existe("#mesWrap")) {
     llenarMeses();
@@ -274,6 +280,9 @@ on("#finderForm", "submit", async (e) => {
       : `${$("#fMonths").value || 12} meses`;
 
   const origen = $("#fOrigen") ? $("#fOrigen").value.trim().toUpperCase() : "";
+  // Los países y las ciudades del filtro, ya pasados a sus aeropuertos.
+  const filtro = donde === "any" && existe("#fFiltro") && $("#fFiltro").value;
+  const { solo, sin } = filtro ? await codigosDelFiltro($("#fFiltro").value) : { solo: "", sin: "" };
   const payload = {
     dest,
     label: [
@@ -284,6 +293,7 @@ on("#finderForm", "submit", async (e) => {
       `hasta ${$("#fMax").value} €`,
       personas > 1 ? `${personas} pers.` : "1 pers.",
       existe("#fHoras") ? textoHoras($("#fHoras").value) : "",
+      filtro ? textoFiltro($("#fFiltro").value) : "",
     ]
       .filter(Boolean)
       .join(" · "),
@@ -311,6 +321,8 @@ on("#finderForm", "submit", async (e) => {
       camas: $("#fCamas") && $("#fCamas").checked ? "si" : "",
       dias: cuando === "dias" ? `${$("#fDiaIda").value}-${$("#fDiaVuelta").value}` : "",
       horas: existe("#fHoras") ? $("#fHoras").value : "",
+      solo,
+      sin,
     },
   };
 

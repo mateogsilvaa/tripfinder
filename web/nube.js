@@ -1051,7 +1051,7 @@ async function nubePropuestas(id) {
 const NUBE_TIPOS_PROPUESTA = ["fechas", "viaje", "vuelo", "cama"];
 const NUBE_TOPES_PROPUESTA = {
   nota: 500, destino: 80, ida: 10, vuelta: 10, url: 500, compania: 60, horario: 120, oferta: 120,
-  iata: 8, origen: 8, pais: 60, foto: 500,
+  iata: 8, origen: 8, pais: 60, foto: 500, cama: 120, cama_url: 500,
 };
 
 /* Una propuesta. Las que salen de una búsqueda (`vuelo`, `cama`) llevan un id
@@ -1067,11 +1067,16 @@ async function nubeProponer(id, datos) {
     const v = String(datos[k] ?? "").trim();
     if (v) campos[k] = v.slice(0, tope);
   }
-  for (const k of ["url", "foto"]) if (campos[k] && !campos[k].startsWith("https://")) delete campos[k];
+  for (const k of ["url", "foto", "cama_url"]) if (campos[k] && !campos[k].startsWith("https://")) delete campos[k];
   for (const k of ["ida", "vuelta"]) if (campos[k] && !/^\d{4}-\d{2}-\d{2}$/.test(campos[k])) delete campos[k];
   const precio = Number(datos.precio);
   if (datos.precio !== "" && datos.precio != null && Number.isFinite(precio) && precio >= 0) {
     campos.precio = Math.round(precio * 100) / 100;
+  }
+  // Lo que cuesta dormir, si va con alojamiento: también por persona.
+  const camaPrecio = Number(datos.cama_precio);
+  if (datos.cama_precio !== "" && datos.cama_precio != null && Number.isFinite(camaPrecio) && camaPrecio >= 0) {
+    campos.cama_precio = Math.round(camaPrecio * 100) / 100;
   }
   const pid = datos.pid ? String(datos.pid).replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 120) : nubeNuevoId();
   try {
@@ -1088,14 +1093,44 @@ async function nubeProponer(id, datos) {
 /* Lo que el grupo tiene en marcha (`busqueda`, `cama`), para que lo vean todos;
    null lo quita. */
 async function nubeHopApuntar(id, campo, valor) {
+  return nubeHopCambiar(id, { [campo]: valor });
+}
+
+/* Lo que el grupo va decidiendo, en el propio HOP: la búsqueda y la cama en
+   marcha, la fase, las fechas fijadas y el plan del ganador. `null` borra el
+   campo. Las reglas dicen qué va con qué (la búsqueda no se escribe a la vez
+   que la fase). */
+const NUBE_HOP_CAMPOS = ["busqueda", "cama", "fase", "fechas", "plan"];
+async function nubeHopCambiar(id, cambios) {
   const t = await nubeHopToken();
   if (t.error) return { ok: false, error: t.error };
-  if (campo !== "busqueda" && campo !== "cama") return { ok: false, error: "No." };
+  const campos = Object.keys(cambios || {});
+  if (!campos.length || campos.some((c) => !NUBE_HOP_CAMPOS.includes(c))) return { ok: false, error: "No." };
+  const conValor = Object.fromEntries(Object.entries(cambios).filter(([, v]) => v !== null && v !== undefined));
   try {
     await nubeCommit(t.token, [
       {
-        update: { name: `${nubeBase()}/hops/${id}`, fields: valor ? nubeCampos({ [campo]: valor }) : {} },
-        updateMask: { fieldPaths: [campo] },
+        update: { name: `${nubeBase()}/hops/${id}`, fields: nubeCampos(conValor) },
+        updateMask: { fieldPaths: campos },
+        currentDocument: { exists: true },
+      },
+    ]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+/* Las ciudades que no quieres (hasta tres): solo se toca lo tuyo. */
+async function nubeHopVetar(id, ciudades) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  const lista = (ciudades || []).slice(0, 3).map((c) => String(c).slice(0, 80));
+  try {
+    await nubeCommit(t.token, [
+      {
+        update: { name: `${nubeBase()}/hops/${id}`, fields: nubeCampos({ vetos: { [t.s.uid]: lista } }) },
+        updateMask: { fieldPaths: [`vetos.${t.s.uid}`] },
         currentDocument: { exists: true },
       },
     ]);
