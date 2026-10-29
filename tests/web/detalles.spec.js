@@ -39,9 +39,9 @@ test("en el móvil se navega con la barra de abajo, y marca dónde estás", asyn
   expect(caja.y + caja.height).toBeGreaterThan(830);
 });
 
-test("los planes: gratis y premium, y «Me interesa» sin cuenta pide entrar", async ({ page }) => {
+test("los planes: gratis, premium y Max, y «Me interesa» sin cuenta pide entrar", async ({ page }) => {
   await page.goto("/planes.html");
-  await expect(page.locator(".plan")).toHaveCount(2);
+  await expect(page.locator(".plan")).toHaveCount(3);
   await expect(page.locator("#planPremium")).toContainText("Premium");
   await expect(page.locator("#planesEstreno")).toBeVisible();
   await page.locator("#planQuiero").click();

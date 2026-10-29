@@ -117,6 +117,10 @@ DESCRIPCIONES = {
         "Gratis para ver chollos y recibirlos por correo. Premium para buscar, seguir "
         "viajes, alojamiento e Interrail."
     ),
+    "hop.html": (
+        "El modo HOP: un grupo para decidir el viaje entre varios. Se proponen fechas y "
+        "destinos, se vota y se habla en el chat."
+    ),
     "interrail.html": (
         "Monta tu Interrail: las ciudades por las que quieres pasar, los trenes, "
         "los vuelos de ida y vuelta y pisos enteros en el centro, con el total."
@@ -169,6 +173,8 @@ ICONOS = {
     "interrail": '<rect x="6" y="3.5" width="12" height="13.5" rx="3.2"/>'
     '<path d="M6 11.2h12M9.3 20.5 8 21.8M14.7 20.5l1.3 1.3"/>'
     '<path d="M9.6 14.3h.01M14.4 14.3h.01" stroke-width="2.4"/>',
+    "hop": '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/>'
+    '<path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 19.5a5.5 5.5 0 0 0-3-4.9"/>',
 }
 
 
@@ -185,6 +191,7 @@ ZONAS_NAV = (
     ("buscar", "buscar", "Buscar"),
     ("follows", "seguimientos", "Mis avisos"),
     ("interrail", "interrail", "Interrail"),
+    ("hop", "hop", "HOP"),
 )
 
 
@@ -302,6 +309,20 @@ PAGINAS = {
         "guiones": GUIONES_WEB,
         "tabbar": TABBAR,
     },
+    # El modo HOP: decidir el viaje en grupo, con votos y chat.
+    "hop.html": {
+        "base": "",
+        "manifiesto": MANIFIESTO,
+        "nav": NAV,
+        "descubrir": DESCUBRIR,
+        "titulo": "TripFinder · modo HOP",
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["hop.html"]}">',
+        "vivo": "",
+        "zona": "hop",
+        "nota": NOTA_WEB,
+        "guiones": GUIONES_WEB,
+        "tabbar": TABBAR,
+    },
     # Que se guarda de cada persona y que se ve en publico. Lleva el nav, para
     # volver, y no se anuncia como una zona.
     "privacidad.html": {
@@ -397,9 +418,9 @@ def _zonas(activa: str | None, clase: str = "zona") -> dict[str, str]:
 
     Tambien fueron cuatro con el mapamundi; se fue, y con el la zona "mundo".
     Luego fue "tren" (de Madrid en tren), que se quito: la cuarta es ahora el
-    Interrail."""
+    Interrail. La quinta es el modo HOP."""
     salida: dict[str, str] = {}
-    for z in ("promos", "buscar", "follows", "interrail"):
+    for z in ("promos", "buscar", "follows", "interrail", "hop"):
         if z == activa:
             salida[z] = f' class="{clase} activa" data-zona="{z}" aria-current="page"'
         else:

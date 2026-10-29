@@ -68,7 +68,8 @@ def plan_de(ficha: dict[str, Any] | None) -> str:
 
 
 def es_premium(ficha: dict[str, Any] | None) -> bool:
-    return bool(ficha) and ficha.get("estado") == "aprobado" and plan_de(ficha) == "premium"
+    # Max es premium sin límites: cuenta como premium en todo.
+    return bool(ficha) and ficha.get("estado") == "aprobado" and plan_de(ficha) in ("premium", "max")
 
 
 # Lo ya tramitado se borra pasada una semana: Firestore cobra por lo que se
@@ -401,6 +402,29 @@ def borrar_resultados_viejos(db: Any, ahora: datetime | None = None) -> int:
     n = 0
     for d in db.collection("resultados").where(filter=FieldFilter("creado", "<", corte)).stream():
         d.reference.delete()
+        n += 1
+    return n
+
+
+def limpiar_hops(db: Any, ahora: datetime | None = None) -> int:
+    """Borra los HOP cuya fecha de viaje ya ha pasado, enteras.
+
+    Firestore no borra las subcolecciones al borrar un documento: sin el
+    `recursive_delete`, las propuestas y el chat se quedarían huérfanos para
+    siempre ocupando sitio. Y se suelta el hueco de quien la creó (premium tiene
+    un HOP activo a la vez), para que pueda crear la siguiente."""
+    from google.cloud.firestore_v1.base_query import FieldFilter
+
+    ahora = ahora or datetime.now(UTC)
+    n = 0
+    for d in db.collection("hops").where(filter=FieldFilter("caduca", "<", ahora)).stream():
+        creador = (d.to_dict() or {}).get("creador")
+        db.recursive_delete(d.reference)
+        if creador:
+            hueco = db.collection("hop_slots").document(str(creador))
+            h = hueco.get()
+            if h.exists and (h.to_dict() or {}).get("hop") == d.id:
+                hueco.delete()
         n += 1
     return n
 

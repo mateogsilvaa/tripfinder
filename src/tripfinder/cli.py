@@ -1758,6 +1758,12 @@ def cmd_encargos(args: argparse.Namespace) -> int:
             print(f"Resultados de más de tres días borrados de Firestore: {viejos}.")
     except Exception as exc:  # noqa: BLE001 - limpiar no puede tumbar la cola
         print(f"No se pudieron limpiar los resultados viejos ({type(exc).__name__}).")
+    try:
+        hops = nube.limpiar_hops(db)
+        if hops:
+            print(f"HOP con la fecha pasada, borrados con lo de dentro: {hops}.")
+    except Exception as exc:  # noqa: BLE001 - lo mismo: la cola va primero
+        print(f"No se pudieron limpiar los HOP ({type(exc).__name__}).")
     print(
         f"Encargos: {cuenta['enviado']} enviados, {cuenta['rechazado']} rechazados, "
         f"{cuenta['error']} con error, {cuenta['atascado']} atascados, "

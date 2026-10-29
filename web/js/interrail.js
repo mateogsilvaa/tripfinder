@@ -1517,7 +1517,7 @@ const esPremiumAhora = () => {
   // Sin Firebase no hay planes: las cuentas de siempre lo tienen todo.
   if (!s.nube) return true;
   // Como en las reglas: una aprobada sin `plan` es de antes de los planes, premium.
-  return s.estado === "aprobado" && (s.plan || "premium") === "premium";
+  return s.estado === "aprobado" && ["premium", "max"].includes(s.plan || "premium");
 };
 const soloPremium = (r) => r.id === "tuya" && !esPremiumAhora();
 

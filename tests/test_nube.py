@@ -439,3 +439,29 @@ def test_el_interrail_a_medida_es_de_premium_y_las_rutas_hechas_no():
     assert "premium" in a.encargos["e1"]["motivo"]
     assert a.encargos["e2"]["estado"] == "enviado"
     assert a.encargos["e3"]["estado"] == "enviado"
+
+
+@emulador
+def test_las_hop_pasadas_se_borran_enteras_y_sueltan_su_hueco():
+    """Cuando pasa la fecha del viaje, el HOP se va con sus propuestas y su chat,
+    y quien la creó puede crear otra. La que sigue viva no se toca."""
+    import uuid
+
+    db = nube.abrir_firestore()
+    ahora = datetime.now(UTC)
+    vieja, viva = f"j-{uuid.uuid4().hex[:8]}", f"j-{uuid.uuid4().hex[:8]}"
+    creador = f"u-{uuid.uuid4().hex[:8]}"
+    for id_, caduca in ((vieja, ahora - timedelta(days=1)), (viva, ahora + timedelta(days=30))):
+        ref = db.collection("hops").document(id_)
+        ref.set({"nombre": id_, "creador": creador, "miembros": [creador], "caduca": caduca})
+        ref.collection("propuestas").document("p").set({"titulo": "Roma", "votos": {}})
+        ref.collection("mensajes").document("m").set({"texto": "hola"})
+    db.collection("hop_slots").document(creador).set({"hop": vieja})
+
+    assert nube.limpiar_hops(db, ahora) >= 1
+    assert not db.collection("hops").document(vieja).get().exists
+    assert not list(db.collection("hops").document(vieja).collection("propuestas").stream())
+    assert not list(db.collection("hops").document(vieja).collection("mensajes").stream())
+    assert not db.collection("hop_slots").document(creador).get().exists
+    assert db.collection("hops").document(viva).get().exists
+    assert list(db.collection("hops").document(viva).collection("mensajes").stream())

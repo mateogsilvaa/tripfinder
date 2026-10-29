@@ -17,6 +17,7 @@ import { loadSearches, recogerBusqueda } from "./busqueda.js";
 import { cargarWatches, recogerSeguimiento } from "./seguimientos.js";
 import { marcarFlap } from "./quiz.js";
 import { montarInterrail } from "./interrail.js";
+import { montarHop } from "./hop.js";
 import { montarPestanas } from "./pestanas.js";
 import { montarAtajos } from "./atajos.js";
 
@@ -37,6 +38,7 @@ refrescarAvisoFavs();
 refrescarFavsDeTodo();
 refrescarObservacion();
 montarInterrail();
+montarHop();
 // El punto en el flap cuando hay un test guardado: es lo unico que el test
 // hace al cargar, todo lo demas espera a que lo abras (#11).
 marcarFlap();
