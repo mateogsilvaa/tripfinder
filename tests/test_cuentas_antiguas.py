@@ -235,7 +235,8 @@ def test_contra_el_emulador_se_copia_se_repite_y_no_se_pisa_la_vinculacion():
     )
     cuentas, alias = nube.cuentas_para_avisos(db)
     assert alias == {"u-1111aaaa": "uid-ana"}
-    assert sorted(c.id for c in cuentas) == ["u-2222bbbb", "uid-ana"]
+    # Bea no se vinculó: ya no recibe nada (si vuelve, es una cuenta nueva).
+    assert sorted(c.id for c in cuentas) == ["uid-ana"]
 
 
 # ----------------------------------- lo de antes sigue siendo de su dueño nuevo
