@@ -28,6 +28,7 @@ import { boardRow, wireRows } from "./ofertas.js";
 import { esperarCambios } from "./busqueda.js";
 import { CON_MES, DIAS_CORTOS, FLEXIBLES, llenarMeses, llenarOrigenes, mesEnTramo } from "./opciones.js";
 import { montarSemana } from "./semana.js";
+import { montarHoras, textoHoras } from "./horas.js";
 import { abrirDestinos } from "./destinos.js";
 import { CAMPOS_SEGUIR, ampliar, recogerAmpliado } from "./ampliar.js";
 import { desde } from "./alojamiento.js";
@@ -69,6 +70,7 @@ function syncWatch() {
     llenarMeses($("#wMes"));
     $("#wMesWrap").hidden = !CON_MES.has(cuando);
   }
+  if (existe("#wHorasWrap")) montarHoras($("#wHorasWrap"), $("#wHoras"));
   if (existe("#wDiasWrap")) {
     $("#wDiasWrap").hidden = cuando !== "dias";
     montarSemana($("#wDiasWrap"), $("#wDiaIda"), $("#wDiaVuelta"));
@@ -134,7 +136,10 @@ on("#watchForm", "submit", async (e) => {
     cuandoTxt,
     `avisa bajo ${$("#wMax").value} €`,
     personasW > 1 ? `${personasW} pers.` : "1 pers.",
-  ].join(" · ");
+    val("#wHoras") ? textoHoras(val("#wHoras")) : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
   const r = await dispatch("watch", {
     ...comoDueno(),
     label: etiqueta,
@@ -152,6 +157,7 @@ on("#watchForm", "submit", async (e) => {
       desde: ventana.desde,
       hasta: ventana.hasta,
       dias,
+      horas: val("#wHoras"),
       nights: cuando === "exact" || cuando === "dias" ? "" : val("#wNights") || "2-3",
       max_price: $("#wMax").value,
       months: String(meses),

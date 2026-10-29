@@ -1123,6 +1123,7 @@ def cmd_search(args: argparse.Namespace) -> int:
         desde=args.desde or "",
         hasta=args.hasta or "",
         dias=getattr(args, "dias", "") or "",
+        horas=getattr(args, "horas", "") or "",
         owner=primer_dueno(args.owner),
         owner_name=args.owner_name or "",
     )
@@ -1283,6 +1284,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
             for v in (
                 (args.desde or "").replace("-", ""),
                 f"d{args.dias.replace('-', '')}" if args.dias else "",
+                f"h{re.sub(r'[^0-9]+', '', args.horas.replace(',', 'x'))}" if args.horas else "",
                 (args.origin or "").lower() if (args.origin or "MAD").upper() != "MAD" else "",
             )
             if v
@@ -1301,6 +1303,7 @@ def cmd_watch(args: argparse.Namespace) -> int:
                 desde=args.desde or "",
                 hasta=args.hasta or "",
                 dias=args.dias or "",
+                horas=args.horas or "",
                 months=args.months,
                 nights=args.nights or "2-3",
                 weekend_only=not args.any_day,
@@ -1758,6 +1761,12 @@ def cmd_encargos(args: argparse.Namespace) -> int:
             print(f"Resultados de más de tres días borrados de Firestore: {viejos}.")
     except Exception as exc:  # noqa: BLE001 - limpiar no puede tumbar la cola
         print(f"No se pudieron limpiar los resultados viejos ({type(exc).__name__}).")
+    try:
+        hops = nube.limpiar_hops(db)
+        if hops:
+            print(f"HOP con la fecha pasada, borrados con lo de dentro: {hops}.")
+    except Exception as exc:  # noqa: BLE001 - lo mismo: la cola va primero
+        print(f"No se pudieron limpiar los HOP ({type(exc).__name__}).")
     print(
         f"Encargos: {cuenta['enviado']} enviados, {cuenta['rechazado']} rechazados, "
         f"{cuenta['error']} con error, {cuenta['atascado']} atascados, "
@@ -1903,6 +1912,11 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--desde", help="Primer dia del tramo en que puedes viajar (YYYY-MM-DD)")
     b.add_argument("--hasta", help="Ultimo dia del tramo (YYYY-MM-DD)")
     b.add_argument("--dias", default="", help="Dias de ida y vuelta, 0=lunes: 0-3 es de lunes a jueves")
+    b.add_argument(
+        "--horas",
+        default="",
+        help="Franjas: salida ida, llegada ida, salida vuelta, llegada vuelta. '6-12,,16-24,'",
+    )
     b.add_argument("--adults", type=int)
     b.add_argument("--summary-out")
     b.add_argument("--owner", default="", help="Id de la cuenta que la pide")
@@ -1931,6 +1945,7 @@ def build_parser() -> argparse.ArgumentParser:
     v.add_argument("--desde", default="", help="Ventana: primer dia en que se puede salir")
     v.add_argument("--hasta", default="", help="Ventana: ultimo dia")
     v.add_argument("--dias", default="", help="Dos dias de la semana, '0-3' = lunes a jueves")
+    v.add_argument("--horas", default="", help="Las franjas horarias, como en `search --horas`")
     v.add_argument("--nights")
     v.add_argument("--months", type=int, default=6)
     v.add_argument("--adults", type=int)

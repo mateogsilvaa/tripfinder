@@ -48,7 +48,7 @@ def test_una_sola_edicion_cambia_el_nav_de_las_zonas():
     escribiéndose una vez y apareciendo en las cinco páginas que lo llevan."""
     barra = (WEB / "partes" / "barra.html").read_text(encoding="utf-8")
     assert "{{nav}}" in barra, "la barra deja el nav en un hueco"
-    for hueco in ("{promos}", "{buscar}", "{follows}", "{interrail}"):
+    for hueco in ("{promos}", "{buscar}", "{follows}", "{interrail}", "{hop}"):
         assert hueco in montar.NAV, hueco
 
     # Y cada página marca la suya, sin marcar dos.
@@ -68,7 +68,7 @@ def test_el_nav_lleva_a_paginas_y_no_a_anclas_de_la_portada():
     que lanzar una."""
     enlaces = re.findall(r'<a href="([^"]+)"\{', montar.NAV)
     # Sin «.html»: GitHub Pages sirve /buscar desde buscar.html.
-    assert enlaces == ["./", "buscar", "seguimientos", "interrail"], enlaces
+    assert enlaces == ["./", "buscar", "seguimientos", "interrail", "hop"], enlaces
     for destino in enlaces[1:]:
         assert (WEB / f"{destino}.html").exists(), f"{destino}.html no existe"
 
@@ -142,6 +142,8 @@ LLEVAN = {
     # El Interrail si: sin sesion no busca, y su «Pedir una cuenta» abre la
     # hoja que va aqui. Sin ella el boton no hacia nada.
     "interrail.html": {"nav": True, "hojas": True},
+    # El modo HOP: como el Interrail, con su «Pedir una cuenta».
+    "hop.html": {"nav": True, "hojas": True},
     "404.html": {"nav": True, "hojas": False},
     # La privacidad lleva el nav, para volver, y no busca alojamiento.
     "privacidad.html": {"nav": True, "hojas": False},

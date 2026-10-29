@@ -138,6 +138,7 @@ async function lista(caja, yo, aviso = "") {
   const sinVincular = antiguas.filter((a) => !a.vinculada && a.activa !== false);
   const cuenta = (e) => cuentas.filter((c) => c.estado === e).length;
   const premium = cuentas.filter((c) => c.estado === "aprobado" && nubePlan(c) === "premium").length;
+  const max = cuentas.filter((c) => c.estado === "aprobado" && nubePlan(c) === "max").length;
   const nuevas7 = cuentas.filter((c) => tiempo(c.creado) > Date.now() - 7 * 864e5).length;
   const kpi = (n, rotulo, extra = "", caliente = false) =>
     `<div class="adm-kpi${caliente ? " hot" : ""}"><dd>${n}</dd><dt>${rotulo}</dt>${
@@ -146,8 +147,9 @@ async function lista(caja, yo, aviso = "") {
   $("#stats").innerHTML =
     kpi(cuentas.length, "cuentas", nuevas7 ? `+${nuevas7} esta semana` : "") +
     kpi(premium, "premium") +
-    kpi(cuenta("aprobado") - premium, "gratis") +
-    kpi(cuentas.filter((c) => c.prefs && c.prefs.quiere_premium && nubePlan(c) !== "premium").length, "quieren premium") +
+    (max ? kpi(max, "max") : "") +
+    kpi(cuenta("aprobado") - premium - max, "gratis") +
+    kpi(cuentas.filter((c) => c.prefs && c.prefs.quiere_premium && nubePlan(c) === "gratis").length, "quieren premium") +
     (cuenta("pendiente") ? kpi(cuenta("pendiente"), "pendientes", "", true) : "") +
     (cuenta("bloqueado") ? kpi(cuenta("bloqueado"), "bloqueadas") : "") +
     (sinVincular.length ? kpi(sinVincular.length, "cuentas de antes sin vincular", "", true) : "");
@@ -306,7 +308,7 @@ async function lista(caja, yo, aviso = "") {
       document.querySelectorAll("[data-vincular], [data-estado]").forEach((x) => (x.disabled = true));
       const plan = b.dataset.plan || "";
       const r = await nubeCambiarEstado(b.dataset.uid, b.dataset.estado, plan);
-      const hecho = plan ? (plan === "premium" ? "ahora es premium" : "ahora es gratis") : ESTADOS[b.dataset.estado][1].toLowerCase();
+      const hecho = plan ? `ahora es ${plan === "max" ? "Max" : plan}` : ESTADOS[b.dataset.estado][1].toLowerCase();
       lista(caja, yo, r.ok ? `${b.dataset.nombre}: ${hecho}.` : `No se pudo: ${r.error}`);
     })
   );
@@ -326,9 +328,11 @@ function fila(c, yo, sinVincular = []) {
         boton("aprobado", "Hacer premium", true, "premium") +
         boton("bloqueado", "Bloquear")
       : c.estado === "aprobado"
-        ? (plan === "premium"
-            ? boton("aprobado", "Quitar premium", false, "gratis")
-            : boton("aprobado", "Hacer premium", true, "premium")) + boton("bloqueado", "Bloquear")
+        ? (plan === "max"
+            ? boton("aprobado", "Dejar en premium", false, "premium") + boton("aprobado", "Quitar premium", false, "gratis")
+            : plan === "premium"
+              ? boton("aprobado", "Hacer Max", false, "max") + boton("aprobado", "Quitar premium", false, "gratis")
+              : boton("aprobado", "Hacer premium", true, "premium")) + boton("bloqueado", "Bloquear")
         : boton("aprobado", "Desbloquear", true, plan);
   // Vincular con una cuenta de antes: solo si ha verificado su correo y aún no
   // tiene ninguna. La que coincide por correo sale elegida; si cambió de correo,
@@ -365,9 +369,11 @@ function fila(c, yo, sinVincular = []) {
       </span>
       <span class="adm-col" data-rot="Plan">${
         c.estado === "aprobado"
-          ? `<i class="adm-badge ${plan === "premium" ? "premium" : "gratis"}">${plan === "premium" ? "Premium" : "Gratis"}</i>`
+          ? `<i class="adm-badge ${plan === "gratis" ? "gratis" : "premium"}">${
+              plan === "max" ? "Max" : plan === "premium" ? "Premium" : "Gratis"
+            }</i>`
           : "—"
-      }${c.prefs && c.prefs.quiere_premium && plan !== "premium" ? ' <i class="adm-badge quiere">quiere premium</i>' : ""}</span>
+      }${c.prefs && c.prefs.quiere_premium && plan === "gratis" ? ' <i class="adm-badge quiere">quiere premium</i>' : ""}</span>
       <span class="adm-col" data-rot="Estado">
         <i class="adm-badge est-${esc(clase)}">${esc(estadoTxt)}</i>
         <small class="${c.verificado ? "" : "ojo"}">${c.verificado ? "correo verificado" : "correo sin verificar"}</small>
@@ -415,14 +421,14 @@ function pasaFiltro(c, f) {
   const plan = nubePlan(c);
   switch (f) {
     case "premium":
-      return c.estado === "aprobado" && plan === "premium";
+      return c.estado === "aprobado" && (plan === "premium" || plan === "max");
     case "gratis":
-      return c.estado === "aprobado" && plan !== "premium";
+      return c.estado === "aprobado" && plan === "gratis";
     case "pendiente":
     case "bloqueado":
       return c.estado === f;
     case "quiere":
-      return !!(c.prefs && c.prefs.quiere_premium) && plan !== "premium";
+      return !!(c.prefs && c.prefs.quiere_premium) && plan === "gratis";
     case "sinverificar":
       return !c.verificado;
     case "dormidas":

@@ -4,7 +4,7 @@
 const { test, expect } = require("@playwright/test");
 
 const anchos = (page, sel) =>
-  page.locator(`${sel} > :not([hidden]):not(.party)`).evaluateAll((els) =>
+  page.locator(`${sel} > :not([hidden]):not(.party):not(.horas-wrap)`).evaluateAll((els) =>
     els.map((e) => Math.round(e.getBoundingClientRect().width))
   );
 

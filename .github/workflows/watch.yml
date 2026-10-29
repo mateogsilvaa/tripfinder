@@ -59,6 +59,7 @@ jobs:
           HASTA: ${{ github.event.client_payload.viaje.hasta }}
           DIAS: ${{ github.event.client_payload.viaje.dias }}
           NIGHTS: ${{ github.event.client_payload.viaje.nights }}
+          HORAS: ${{ github.event.client_payload.viaje.horas }}
           # De donde sale: la web manda "formulario" o "test" (#13).
           SOURCE: ${{ github.event.client_payload.source }}
           OWNER: ${{ github.event.client_payload.owner }}
@@ -103,6 +104,7 @@ jobs:
               if [ -n "$HASTA" ];       then args+=(--hasta "$HASTA"); fi
               if [ -n "$DIAS" ];        then args+=(--dias "$DIAS"); fi
               if [ -n "$NIGHTS" ];      then args+=(--nights "$NIGHTS"); fi
+              if [ -n "$HORAS" ];       then args+=(--horas "$HORAS"); fi
               if [ -n "$SOURCE" ];      then args+=(--source "$SOURCE"); fi
               # De quien es el seguimiento: sin esto todos serian de todos.
               if [ -n "$OWNER" ];      then args+=(--owner "$OWNER"); fi

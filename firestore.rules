@@ -16,6 +16,8 @@ rules_version = '2';
      encargos/{id}         lo que se le pide a un scraper (la cola)
      actividad/{id}        entradas, errores y tiempo por pantalla (solo lo lee
                            el administrador)
+     hops/{id}             los grupos de viaje: propuestas, votos y chat
+     hop_slots/{uid}       el HOP activo de una cuenta premium (uno a la vez)
 
    La web está abierta a todo el mundo: una cuenta recién registrada nace
    `aprobado` y con `plan: gratis`. El plan premium existe —lo da el
@@ -49,8 +51,13 @@ service cloud.firestore {
     // Premium: aprobada y con `plan: premium`, o aprobada de antes de que
     // existieran los planes (sin el campo). Las nuevas nacen con `plan: gratis`
     // y ninguna regla deja a nadie cambiarse el suyo.
+    // Max es premium sin límites: lo mismo y, además, tantas HOP como quiera.
     function premium() {
-      return aprobado() && ficha(request.auth.uid).get('plan', 'premium') == 'premium';
+      return aprobado() && ficha(request.auth.uid).get('plan', 'premium') in ['premium', 'max'];
+    }
+
+    function max() {
+      return aprobado() && ficha(request.auth.uid).get('plan', 'premium') == 'max';
     }
 
     function admin() {
@@ -97,7 +104,7 @@ service cloud.firestore {
             // Aprobar, bloquear o devolver a pendiente, y dar o quitar premium.
             (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'plan'])
               && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado']
-              && request.resource.data.get('plan', 'premium') in ['gratis', 'premium'])
+              && request.resource.data.get('plan', 'premium') in ['gratis', 'premium', 'max'])
             // Vincularla con una cuenta de antes: hereda sus avisos, sus
             // seguimientos y sus búsquedas. Solo si ha verificado su correo, porque
             // si no, bastaría registrarse con el correo de otro para quedarse con
@@ -108,7 +115,7 @@ service cloud.firestore {
               && resource.data.get('verificado', false) == true
               && resource.data.get('legado', null) == null
               && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado']
-              && request.resource.data.get('plan', 'premium') in ['gratis', 'premium']
+              && request.resource.data.get('plan', 'premium') in ['gratis', 'premium', 'max']
               && exists(/databases/$(database)/documents/cuentas_antiguas/$(request.resource.data.legado))
               && get(/databases/$(database)/documents/cuentas_antiguas/$(request.resource.data.legado)).data.get('vinculada', null) == null)
           ))
@@ -160,6 +167,142 @@ service cloud.firestore {
         && (!('detalle' in d()) || (d().detalle is string && d().detalle.size() <= 500))
         && (!('navegador' in d()) || (d().navegador is string && d().navegador.size() <= 160));
       allow get, list: if admin();
+    }
+
+    // EL MODO HOP: un grupo para decidir un viaje entre varios. Se proponen
+    // fechas y viajes, cada cual vota, y se discute en el chat.
+    //
+    // · Crearla es premium; unirse, de cualquier cuenta. La invitación es el id
+    //   de el HOP: quien lo tiene puede verla y entrar, como un enlace de grupo.
+    // · Premium tiene UNA activa a la vez; Max, las que quiera. Las reglas no
+    //   saben contar, así que la de premium se ata a `hop_slots/{uid}`: se crea
+    //   en la misma escritura que el HOP y, como es un documento por cuenta, no
+    //   puede haber dos. Se suelta al borrar el HOP.
+    // · Todo lo de dentro lo leen y escriben solo sus miembros.
+    // · Cuando pasa la fecha (`caduca`), `tripfinder hops-limpiar` la borra
+    //   entera, con sus propuestas y su chat.
+    function hop(id) {
+      return get(/databases/$(database)/documents/hops/$(id)).data;
+    }
+
+    function miembro(id) {
+      return entra() && request.auth.uid in hop(id).miembros;
+    }
+
+    function esFecha(v) {
+      return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+    }
+
+    match /hops/{hopId} {
+      function j() {
+        return request.resource.data;
+      }
+      function datosOk() {
+        return j().nombre is string && j().nombre.size() > 0 && j().nombre.size() <= 60
+          && esFecha(j().fin)
+          && j().caduca is timestamp
+          && j().caduca > request.time
+          && j().caduca < request.time + duration.value(400, 'd')
+          && (!('descripcion' in j()) || (j().descripcion is string && j().descripcion.size() <= 300));
+      }
+
+      allow get: if entra();
+      allow list: if entra() && request.auth.uid in resource.data.miembros;
+
+      allow create: if premium()
+        && j().keys().hasOnly(['nombre', 'descripcion', 'creador', 'miembros', 'nombres', 'fin', 'caduca', 'creado'])
+        && j().keys().hasAll(['nombre', 'creador', 'miembros', 'nombres', 'fin', 'caduca', 'creado'])
+        && j().creador == request.auth.uid
+        && j().miembros == [request.auth.uid]
+        && j().nombres.keys().hasOnly([request.auth.uid])
+        && j().nombres[request.auth.uid] is string
+        && j().nombres[request.auth.uid].size() <= 40
+        && j().creado == request.time
+        && datosOk()
+        && (max() || getAfter(/databases/$(database)/documents/hop_slots/$(request.auth.uid)).data.hop == hopId);
+
+      allow update: if entra() && (
+        // Quien la creó cambia el nombre, la descripción y la fecha.
+        (request.auth.uid == resource.data.creador
+          && j().diff(resource.data).affectedKeys().hasOnly(['nombre', 'descripcion', 'fin', 'caduca'])
+          && datosOk())
+        // Unirse: añadirse a uno mismo, y nada más. Hasta 30 por HOP.
+        || (aprobado()
+          && j().diff(resource.data).affectedKeys().hasOnly(['miembros', 'nombres'])
+          && !(request.auth.uid in resource.data.miembros)
+          && request.auth.uid in j().miembros
+          && j().miembros.hasAll(resource.data.miembros)
+          && j().miembros.size() == resource.data.miembros.size() + 1
+          && j().miembros.size() <= 30
+          && j().nombres.diff(resource.data.nombres).affectedKeys().hasOnly([request.auth.uid])
+          && j().nombres[request.auth.uid] is string
+          && j().nombres[request.auth.uid].size() <= 40)
+        // Salirse: quitarse a uno mismo. Quien la creó no se sale: la borra.
+        || (request.auth.uid in resource.data.miembros
+          && request.auth.uid != resource.data.creador
+          && j().diff(resource.data).affectedKeys().hasOnly(['miembros', 'nombres'])
+          && !(request.auth.uid in j().miembros)
+          && resource.data.miembros.hasAll(j().miembros)
+          && j().miembros.size() == resource.data.miembros.size() - 1
+          && j().nombres.diff(resource.data.nombres).affectedKeys().hasOnly([request.auth.uid]))
+      );
+
+      allow delete: if entra() && request.auth.uid == resource.data.creador;
+
+      match /propuestas/{pid} {
+        function p() {
+          return request.resource.data;
+        }
+        allow read: if miembro(hopId);
+        allow create: if miembro(hopId)
+          && p().keys().hasOnly(['tipo', 'titulo', 'nota', 'destino', 'ida', 'vuelta', 'precio', 'url', 'autor', 'nombre', 'votos', 'creado'])
+          && p().keys().hasAll(['tipo', 'titulo', 'autor', 'votos', 'creado'])
+          && (p().tipo == 'fechas' || p().tipo == 'viaje')
+          && p().autor == request.auth.uid
+          && p().votos == {}
+          && p().creado == request.time
+          && p().titulo is string && p().titulo.size() > 0 && p().titulo.size() <= 80
+          && (!('nota' in p()) || (p().nota is string && p().nota.size() <= 500))
+          && (!('destino' in p()) || (p().destino is string && p().destino.size() <= 80))
+          && (!('ida' in p()) || esFecha(p().ida))
+          && (!('vuelta' in p()) || esFecha(p().vuelta))
+          && (!('precio' in p()) || (p().precio is number && p().precio >= 0 && p().precio <= 100000))
+          && (!('url' in p()) || (p().url is string && p().url.size() <= 500 && p().url.matches('^https://.+')))
+          && (!('nombre' in p()) || (p().nombre is string && p().nombre.size() <= 40));
+        // Votar: cada cual su voto (sí, quizá o no), o quitarlo.
+        allow update: if miembro(hopId)
+          && p().diff(resource.data).affectedKeys().hasOnly(['votos'])
+          && p().votos.diff(resource.data.votos).affectedKeys().hasOnly([request.auth.uid])
+          && (!(request.auth.uid in p().votos) || p().votos[request.auth.uid] in ['si', 'quiza', 'no']);
+        allow delete: if entra()
+          && (resource.data.autor == request.auth.uid || hop(hopId).creador == request.auth.uid);
+      }
+
+      match /mensajes/{mid} {
+        allow read: if miembro(hopId);
+        allow create: if miembro(hopId)
+          && request.resource.data.keys().hasOnly(['autor', 'nombre', 'texto', 'creado'])
+          && request.resource.data.keys().hasAll(['autor', 'nombre', 'texto', 'creado'])
+          && request.resource.data.autor == request.auth.uid
+          && request.resource.data.nombre is string && request.resource.data.nombre.size() <= 40
+          && request.resource.data.texto is string
+          && request.resource.data.texto.size() > 0 && request.resource.data.texto.size() <= 1000
+          && request.resource.data.creado == request.time;
+        allow delete: if entra()
+          && (resource.data.autor == request.auth.uid || hop(hopId).creador == request.auth.uid);
+      }
+    }
+
+    // El HOP activo de una cuenta premium. Va con el HOP, en la misma escritura,
+    // y solo se suelta cuando el HOP ya no existe.
+    match /hop_slots/{uid} {
+      allow get: if entra() && request.auth.uid == uid;
+      allow create: if entra() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['hop'])
+        && request.resource.data.hop is string
+        && getAfter(/databases/$(database)/documents/hops/$(request.resource.data.hop)).data.creador == uid;
+      allow delete: if entra() && request.auth.uid == uid
+        && !existsAfter(/databases/$(database)/documents/hops/$(resource.data.hop));
     }
 
     match /encargos/{id} {

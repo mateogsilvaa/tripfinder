@@ -14,7 +14,8 @@
 const esc = (s) => tfEsc(s);
 
 const TEXTO_ESTADO = {
-  premium: "Plan premium: todas las herramientas.",
+  premium: "Plan premium: todas las herramientas y un HOP activo.",
+  max: "Plan Max: todas las herramientas y HOP sin límite.",
   // Mientras premium no se exija (TF_PREMIUM_OBLIGATORIO), gratis lo tiene todo.
   gratis: TF_PREMIUM_OBLIGATORIO
     ? "Plan gratis: ves los chollos y te llegan por correo. Buscar, seguir viajes, alojamiento e " +
@@ -25,7 +26,7 @@ const TEXTO_ESTADO = {
 };
 
 const textoDe = (s) =>
-  s.estado === "aprobado" ? TEXTO_ESTADO[s.plan === "premium" ? "premium" : "gratis"] : TEXTO_ESTADO[s.estado] || TEXTO_ESTADO.pendiente;
+  s.estado === "aprobado" ? TEXTO_ESTADO[s.plan === "max" ? "max" : s.plan === "premium" ? "premium" : "gratis"] : TEXTO_ESTADO[s.estado] || TEXTO_ESTADO.pendiente;
 
 /* ------------------------------------------------------------ entrar / crear
 
@@ -288,7 +289,7 @@ export async function abrirCuenta() {
         <span>${esc(t.correo || "")}</span>
       </span>
       <a class="plan-chip${premium ? " premium" : ""}" href="planes" title="Ver los planes">${
-        premium ? "Premium" : "Gratis"
+        nubeEsMax(ahora) ? "Max" : premium ? "Premium" : "Gratis"
       }</a>
     </section>
     <p class="cuenta-linea" id="nubeEstado">${esc(textoDe(ahora))}

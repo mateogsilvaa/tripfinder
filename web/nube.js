@@ -336,11 +336,13 @@ function nubeGuardarSesion(uid, ficha) {
    es de antes de abrir la web —la de un conocido— y es premium, igual que en
    `firestore.rules`. */
 const nubePlan = (ficha) => (ficha && ficha.plan) || "premium";
-const nubeEsPremium = (s) => !!s && s.estado === "aprobado" && s.plan === "premium";
+// Max es premium sin límites (más HOP a la vez): cuenta como premium en todo.
+const nubeEsPremium = (s) => !!s && s.estado === "aprobado" && (s.plan === "premium" || s.plan === "max");
+const nubeEsMax = (s) => !!s && s.estado === "aprobado" && s.plan === "max";
 /* Premium existe pero TODAVÍA NO SE EXIGE (igual que en firestore.rules y en
    nube.py): con esto en false, cualquier cuenta aprobada lanza búsquedas. */
 const TF_PREMIUM_OBLIGATORIO = false;
-const nubePuedeLanzar = (s) => !!s && s.estado === "aprobado" && (!TF_PREMIUM_OBLIGATORIO || s.plan === "premium");
+const nubePuedeLanzar = (s) => !!s && s.estado === "aprobado" && (!TF_PREMIUM_OBLIGATORIO || nubeEsPremium(s));
 
 function nubeSalir() {
   try {
@@ -862,6 +864,283 @@ async function nubeCambiarEstado(uid, estado, plan) {
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
+  }
+}
+
+/* ------------------------------------------------------------------ los HOP
+   Un grupo para decidir un viaje entre varios (ver `hops` en firestore.rules).
+   Todo va por REST, como lo demás. Las escrituras que tocan a la vez un mapa
+   y una lista (unirse, salirse, votar) usan máscaras con el campo exacto y las
+   transformaciones de Firestore para listas, que no pisan lo de los demás. */
+const NUBE_HOP_MAX_DIAS = 395;
+
+const nubeCampoUid = (mapa, uid) => `${mapa}.\`${String(uid).replace(/[`\\]/g, "")}\``;
+
+/* «2027-05-20» → el final de ese día, más uno de margen: el HOP se borra
+   cuando el viaje ya ha pasado, no la mañana de la vuelta. */
+function nubeCaducaDe(fin) {
+  const [a, m, d] = String(fin || "").split("-").map(Number);
+  if (!a || !m || !d) return null;
+  return new Date(a, m - 1, d + 2, 0, 0, 0);
+}
+
+async function nubeHopToken() {
+  const s = tfSesion();
+  if (!s || !s.nube || !s.uid) return { error: "Entra primero." };
+  const token = await nubeToken();
+  if (!token) return { error: "Entra primero." };
+  return { s, token };
+}
+
+function nubeHopFallo(e) {
+  if (e && e.codigo === "PERMISSION_DENIED") return "No tienes permiso para eso.";
+  return (e && e.message) || "No se pudo.";
+}
+
+/* El HOP activo de una cuenta premium, si tiene. Si su HOP ya no existe (la
+   borró la limpieza), el hueco se suelta aquí mismo. */
+async function nubeHopHueco() {
+  const t = await nubeHopToken();
+  if (t.error) return null;
+  const hueco = await nubeLeerDoc(t.token, `hop_slots/${t.s.uid}`);
+  if (!hueco || !hueco.hop) return null;
+  const j = await nubeLeerDoc(t.token, `hops/${hueco.hop}`).catch(() => null);
+  if (j) return hueco.hop;
+  try {
+    await nubeCommit(t.token, [{ delete: `${nubeBase()}/hop_slots/${t.s.uid}` }]);
+  } catch {
+    /* si no se puede soltar, la próxima vez */
+  }
+  return null;
+}
+
+async function nubeHopCrear({ nombre, descripcion, fin }) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  if (!nubeEsPremium(t.s)) return { ok: false, error: "Crear un HOP es de premium.", codigo: "premium" };
+  const caduca = nubeCaducaDe(fin);
+  if (!caduca || caduca < new Date()) return { ok: false, error: "La fecha del viaje tiene que ser futura." };
+  if (caduca > new Date(Date.now() + NUBE_HOP_MAX_DIAS * 864e5)) {
+    return { ok: false, error: "Como mucho, un año vista." };
+  }
+  const max = nubeEsMax(t.s);
+  if (!max && (await nubeHopHueco())) {
+    return { ok: false, error: "Ya tienes un HOP activo. Con Max puedes tener los que quieras.", codigo: "limite" };
+  }
+  const id = nubeNuevoId();
+  const campos = {
+    nombre: String(nombre || "").trim().slice(0, 60),
+    creador: t.s.uid,
+    miembros: [t.s.uid],
+    nombres: { [t.s.uid]: String(t.s.name || "").slice(0, 40) },
+    fin,
+    caduca,
+  };
+  const d = String(descripcion || "").trim().slice(0, 300);
+  if (d) campos.descripcion = d;
+  const escrituras = [nubeCrear(`hops/${id}`, campos)];
+  if (!max) {
+    escrituras.push({
+      update: { name: `${nubeBase()}/hop_slots/${t.s.uid}`, fields: nubeCampos({ hop: id }) },
+      currentDocument: { exists: false },
+    });
+  }
+  try {
+    await nubeCommit(t.token, escrituras);
+    return { ok: true, id };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+async function nubeHop(id) {
+  const t = await nubeHopToken();
+  if (t.error) return null;
+  return nubeLeerDoc(t.token, `hops/${id}`);
+}
+
+async function nubeMisHops() {
+  const t = await nubeHopToken();
+  if (t.error) return [];
+  return nubeConsultar(t.token, {
+    from: [{ collectionId: "hops" }],
+    where: {
+      fieldFilter: { field: { fieldPath: "miembros" }, op: "ARRAY_CONTAINS", value: { stringValue: t.s.uid } },
+    },
+    limit: 100,
+  });
+}
+
+function nubeHopCambioDeMiembro(id, uid, nombre, transformacion) {
+  const campo = nubeCampoUid("nombres", uid);
+  return {
+    update: {
+      name: `${nubeBase()}/hops/${id}`,
+      fields: nombre === null ? {} : { nombres: { mapValue: { fields: { [uid]: { stringValue: nombre } } } } },
+    },
+    updateMask: { fieldPaths: [campo] },
+    updateTransforms: [
+      { fieldPath: "miembros", [transformacion]: { values: [{ stringValue: uid }] } },
+    ],
+    currentDocument: { exists: true },
+  };
+}
+
+async function nubeHopUnirse(id) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  try {
+    await nubeCommit(t.token, [
+      nubeHopCambioDeMiembro(id, t.s.uid, String(t.s.name || "").slice(0, 40), "appendMissingElements"),
+    ]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+async function nubeHopSalir(id) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  try {
+    await nubeCommit(t.token, [nubeHopCambioDeMiembro(id, t.s.uid, null, "removeAllFromArray")]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+async function nubeHopEditar(id, { nombre, descripcion, fin }) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  const caduca = nubeCaducaDe(fin);
+  if (!caduca || caduca < new Date()) return { ok: false, error: "La fecha del viaje tiene que ser futura." };
+  try {
+    await nubeCommit(t.token, [
+      nubeCambiar(`hops/${id}`, {
+        nombre: String(nombre || "").trim().slice(0, 60),
+        descripcion: String(descripcion || "").trim().slice(0, 300),
+        fin,
+        caduca,
+      }),
+    ]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+async function nubeConsultarEn(token, ruta, consulta) {
+  const filas = await nubeLlamar(`${nubeRutas().fs}/v1/${nubeBase()}/${ruta}:runQuery`, {
+    cuerpo: { structuredQuery: consulta },
+    token,
+  });
+  return (filas || []).filter((f) => f.document).map((f) => nubeDeDocumento(f.document));
+}
+
+async function nubePropuestas(id) {
+  const t = await nubeHopToken();
+  if (t.error) return [];
+  return nubeConsultarEn(t.token, `hops/${id}`, { from: [{ collectionId: "propuestas" }], limit: 200 });
+}
+
+async function nubeProponer(id, datos) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  const campos = { tipo: datos.tipo === "fechas" ? "fechas" : "viaje", autor: t.s.uid, nombre: String(t.s.name || "").slice(0, 40), votos: {} };
+  campos.titulo = String(datos.titulo || "").trim().slice(0, 80);
+  for (const k of ["nota", "destino", "ida", "vuelta", "url"]) {
+    const v = String(datos[k] || "").trim();
+    if (v) campos[k] = k === "nota" ? v.slice(0, 500) : k === "destino" ? v.slice(0, 80) : v.slice(0, 500);
+  }
+  if (campos.url && !campos.url.startsWith("https://")) delete campos.url;
+  const precio = Number(datos.precio);
+  if (datos.precio !== "" && datos.precio != null && Number.isFinite(precio) && precio >= 0) campos.precio = precio;
+  const pid = nubeNuevoId();
+  try {
+    await nubeCommit(t.token, [nubeCrear(`hops/${id}/propuestas/${pid}`, campos)]);
+    return { ok: true, id: pid };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+/* Tu voto: «si», «quiza», «no», o null para quitarlo. */
+async function nubeVotar(id, pid, voto) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  const fields = voto ? { votos: { mapValue: { fields: { [t.s.uid]: { stringValue: voto } } } } } : {};
+  try {
+    await nubeCommit(t.token, [
+      {
+        update: { name: `${nubeBase()}/hops/${id}/propuestas/${pid}`, fields },
+        updateMask: { fieldPaths: [nubeCampoUid("votos", t.s.uid)] },
+        currentDocument: { exists: true },
+      },
+    ]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+async function nubeBorrarPropuesta(id, pid) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  try {
+    await nubeCommit(t.token, [{ delete: `${nubeBase()}/hops/${id}/propuestas/${pid}` }]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+async function nubeMensajes(id, limite = 120) {
+  const t = await nubeHopToken();
+  if (t.error) return [];
+  const filas = await nubeConsultarEn(t.token, `hops/${id}`, {
+    from: [{ collectionId: "mensajes" }],
+    orderBy: [{ field: { fieldPath: "creado" }, direction: "DESCENDING" }],
+    limit: limite,
+  });
+  return filas.reverse();
+}
+
+async function nubeMandarMensaje(id, texto) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  texto = String(texto || "").trim().slice(0, 1000);
+  if (!texto) return { ok: false, error: "El mensaje está vacío." };
+  const mid = nubeNuevoId();
+  try {
+    await nubeCommit(t.token, [
+      nubeCrear(`hops/${id}/mensajes/${mid}`, { autor: t.s.uid, nombre: String(t.s.name || "").slice(0, 40), texto }),
+    ]);
+    return { ok: true, id: mid };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+/* Borrar el HOP entera: primero lo de dentro (las reglas lo dejan porque aún
+   existe el HOP) y, en la última tanda, el HOP y su hueco. */
+async function nubeHopBorrar(id) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  try {
+    const dentro = [];
+    for (const col of ["propuestas", "mensajes"]) {
+      const filas = await nubeConsultarEn(t.token, `hops/${id}`, { from: [{ collectionId: col }], limit: 1000 });
+      filas.forEach((f) => dentro.push({ delete: `${nubeBase()}/hops/${id}/${col}/${f.id}` }));
+    }
+    while (dentro.length > 400) await nubeCommit(t.token, dentro.splice(0, 400));
+    const ultima = [...dentro, { delete: `${nubeBase()}/hops/${id}` }];
+    const hueco = await nubeLeerDoc(t.token, `hop_slots/${t.s.uid}`).catch(() => null);
+    if (hueco && hueco.hop === id) ultima.push({ delete: `${nubeBase()}/hop_slots/${t.s.uid}` });
+    await nubeCommit(t.token, ultima);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: nubeHopFallo(e) };
   }
 }
 

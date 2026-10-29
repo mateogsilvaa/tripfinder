@@ -13,7 +13,8 @@ function pintar() {
   document.querySelectorAll(".plan").forEach((p) => p.classList.remove("tuyo"));
   if (!s) return;
   const premium = typeof nubeEsPremium === "function" && nubeEsPremium(s);
-  (premium ? $("#planPremium") : $("#planGratis")).classList.add("tuyo");
+  const max = typeof nubeEsMax === "function" && nubeEsMax(s);
+  (max ? $("#planMax") : premium ? $("#planPremium") : $("#planGratis"))?.classList.add("tuyo");
   if (premium) {
     boton.hidden = true;
     nota.textContent = "Es tu plan.";

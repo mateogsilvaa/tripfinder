@@ -52,6 +52,12 @@ class SearchRequest:
     # un jueves. Es otra forma de no saber la fecha: no importa que semana, pero
     # si que dias, porque son los que se pueden coger libres.
     dias: str = ""
+    # Las horas que prefieres, si las tienes: cuatro franjas en horas enteras,
+    # separadas por comas y en este orden: salida de la ida, llegada de la ida,
+    # salida de la vuelta y llegada de la vuelta. "6-12,,16-24," es salir por
+    # la mañana y volver por la tarde. Una vacia es «me da igual»; "22-6"
+    # cruza la medianoche. Ver `franjas_horarias`.
+    horas: str = ""
     # Quien la pidio. Vacio = busqueda de antes de las cuentas: la ve todo el mundo.
     owner: str = ""
     owner_name: str = ""
@@ -67,6 +73,7 @@ class SearchRequest:
         self.origin = limpio if re.fullmatch(r"[A-Z]{3}", limpio) else "MAD"
         par = dias_de_la_semana(self.dias)
         self.dias = f"{par[0]}-{par[1]}" if par else ""
+        self.horas = normalizar_horas(self.horas)
         if par:
             # Las noches salen de los dos dias: de lunes a jueves son tres.
             self.nights_min = self.nights_max = (par[1] - par[0]) % 7 or 7
@@ -90,6 +97,8 @@ class SearchRequest:
         partes = [self.origin, self.destination or "todos", f"{self.nights_min}{self.nights_max}"]
         if self.dias:
             partes.append("dias" + self.dias.replace("-", ""))
+        if self.horas:
+            partes.append("h" + re.sub(r"[^0-9]+", "", self.horas.replace(",", "x")))
         if self.max_price:
             partes.append(str(int(self.max_price)))
         if self.depart:
@@ -434,6 +443,56 @@ def _paso(dias_ventana: int) -> int:
     return max(7, dias_ventana // 45 + 1)
 
 
+Franja = tuple[int, int] | None
+
+
+def franjas_horarias(texto: str) -> list[Franja]:
+    """ "6-12,,16-24," -> [(6, 12), None, (16, 24), None].
+
+    Siempre cuatro: salida y llegada de la ida, salida y llegada de la vuelta.
+    Lo que no se entiende se queda en None («me da igual»): una preferencia
+    mal escrita no puede vaciar una búsqueda entera."""
+    trozos = [*str(texto or "").split(","), "", "", "", ""][:4]
+    salida: list[Franja] = []
+    for t in trozos:
+        m = re.fullmatch(r"\s*(\d{1,2})\s*-\s*(\d{1,2})\s*", t)
+        if not m:
+            salida.append(None)
+            continue
+        a, b = int(m.group(1)), int(m.group(2))
+        salida.append((a, b) if 0 <= a <= 24 and 0 <= b <= 24 and a != b and (a, b) != (0, 24) else None)
+    return salida
+
+
+def normalizar_horas(texto: str) -> str:
+    franjas = franjas_horarias(texto)
+    if not any(franjas):
+        return ""
+    return ",".join(f"{f[0]}-{f[1]}" if f else "" for f in franjas)
+
+
+def _hora(hhmm: str) -> float | None:
+    m = re.fullmatch(r"\s*(\d{1,2}):(\d{2})\s*", str(hhmm or ""))
+    return int(m.group(1)) + int(m.group(2)) / 60 if m else None
+
+
+def en_franja(hhmm: str, franja: Franja) -> bool:
+    """Si la hora cae en la franja. Sin franja, o sin hora conocida, vale: lo que
+    no se sabe no se descarta (Ryanair siempre la da; alguna fuente, no)."""
+    if not franja:
+        return True
+    h = _hora(hhmm)
+    if h is None:
+        return True
+    a, b = franja
+    return a <= h < b if a < b else (h >= a or h < b)
+
+
+def en_sus_horas(o: FlightOffer, franjas: list[Franja]) -> bool:
+    horas = (o.depart_time, o.arrive_time, o.return_time, o.return_arrive_time)
+    return all(en_franja(h, f) for h, f in zip(horas, franjas, strict=False))
+
+
 def dias_de_la_semana(texto: str) -> tuple[int, int] | None:
     """ "0-3" -> (0, 3): lunes a jueves. None si no son dos dias de 0 a 6."""
     m = re.fullmatch(r"\s*([0-6])\s*-\s*([0-6])\s*", str(texto or ""))
@@ -745,6 +804,10 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
     # Wizz devuelven lo mas barato de alrededor y se colaba un martes.
     if req.par_de_dias:
         ofertas = [o for o in ofertas if _en_sus_dias(o, req.par_de_dias)]
+    # Y las horas que prefieres: salir por la mañana, volver por la tarde…
+    if req.horas:
+        franjas = franjas_horarias(req.horas)
+        ofertas = [o for o in ofertas if en_sus_horas(o, franjas)]
 
     # Ryanair, Wizz y Google devuelven el mismo viaje: se fusionan por ruta y
     # fecha como en el scan, quedandose con la mas barata y guardando el resto

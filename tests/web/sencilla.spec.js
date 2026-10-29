@@ -21,7 +21,7 @@ for (const pagina of PAGINAS) {
 
     test("el menú dice lo que hay en cada sitio", async ({ page }) => {
       await page.goto(pagina);
-      await expect(page.locator(".zonas a")).toHaveText(["Chollos", "Buscar", "Mis avisos", "Interrail"]);
+      await expect(page.locator(".zonas a")).toHaveText(["Chollos", "Buscar", "Mis avisos", "Interrail", "HOP"]);
     });
 
     test("el pie lleva la privacidad y los planes", async ({ page }) => {
@@ -96,7 +96,7 @@ test.describe("la página de privacidad", () => {
 
   test("tiene menú, vuelta a los chollos y el tema", async ({ page }) => {
     await page.goto("/privacidad.html");
-    await expect(page.locator(".zonas a")).toHaveCount(4);
+    await expect(page.locator(".zonas a")).toHaveCount(5);
     await expect(page.locator("#tema")).toBeVisible();
     await page.locator("main a.btn.primary").click();
     await expect(page).toHaveURL(/\/(index\.html)?(#.*)?$/);

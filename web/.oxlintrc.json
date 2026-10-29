@@ -13,6 +13,7 @@
     "nubeActividad": "readonly",
     "nubeApuntarError": "readonly",
     "nubeEsPremium": "readonly",
+    "nubeEsMax": "readonly",
     "nubePlan": "readonly",
     "nubePuedeLanzar": "readonly",
     "tfAvisosHTML": "readonly",
@@ -81,7 +82,20 @@
     "tfUid": "readonly",
     "tfUids": "readonly",
     "tfVaciarLog": "readonly",
-    "tfWireVerClave": "readonly"
+    "tfWireVerClave": "readonly",
+    "nubeHopCrear": "readonly",
+    "nubeHop": "readonly",
+    "nubeMisHops": "readonly",
+    "nubeHopUnirse": "readonly",
+    "nubeHopSalir": "readonly",
+    "nubeHopEditar": "readonly",
+    "nubeHopBorrar": "readonly",
+    "nubePropuestas": "readonly",
+    "nubeProponer": "readonly",
+    "nubeVotar": "readonly",
+    "nubeBorrarPropuesta": "readonly",
+    "nubeMensajes": "readonly",
+    "nubeMandarMensaje": "readonly"
   },
   "rules": {
     "no-unused-vars": [

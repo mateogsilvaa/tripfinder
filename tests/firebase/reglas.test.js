@@ -25,6 +25,10 @@ const {
   where,
   serverTimestamp,
   setLogLevel,
+  writeBatch,
+  arrayUnion,
+  arrayRemove,
+  deleteField,
 } = require("firebase/firestore");
 
 // Las denegaciones son lo que se prueba: no hace falta que el cliente las cante.
@@ -445,4 +449,143 @@ test("actividad: solo la lee el administrador, y nadie la cambia ni la borra", a
   await assertSucceeds(getDocs(collection(jefe, "actividad")));
   await assertFails(updateDoc(doc(jefe, "actividad/d1"), { segundos: 1 }));
   await assertFails(deleteDoc(doc(jefe, "actividad/d1")));
+});
+
+/* -------------------------------------------------------------- el modo HOP */
+const enDias = (n) => new Date(Date.now() + n * 864e5);
+const datosHop = (uid, extra = {}) => ({
+  nombre: "Roma en mayo",
+  creador: uid,
+  miembros: [uid],
+  nombres: { [uid]: uid },
+  fin: "2027-05-20",
+  caduca: enDias(200),
+  creado: serverTimestamp(),
+  ...extra,
+});
+/* Crear como lo hace la web: el HOP y, para premium, su hueco, de una vez. */
+const crearHop = (db, uid, id, { hueco = true, extra = {} } = {}) => {
+  const b = writeBatch(db);
+  b.set(doc(db, `hops/${id}`), datosHop(uid, extra));
+  if (hueco) b.set(doc(db, `hop_slots/${uid}`), { hop: id });
+  return b.commit();
+};
+const ponerMax = () =>
+  entorno.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), "usuarios/max"), {
+      creado: new Date(), nombre: "Max", correo: "max@x.es", estado: "aprobado", plan: "max",
+    });
+  });
+
+test("HOP: premium crea una; gratis no", async () => {
+  await assertSucceeds(crearHop(como("ana", "ana@x.es"), "ana", "hop1"));
+  await assertFails(crearHop(como("gus", "gus@x.es"), "gus", "hop2"));
+});
+
+test("HOP: premium solo tiene una activa a la vez", async () => {
+  const ana = como("ana", "ana@x.es");
+  await assertSucceeds(crearHop(ana, "ana", "hop1"));
+  await assertFails(crearHop(ana, "ana", "hop2"));
+  // Ni colándola sin hueco.
+  await assertFails(crearHop(ana, "ana", "hop3", { hueco: false }));
+  // El hueco no se suelta mientras el HOP exista...
+  await assertFails(deleteDoc(doc(ana, "hop_slots/ana")));
+  // ...y al borrarla, sí: entonces puede crear otra.
+  const b = writeBatch(ana);
+  b.delete(doc(ana, "hops/hop1"));
+  b.delete(doc(ana, "hop_slots/ana"));
+  await assertSucceeds(b.commit());
+  await assertSucceeds(crearHop(ana, "ana", "hop4"));
+});
+
+test("HOP: Max crea las que quiera, sin hueco", async () => {
+  await ponerMax();
+  const db = como("max", "max@x.es");
+  for (const id of ["m1", "m2", "m3"]) await assertSucceeds(crearHop(db, "max", id, { hueco: false }));
+});
+
+test("HOP: no se crea a nombre de otro, ni con más gente, ni sin fecha de caducidad razonable", async () => {
+  const ana = como("ana", "ana@x.es");
+  await assertFails(crearHop(ana, "ana", "j1", { extra: { creador: "gus" } }));
+  await assertFails(crearHop(ana, "ana", "j1", { extra: { miembros: ["ana", "gus"] } }));
+  await assertFails(crearHop(ana, "ana", "j1", { extra: { caduca: enDias(900) } }));
+  await assertFails(crearHop(ana, "ana", "j1", { extra: { caduca: enDias(-1) } }));
+  await assertFails(crearHop(ana, "ana", "j1", { extra: { fin: "mayo" } }));
+});
+
+test("HOP: cualquier cuenta se une con el enlace, solo a sí misma, y se sale", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const gus = como("gus", "gus@x.es");
+  await assertSucceeds(getDoc(doc(gus, "hops/hop1")));
+  await assertSucceeds(
+    updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" })
+  );
+  // Meter a otro, no.
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("bea"), "nombres.bea": "Bea" }));
+  // Sin cuenta, tampoco.
+  await assertFails(getDoc(doc(anonimo(), "hops/hop1")));
+  // Una bloqueada no entra.
+  await assertFails(
+    updateDoc(doc(como("cris", "cris@x.es"), "hops/hop1"), { miembros: arrayUnion("cris"), "nombres.cris": "C" })
+  );
+  // Salirse: quitarse a uno mismo.
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1"), { miembros: arrayRemove("gus"), "nombres.gus": deleteField() }));
+  // Quien la creó no se sale, y a otro no se le echa así.
+  await assertFails(updateDoc(doc(como("ana", "ana@x.es"), "hops/hop1"), { miembros: arrayRemove("ana") }));
+});
+
+test("HOP: solo quien la creó cambia el nombre y la fecha, o la borra", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const gus = como("gus", "gus@x.es");
+  await updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" });
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { nombre: "Mía" }));
+  await assertFails(deleteDoc(doc(gus, "hops/hop1")));
+  await assertSucceeds(
+    updateDoc(doc(como("ana", "ana@x.es"), "hops/hop1"), { nombre: "Roma, al final", fin: "2027-06-01", caduca: enDias(220) })
+  );
+});
+
+test("HOP: lo de dentro solo lo ven y lo escriben sus miembros", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const ana = como("ana", "ana@x.es");
+  const gus = como("gus", "gus@x.es");
+  const prop = { tipo: "viaje", titulo: "Roma", destino: "Roma", ida: "2027-05-10", vuelta: "2027-05-13",
+    precio: 120, url: "https://www.ryanair.com/x", autor: "ana", nombre: "Ana", votos: {}, creado: serverTimestamp() };
+  await assertSucceeds(setDoc(doc(ana, "hops/hop1/propuestas/p1"), prop));
+  await assertSucceeds(setDoc(doc(ana, "hops/hop1/mensajes/m1"), { autor: "ana", nombre: "Ana", texto: "¿Roma?", creado: serverTimestamp() }));
+  // Gus aún no está dentro.
+  await assertFails(getDoc(doc(gus, "hops/hop1/propuestas/p1")));
+  await assertFails(getDocs(collection(gus, "hops/hop1/mensajes")));
+  await assertFails(setDoc(doc(gus, "hops/hop1/mensajes/m2"), { autor: "gus", nombre: "Gus", texto: "hola", creado: serverTimestamp() }));
+  await updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" });
+  await assertSucceeds(getDocs(collection(gus, "hops/hop1/mensajes")));
+  await assertSucceeds(setDoc(doc(gus, "hops/hop1/mensajes/m2"), { autor: "gus", nombre: "Gus", texto: "¡Vamos!", creado: serverTimestamp() }));
+  // Ni a nombre de otro, ni un enlace que no sea https, ni un mensaje vacío.
+  await assertFails(setDoc(doc(gus, "hops/hop1/mensajes/m3"), { autor: "ana", nombre: "Ana", texto: "x", creado: serverTimestamp() }));
+  await assertFails(setDoc(doc(gus, "hops/hop1/propuestas/p2"), { ...prop, autor: "gus", url: "javascript:alert(1)" }));
+  await assertFails(setDoc(doc(gus, "hops/hop1/mensajes/m4"), { autor: "gus", nombre: "Gus", texto: "", creado: serverTimestamp() }));
+});
+
+test("HOP: cada cual vota lo suyo, y solo lo suyo", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const ana = como("ana", "ana@x.es");
+  const gus = como("gus", "gus@x.es");
+  await updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" });
+  await setDoc(doc(ana, "hops/hop1/propuestas/p1"), { tipo: "fechas", titulo: "Puente de mayo", ida: "2027-05-01",
+    vuelta: "2027-05-04", autor: "ana", votos: {}, creado: serverTimestamp() });
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1/propuestas/p1"), { "votos.gus": "si" }));
+  await assertSucceeds(updateDoc(doc(ana, "hops/hop1/propuestas/p1"), { "votos.ana": "quiza" }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1/propuestas/p1"), { "votos.ana": "no" }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1/propuestas/p1"), { "votos.gus": "muchisimo" }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1/propuestas/p1"), { titulo: "Otra cosa" }));
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1/propuestas/p1"), { "votos.gus": deleteField() }));
+  // Borrar: quien la propuso o quien creó el HOP.
+  await assertFails(deleteDoc(doc(gus, "hops/hop1/propuestas/p1")));
+  await assertSucceeds(deleteDoc(doc(ana, "hops/hop1/propuestas/p1")));
+});
+
+test("plan max: solo lo da el administrador", async () => {
+  const jefe = como("jefe", "jefe@x.es");
+  await assertSucceeds(updateDoc(doc(jefe, "usuarios/gus"), { plan: "max" }));
+  await assertFails(updateDoc(doc(como("ana", "ana@x.es"), "usuarios/ana"), { plan: "max" }));
 });
