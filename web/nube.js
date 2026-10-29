@@ -750,12 +750,16 @@ async function nubeSincronizar() {
 async function nubeEncargar(tipo, payload) {
   let s = tfSesion();
   if (!s || !s.uid) return { ok: false, reason: "sin-cuenta" };
-  if (!nubePuedeLanzar(s)) {
+  // Lo que se busca desde un HOP lo lanza cualquiera del grupo, también gratis:
+  // `tramitar` (nube.py) mira de verdad que sea miembro.
+  const deHop = !!payload && !!(payload.hop || (payload.viaje && payload.viaje.hop));
+  const puede = (x) => nubePuedeLanzar(x) || (deHop && x.estado === "aprobado");
+  if (!puede(s)) {
     // Quizá te acaban de dar premium: se mira antes de decir que no.
     s = (await nubeSincronizar()) || s;
     if (s.estado === "bloqueado") return { ok: false, reason: "bloqueada" };
     if (s.estado !== "aprobado") return { ok: false, reason: "pendiente" };
-    if (!nubePuedeLanzar(s)) return { ok: false, reason: "gratis" };
+    if (!puede(s)) return { ok: false, reason: "gratis" };
   }
   const token = await nubeToken();
   if (!token) return { ok: false, reason: "sin-cuenta" };
@@ -770,7 +774,7 @@ async function nubeEncargar(tipo, payload) {
       const ahora = (await nubeSincronizar()) || s;
       if (ahora.estado === "bloqueado") return { ok: false, reason: "bloqueada" };
       if (ahora.estado !== "aprobado") return { ok: false, reason: "pendiente" };
-      if (!nubePuedeLanzar(ahora)) return { ok: false, reason: "gratis" };
+      if (!puede(ahora)) return { ok: false, reason: "gratis" };
     }
     if (typeof tfApuntar === "function") tfApuntar("encargo", `${tipo}: ${e.codigo}`, e.detalle);
     return { ok: false, reason: e.message };
