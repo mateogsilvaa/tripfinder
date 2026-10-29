@@ -16,6 +16,11 @@
       "muestras": 3,
       "nombre": "Bergamo"
     },
+    "CLJ": {
+      "noche": 75.45,
+      "muestras": 3,
+      "nombre": "Cluj"
+    },
     "GDN": {
       "noche": 90.67,
       "muestras": 3,
@@ -69,6 +74,10 @@
     },
     "República Checa": {
       "noche": 30.0,
+      "muestras": 3
+    },
+    "Rumanía": {
+      "noche": 75.45,
       "muestras": 3
     }
   }
