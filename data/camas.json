@@ -16,6 +16,11 @@
       "muestras": 3,
       "nombre": "Bergamo"
     },
+    "BSL": {
+      "noche": 230.33,
+      "muestras": 3,
+      "nombre": "Basilea"
+    },
     "CLJ": {
       "noche": 75.45,
       "muestras": 3,
@@ -87,6 +92,10 @@
     },
     "Rumanía": {
       "noche": 75.45,
+      "muestras": 3
+    },
+    "Suiza": {
+      "noche": 230.33,
       "muestras": 3
     }
   }
