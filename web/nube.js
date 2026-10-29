@@ -830,33 +830,6 @@ async function nubeCuentas() {
   return (r.documents || []).map(nubeDeDocumento);
 }
 
-/* Las cuentas de antes de Firebase (copiadas con `tripfinder migrar-cuentas`). */
-async function nubeCuentasAntiguas() {
-  const token = await nubeToken();
-  if (!token) return [];
-  const r = await nubeLlamar(nubeUrlFs("/cuentas_antiguas?pageSize=300"), { metodo: "GET", token });
-  return (r.documents || []).map(nubeDeDocumento);
-}
-
-/* Aprueba la cuenta y la vincula con una de antes, de una vez: hereda sus avisos
-   (se le copian sus preferencias), sus seguimientos y sus búsquedas. Son dos
-   escrituras en la misma operación; las reglas comprueban que el correo está
-   verificado y que la cuenta antigua no estaba ya vinculada. */
-async function nubeVincular(uid, legado, prefs) {
-  const token = await nubeToken();
-  if (!token) return { ok: false, error: "Entra primero." };
-  try {
-    await nubeCommit(token, [
-      // Tener cuenta de antes es ser un conocido: premium.
-      nubeCambiar(`usuarios/${uid}`, { estado: "aprobado", legado, prefs: prefs || {}, plan: "premium" }),
-      nubeCambiar(`cuentas_antiguas/${legado}`, { vinculada: uid }),
-    ]);
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e.message };
-  }
-}
-
 /* Estado y, si se da, plan. Aprobar una pendiente de antes de abrir la web la
    deja gratis: sin `plan`, una aprobada contaría como premium. */
 async function nubeCambiarEstado(uid, estado, plan) {

@@ -611,7 +611,6 @@ function pintarHop(app, pendiente) {
   app.innerHTML = `
     <a class="hop-volver" href="hop">← Tus HOP</a>
     <header class="hopx-portada">
-      <div class="hopx-portada-foto" aria-hidden="true"></div>
       <div class="hopx-portada-velo">
         <p class="hopx-kicker">HOP · ${
           quedan > 0 ? `quedan ${quedan} día${quedan === 1 ? "" : "s"} para decidir` : "hoy es el último día"
@@ -947,7 +946,7 @@ function pintarFase1(app) {
 function cartaFechas(p, lider) {
   const dias = noches(p.ida, p.vuelta);
   return `<article class="hopx-fechas-carta${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
-      ${lider ? `<span class="hopx-lider">${ico("corona", 14)} va ganando</span>` : ""}
+      ${lider ? `<span class="hopx-lider">la más votada</span>` : ""}
       <p class="hopx-fechas-grande">${esc(fmtDate(p.ida, true))}<span>→</span>${esc(fmtDate(p.vuelta, true))}</p>
       <p class="hop-letra">${[
         p.titulo && !p.titulo.startsWith(fmtDate(p.ida)) ? esc(p.titulo) : "",
@@ -1033,7 +1032,7 @@ function progresoHTML(b, tipico, que) {
   const min = Math.max(1, Math.round(b.pasado / 60000));
   const quedan = Math.max(0, Math.round((tipico - b.pasado) / 60000));
   return `<div class="hop-buscando hopx-buscando">
-      <div class="hopx-radar" aria-hidden="true"><i></i><i></i><i></i><span>${ico(que === "vuelos" ? "avion" : "cama", 22)}</span></div>
+      <span class="spin" aria-hidden="true"></span>
       <div class="hopx-buscando-txt">
         <p><b>Buscando ${que} para el grupo…</b></p>
         <p class="hop-letra">Lo lanzó ${esc(b.nombre || "alguien")} hace ${min} min · ${
@@ -1536,10 +1535,11 @@ function cartaGuardada(p, puesto, lider) {
   return `<article class="hopx-carta${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
       <div class="hopx-carta-foto">
         ${huecoFoto({ iata: p.iata, ciudad: p.titulo, pais: p.pais }, tono(p.iata || p.titulo))}
-        <span class="hopx-marca" aria-hidden="true">${esc(p.iata || "")}</span>
-        ${lider ? `<span class="hopx-lider">${ico("corona", 14)} va ganando</span>` : `<span class="hopx-puesto">${puesto}</span>`}
+        ${lider ? `<span class="hopx-lider">la más votada</span>` : `<span class="hopx-puesto">${puesto}</span>`}
         <span class="hopx-precio">${total ? euros(total) : "—"}<small>por cabeza</small></span>
-        <div class="hopx-carta-nombre"><b>${esc(p.titulo)}</b><small>${esc(p.pais || p.destino || "")}</small></div>
+        <div class="hopx-carta-nombre"><b>${esc(p.titulo)}</b><small>${esc(p.pais || p.destino || "")}${
+          p.iata ? ` · <span class="iata">${esc(p.iata)}</span>` : ""
+        }</small></div>
       </div>
       <div class="hopx-carta-cuerpo">
         ${
@@ -1880,8 +1880,7 @@ function votarDeslizando(app, tipo) {
     return `<div class="hopx-dcarta${atras ? " atras" : ""}" ${atras ? 'aria-hidden="true"' : ""}>
         <div class="hopx-dcarta-foto">
           ${foto}
-          <span class="hopx-marca" aria-hidden="true">${esc(p.iata || "")}</span>
-          <div class="hopx-fotos-barras"></div>
+            <div class="hopx-fotos-barras"></div>
           <span class="hopx-sello s-si">Me apunto</span>
           <span class="hopx-sello s-no">Paso</span>
           <span class="hopx-sello s-quiza">Puede</span>

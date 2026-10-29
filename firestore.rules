@@ -105,32 +105,15 @@ service cloud.firestore {
             (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'plan'])
               && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado']
               && request.resource.data.get('plan', 'premium') in ['gratis', 'premium', 'max'])
-            // Vincularla con una cuenta de antes: hereda sus avisos, sus
-            // seguimientos y sus búsquedas. Solo si ha verificado su correo, porque
-            // si no, bastaría registrarse con el correo de otro para quedarse con
-            // lo suyo, y solo una vez.
-            // Quien tenía cuenta de antes era un conocido: se le da premium.
-            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['estado', 'legado', 'prefs', 'plan'])
-              && 'legado' in request.resource.data.diff(resource.data).affectedKeys()
-              && resource.data.get('verificado', false) == true
-              && resource.data.get('legado', null) == null
-              && request.resource.data.estado in ['pendiente', 'aprobado', 'bloqueado']
-              && request.resource.data.get('plan', 'premium') in ['gratis', 'premium', 'max']
-              && exists(/databases/$(database)/documents/cuentas_antiguas/$(request.resource.data.legado))
-              && get(/databases/$(database)/documents/cuentas_antiguas/$(request.resource.data.legado)).data.get('vinculada', null) == null)
           ))
       );
     }
 
-    // Las cuentas de antes de Firebase, copiadas con `tripfinder migrar-cuentas`:
-    // nombre, correo y avisos. Nunca contraseñas ni sobres ni el token. Solo las ve
-    // el administrador, y solo puede marcar a cuál cuenta nueva se ha vinculado
-    // cada una; el resto lo escribe la cuenta de servicio.
+    // Las cuentas de antes de Firebase, copiadas con `tripfinder migrar-cuentas`.
+    // Ya no se vinculan (quien no migró a tiempo entra como nueva): las ve el
+    // administrador y nada más. Las que se vincularon siguen con su `legado`.
     match /cuentas_antiguas/{id} {
       allow get, list: if admin();
-      allow update: if admin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vinculada'])
-        && request.resource.data.vinculada is string;
     }
 
     // Lo que acaba de encontrar un scraper, para que la web lo vea sin esperar

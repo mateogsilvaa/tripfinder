@@ -339,46 +339,14 @@ test("nadie se vincula a sí mismo con una cuenta de antes", async () => {
   await assertFails(updateDoc(doc(eva, "usuarios/eva"), { legado: "u-aaaaaaaa", estado: "aprobado" }));
 });
 
-const vincular = (db, uid, legado, extra = {}) =>
-  updateDoc(doc(db, `usuarios/${uid}`), { legado, estado: "aprobado", prefs: { chollos: "diario" }, ...extra });
-
-test("el administrador vincula a quien ha verificado su correo", async () => {
-  await assertSucceeds(vincular(como("jefe", "jefe@x.es"), "eva", "u-aaaaaaaa"));
-});
-
-test("y al vincularla le da premium: tener cuenta de antes es ser un conocido", async () => {
-  await assertSucceeds(vincular(como("jefe", "jefe@x.es"), "eva", "u-aaaaaaaa", { plan: "premium" }));
-});
-
-test("y no a quien no lo ha verificado: registrarse con el correo de otro no vale", async () => {
-  await assertFails(vincular(como("jefe", "jefe@x.es"), "bea", "u-aaaaaaaa"));
-});
-
-test("solo una cuenta de las que existen, y solo una vez", async () => {
+// Vincular ya no existe: ni el administrador puede ponerle a alguien una cuenta
+// de antes. Quien no migró a tiempo entra como cuenta nueva.
+test("ya nadie vincula cuentas de antes, ni el administrador", async () => {
   const jefe = como("jefe", "jefe@x.es");
-  await assertFails(vincular(jefe, "eva", "u-no-existe"));
-  await assertSucceeds(vincular(jefe, "eva", "u-aaaaaaaa"));
-  await assertFails(vincular(jefe, "eva", "u-bbbbbbbb")); // ya vinculada
-});
-
-test("una cuenta antigua ya vinculada a otra no se vuelve a vincular", async () => {
-  await entorno.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), "cuentas_antiguas/u-aaaaaaaa"), { vinculada: "otra" });
-  });
-  await assertFails(vincular(como("jefe", "jefe@x.es"), "eva", "u-aaaaaaaa"));
-});
-
-test("vincular no cuela otros campos", async () => {
-  const jefe = como("jefe", "jefe@x.es");
-  await assertFails(vincular(jefe, "eva", "u-aaaaaaaa", { admin: true }));
-  await assertFails(vincular(jefe, "eva", "u-aaaaaaaa", { correo: "otro@x.es" }));
-});
-
-test("el administrador marca la cuenta antigua como vinculada, y solo eso", async () => {
-  const jefe = como("jefe", "jefe@x.es");
-  await assertSucceeds(updateDoc(doc(jefe, "cuentas_antiguas/u-aaaaaaaa"), { vinculada: "eva" }));
-  await assertFails(updateDoc(doc(jefe, "cuentas_antiguas/u-bbbbbbbb"), { correo: "robado@x.es" }));
-  await assertFails(updateDoc(doc(jefe, "cuentas_antiguas/u-bbbbbbbb"), { vinculada: 7 }));
+  await assertFails(updateDoc(doc(jefe, "usuarios/eva"), { legado: "u-aaaaaaaa", estado: "aprobado", plan: "premium" }));
+  await assertFails(updateDoc(doc(jefe, "cuentas_antiguas/u-aaaaaaaa"), { vinculada: "eva" }));
+  // Lo de siempre sí: darle premium.
+  await assertSucceeds(updateDoc(doc(jefe, "usuarios/eva"), { estado: "aprobado", plan: "premium" }));
 });
 
 test("las cuentas antiguas (con sus correos) solo las ve el administrador", async () => {

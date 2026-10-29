@@ -152,19 +152,12 @@ def _db():
     )
 
 
-def test_reciben_avisos_las_aprobadas_y_las_antiguas_sin_vincular():
+def test_reciben_avisos_las_aprobadas_y_ya_no_las_antiguas_sin_vincular():
+    """Quien no migró a tiempo se deja en paz: si vuelve, es una cuenta nueva."""
     from tripfinder import nube
 
     cuentas, _ = nube.cuentas_para_avisos(_db())
-    assert sorted(c.email for c in cuentas) == ["ana@ejemplo.com", "bea@ejemplo.com"]
-
-
-def test_una_cuenta_antigua_sin_vincular_conserva_lo_que_habia_elegido():
-    from tripfinder import nube
-
-    cuentas, _ = nube.cuentas_para_avisos(_db())
-    bea = next(c for c in cuentas if c.email == "bea@ejemplo.com")
-    assert bea.id == "u-2222bbbb" and bea.prefs["chollos"] == "semanal"
+    assert sorted(c.email for c in cuentas) == ["ana@ejemplo.com"]
 
 
 def test_una_vez_vinculada_el_aviso_va_a_la_cuenta_nueva_y_no_se_duplica():
@@ -209,8 +202,8 @@ def test_los_seguimientos_de_una_cuenta_antigua_llegan_a_su_cuenta_nueva(monkeyp
     cfg = Config(raw={"notify": {"to": "dueno@ejemplo.com"}})
     partes = cli._partes_por_dueno([(w_viejo, []), (w_nuevo, []), (w_bea, [])], cfg)
     assert [w.id for w, _ in partes["ana@ejemplo.com"]] == ["a", "b"]
-    assert [w.id for w, _ in partes["bea@ejemplo.com"]] == ["c"]
-    assert "dueno@ejemplo.com" not in partes
+    # Bea no migró: su seguimiento viejo ya no tiene a quién avisar.
+    assert "bea@ejemplo.com" not in partes
 
 
 emulador = pytest.mark.skipif(

@@ -1,9 +1,10 @@
 /* nube-admin.js — El panel cuando hay Firebase: quién hay y quién es premium.
 
    La web es abierta: quien se registra entra gratis y ve los chollos. Desde
-   aquí se le da premium —todas las herramientas— o se le quita, y se bloquea a
-   quien sobre. Las cuentas de antes de abrir la web no tienen `plan` y cuentan
-   como premium: son las de los conocidos.
+   aquí se le da premium o Max, o se le quita, y se bloquea a quien sobre.
+
+   Las cuentas de antes de Firebase ya no se vinculan desde aquí: quien no
+   migró a tiempo entra como cuenta nueva.
 
    Con las cuentas de antes, el panel abría un token de GitHub con una clave
    maestra y escribía en `data/users.json`. Aquí no hay nada de eso: entras con
@@ -118,7 +119,28 @@ function salir(caja) {
   if (stats) stats.innerHTML = "";
 }
 
-/* ---------------------------------------------------------------- las cuentas */
+/* ---------------------------------------------------------------- el panel
+   Tres pestañas y nada más: RESUMEN (cómo va la web: cifras, uso por día,
+   planes, pantallas y quién ha entrado), CUENTAS (la tabla, con el plan a un
+   toque) y ERRORES. Arriba, solo lo que pide que hagas algo. */
+const PESTANAS = [
+  ["resumen", "Resumen"],
+  ["cuentas", "Cuentas"],
+  ["errores", "Errores"],
+];
+let pestana = "resumen";
+try {
+  pestana = sessionStorage.getItem("tf_adm_pestana") || "resumen";
+} catch {
+  /* sin almacenamiento: se empieza por el resumen */
+}
+
+const icono = (d, tam = 16) =>
+  `<svg viewBox="0 0 24 24" width="${tam}" height="${tam}" fill="none" stroke="currentColor" stroke-width="1.8"
+    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+const inicial = (n) => esc(String(n || "?").trim().slice(0, 1).toUpperCase() || "?");
+const nPlan = (cuentas, p) => cuentas.filter((c) => c.estado === "aprobado" && nubePlan(c) === p).length;
+
 async function lista(caja, yo, aviso = "") {
   let cuentas;
   try {
@@ -127,95 +149,55 @@ async function lista(caja, yo, aviso = "") {
     caja.innerHTML = `<p class="token-status">No se pudieron leer las cuentas: ${esc(e.message)}</p>`;
     return;
   }
-  // Las de antes de Firebase. Si aún no se han copiado, la lista sale vacía y todo
-  // sigue como siempre: no es un error.
-  let antiguas = [];
-  try {
-    antiguas = await nubeCuentasAntiguas();
-  } catch {
-    /* sin permiso o sin copiar: no se ofrece vincular */
-  }
-  const sinVincular = antiguas.filter((a) => !a.vinculada && a.activa !== false);
-  const cuenta = (e) => cuentas.filter((c) => c.estado === e).length;
-  const premium = cuentas.filter((c) => c.estado === "aprobado" && nubePlan(c) === "premium").length;
-  const max = cuentas.filter((c) => c.estado === "aprobado" && nubePlan(c) === "max").length;
-  const nuevas7 = cuentas.filter((c) => tiempo(c.creado) > Date.now() - 7 * 864e5).length;
-  const kpi = (n, rotulo, extra = "", caliente = false) =>
-    `<div class="adm-kpi${caliente ? " hot" : ""}"><dd>${n}</dd><dt>${rotulo}</dt>${
-      extra ? `<span class="adm-kpi-extra">${extra}</span>` : ""
-    }</div>`;
-  $("#stats").innerHTML =
-    kpi(cuentas.length, "cuentas", nuevas7 ? `+${nuevas7} esta semana` : "") +
-    kpi(premium, "premium") +
-    (max ? kpi(max, "max") : "") +
-    kpi(cuenta("aprobado") - premium - max, "gratis") +
-    kpi(cuentas.filter((c) => c.prefs && c.prefs.quiere_premium && nubePlan(c) === "gratis").length, "quieren premium") +
-    (cuenta("pendiente") ? kpi(cuenta("pendiente"), "pendientes", "", true) : "") +
-    (cuenta("bloqueado") ? kpi(cuenta("bloqueado"), "bloqueadas") : "") +
-    (sinVincular.length ? kpi(sinVincular.length, "cuentas de antes sin vincular", "", true) : "");
-
-  const ordenadas = [...cuentas].sort(
-    (a, b) =>
-      (ORDEN[a.estado] ?? 3) - (ORDEN[b.estado] ?? 3) ||
-      (b.creado instanceof Date ? b.creado.getTime() : 0) - (a.creado instanceof Date ? a.creado.getTime() : 0)
-  );
-
-  const icono = (d) =>
-    `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"
-      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
-  // Las cifras de las cuentas van debajo del saludo, no en la cabecera de la
-  // página. Antes de repintar se devuelven a su sitio: el `innerHTML` de abajo
-  // se llevaría el nodo por delante.
   const stats = $("#stats");
-  if (stats && caja.contains(stats)) $(".masthead")?.append(stats);
+  if (stats) stats.hidden = true;
+  const pendientes = cuentas.filter((c) => c.estado === "pendiente").length;
+  const quieren = cuentas.filter((c) => c.prefs && c.prefs.quiere_premium && nubePlan(c) === "gratis").length;
+
   caja.innerHTML = `
-    <div class="adm-sup">
+    <header class="adm-sup">
       <div class="adm-quien">
-        <span class="adm-avatar grande" aria-hidden="true">${esc((yo.name || "?").slice(0, 1).toUpperCase())}</span>
-        <span><b>Hola, ${esc(yo.name || "admin")}</b><small>Administración de TripFinder</small></span>
+        <span class="adm-avatar grande" aria-hidden="true">${inicial(yo.name)}</span>
+        <span><b>Hola, ${esc(yo.name || "admin")}</b><small>${cuentas.length} cuenta${cuentas.length === 1 ? "" : "s"} en la web</small></span>
       </div>
       <div class="adm-acciones">
         <button class="btn ghost small" type="button" id="nubeRecargar">${icono(
           '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'
         )} Recargar</button>
-        <a class="btn ghost small" href="./">← Volver a la web</a>
+        <a class="btn ghost small" href="./">Volver a la web</a>
         <button class="btn ghost small" type="button" id="nubeAdminSalir">Salir</button>
       </div>
-    </div>
-    <div id="admStatsHueco"></div>
-    <nav class="adm-nav" aria-label="Secciones del panel">
-      <a href="#admActividad">Actividad</a><a href="#admCuentasSec">Cuentas</a><a href="#admErrores">Errores</a>
-    </nav>
+    </header>
+    <div class="adm-pendiente" id="admPendiente">${
+      pendientes || quieren
+        ? `${pendientes ? `<button type="button" data-ir="cuentas" data-filtro="pendiente"><b>${pendientes}</b> pendiente${pendientes === 1 ? "" : "s"} de abrir</button>` : ""}
+           ${quieren ? `<button type="button" data-ir="cuentas" data-filtro="quiere"><b>${quieren}</b> quiere${quieren === 1 ? "" : "n"} premium</button>` : ""}`
+        : ""
+    }</div>
     <div class="adm-aviso" id="nubeAviso" role="status">${esc(aviso)}</div>
+    <nav class="adm-tabs" role="tablist" aria-label="Partes del panel">${PESTANAS.map(
+      ([k, t]) => `<button type="button" role="tab" id="admTab-${k}" aria-controls="admPanel-${k}" data-tab="${k}"
+        aria-selected="${k === pestana}">${t}<i id="admTabN-${k}">${k === "cuentas" ? cuentas.length : ""}</i></button>`
+    ).join("")}</nav>
 
-    <section class="adm-bloque" id="admActividad" aria-labelledby="admActTit">
+    <section class="adm-panel" id="admPanel-resumen" role="tabpanel" aria-labelledby="admTab-resumen" ${pestana === "resumen" ? "" : "hidden"}>
       <div class="adm-cab">
-        <h3 class="adm-tit" id="admActTit">Actividad</h3>
+        <h3 class="adm-tit">Cómo va la web</h3>
         <div class="adm-periodo" role="radiogroup" aria-label="Periodo">${PERIODOS.map(
           ([dias, rotulo]) =>
             `<button type="button" class="adm-seg" role="radio" data-periodo="${dias}"
               aria-checked="${dias === periodo ? "true" : "false"}">${rotulo}</button>`
         ).join("")}</div>
       </div>
-      <div id="admActCuerpo"><p class="meta"><span class="spin"></span>Leyendo la actividad…</p></div>
+      <div id="admActividad"><div id="admActCuerpo"><p class="meta"><span class="spin"></span>Leyendo la actividad…</p></div></div>
     </section>
 
-    <section class="adm-bloque" id="admCuentasSec" aria-labelledby="admCuentasTit">
+    <section class="adm-panel" id="admPanel-cuentas" role="tabpanel" aria-labelledby="admTab-cuentas" ${pestana === "cuentas" ? "" : "hidden"}>
       <div class="adm-cab">
-        <h3 class="adm-tit" id="admCuentasTit">Cuentas · ${cuentas.length}</h3>
+        <div class="adm-chips" role="radiogroup" aria-label="Qué cuentas" id="admChips"></div>
         <div class="adm-filtros">
-          <input type="search" id="admBuscar" placeholder="Buscar por nombre o correo…" autocomplete="off"
+          <input type="search" id="admBuscar" placeholder="Buscar por nombre o correo" autocomplete="off"
             aria-label="Buscar una cuenta">
-          <select id="admFiltro" aria-label="Qué cuentas">
-            <option value="">Todas</option>
-            <option value="premium">Premium</option>
-            <option value="gratis">Gratis</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="bloqueado">Bloqueadas</option>
-            <option value="quiere">Quieren premium</option>
-            <option value="sinverificar">Correo sin verificar</option>
-            <option value="dormidas">Sin entrar en 30 días</option>
-          </select>
           <select id="admOrden" aria-label="Ordenar">
             <option value="estado">Por estado</option>
             <option value="ultima">Última entrada</option>
@@ -226,35 +208,79 @@ async function lista(caja, yo, aviso = "") {
       </div>
       <div class="adm-tabla">
         <div class="adm-fila adm-fila-cab" aria-hidden="true">
-          <span>Cuenta</span><span>Plan</span><span>Estado</span><span>Última entrada</span><span></span>
+          <span>Cuenta</span><span>Plan</span><span>Última entrada</span><span></span>
         </div>
-        <section class="adm-filas" id="nubeCuentas">${
-          ordenadas.length
-            ? ordenadas.map((c) => fila(c, yo, sinVincular)).join("")
+        <div class="adm-filas" id="nubeCuentas">${
+          cuentas.length
+            ? [...cuentas]
+                .sort((a, b) => (ORDEN[a.estado] ?? 3) - (ORDEN[b.estado] ?? 3) || tiempo(b.creado) - tiempo(a.creado))
+                .map((c) => fila(c, yo))
+                .join("")
             : `<p class="meta">Todavía no se ha registrado nadie.</p>`
-        }</section>
+        }</div>
+        <p class="meta adm-nadie" id="admNadie" hidden>Ninguna cuenta con eso.</p>
       </div>
     </section>
 
-    <section class="adm-bloque" id="admErrores" aria-labelledby="admErrTit">
-      <div class="adm-cab"><h3 class="adm-tit" id="admErrTit">Errores</h3></div>
-      <div id="admErrCuerpo"><p class="meta"><span class="spin"></span>Leyendo…</p></div>
+    <section class="adm-panel" id="admPanel-errores" role="tabpanel" aria-labelledby="admTab-errores" ${pestana === "errores" ? "" : "hidden"}>
+      <div id="admErrores"><div id="admErrCuerpo"><p class="meta"><span class="spin"></span>Leyendo…</p></div></div>
     </section>`;
 
-  if (stats) caja.querySelector("#admStatsHueco")?.replaceWith(stats);
+  /* Las pestañas. */
+  const ir = (k) => {
+    pestana = k;
+    try {
+      sessionStorage.setItem("tf_adm_pestana", k);
+    } catch {
+      /* nada */
+    }
+    caja.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === k)));
+    caja.querySelectorAll(".adm-panel").forEach((p) => (p.hidden = p.id !== `admPanel-${k}`));
+  };
+  caja.querySelector(".adm-tabs").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tab]");
+    if (b) ir(b.dataset.tab);
+  });
+  caja.querySelector(".adm-tabs").addEventListener("keydown", (e) => {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+    const i = PESTANAS.findIndex(([k]) => k === pestana);
+    const j = (i + (e.key === "ArrowRight" ? 1 : PESTANAS.length - 1)) % PESTANAS.length;
+    ir(PESTANAS[j][0]);
+    caja.querySelector(`[data-tab="${PESTANAS[j][0]}"]`).focus();
+  });
 
+  /* Los filtros de las cuentas: chips con su cuenta. */
+  const FILTROS = [
+    ["", "Todas", cuentas.length],
+    ["premium", "Premium y Max", nPlan(cuentas, "premium") + nPlan(cuentas, "max")],
+    ["gratis", "Gratis", nPlan(cuentas, "gratis")],
+    ["quiere", "Quieren premium", quieren],
+    ["pendiente", "Pendientes", pendientes],
+    ["bloqueado", "Bloqueadas", cuentas.filter((c) => c.estado === "bloqueado").length],
+    ["sinverificar", "Sin verificar", cuentas.filter((c) => !c.verificado).length],
+    ["dormidas", "Sin entrar en 30 días", null],
+  ];
+  let filtro = "";
+  const pintarChips = () => {
+    caja.querySelector("#admChips").innerHTML = FILTROS.filter(([k, , n]) => !k || n === null || n > 0)
+      .map(
+        ([k, t, n]) => `<button type="button" class="adm-chip" role="radio" data-filtrar="${k}" aria-checked="${k === filtro}">${t}${
+          n === null ? "" : ` <i>${n}</i>`
+        }</button>`
+      )
+      .join("");
+  };
   const filtrar = () => {
     const q = normal(caja.querySelector("#admBuscar").value);
-    const f = caja.querySelector("#admFiltro").value;
     const orden = caja.querySelector("#admOrden").value;
-    const cuantas = { vistas: 0 };
     const filas = [...caja.querySelectorAll("#nubeCuentas [data-cuenta]")];
     const porId = Object.fromEntries(cuentas.map((c) => [c.id, c]));
+    let vistas = 0;
     filas.forEach((el) => {
       const c = porId[el.dataset.cuenta];
-      const ok = c && (!q || normal(`${c.nombre} ${c.correo}`).includes(q)) && pasaFiltro(c, f);
+      const ok = c && (!q || normal(`${c.nombre} ${c.correo}`).includes(q)) && pasaFiltro(c, filtro);
       el.hidden = !ok;
-      if (ok) cuantas.vistas += 1;
+      if (ok) vistas += 1;
     });
     const clave = {
       estado: (c) => [ORDEN[c.estado] ?? 3, -tiempo(c.creado)],
@@ -265,18 +291,30 @@ async function lista(caja, yo, aviso = "") {
     filas
       .sort((a, b) => comparar(clave(porId[a.dataset.cuenta] || {}), clave(porId[b.dataset.cuenta] || {})))
       .forEach((el) => el.parentElement.appendChild(el));
-    caja.querySelector("#admCuentasTit").textContent =
-      cuantas.vistas === cuentas.length ? `Cuentas · ${cuentas.length}` : `Cuentas · ${cuantas.vistas} de ${cuentas.length}`;
+    caja.querySelector("#admNadie").hidden = vistas > 0 || !cuentas.length;
   };
-  ["#admBuscar", "#admFiltro", "#admOrden"].forEach((sel) =>
-    caja.querySelector(sel).addEventListener("input", filtrar)
-  );
+  pintarChips();
+  caja.querySelector("#admChips").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-filtrar]");
+    if (!b) return;
+    filtro = b.dataset.filtrar;
+    pintarChips();
+    filtrar();
+  });
+  ["#admBuscar", "#admOrden"].forEach((sel) => caja.querySelector(sel).addEventListener("input", filtrar));
+  caja.querySelector("#admPendiente").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-ir]");
+    if (!b) return;
+    ir(b.dataset.ir);
+    filtro = b.dataset.filtro || "";
+    pintarChips();
+    filtrar();
+  });
+
   caja.querySelectorAll("[data-periodo]").forEach((b) =>
     b.addEventListener("click", () => {
       periodo = Number(b.dataset.periodo);
-      caja.querySelectorAll("[data-periodo]").forEach((x) =>
-        x.setAttribute("aria-checked", String(x === b))
-      );
+      caja.querySelectorAll("[data-periodo]").forEach((x) => x.setAttribute("aria-checked", String(x === b)));
       actividad(caja, cuentas, filtrar);
     })
   );
@@ -284,106 +322,79 @@ async function lista(caja, yo, aviso = "") {
 
   caja.querySelector("#nubeRecargar").addEventListener("click", () => lista(caja, yo));
   caja.querySelector("#nubeAdminSalir").addEventListener("click", () => salir(caja));
-  caja.querySelectorAll("[data-vincular]").forEach((b) =>
-    b.addEventListener("click", async () => {
-      if (b.disabled) return;
-      const uid = b.dataset.vincular;
-      const legado = caja.querySelector(`[data-elegir="${uid}"]`).value;
-      const vieja = antiguas.find((a) => a.id === legado);
-      if (!vieja) return;
-      document.querySelectorAll("[data-vincular], [data-estado]").forEach((x) => (x.disabled = true));
-      const r = await nubeVincular(uid, legado, vieja.prefs || {});
-      lista(
-        caja,
-        yo,
-        r.ok
-          ? `${b.dataset.nombre}: premium y vinculada con «${vieja.nombre || vieja.usuario}». Ya tiene lo de antes.`
-          : `No se pudo: ${r.error}`
-      );
-    })
-  );
   caja.querySelectorAll("[data-estado]").forEach((b) =>
     b.addEventListener("click", async () => {
-      if (b.disabled) return;
-      document.querySelectorAll("[data-vincular], [data-estado]").forEach((x) => (x.disabled = true));
+      if (b.disabled || b.getAttribute("aria-pressed") === "true") return;
+      caja.querySelectorAll("[data-estado]").forEach((x) => (x.disabled = true));
       const plan = b.dataset.plan || "";
       const r = await nubeCambiarEstado(b.dataset.uid, b.dataset.estado, plan);
-      const hecho = plan ? `ahora es ${plan === "max" ? "Max" : plan}` : ESTADOS[b.dataset.estado][1].toLowerCase();
+      const hecho =
+        b.dataset.estado === "bloqueado"
+          ? "bloqueada"
+          : plan
+            ? `ahora es ${plan === "max" ? "Max" : plan}`
+            : ESTADOS[b.dataset.estado][1].toLowerCase();
       lista(caja, yo, r.ok ? `${b.dataset.nombre}: ${hecho}.` : `No se pudo: ${r.error}`);
     })
   );
 }
 
-function fila(c, yo, sinVincular = []) {
-  const [clase, texto] = ESTADOS[c.estado] || ["pendiente", c.estado || "Sin estado"];
+/* Una cuenta: quién es, su plan a un toque (gratis, premium, Max), cuándo entró
+   y bloquear. Una pendiente se abre (gratis o premium); una bloqueada se
+   desbloquea. */
+function fila(c, yo) {
+  const [clase] = ESTADOS[c.estado] || ["pendiente"];
   const esYo = c.id === yo.uid;
   const plan = nubePlan(c);
-  const boton = (estado, rotulo, primario, conPlan = "") =>
-    `<button class="btn ${primario ? "primary" : "ghost"} small" type="button" data-estado="${estado}"
-      data-uid="${esc(c.id)}" data-nombre="${esc(c.nombre)}"${conPlan ? ` data-plan="${conPlan}"` : ""}>${rotulo}</button>`;
-  const acciones = esYo
-    ? `<span class="meta">tú</span>`
-    : c.estado === "pendiente"
-      ? boton("aprobado", "Abrir gratis", false, "gratis") +
-        boton("aprobado", "Hacer premium", true, "premium") +
-        boton("bloqueado", "Bloquear")
-      : c.estado === "aprobado"
-        ? (plan === "max"
-            ? boton("aprobado", "Dejar en premium", false, "premium") + boton("aprobado", "Quitar premium", false, "gratis")
-            : plan === "premium"
-              ? boton("aprobado", "Hacer Max", false, "max") + boton("aprobado", "Quitar premium", false, "gratis")
-              : boton("aprobado", "Hacer premium", true, "premium")) + boton("bloqueado", "Bloquear")
-        : boton("aprobado", "Desbloquear", true, plan);
-  // Vincular con una cuenta de antes: solo si ha verificado su correo y aún no
-  // tiene ninguna. La que coincide por correo sale elegida; si cambió de correo,
-  // se elige a mano.
-  let vincular = "";
-  if (!esYo && !c.legado && sinVincular.length && c.estado !== "bloqueado") {
-    const mismo = sinVincular.find((a) => (a.correo || "").toLowerCase() === (c.correo || "").toLowerCase());
-    const opciones = sinVincular
-      .map(
-        (a) =>
-          `<option value="${esc(a.id)}"${mismo && mismo.id === a.id ? " selected" : ""}>${esc(
-            a.nombre || a.usuario
-          )} · ${esc(a.correo || "sin correo")}</option>`
-      )
-      .join("");
-    vincular = c.verificado
-      ? `<span class="nube-vincular">
-           <select data-elegir="${esc(c.id)}" aria-label="Cuenta de antes de ${esc(c.nombre)}">${opciones}</select>
-           <button class="btn primary small" type="button" data-vincular="${esc(c.id)}"
-             data-nombre="${esc(c.nombre)}">Vincular y hacer premium</button>
-         </span>
-         ${mismo ? `<span class="meta">Su correo coincide con una cuenta de antes.</span>` : ""}`
-      : `<span class="meta">Para vincularla con una cuenta de antes, antes tiene que verificar su correo.</span>`;
+  const boton = (estado, rotulo, { conPlan = "", pulsado = false, extra = "" } = {}) =>
+    `<button class="${extra}" type="button" data-estado="${estado}" data-uid="${esc(c.id)}" data-nombre="${esc(c.nombre)}"${
+      conPlan ? ` data-plan="${conPlan}"` : ""
+    } aria-pressed="${pulsado}">${rotulo}</button>`;
+  let planes = "";
+  if (esYo) planes = `<span class="meta">tú${c.admin ? " · admin" : ""}</span>`;
+  else if (c.estado === "aprobado") {
+    planes = `<div class="adm-plan" role="group" aria-label="Plan de ${esc(c.nombre)}">${[
+      ["gratis", "Gratis"],
+      ["premium", "Premium"],
+      ["max", "Max"],
+    ]
+      .map(([p, t]) => boton("aprobado", t, { conPlan: p, pulsado: plan === p, extra: `adm-plan-b p-${p}` }))
+      .join("")}</div>`;
+  } else if (c.estado === "pendiente") {
+    planes = `<span class="adm-estado pendiente">Pendiente</span>
+      ${boton("aprobado", "Abrir gratis", { conPlan: "gratis", extra: "btn ghost small" })}
+      ${boton("aprobado", "Abrir premium", { conPlan: "premium", extra: "btn primary small" })}`;
+  } else {
+    planes = `<span class="adm-estado bloqueado">Bloqueada</span>`;
   }
-  const estadoTxt = c.estado === "aprobado" ? "Activa" : texto;
+  const accion = esYo
+    ? ""
+    : c.estado === "bloqueado"
+      ? boton("aprobado", "Desbloquear", { conPlan: plan, extra: "btn ghost small" })
+      : boton("bloqueado", `${icono('<circle cx="12" cy="12" r="8.5"/><path d="m6 6 12 12"/>', 14)} Bloquear`, {
+          extra: "adm-bloquear",
+        });
+  const etiquetas = [
+    c.admin && !esYo ? `<i class="adm-et">admin</i>` : "",
+    c.prefs && c.prefs.quiere_premium && plan === "gratis" ? `<i class="adm-et quiere">quiere premium</i>` : "",
+    c.verificado ? "" : `<i class="adm-et ojo">correo sin verificar</i>`,
+  ].join("");
   return `
     <div class="adm-fila nube-cuenta ${esc(clase)}" data-cuenta="${esc(c.id)}">
       <span class="adm-persona">
-        <span class="adm-avatar" aria-hidden="true">${esc(String(c.nombre || "?").slice(0, 1).toUpperCase())}</span>
+        <span class="adm-avatar ${plan === "gratis" || c.estado !== "aprobado" ? "" : "con-plan"}" aria-hidden="true">${inicial(c.nombre)}</span>
         <span class="adm-persona-txt">
-          <b>${esc(c.nombre)}${c.admin ? ' <i class="adm-badge admin">admin</i>' : ""}</b>
+          <b>${esc(c.nombre)}</b>
           <small>${esc(c.correo)}</small>
+          ${etiquetas ? `<span class="adm-ets">${etiquetas}</span>` : ""}
         </span>
       </span>
-      <span class="adm-col" data-rot="Plan">${
-        c.estado === "aprobado"
-          ? `<i class="adm-badge ${plan === "gratis" ? "gratis" : "premium"}">${
-              plan === "max" ? "Max" : plan === "premium" ? "Premium" : "Gratis"
-            }</i>`
-          : "—"
-      }${c.prefs && c.prefs.quiere_premium && plan === "gratis" ? ' <i class="adm-badge quiere">quiere premium</i>' : ""}</span>
-      <span class="adm-col" data-rot="Estado">
-        <i class="adm-badge est-${esc(clase)}">${esc(estadoTxt)}</i>
-        <small class="${c.verificado ? "" : "ojo"}">${c.verificado ? "correo verificado" : "correo sin verificar"}</small>
-      </span>
+      <span class="adm-col adm-col-plan" data-rot="Plan">${planes}</span>
       <span class="adm-col" data-rot="Última entrada">
         <span data-ultima>—</span>
-        <small>${fecha(c.creado) ? `desde ${esc(fecha(c.creado))}` : ""}${c.legado ? " · vinculada con una cuenta de antes" : ""}</small>
+        <small>${fecha(c.creado) ? `cuenta desde ${esc(fecha(c.creado))}` : ""}</small>
       </span>
-      <span class="adm-col adm-acc peticion-acc">${acciones}</span>
-      ${vincular ? `<span class="adm-vincular">${vincular}</span>` : ""}
+      <span class="adm-col adm-acc">${accion}</span>
     </div>`;
 }
 
@@ -493,8 +504,10 @@ export function resumirActividad(filas) {
   };
 }
 
-/* La actividad, día a día (o por horas en «24 h»): una columna por tramo con
-   las pantallas vistas, y encima, en naranja, cuántos han entrado. */
+
+/* La actividad por tramos: días (u horas en «24 h»). De cada tramo, las
+   pantallas vistas, los inicios de sesión, las personas y el tiempo: las
+   minigráficas de las cifras y la gráfica grande salen de aquí. */
 function porTramos(filas) {
   const horas = periodo === 1;
   const n = horas ? 24 : Math.min(periodo, 30);
@@ -503,47 +516,98 @@ function porTramos(filas) {
   const fin = horas
     ? new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate(), ahora.getHours() + 1).getTime()
     : new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() + 1).getTime();
-  const tramos = Array.from({ length: n }, (_, i) => ({ desde: fin - (n - i) * paso, vistas: 0, entradas: 0 }));
+  const tramos = Array.from({ length: n }, (_, i) => ({
+    desde: fin - (n - i) * paso, vistas: 0, entradas: 0, segundos: 0, errores: 0, gente: new Set(),
+  }));
   for (const f of filas) {
     const i = Math.floor((tiempo(f.creado) - (fin - n * paso)) / paso);
     if (i < 0 || i >= n) continue;
-    if (f.tipo === "pantalla") tramos[i].vistas += Number(f.visitas) || 0;
-    if (f.tipo === "entrada") tramos[i].entradas += 1;
+    const t = tramos[i];
+    if (f.tipo === "pantalla") {
+      t.vistas += Number(f.visitas) || 0;
+      t.segundos += Number(f.segundos) || 0;
+    }
+    if (f.tipo === "entrada") {
+      t.entradas += 1;
+      if (f.uid) t.gente.add(f.uid);
+    }
+    if (f.tipo === "error") t.errores += 1;
   }
   const rot = (t) => {
     const d = new Date(t.desde);
     return horas ? `${d.getHours()} h` : d.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
   };
-  return { tramos, rot, cada: horas ? 3 : n > 14 ? 5 : n > 7 ? 2 : 1 };
+  return { tramos, rot, cada: horas ? 4 : n > 14 ? 5 : n > 7 ? 2 : 1 };
 }
 
+/* Una minigráfica: la forma de la serie, sin ejes. */
+function chispa(valores, clase = "") {
+  const max = Math.max(1, ...valores);
+  const n = valores.length;
+  if (n < 2) return "";
+  const x = (i) => (i / (n - 1)) * 100;
+  const y = (v) => 28 - (v / max) * 26;
+  const linea = valores.map((v, i) => `${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
+  return `<svg class="adm-chispa ${clase}" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+      <polygon points="0,30 ${linea} 100,30"/><polyline points="${linea}" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+/* La gráfica grande: pantallas vistas por tramo, en área, con una guía y su
+   cifra al pasar por encima (o al tocar). Una sola serie y un solo eje: los
+   inicios de sesión van en la etiqueta, no en otra escala. */
 function graficaHTML(filas) {
   const { tramos, rot, cada } = porTramos(filas);
-  const max = Math.max(1, ...tramos.map((t) => t.vistas + t.entradas));
+  const valores = tramos.map((t) => t.vistas);
+  const max = Math.max(4, ...valores);
+  const techo = Math.ceil(max / 4) * 4;
+  const n = tramos.length;
+  const x = (i) => (n === 1 ? 50 : (i / (n - 1)) * 100);
+  const y = (v) => 100 - (v / techo) * 100;
+  const linea = valores.map((v, i) => `${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(" ");
   return `
-    <div class="adm-grafica" role="img" aria-label="Pantallas vistas e inicios de sesión por ${
-      periodo === 1 ? "hora" : "día"
-    }">
-      ${tramos
-        .map(
-          (t, i) => `<div class="adm-col-g" title="${esc(rot(t))}: ${t.vistas} pantallas, ${t.entradas} entradas">
-            <span class="adm-g-barras">
-              <i class="g-entradas" style="height:${(t.entradas / max) * 100}%"></i>
-              <i class="g-vistas" style="height:${(t.vistas / max) * 100}%"></i>
-            </span>
-            <small>${i % cada === 0 || i === tramos.length - 1 ? esc(rot(t)) : ""}</small>
-          </div>`
-        )
-        .join("")}
-    </div>
-    <p class="adm-leyenda"><span class="m-vistas"></span> pantallas vistas <span class="m-entradas"></span> inicios de sesión</p>`;
+    <figure class="adm-grafica">
+      <div class="adm-g-ejes" aria-hidden="true">${[1, 0.5, 0]
+        .map((f) => `<span style="top:${(1 - f) * 100}%"><em>${Math.round(techo * f)}</em></span>`)
+        .join("")}</div>
+      <div class="adm-g-plano">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+          <polygon class="g-area" points="0,100 ${linea} 100,100"/>
+          <polyline class="g-linea" points="${linea}" vector-effect="non-scaling-stroke"/>
+        </svg>
+        <div class="adm-g-toques" style="--n:${n}">${tramos
+          .map(
+            (t, i) => `<button type="button" class="adm-g-toque" style="--x:${x(i)}%;--y:${y(t.vistas)}%"
+              aria-label="${esc(rot(t))}: ${t.vistas} pantallas vistas, ${t.entradas} inicios de sesión">
+              <span class="adm-g-tip"><b>${esc(rot(t))}</b>${t.vistas} pantallas · ${t.entradas} entrada${t.entradas === 1 ? "" : "s"}</span>
+            </button>`
+          )
+          .join("")}</div>
+      </div>
+      <div class="adm-g-x" aria-hidden="true" style="--n:${n}">${tramos
+        .map((t, i) => (i % cada === 0 || i === n - 1 ? `<span style="left:${x(i)}%">${esc(rot(t))}</span>` : ""))
+        .join("")}</div>
+      <figcaption class="solo-lector">Pantallas vistas por ${periodo === 1 ? "hora" : "día"}</figcaption>
+    </figure>`;
+}
+
+/* Una lista de barras de un solo color: magnitud por categoría. */
+function barrasHTML(filas, clase = "") {
+  const max = Math.max(1, ...filas.map((f) => f.valor));
+  return `<ol class="adm-barras ${clase}">${filas
+    .map(
+      (f) => `<li>
+        <span class="adm-barra-nom">${esc(f.nombre)}</span>
+        <span class="adm-barra"><i style="width:${Math.max(f.valor ? 2 : 0, Math.round((f.valor / max) * 100))}%"></i></span>
+        <span class="adm-barra-dato">${f.dato}</span>
+      </li>`
+    )
+    .join("")}</ol>`;
 }
 
 const NO_PUBLICADAS = `<div class="adm-alerta">
     <b>La actividad todavía no se puede leer.</b>
-    Faltan por publicar las reglas nuevas de Firestore. En cuanto se publiquen
-    (<code>firebase deploy --only firestore</code>), aquí aparecen las entradas, el tiempo por pantalla y
-    los errores. Mientras, la web funciona igual y las cuentas de abajo se gestionan como siempre.
+    Faltan por publicar las reglas de Firestore (<code>firebase deploy --only firestore</code>). Mientras,
+    las cuentas se gestionan igual.
   </div>`;
 
 async function actividad(caja, cuentas, alTerminar) {
@@ -565,82 +629,100 @@ async function actividad(caja, cuentas, alTerminar) {
   }
   const r = resumirActividad(filas);
   Object.assign(ULTIMA, r.ultima);
+  const { tramos } = porTramos(filas);
   const nombre = Object.fromEntries(cuentas.map((c) => [c.id, c.nombre || c.correo]));
-  const max = Math.max(1, ...r.pantallas.map((p) => p.segundos));
-  const sinNada = !filas.length;
+  const desde = Date.now() - periodo * 864e5;
+  const nuevas = cuentas.filter((c) => tiempo(c.creado) > desde).length;
+  const aprobadas = cuentas.filter((c) => c.estado === "aprobado").length;
+
+  const cifra = (valor, rotulo, serie, clase = "") =>
+    `<div class="adm-kpi ${clase}"><dt>${rotulo}</dt><dd>${valor}</dd>${chispa(serie, clase)}</div>`;
+  const planes = [
+    { nombre: "Gratis", valor: nPlan(cuentas, "gratis") },
+    { nombre: "Premium", valor: nPlan(cuentas, "premium") },
+    { nombre: "Max", valor: nPlan(cuentas, "max") },
+    { nombre: "Pendientes", valor: cuentas.filter((c) => c.estado === "pendiente").length },
+    { nombre: "Bloqueadas", valor: cuentas.filter((c) => c.estado === "bloqueado").length },
+  ]
+    .filter((p, i) => i < 3 || p.valor)
+    .map((p) => ({ ...p, dato: `${p.valor}${aprobadas && p.nombre !== "Pendientes" && p.nombre !== "Bloqueadas" ? ` · ${Math.round((p.valor / aprobadas) * 100)} %` : ""}` }));
 
   cuerpo.innerHTML = `
     <dl class="adm-kpis adm-cifras">
-      <div class="adm-kpi"><dd>${r.personas}</dd><dt>personas han entrado</dt></div>
-      <div class="adm-kpi"><dd>${r.entradas.length}</dd><dt>inicios de sesión</dt></div>
-      <div class="adm-kpi"><dd>${r.visitas}</dd><dt>pantallas vistas</dt></div>
-      <div class="adm-kpi"><dd>${esc(duracion(r.segundos))}</dd><dt>de uso en total</dt></div>
-      <div class="adm-kpi${r.errores.length ? " hot" : ""}"><dd>${r.errores.length}</dd><dt>errores</dt></div>
+      ${cifra(r.personas, "personas han entrado", tramos.map((t) => t.gente.size))}
+      ${cifra(r.entradas.length, "inicios de sesión", tramos.map((t) => t.entradas))}
+      ${cifra(r.visitas, "pantallas vistas", tramos.map((t) => t.vistas))}
+      ${cifra(esc(duracion(r.segundos)), "de uso", tramos.map((t) => t.segundos))}
+      ${cifra(r.errores.length, "errores", tramos.map((t) => t.errores), r.errores.length ? "mal" : "")}
     </dl>
     ${
-      sinNada
-        ? `<div class="adm-alerta suave"><b>Todavía no hay actividad en este periodo.</b> Se empieza a contar
-            desde que se publicaron las reglas: en cuanto alguien abra la web, sale aquí.</div>`
+      !filas.length
+        ? `<div class="adm-alerta suave"><b>Sin actividad en este periodo.</b> En cuanto alguien abra la web, sale aquí.</div>`
         : ""
     }
     <div class="adm-rejilla">
       <section class="adm-caja adm-ancha">
-        <h4>Uso ${periodo === 1 ? "por horas" : "por días"}</h4>
+        <h4>Pantallas vistas ${periodo === 1 ? "por hora" : "por día"}</h4>
         ${graficaHTML(filas)}
+      </section>
+      <section class="adm-caja" id="admPlanes">
+        <h4>Cuentas <small>${cuentas.length}${nuevas ? ` · ${nuevas} nueva${nuevas === 1 ? "" : "s"} en el periodo` : ""}</small></h4>
+        ${barrasHTML(planes, "adm-planes-l")}
       </section>
       <section class="adm-caja">
         <h4>Tiempo por pantalla</h4>
         ${
           r.pantallas.length
-            ? `<ol class="adm-barras">${r.pantallas
-                .map(
-                  (p) => `<li>
-                    <span class="adm-barra-nom">${esc(p.pantalla)}</span>
-                    <span class="adm-barra"><i style="width:${Math.max(2, Math.round((p.segundos / max) * 100))}%"></i></span>
-                    <span class="adm-barra-dato">${esc(duracion(p.segundos))} · ${p.visitas} visita${
-                      p.visitas === 1 ? "" : "s"
-                    }${p.visitas ? ` · ${esc(duracion(p.segundos / p.visitas))} de media` : ""}</span>
-                  </li>`
-                )
-                .join("")}</ol>`
+            ? barrasHTML(
+                r.pantallas.slice(0, 8).map((p) => ({
+                  nombre: p.pantalla,
+                  valor: p.segundos,
+                  dato: `${esc(duracion(p.segundos))} · ${p.visitas} visita${p.visitas === 1 ? "" : "s"}`,
+                })),
+                "adm-pantallas"
+              )
             : `<p class="meta">Nada todavía en este periodo.</p>`
         }
       </section>
-      <section class="adm-caja">
+      <section class="adm-caja adm-ancha">
         <h4>Últimos inicios de sesión</h4>
         ${
           r.entradas.length
             ? `<ul class="adm-lista">${r.entradas
-                .slice(0, 25)
+                .slice(0, 12)
                 .map(
                   (f) => `<li>
-                    <span class="adm-avatar mini" aria-hidden="true">${esc(
-                      String(nombre[f.uid] || "?").slice(0, 1).toUpperCase()
-                    )}</span>
+                    <span class="adm-avatar mini" aria-hidden="true">${inicial(nombre[f.uid])}</span>
                     <span><b>${esc(nombre[f.uid] || f.uid || "?")}</b>
                     <small>${esc(METODOS[f.metodo] || f.metodo || "")} · ${esc(f.pantalla)}</small></span>
                     <time>${esc(haceRato(f.creado))}</time></li>`
                 )
-                .join("")}</ul>${
-                r.entradas.length > 25 ? `<p class="meta">Y ${r.entradas.length - 25} más.</p>` : ""
-              }`
+                .join("")}</ul>${r.entradas.length > 12 ? `<p class="meta">Y ${r.entradas.length - 12} más.</p>` : ""}`
             : `<p class="meta">Nadie ha entrado en este periodo.</p>`
         }
       </section>
     </div>`;
 
+  const nErr = caja.querySelector("#admTabN-errores");
+  if (nErr) nErr.textContent = r.tiposError.length ? String(r.tiposError.length) : "";
   if (errCuerpo) {
+    const max = Math.max(1, ...r.tiposError.map((e) => e.veces));
     errCuerpo.innerHTML = r.tiposError.length
-      ? `<ul class="adm-lista adm-errores">${r.tiposError
-          .slice(0, 30)
+      ? `<p class="adm-sub">${r.errores.length} error${r.errores.length === 1 ? "" : "es"} de ${r.tiposError.length} tipo${
+          r.tiposError.length === 1 ? "" : "s"
+        } en el periodo. Toca uno para ver el detalle.</p>
+        <ul class="adm-errores">${r.tiposError
+          .slice(0, 40)
           .map(
-            (e) => `<li><details><summary><b class="adm-veces">${e.veces}×</b>
-              <span class="adm-err-txt">${esc(e.mensaje)}</span>
-              <small>${esc(haceRato(e.ultima))} · ${esc([...e.pantallas].join(", "))}</small></summary>
+            (e) => `<li><details><summary>
+              <b class="adm-veces">${e.veces}×</b>
+              <span class="adm-err-txt">${esc(e.mensaje)}<small>${esc(haceRato(e.ultima))} · ${esc([...e.pantallas].join(", "))}</small></span>
+              <span class="adm-err-barra" aria-hidden="true"><i style="width:${Math.round((e.veces / max) * 100)}%"></i></span>
+              </summary>
               ${e.detalle ? `<pre class="adm-detalle">${esc(e.detalle)}</pre>` : ""}</details></li>`
           )
           .join("")}</ul>`
-      : `<p class="meta">Ningún error en este periodo. 🎉</p>`;
+      : `<p class="meta">Ningún error en este periodo.</p>`;
   }
 
   // La última entrada de cada cuenta, en su fila.
