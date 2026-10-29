@@ -193,6 +193,17 @@ service cloud.firestore {
       return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
     }
 
+    // Una búsqueda en marcha dentro de un HOP: qué se buscó, quién y cuándo.
+    function enMarcha(m) {
+      return m == null || (m is map
+        && m.keys().hasOnly(['clave', 'texto', 'por', 'nombre', 'lanzada', 'oferta', 'estado', 'n'])
+        && (!('clave' in m) || (m.clave is string && m.clave.matches('^[a-z0-9-]{1,80}$')))
+        && (!('texto' in m) || (m.texto is string && m.texto.size() <= 200))
+        && (!('oferta' in m) || (m.oferta is string && m.oferta.size() <= 120))
+        && (!('nombre' in m) || (m.nombre is string && m.nombre.size() <= 40))
+        && (!('estado' in m) || m.estado in ['buscando', 'lista', 'vacia']));
+    }
+
     match /hops/{hopId} {
       function j() {
         return request.resource.data;
@@ -237,6 +248,12 @@ service cloud.firestore {
           && j().nombres.diff(resource.data.nombres).affectedKeys().hasOnly([request.auth.uid])
           && j().nombres[request.auth.uid] is string
           && j().nombres[request.auth.uid].size() <= 40)
+        // Lo que el grupo tiene en marcha: la búsqueda de vuelos y la de cama.
+        // Cualquier miembro la lanza y la apunta aquí para que la vean todos.
+        || (request.auth.uid in resource.data.miembros
+          && j().diff(resource.data).affectedKeys().hasOnly(['busqueda', 'cama'])
+          && enMarcha(j().get('busqueda', null))
+          && enMarcha(j().get('cama', null)))
         // Salirse: quitarse a uno mismo. Quien la creó no se sale: la borra.
         || (request.auth.uid in resource.data.miembros
           && request.auth.uid != resource.data.creador
@@ -255,9 +272,10 @@ service cloud.firestore {
         }
         allow read: if miembro(hopId);
         allow create: if miembro(hopId)
-          && p().keys().hasOnly(['tipo', 'titulo', 'nota', 'destino', 'ida', 'vuelta', 'precio', 'url', 'autor', 'nombre', 'votos', 'creado'])
+          && p().keys().hasOnly(['tipo', 'titulo', 'nota', 'destino', 'ida', 'vuelta', 'precio', 'url', 'autor', 'nombre', 'votos', 'creado',
+                'compania', 'horario', 'oferta', 'iata', 'pais', 'foto', 'origen'])
           && p().keys().hasAll(['tipo', 'titulo', 'autor', 'votos', 'creado'])
-          && (p().tipo == 'fechas' || p().tipo == 'viaje')
+          && (p().tipo == 'fechas' || p().tipo == 'viaje' || p().tipo == 'vuelo' || p().tipo == 'cama')
           && p().autor == request.auth.uid
           && p().votos == {}
           && p().creado == request.time
@@ -268,7 +286,14 @@ service cloud.firestore {
           && (!('vuelta' in p()) || esFecha(p().vuelta))
           && (!('precio' in p()) || (p().precio is number && p().precio >= 0 && p().precio <= 100000))
           && (!('url' in p()) || (p().url is string && p().url.size() <= 500 && p().url.matches('^https://.+')))
-          && (!('nombre' in p()) || (p().nombre is string && p().nombre.size() <= 40));
+          && (!('nombre' in p()) || (p().nombre is string && p().nombre.size() <= 40))
+          && (!('compania' in p()) || (p().compania is string && p().compania.size() <= 60))
+          && (!('horario' in p()) || (p().horario is string && p().horario.size() <= 120))
+          && (!('oferta' in p()) || (p().oferta is string && p().oferta.size() <= 120))
+          && (!('iata' in p()) || (p().iata is string && p().iata.size() <= 8))
+          && (!('origen' in p()) || (p().origen is string && p().origen.size() <= 8))
+          && (!('pais' in p()) || (p().pais is string && p().pais.size() <= 60))
+          && (!('foto' in p()) || (p().foto is string && p().foto.size() <= 500 && p().foto.matches('^https://.+')));
         // Votar: cada cual su voto (sí, quizá o no), o quitarlo.
         allow update: if miembro(hopId)
           && p().diff(resource.data).affectedKeys().hasOnly(['votos'])

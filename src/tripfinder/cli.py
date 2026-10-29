@@ -1148,6 +1148,9 @@ def cmd_search(args: argparse.Namespace) -> int:
             }
         )
         print(f"\n{exc}")
+        _publicar_busqueda(
+            getattr(args, "clave", ""), {"label": req.label, "errors": [str(exc)], "offers": []}
+        )
         return 0
 
     print(f"\n{req.label or req.destination}: {len(resultado.offers)} viajes")
@@ -1165,10 +1168,25 @@ def cmd_search(args: argparse.Namespace) -> int:
 
     ruta = store.save_search(resultado.to_dict())
     print(f"\nGuardado en {ruta}")
+    _publicar_busqueda(getattr(args, "clave", ""), resultado.to_dict())
     if args.summary_out:
         with open(args.summary_out, "w", encoding="utf-8") as fh:
             fh.write(_search_markdown(resultado))
     return 0
+
+
+def _publicar_busqueda(clave: str, datos: dict) -> None:
+    """La búsqueda de un HOP, también en Firestore (`resultados/busqueda-<clave>`).
+
+    El grupo la está esperando con la página abierta: así la ve en cuanto acaba
+    el scraper, sin esperar al despliegue de Pages. La clave la pone la web y
+    es lo único que sabe de antemano (el nombre del fichero sale aquí)."""
+    if not clave or not re.fullmatch(r"[a-z0-9-]{1,80}", clave):
+        return
+    from . import nube
+
+    if nube.hay_firebase():
+        nube.publicar_resultado(f"busqueda-{clave}", datos)
 
 
 def _search_markdown(resultado) -> str:
@@ -1912,6 +1930,11 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--desde", help="Primer dia del tramo en que puedes viajar (YYYY-MM-DD)")
     b.add_argument("--hasta", help="Ultimo dia del tramo (YYYY-MM-DD)")
     b.add_argument("--dias", default="", help="Dias de ida y vuelta, 0=lunes: 0-3 es de lunes a jueves")
+    b.add_argument(
+        "--clave",
+        default="",
+        help="Una clave corta (a-z, 0-9, -) para dejar el resultado tambien en Firestore: la usa el modo HOP",
+    )
     b.add_argument(
         "--horas",
         default="",

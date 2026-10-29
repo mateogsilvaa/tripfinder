@@ -300,7 +300,7 @@ function pintarDestinos(filtro = "") {
 }
 
 function elegirDestino(valor) {
-  const campo = destinoPara === "wDest" ? $("#wDest") : $("#fDest");
+  const campo = document.getElementById(destinoPara) || $("#fDest");
   if (!campo) return;
   campo.value = valor;
   // El rotulo lo pone el oyente de abajo, no esta funcion: asi hay UN solo

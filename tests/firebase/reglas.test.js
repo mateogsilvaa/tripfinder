@@ -589,3 +589,31 @@ test("plan max: solo lo da el administrador", async () => {
   await assertSucceeds(updateDoc(doc(jefe, "usuarios/gus"), { plan: "max" }));
   await assertFails(updateDoc(doc(como("ana", "ana@x.es"), "usuarios/ana"), { plan: "max" }));
 });
+
+test("HOP: cualquier miembro apunta la búsqueda del grupo, y nada más", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const gus = como("gus", "gus@x.es");
+  await updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" });
+  const busqueda = { clave: "hop1-abc", texto: "Donde sea · findes", por: "gus", nombre: "Gus", lanzada: new Date(), estado: "buscando" };
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1"), { busqueda }));
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1"), { cama: { oferta: "ryanair-MAD-FCO-20270501", estado: "buscando", por: "gus" } }));
+  // Ni con una clave rara ni colando otra cosa.
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { busqueda: { ...busqueda, clave: "../otra" } }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { busqueda, nombre: "Mía" }));
+  // Quien no está dentro, tampoco.
+  await assertFails(updateDoc(doc(como("eva", "eva@x.es"), "hops/hop1"), { busqueda }));
+});
+
+test("HOP: los resultados de la búsqueda entran como vuelos y camas votables", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const ana = como("ana", "ana@x.es");
+  const vuelo = { tipo: "vuelo", titulo: "Roma", destino: "Italia", ida: "2027-05-01", vuelta: "2027-05-04",
+    precio: 89, url: "https://www.ryanair.com/x", compania: "Ryanair", horario: "07:10–09:30 · vuelta 18:40–21:00",
+    oferta: "ryanair-MAD-FCO-20270501", iata: "FCO", origen: "MAD", pais: "Italia", autor: "ana", votos: {}, creado: serverTimestamp() };
+  await assertSucceeds(setDoc(doc(ana, "hops/hop1/propuestas/v-ryanair-MAD-FCO-20270501"), vuelo));
+  await assertSucceeds(setDoc(doc(ana, "hops/hop1/propuestas/c-1"), { tipo: "cama", titulo: "Piso en Trastevere",
+    precio: 60, url: "https://www.airbnb.es/rooms/1", foto: "https://a0.muscache.com/x.jpg", autor: "ana", votos: {}, creado: serverTimestamp() }));
+  await assertFails(setDoc(doc(ana, "hops/hop1/propuestas/c-2"), { tipo: "cama", titulo: "X", foto: "javascript:1",
+    autor: "ana", votos: {}, creado: serverTimestamp() }));
+  await assertFails(setDoc(doc(ana, "hops/hop1/propuestas/c-3"), { tipo: "hotelazo", titulo: "X", autor: "ana", votos: {}, creado: serverTimestamp() }));
+});

@@ -1044,22 +1044,58 @@ async function nubePropuestas(id) {
   return nubeConsultarEn(t.token, `hops/${id}`, { from: [{ collectionId: "propuestas" }], limit: 200 });
 }
 
+const NUBE_TIPOS_PROPUESTA = ["fechas", "viaje", "vuelo", "cama"];
+const NUBE_TOPES_PROPUESTA = {
+  nota: 500, destino: 80, ida: 10, vuelta: 10, url: 500, compania: 60, horario: 120, oferta: 120,
+  iata: 8, origen: 8, pais: 60, foto: 500,
+};
+
+/* Una propuesta. Las que salen de una búsqueda (`vuelo`, `cama`) llevan un id
+   fijo sacado del resultado (`datos.pid`): si dos del grupo las meten a la vez,
+   la segunda choca con la primera y no se duplica nada. */
 async function nubeProponer(id, datos) {
   const t = await nubeHopToken();
   if (t.error) return { ok: false, error: t.error };
-  const campos = { tipo: datos.tipo === "fechas" ? "fechas" : "viaje", autor: t.s.uid, nombre: String(t.s.name || "").slice(0, 40), votos: {} };
-  campos.titulo = String(datos.titulo || "").trim().slice(0, 80);
-  for (const k of ["nota", "destino", "ida", "vuelta", "url"]) {
-    const v = String(datos[k] || "").trim();
-    if (v) campos[k] = k === "nota" ? v.slice(0, 500) : k === "destino" ? v.slice(0, 80) : v.slice(0, 500);
+  const tipo = NUBE_TIPOS_PROPUESTA.includes(datos.tipo) ? datos.tipo : "viaje";
+  const campos = { tipo, autor: t.s.uid, nombre: String(t.s.name || "").slice(0, 40), votos: {} };
+  campos.titulo = String(datos.titulo || "").trim().slice(0, 80) || "Sin nombre";
+  for (const [k, tope] of Object.entries(NUBE_TOPES_PROPUESTA)) {
+    const v = String(datos[k] ?? "").trim();
+    if (v) campos[k] = v.slice(0, tope);
   }
-  if (campos.url && !campos.url.startsWith("https://")) delete campos.url;
+  for (const k of ["url", "foto"]) if (campos[k] && !campos[k].startsWith("https://")) delete campos[k];
+  for (const k of ["ida", "vuelta"]) if (campos[k] && !/^\d{4}-\d{2}-\d{2}$/.test(campos[k])) delete campos[k];
   const precio = Number(datos.precio);
-  if (datos.precio !== "" && datos.precio != null && Number.isFinite(precio) && precio >= 0) campos.precio = precio;
-  const pid = nubeNuevoId();
+  if (datos.precio !== "" && datos.precio != null && Number.isFinite(precio) && precio >= 0) {
+    campos.precio = Math.round(precio * 100) / 100;
+  }
+  const pid = datos.pid ? String(datos.pid).replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 120) : nubeNuevoId();
   try {
     await nubeCommit(t.token, [nubeCrear(`hops/${id}/propuestas/${pid}`, campos)]);
     return { ok: true, id: pid };
+  } catch (e) {
+    if (datos.pid && (e.codigo === "ALREADY_EXISTS" || e.codigo === "FAILED_PRECONDITION" || e.estado === 409)) {
+      return { ok: true, id: pid, yaEstaba: true };
+    }
+    return { ok: false, error: nubeHopFallo(e) };
+  }
+}
+
+/* Lo que el grupo tiene en marcha (`busqueda`, `cama`), para que lo vean todos;
+   null lo quita. */
+async function nubeHopApuntar(id, campo, valor) {
+  const t = await nubeHopToken();
+  if (t.error) return { ok: false, error: t.error };
+  if (campo !== "busqueda" && campo !== "cama") return { ok: false, error: "No." };
+  try {
+    await nubeCommit(t.token, [
+      {
+        update: { name: `${nubeBase()}/hops/${id}`, fields: valor ? nubeCampos({ [campo]: valor }) : {} },
+        updateMask: { fieldPaths: [campo] },
+        currentDocument: { exists: true },
+      },
+    ]);
+    return { ok: true };
   } catch (e) {
     return { ok: false, error: nubeHopFallo(e) };
   }
