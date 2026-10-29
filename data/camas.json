@@ -16,6 +16,11 @@
       "muestras": 3,
       "nombre": "Bergamo"
     },
+    "GDN": {
+      "noche": 34.67,
+      "muestras": 3,
+      "nombre": "Dánzig"
+    },
     "OSL": {
       "noche": 89.67,
       "muestras": 3,
@@ -59,8 +64,8 @@
       "muestras": 3
     },
     "Polonia": {
-      "noche": 47.67,
-      "muestras": 3
+      "noche": 38.0,
+      "muestras": 6
     },
     "República Checa": {
       "noche": 30.0,
