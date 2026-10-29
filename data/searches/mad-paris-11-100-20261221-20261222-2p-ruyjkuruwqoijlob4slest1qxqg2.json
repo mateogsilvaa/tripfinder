@@ -1,0 +1,29 @@
+{
+  "slug": "mad-paris-11-100-20261221-20261222-2p-ruyjkuruwqoijlob4slest1qxqg2",
+  "label": "Paris · 21 dic → 22 dic · hasta 100 € · 2 pers.",
+  "request": {
+    "destination": "Paris",
+    "label": "Paris · 21 dic → 22 dic · hasta 100 € · 2 pers.",
+    "max_price": 100.0,
+    "nights_min": 1,
+    "nights_max": 1,
+    "months": 12,
+    "weekend_only": false,
+    "adults": 2,
+    "origin": "MAD",
+    "depart": "2026-12-21",
+    "return_date": "2026-12-22",
+    "desde": "",
+    "hasta": "",
+    "dias": "",
+    "owner": "RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+    "owner_name": "Alicia Vereda",
+    "slug": "mad-paris-11-100-20261221-20261222-2p-ruyjkuruwqoijlob4slest1qxqg2"
+  },
+  "generated_at": "2026-10-29",
+  "errors": [],
+  "count": 0,
+  "owner": "RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+  "owner_name": "Alicia Vereda",
+  "offers": []
+}
