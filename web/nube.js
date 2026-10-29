@@ -1104,7 +1104,9 @@ async function nubeHopVetar(id, ciudades) {
     await nubeCommit(t.token, [
       {
         update: { name: `${nubeBase()}/hops/${id}`, fields: nubeCampos({ vetos: { [t.s.uid]: lista } }) },
-        updateMask: { fieldPaths: [`vetos.${t.s.uid}`] },
+        // Entre comillas invertidas: un uid puede empezar por un número, y entonces
+        // `vetos.3abc` no es una ruta válida (INVALID_ARGUMENT).
+        updateMask: { fieldPaths: [nubeCampoUid("vetos", t.s.uid)] },
         currentDocument: { exists: true },
       },
     ]);

@@ -25,7 +25,7 @@ import {
   buscarCiudades,
   codigosDeCiudades,
   codigosDelFiltro,
-  montarFiltroDestinos,
+  engancharFiltro,
   textoFiltro,
 } from "./filtro-destinos.js";
 
@@ -34,7 +34,10 @@ const CADA_CHAT_MS = 4000;
 const CADA_PROPUESTAS_MS = 8000;
 const PROPUESTA_PENDIENTE = "tf_hop_propuesta";
 
-const NUEVO = () => ({ propuestas: [], mensajes: [], resultados: null, camas: {}, abierta: "", ver: 0, buscar: false });
+const NUEVO = () => ({
+  propuestas: [], mensajes: [], resultados: null, camas: {}, abierta: "", ver: 0, buscar: false,
+  calMes: 0, calTocado: false, vetoLocal: null, lanzadas: {}, mapaVista: null, mapaAuto: null,
+});
 let estado = { id: "", hop: null, vista: "props", ...NUEVO() };
 let relojes = [];
 
@@ -185,6 +188,19 @@ async function vistaLista(app, pendiente) {
   const mias = hops.filter((j) => j.creador === s.uid).length;
   const puede = premium && (max || mias === 0);
 
+  // De cada HOP, lo de dentro: para decir en qué fase va, si te toca votar y
+  // qué te has perdido desde la última vez. Son uno o dos: se lee todo.
+  const dentro = await Promise.all(
+    hops.map(async (j) => {
+      const [props, mensajes] = await Promise.all([
+        nubePropuestas(j.id).catch(() => []),
+        nubeMensajes(j.id, 40).catch(() => []),
+      ]);
+      return { props, mensajes };
+    })
+  );
+  hops.forEach((j, i) => Object.assign(j, dentro[i]));
+
   app.innerHTML = `
     ${
       pendiente
@@ -209,8 +225,8 @@ async function vistaLista(app, pendiente) {
                ${premium ? "Crea el primero aquí abajo." : "Pide a quien lo organice el enlace para unirte."}</div>`
       }
     </div>
-    <section class="hop-crear" aria-labelledby="hopCrearTit">
-      <h3 id="hopCrearTit">Crear un HOP</h3>
+    <details class="hop-crear" id="hopCrearCaja" ${hops.length ? "" : "open"}>
+      <summary id="hopCrearTit">${hops.length ? "+ Crear otro HOP" : "Crear un HOP"}</summary>
       ${
         !premium
           ? `<div class="hop-aviso"><b>Crear un HOP es de premium.</b> Unirte a uno, no: con el enlace que te
@@ -221,7 +237,7 @@ async function vistaLista(app, pendiente) {
                  <a href="planes">Ver planes</a></div>`
             : formCrear()
       }
-    </section>`;
+    </details>`;
 
   app.querySelector("[data-hop-olvidar]")?.addEventListener("click", () => {
     olvidarPendiente();
@@ -267,21 +283,108 @@ function formCrear() {
     </form>`;
 }
 
+/* Lo que has visto de cada HOP: la hora de la última vez que lo abriste, en
+   este navegador. Lo que llegó después, de otros, es «nuevo». */
+const CLAVE_VISTO = "tf_hop_visto:";
+function vistoHop(id) {
+  try {
+    return Number(localStorage.getItem(CLAVE_VISTO + id)) || 0;
+  } catch {
+    return 0;
+  }
+}
+function marcarVisto(id) {
+  try {
+    localStorage.setItem(CLAVE_VISTO + id, String(Date.now()));
+  } catch {
+    /* sin almacenamiento: todo parecerá nuevo, y ya */
+  }
+}
+
+/* En qué está un HOP, en una frase, y si te toca hacer algo. */
+function estadoHop(j) {
+  const uid = miUid();
+  const f = Math.min(5, Math.max(1, Number(j.fase) || 1));
+  const props = j.props || [];
+  const miembros = j.miembros || [];
+  const sinMiVoto = (l) => l.filter((p) => !(p.votos || {})[uid]).length;
+  const fechas = props.filter((p) => p.tipo === "fechas");
+  const guardadas = props.filter((p) => p.tipo === "vuelo" || p.tipo === "viaje");
+  let txt = "";
+  let toca = "";
+  if (f === 1) {
+    txt = j.fechas
+      ? `Fechas fijadas: ${fmtDate(j.fechas.ida)} → ${fmtDate(j.fechas.vuelta)}`
+      : fechas.length
+        ? `${fechas.length} fecha${fechas.length === 1 ? "" : "s"} propuesta${fechas.length === 1 ? "" : "s"}`
+        : "Aún no hay fechas: propón las tuyas";
+    if (sinMiVoto(fechas)) toca = `Te toca votar ${sinMiVoto(fechas)} fecha${sinMiVoto(fechas) === 1 ? "" : "s"}`;
+  } else if (f === 2) {
+    const han = Object.keys(j.vetos || {}).filter((u) => miembros.includes(u)).length;
+    txt = `${han} de ${miembros.length} han dicho qué ciudades no`;
+    if (!Object.prototype.hasOwnProperty.call(j.vetos || {}, uid)) toca = "Te toca decir dónde no";
+  } else if (f === 3) {
+    txt =
+      j.busqueda && j.busqueda.estado === "buscando"
+        ? `Buscando vuelos (lo lanzó ${j.busqueda.nombre || "alguien"})`
+        : guardadas.length
+          ? `${guardadas.length} idea${guardadas.length === 1 ? "" : "s"} guardada${guardadas.length === 1 ? "" : "s"}`
+          : "Toca buscar vuelos";
+  } else if (f === 4) {
+    const top = [...guardadas].sort((a, b) => nota(b) - nota(a))[0];
+    txt = `Votando ${guardadas.length} idea${guardadas.length === 1 ? "" : "s"}${top && nota(top) > 0 ? ` · va ganando ${top.titulo}` : ""}`;
+    if (sinMiVoto(guardadas)) toca = `Te toca votar ${sinMiVoto(guardadas)}`;
+  } else {
+    const p = j.plan;
+    const total = p ? (Number(p.precio) || 0) + (Number(p.cama_precio) || 0) : 0;
+    txt = p ? `Plan: ${p.titulo}${total ? ` · ${Math.round(total)} € por cabeza` : ""}` : "Eligiendo el plan";
+  }
+  return { f, txt, toca };
+}
+
+function novedadesHop(j) {
+  const visto = vistoHop(j.id);
+  const uid = miUid();
+  const otros = (l) => l.filter((x) => x.autor !== uid && instante(x.creado) > visto).length;
+  return { mensajes: otros(j.mensajes || []), props: otros(j.props || []), nunca: !visto };
+}
+
 function tarjetaHop(j, s) {
   const miembros = j.miembros || [];
   const nombres = j.nombres || {};
-  return `<a class="hop-tarjeta" href="?j=${encodeURIComponent(j.id)}">
-      <span class="hop-tarjeta-top">
-        <b>${esc(j.nombre)}</b>
-        ${j.creador === s.uid ? '<i class="hop-chip">el tuyo</i>' : ""}
+  const { f, txt, toca } = estadoHop(j);
+  const nov = novedadesHop(j);
+  const n = nov.mensajes + nov.props;
+  const quedan = Math.max(0, Math.ceil((parseISO(j.fin) - parseISO(hoyISO())) / 864e5));
+  const nuevo = [
+    nov.mensajes ? `${nov.mensajes} mensaje${nov.mensajes === 1 ? "" : "s"}` : "",
+    nov.props ? `${nov.props} propuesta${nov.props === 1 ? "" : "s"}` : "",
+  ]
+    .filter(Boolean)
+    .join(" y ");
+  return `<a class="hop-tarjeta hopv${n || toca ? " con-aviso" : ""}" href="?j=${encodeURIComponent(j.id)}">
+      <span class="hopv-cab">
+        <span class="hopv-tit">
+          <small>${quedan > 0 ? `quedan ${quedan} día${quedan === 1 ? "" : "s"}` : "hoy es el último día"} · hasta el ${esc(fmtDate(j.fin))}</small>
+          <b>${esc(j.nombre)}</b>
+        </span>
+        ${n ? `<span class="hopv-badge" aria-label="${n} novedad${n === 1 ? "" : "es"}">${n}</span>` : ""}
       </span>
-      ${j.descripcion ? `<span class="hop-tarjeta-desc">${esc(j.descripcion)}</span>` : ""}
-      <span class="hop-tarjeta-pie">
+      <span class="hopv-fases" aria-label="Fase ${f} de 5: ${esc(FASES[f - 1][1])}">${FASES.map(
+        ([k, t]) => `<span class="${k < f ? "hecho" : k === f ? "actual" : ""}"><i></i><small>${t}</small></span>`
+      ).join("")}</span>
+      <span class="hopv-estado">${esc(txt)}</span>
+      <span class="hopv-pie">
         <span class="hop-avs">${miembros
-          .slice(0, 5)
+          .slice(0, 6)
           .map((u) => avatar(u, nombres[u] || "?"))
-          .join("")}${miembros.length > 5 ? `<span class="hop-av mas">+${miembros.length - 5}</span>` : ""}</span>
-        <span class="hop-fin">hasta el ${esc(fmtDate(j.fin))}</span>
+          .join("")}${miembros.length > 6 ? `<span class="hop-av mas">+${miembros.length - 6}</span>` : ""}</span>
+        <span class="hopv-avisos">
+          ${toca ? `<i class="hopv-toca">${esc(toca)}</i>` : ""}
+          ${nuevo ? `<i class="hopv-nuevo">${esc(nuevo)} nuevo${n === 1 ? "" : "s"}</i>` : ""}
+          ${j.creador === s.uid ? '<i class="hop-chip">el tuyo</i>' : ""}
+        </span>
+        <span class="hopv-abrir">Abrir →</span>
       </span>
     </a>`;
 }
@@ -319,9 +422,10 @@ async function vistaHop(app, id, pendiente, invitado = false) {
   }
   pintarHop(app, pendiente);
   await Promise.all([cargarPropuestas(app), cargarMensajes(app, true)]);
+  marcarVisto(id);
   subirBorrador(app);
   relojes.push(
-    setInterval(() => document.visibilityState === "visible" && cargarMensajes(app), CADA_CHAT_MS),
+    setInterval(() => document.visibilityState === "visible" && (cargarMensajes(app), marcarVisto(id)), CADA_CHAT_MS),
     setInterval(() => document.visibilityState === "visible" && cargarPropuestas(app), CADA_PROPUESTAS_MS)
   );
 }
@@ -613,6 +717,8 @@ const TRAZOS = {
   gente: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 19.5a5.5 5.5 0 0 0-3-4.9"/>',
   enlace: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   chat: '<path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.4A7.5 7.5 0 1 1 20 12z"/>',
+  izq: '<path d="m15 5-7 7 7 7"/>',
+  der: '<path d="m9 5 7 7-7 7"/>',
   arriba: '<path d="M12 5 4.5 14H9v5h6v-5h4.5z"/>',
   abajo: '<path d="M12 19 4.5 10H9V5h6v5h4.5z"/>',
   ajustes: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
@@ -873,6 +979,18 @@ async function cargarPropuestas(app) {
   try {
     const [props, hop] = await Promise.all([nubePropuestas(estado.id), nubeHop(estado.id).catch(() => null)]);
     estado.propuestas = props;
+    // Lo que acabas de tachar manda sobre lo que traiga el sondeo un momento:
+    // si la lectura salió antes de guardarse, no se deshace a la vista.
+    const local = estado.vetoLocal;
+    if (hop && local && Date.now() < local.hasta) hop.vetos = { ...(hop.vetos || {}), [miUid()]: local.lista };
+    // Igual con la búsqueda y la cama que acabas de lanzar: si el HOP leído no
+    // la trae todavía (o trae una más vieja), se queda la tuya.
+    for (const campo of ["busqueda", "cama"]) {
+      const mia = (estado.lanzadas || {})[campo];
+      if (!hop || !mia || Date.now() > mia.hasta) continue;
+      const suya = hop[campo];
+      if (!suya || instante(suya.lanzada) < instante(mia.valor.lanzada)) hop[campo] = mia.valor;
+    }
     if (hop) {
       // Si el grupo ha pasado de fase, se le sigue (salvo que estés mirando otra).
       if (hop.fase !== estado.hop.fase && estado.ver === fase()) estado.ver = Math.min(5, Math.max(1, Number(hop.fase) || 1));
@@ -995,6 +1113,16 @@ function montarFase(app, n) {
       cargarPropuestas(app);
     });
     form.addEventListener("input", () => marcarCal(app));
+    // En el móvil, el mes se cambia deslizando.
+    const cal = $("#f1Cal", app);
+    let x0 = null;
+    cal.addEventListener("touchstart", (e) => (x0 = e.touches[0].clientX), { passive: true });
+    cal.addEventListener("touchend", (e) => {
+      if (x0 === null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      x0 = null;
+      if (Math.abs(dx) > 50) moverCal(app, dx < 0 ? 1 : -1);
+    });
   }
   if (n === 2) {
     const input = $("#f2Buscar", app);
@@ -1072,20 +1200,20 @@ function coloresFechas() {
   return new Map(porLlegada.map((p, i) => [p.id, i < COLORES ? i + 1 : 0]));
 }
 
-const MESES_CAL = 3;
+/* Un mes a la vista. Se empieza por el de la primera propuesta (o este) y se
+   pasa con las flechas o deslizando el dedo; no se sale de hoy al fin del HOP. */
 function calendarioHTML(colores) {
   const fechas = deTipo("fechas").filter((p) => p.ida && p.vuelta);
   const hoy = parseISO(hoyISO());
   const fin = parseISO(estado.hop.fin) || hoy;
-  // Desde el mes de la primera propuesta (o este) hasta tres meses.
   const primera = fechas.length ? fechas.map((p) => parseISO(p.ida)).sort((a, b) => a - b)[0] : hoy;
-  const inicio = new Date(Math.max(hoy.getTime(), Math.min(primera.getTime(), fin.getTime())));
-  const meses = [];
-  for (let m = 0; m < MESES_CAL; m++) {
-    const d = new Date(inicio.getFullYear(), inicio.getMonth() + m, 1);
-    if (d > fin && m > 0) break;
-    meses.push(d);
-  }
+  const base = new Date(Math.max(hoy.getTime(), Math.min(primera.getTime(), fin.getTime())));
+  const total = (fin.getFullYear() - hoy.getFullYear()) * 12 + fin.getMonth() - hoy.getMonth() + 1;
+  const desdeHoy = (base.getFullYear() - hoy.getFullYear()) * 12 + base.getMonth() - hoy.getMonth();
+  // Hasta que lo mueves tú, el mes es el de la primera propuesta.
+  if (!estado.calTocado) estado.calMes = desdeHoy;
+  estado.calMes = Math.max(0, Math.min(total - 1, estado.calMes));
+  const meses = [new Date(hoy.getFullYear(), hoy.getMonth() + estado.calMes, 1)];
   const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   const mes = (d0) => {
     const dias = new Date(d0.getFullYear(), d0.getMonth() + 1, 0).getDate();
@@ -1116,7 +1244,12 @@ function calendarioHTML(colores) {
         )}</div>
       </div>`;
   };
-  return `${meses.map(mes).join("")}<p class="hop-letra hopx-cal-ayuda">Toca la ida y la vuelta para proponer esas fechas.</p>`;
+  const flecha = (paso, rot, d) =>
+    `<button type="button" class="hopx-cal-flecha" data-cal-mes="${paso}" aria-label="${rot}" ${
+      (paso < 0 ? estado.calMes <= 0 : estado.calMes >= total - 1) ? "disabled" : ""
+    }>${ico(d, 18)}</button>`;
+  return `<div class="hopx-cal-nav">${flecha(-1, "Mes anterior", "izq")}${meses.map(mes).join("")}${flecha(1, "Mes siguiente", "der")}</div>
+    <p class="hop-letra hopx-cal-ayuda">Toca la ida y la vuelta para proponer esas fechas.</p>`;
 }
 
 /* Un día como en un calendario de pared: el día de la semana, el número
@@ -1248,11 +1381,20 @@ async function montarMapa(app) {
   if (!caja) return;
   const m = await cargarMapa();
   if (!caja.isConnected) return;
-  caja.innerHTML = `<svg viewBox="0 0 ${m.ANCHO} ${m.ALTO}" role="img" aria-label="Europa con las ciudades tachadas">
-      <g class="hopx-mapa-paises">${m.PAISES.map((p) => `<path d="${p.d}"/>`).join("")}</g>
-      <g id="f2Puntos"></g>
-    </svg>
+  estado.mapaVista = null;
+  caja.innerHTML = `<div class="hopx-mapa-marco">
+      <svg viewBox="0 0 ${m.ANCHO} ${m.ALTO}" role="img" aria-label="Europa con las ciudades tachadas" id="f2Svg">
+        <g class="hopx-mapa-paises">${m.PAISES.map((p) => `<path d="${p.d}"/>`).join("")}</g>
+        <g id="f2Puntos"></g>
+      </svg>
+      <div class="hopx-mapa-botones">
+        <button type="button" data-mapa="mas" aria-label="Acercar">+</button>
+        <button type="button" data-mapa="menos" aria-label="Alejar">−</button>
+        <button type="button" data-mapa="todo" class="hopx-mapa-todo">Ver todo</button>
+      </div>
+    </div>
     <figcaption class="hop-letra" id="f2MapaPie"></figcaption>`;
+  arrastrarMapa(app, caja.querySelector("#f2Svg"));
   pintarViaje(app);
 }
 
@@ -1264,9 +1406,96 @@ async function puntoDe(k) {
   return p;
 }
 
+/* La vista: si no la has movido tú, la que encuadra los puntos (con margen y
+   sin acercarse de más); si no hay puntos, el mapa entero. */
+function vistaAuto(puntos) {
+  const todo = { x: 0, y: 0, w: MAPA.ANCHO, h: MAPA.ALTO };
+  if (!puntos.length) return todo;
+  const xs = puntos.map((p) => p[0]);
+  const ys = puntos.map((p) => p[1]);
+  const prop = MAPA.ANCHO / MAPA.ALTO;
+  let w = Math.max(Math.max(...xs) - Math.min(...xs) + 240, 340);
+  let h = Math.max(Math.max(...ys) - Math.min(...ys) + 200, 340 / prop);
+  if (w / h > prop) h = w / prop;
+  else w = h * prop;
+  w = Math.min(w, MAPA.ANCHO);
+  h = Math.min(h, MAPA.ALTO);
+  const cx = (Math.max(...xs) + Math.min(...xs)) / 2;
+  const cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+  return encajar({ x: cx - w / 2, y: cy - h / 2, w, h });
+}
+
+function encajar(v) {
+  const w = Math.min(MAPA.ANCHO, Math.max(160, v.w));
+  const h = w * (MAPA.ALTO / MAPA.ANCHO);
+  return { w, h, x: Math.min(MAPA.ANCHO - w, Math.max(0, v.x)), y: Math.min(MAPA.ALTO - h, Math.max(0, v.y)) };
+}
+
+const vistaMapa = () => estado.mapaVista || estado.mapaAuto || { x: 0, y: 0, w: MAPA.ANCHO, h: MAPA.ALTO };
+
+function ponerVista(app, v) {
+  estado.mapaVista = v ? encajar(v) : null;
+  const svg = $("#f2Svg", app);
+  if (!svg) return;
+  const ahora = vistaMapa();
+  svg.setAttribute("viewBox", `${ahora.x} ${ahora.y} ${ahora.w} ${ahora.h}`);
+  // Los puntos y los nombres, del mismo tamaño en pantalla con cualquier zum.
+  svg.style.setProperty("--k", String(ahora.w / MAPA.ANCHO));
+  const todo = $(".hopx-mapa-todo", app);
+  if (todo) todo.textContent = ahora.w >= MAPA.ANCHO - 1 ? "Ir a los puntos" : "Ver todo";
+}
+
+function moverMapa(app, que) {
+  if (!MAPA) return;
+  const v = vistaMapa();
+  if (que === "todo") {
+    const entero = v.w >= MAPA.ANCHO - 1;
+    return ponerVista(app, entero ? estado.mapaAuto || null : { x: 0, y: 0, w: MAPA.ANCHO, h: MAPA.ALTO });
+  }
+  const f = que === "mas" ? 0.7 : 1 / 0.7;
+  const w = v.w * f;
+  const h = v.h * f;
+  ponerVista(app, { x: v.x + (v.w - w) / 2, y: v.y + (v.h - h) / 2, w, h });
+}
+
+function arrastrarMapa(app, svg) {
+  let ini = null;
+  svg.addEventListener("pointerdown", (e) => {
+    ini = { x: e.clientX, y: e.clientY, v: vistaMapa() };
+    svg.setPointerCapture(e.pointerId);
+    svg.classList.add("moviendo");
+  });
+  svg.addEventListener("pointermove", (e) => {
+    if (!ini) return;
+    const r = svg.getBoundingClientRect();
+    const k = ini.v.w / r.width;
+    ponerVista(app, { ...ini.v, x: ini.v.x - (e.clientX - ini.x) * k, y: ini.v.y - (e.clientY - ini.y) * k });
+  });
+  const soltar = () => {
+    ini = null;
+    svg.classList.remove("moviendo");
+  };
+  svg.addEventListener("pointerup", soltar);
+  svg.addEventListener("pointercancel", soltar);
+  // La rueda acerca y aleja hacia donde está el ratón.
+  svg.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+      const v = vistaMapa();
+      const r = svg.getBoundingClientRect();
+      const px = v.x + ((e.clientX - r.left) / r.width) * v.w;
+      const py = v.y + ((e.clientY - r.top) / r.height) * v.h;
+      const f = e.deltaY < 0 ? 0.85 : 1 / 0.85;
+      ponerVista(app, { x: px - (px - v.x) * f, y: py - (py - v.y) * f, w: v.w * f, h: v.h * f });
+    },
+    { passive: false }
+  );
+}
+
 function pintarMapa(app, lista, mios) {
   const g = $("#f2Puntos", app);
-  if (!g) return;
+  if (!g || !MAPA) return;
   const faltan = lista.filter((v) => !PUNTOS_CIUDAD.has(v.k));
   if (faltan.length) {
     Promise.all(faltan.map((v) => puntoDe(v.k))).then(() => pintarMapa(app, lista, mios));
@@ -1279,25 +1508,29 @@ function pintarMapa(app, lista, mios) {
     .map((v) => {
       const [x, y] = PUNTOS_CIUDAD.get(v.k);
       const r = 7 + Math.round((v.quienes.length / total) * 14);
-      return `<g class="hopx-punto${v.fuera ? " fuera" : ""}${mios.includes(v.k) ? " mio" : ""}">
+      return `<g class="hopx-punto${v.fuera ? " fuera" : ""}${mios.includes(v.k) ? " mio" : ""}" style="--r:${r}">
           <title>${esc(v.n)}: ${v.quienes.length} de ${total}</title>
           <circle cx="${x}" cy="${y}" r="${r}"/>
-          <text x="${x + r + 6}" y="${y + 5}">${esc(v.n)}</text>
+          <text x="${x}" y="${y}">${esc(v.n)}</text>
         </g>`;
     })
     .join("");
   if (g.dataset.huella !== hashCorto(html)) {
     g.dataset.huella = hashCorto(html);
     g.innerHTML = html;
+    // Donde más pines hay: los que más se tachan pesan el doble al encuadrar.
+    const pesos = orden.slice(0, Math.max(3, Math.ceil(orden.length / 2))).map((v) => PUNTOS_CIUDAD.get(v.k));
+    estado.mapaAuto = vistaAuto(pesos);
+    ponerVista(app, estado.mapaVista);
   }
   const pie = $("#f2MapaPie", app);
   const sinMapa = lista.filter((v) => PUNTOS_CIUDAD.has(v.k) && !PUNTOS_CIUDAD.get(v.k));
   if (pie) {
     pie.textContent = !lista.length
-      ? "Lo que se tache sale aquí."
+      ? "Lo que se tache sale aquí. Arrastra para moverte."
       : sinMapa.length
         ? `Fuera del mapa: ${sinMapa.map((v) => v.n).join(", ")}.`
-        : "";
+        : "Arrastra para moverte; con + y − te acercas.";
   }
 }
 
@@ -1400,8 +1633,8 @@ function formBuscar(atascada, ultima) {
         Somos ${sel("personas", [1, 2, 3, 4, 5, 6, 7, 8].map((x) => [x, String(x)]), n, "Cuántos sois")}.
       </p>
       <input type="hidden" id="hopDest">
+      <input type="hidden" id="hopFiltro">
       <div class="hopx-afinar">
-        <div class="filtro-wrap" id="hopFiltroWrap"><span class="hopx-sub">¿Por dónde?</span><input type="hidden" id="hopFiltro"></div>
         ${
           fuera.length
             ? `<p class="hopx-tachadas">${ico("no", 14)} Sin ${esc(fuera.map((v) => v.n).join(", "))} <small>(lo tachó el grupo)</small></p>`
@@ -1428,7 +1661,6 @@ function montarFormBuscar(app, caja) {
   const sincronizar = () => {
     const cuando = f.cuando ? f.cuando.value : "";
     form.querySelectorAll("[data-para]").forEach((x) => (x.hidden = x.dataset.para !== cuando));
-    $("#hopFiltroWrap", form).hidden = f.donde.value !== "any";
   };
   sincronizar();
   f.cuando?.addEventListener("change", sincronizar);
@@ -1442,7 +1674,7 @@ function montarFormBuscar(app, caja) {
     f.donde.value = v ? "one" : "any";
     sincronizar();
   });
-  montarFiltroDestinos($("#hopFiltroWrap", form), $("#hopFiltro", form));
+  engancharFiltro(f.donde, $("#hopFiltro", form), { rotulo: "unos países o regiones…" });
   montarHoras($("#hopHorasWrap", form), $("#hopHoras", form));
   form.querySelector("[data-hop-cerrar-buscar]")?.addEventListener("click", () => {
     estado.buscar = false;
@@ -1538,6 +1770,7 @@ function montarFormBuscar(app, caja) {
     const s = yo();
     const apunte = { clave, texto, por: s.uid, nombre: String(s.name || "").slice(0, 40), lanzada: new Date(), estado: "buscando" };
     estado.hop.busqueda = apunte;
+    estado.lanzadas = { ...estado.lanzadas, busqueda: { valor: apunte, hasta: Date.now() + 20000 } };
     estado.buscar = false;
     caja.innerHTML = "";
     caja.dataset.huella = "";
@@ -1702,6 +1935,7 @@ async function verCamas(app, o) {
     estado: "buscando",
   };
   estado.hop.cama = apunte;
+  estado.lanzadas = { ...estado.lanzadas, cama: { valor: apunte, hasta: Date.now() + 20000 } };
   pintarViaje(app);
   nubeHopApuntar(estado.id, "cama", apunte);
 }
@@ -2020,7 +2254,7 @@ async function irAFase(app, n, extra = {}) {
 }
 
 // Lo que se puede tocar sin cuenta: mirar y moverse hacia atrás.
-const SOLO_MIRAR = ["hopAbrirBuscar", "hopCerrarBuscar", "cerrarPlan", "diaCal"];
+const SOLO_MIRAR = ["hopAbrirBuscar", "hopCerrarBuscar", "cerrarPlan", "diaCal", "calMes", "mapa"];
 async function alTocarFase(app, e) {
   const b = e.target.closest("button");
   if (!b) return;
@@ -2076,6 +2310,8 @@ async function alTocarFase(app, e) {
     return pintarViaje(app);
   }
   if (b.dataset.diaCal) return elegirDiaCal(app, b.dataset.diaCal);
+  if (b.dataset.calMes) return moverCal(app, Number(b.dataset.calMes));
+  if (b.dataset.mapa) return moverMapa(app, b.dataset.mapa);
   if (b.hasAttribute("data-ninguna")) return vetar(app, []);
   if (b.dataset.tachar) {
     const mios = misVetos();
@@ -2103,6 +2339,12 @@ async function alTocarFase(app, e) {
     return;
   }
   if (b.hasAttribute("data-editar-plan")) abrirEditarPlan(app);
+}
+
+function moverCal(app, paso) {
+  estado.calTocado = true;
+  estado.calMes = (estado.calMes || 0) + paso;
+  if (pintarSi($("#f1Cal", app), calendarioHTML(coloresFechas()))) marcarCal(app);
 }
 
 /* Tocar días en el calendario: el primero es la ida y el segundo la vuelta. */
@@ -2133,6 +2375,7 @@ function marcarCal(app) {
 async function vetar(app, lista) {
   const antes = misVetos();
   estado.hop.vetos = { ...estado.hop.vetos, [miUid()]: lista };
+  estado.vetoLocal = { lista, hasta: Date.now() + 15000 };
   const input = $("#f2Buscar", app);
   if (input) {
     input.value = "";
@@ -2141,6 +2384,7 @@ async function vetar(app, lista) {
   pintarViaje(app);
   const r = await nubeHopVetar(estado.id, lista);
   if (!r.ok) {
+    estado.vetoLocal = null;
     estado.hop.vetos = { ...estado.hop.vetos, [miUid()]: antes };
     pintarViaje(app);
     alert(r.error);

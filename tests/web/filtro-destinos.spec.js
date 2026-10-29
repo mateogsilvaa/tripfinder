@@ -28,7 +28,8 @@ const capturar = async (page) => {
 const abrir = async (page) => {
   await page.goto("/buscar.html", { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#finderForm:not(.candado)", { timeout: 10000 });
-  await page.locator("#filtroWrap .filtro-dest-btn").click();
+  // Afinar es una opción más de «¿A dónde?».
+  await page.selectOption("#fWhere", "afinar");
   await expect(page.locator(".filtro-dest h3").first()).toHaveText("¿Por dónde?");
 };
 
@@ -37,7 +38,7 @@ test("sin tocarlo, cualquier sitio y no se manda nada", async ({ page }) => {
   const enviados = await capturar(page);
   await page.goto("/buscar.html", { waitUntil: "domcontentloaded" });
   await page.waitForSelector("#finderForm:not(.candado)", { timeout: 10000 });
-  await expect(page.locator("#filtroWrap .filtro-dest-btn")).toContainText("Cualquier sitio");
+  await expect(page.locator('#fWhere option[value="afinar"]')).toHaveText("Unos países o regiones…");
   await page.click('[form="finderForm"]');
   await expect.poll(() => enviados.length).toBe(1);
   expect(enviados[0].client_payload.viaje).toMatchObject({ solo: "", sin: "" });
@@ -55,7 +56,9 @@ test("solo Italia y Portugal, pero sin Roma", async ({ page }) => {
   await page.locator('.filtro-res[data-t="ciudad"]').first().click();
   await expect(page.locator(".filtro-resumen")).toHaveText("solo Italia, Portugal · sin Roma");
   await page.locator("[data-listo]").click();
-  await expect(page.locator("#filtroWrap .filtro-dest-btn")).toContainText("Solo Italia, Portugal · sin Roma");
+  // La opción dice lo elegido.
+  await expect(page.locator("#fWhere")).toHaveValue("afinar");
+  await expect(page.locator('#fWhere option[value="afinar"]')).toHaveText("Solo Italia, Portugal · sin Roma");
   await page.click('[form="finderForm"]');
   await expect.poll(() => enviados.length).toBe(1);
   const p = enviados[0].client_payload;
@@ -80,10 +83,24 @@ test("una región entera, y se guarda como grupo para otra vez", async ({ page }
   await expect(page.locator('[data-elegidos="si"]')).toContainText("Las Islas Británicas");
 });
 
-test("con un sitio concreto no hay nada que afinar", async ({ page }) => {
+test("si se cierra sin elegir nada, vuelve a «donde sea», y con un sitio concreto no se afina", async ({ page }) => {
   await conSesion(page);
-  await page.goto("/buscar.html", { waitUntil: "domcontentloaded" });
-  await page.waitForSelector("#finderForm:not(.candado)", { timeout: 10000 });
+  const enviados = await capturar(page);
+  await abrir(page);
+  await page.locator("[data-listo]").click();
+  await expect(page.locator("#fWhere")).toHaveValue("any");
+  // Con un filtro puesto, elegir un sitio concreto no lo manda.
+  await page.selectOption("#fWhere", "afinar");
+  await page.locator('.filtro-atajo[data-t="cont"]').first().click();
+  await page.locator("[data-listo]").click();
+  await expect(page.locator("#fWhere")).toHaveValue("afinar");
   await page.selectOption("#fWhere", "one");
-  await expect(page.locator("#filtroWrap")).toBeHidden();
+  await expect(page.locator("#destWrap")).toBeVisible();
+  await page.evaluate(() => {
+    const d = document.querySelector("#fDest");
+    d.value = "Roma";
+  });
+  await page.click('[form="finderForm"]');
+  await expect.poll(() => enviados.length).toBe(1);
+  expect(enviados[0].client_payload.viaje).toMatchObject({ solo: "", sin: "" });
 });

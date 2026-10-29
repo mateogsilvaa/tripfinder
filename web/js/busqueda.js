@@ -44,7 +44,7 @@ import {
   terminadaHTML,
   terminadas,
 } from "./destinos.js";
-import { codigosDelFiltro, montarFiltroDestinos, textoFiltro } from "./filtro-destinos.js";
+import { codigosDelFiltro, engancharFiltro, textoFiltro } from "./filtro-destinos.js";
 import { cargarWatches } from "./seguimientos.js";
 import { desde } from "./alojamiento.js";
 import { montarSemana } from "./semana.js";
@@ -158,15 +158,13 @@ const HINTS = {
    fecha— vive en `opciones.js`: los dos formularios hacen las mismas preguntas. */
 function syncFinder() {
   if (!existe("#finderForm")) return;
-  const donde = $("#fWhere").value;
+  // Afinar el «donde sea» (solo unos países, o todos menos unos) es una
+  // opción más de «¿A dónde?»: para lo demás cuenta como «donde sea».
+  if (existe("#fFiltro")) engancharFiltro($("#fWhere"), $("#fFiltro"), { mayus: true });
+  const donde = $("#fWhere").value === "one" ? "one" : "any";
   const cuando = $("#fWhen").value;
   // Ida y vuelta comparten ya un solo control, asi que #returnWrap no existe.
   $("#destWrap").hidden = donde !== "one";
-  // Afinar el «donde sea»: solo unos países, o todos menos unos.
-  if (existe("#filtroWrap")) {
-    $("#filtroWrap").hidden = donde !== "any";
-    montarFiltroDestinos($("#filtroWrap"), $("#fFiltro"));
-  }
   llenarOrigenes();
   if (existe("#mesWrap")) {
     llenarMeses();
@@ -281,7 +279,7 @@ on("#finderForm", "submit", async (e) => {
 
   const origen = $("#fOrigen") ? $("#fOrigen").value.trim().toUpperCase() : "";
   // Los países y las ciudades del filtro, ya pasados a sus aeropuertos.
-  const filtro = donde === "any" && existe("#fFiltro") && $("#fFiltro").value;
+  const filtro = donde !== "one" && existe("#fFiltro") && $("#fFiltro").value;
   const { solo, sin } = filtro ? await codigosDelFiltro($("#fFiltro").value) : { solo: "", sin: "" };
   const payload = {
     dest,
