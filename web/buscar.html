@@ -109,6 +109,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
           <button type="button" id="destBtn" class="date-btn">Elegir destino</button>
           <input id="fDest" type="hidden">
         </label>
+        <div class="celda filtro-wrap" id="filtroWrap">
+          <span>¿Por dónde?</span>
+          <input id="fFiltro" type="hidden">
+        </div>
         <div class="celda dias-par" id="diasWrap" hidden>
           <label for="fDiaIda"><span>Salgo el</span>
             <select id="fDiaIda"><option value="0" selected>lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3">jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>

@@ -617,3 +617,43 @@ test("HOP: los resultados de la búsqueda entran como vuelos y camas votables", 
     autor: "ana", votos: {}, creado: serverTimestamp() }));
   await assertFails(setDoc(doc(ana, "hops/hop1/propuestas/c-3"), { tipo: "hotelazo", titulo: "X", autor: "ana", votos: {}, creado: serverTimestamp() }));
 });
+
+test("HOP: las fases las mueve cualquier miembro, con fechas y plan bien hechos", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const gus = como("gus", "gus@x.es");
+  await updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" });
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1"), { fase: 2, fechas: { ida: "2027-05-01", vuelta: "2027-05-04" } }));
+  const plan = { de: "v-1", titulo: "Roma", ida: "2027-05-01", vuelta: "2027-05-04", precio: 89.5, url: "https://x.es/a",
+    cama: "Piso", cama_url: "", cama_precio: 40, nota: "T1 a las 6", por: "gus", nombre: "Gus" };
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1"), { fase: 5, plan }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { fase: 9 }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { fase: 2.5 }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { fechas: { ida: "mañana" } }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { plan: { ...plan, url: "javascript:1" } }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { plan: { ...plan, colado: 1 } }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { fase: 3, nombre: "Mío" }));
+  await assertFails(updateDoc(doc(como("eva", "eva@x.es"), "hops/hop1"), { fase: 3 }));
+});
+
+test("HOP: cada cual tacha hasta tres ciudades, y solo las suyas", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const ana = como("ana", "ana@x.es");
+  const gus = como("gus", "gus@x.es");
+  await updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" });
+  await assertSucceeds(updateDoc(doc(ana, "hops/hop1"), { "vetos.ana": ["Londres|GB", "Roma|IT"] }));
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1"), { "vetos.gus": ["Londres|GB"] }));
+  await assertSucceeds(updateDoc(doc(gus, "hops/hop1"), { "vetos.gus": [] }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { "vetos.gus": ["a", "b", "c", "d"] }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { "vetos.ana": [] }));
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { "vetos.gus": [42] }));
+});
+
+test("HOP: lo guardado puede llevar su alojamiento", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const ana = como("ana", "ana@x.es");
+  const base = { tipo: "vuelo", titulo: "Roma", autor: "ana", votos: {}, creado: serverTimestamp() };
+  await assertSucceeds(setDoc(doc(ana, "hops/hop1/propuestas/v-1-c-a"), { ...base, cama: "Piso en Trastevere",
+    cama_url: "https://www.booking.com/x", cama_precio: 45.5 }));
+  await assertFails(setDoc(doc(ana, "hops/hop1/propuestas/v-1-c-b"), { ...base, cama_url: "http://x" }));
+  await assertFails(setDoc(doc(ana, "hops/hop1/propuestas/v-1-c-c"), { ...base, cama_precio: "mucho" }));
+});

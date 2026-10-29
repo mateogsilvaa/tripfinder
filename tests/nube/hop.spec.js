@@ -24,6 +24,11 @@ async function persona(browser, nombre) {
   return { ctx, page, uid: s.uid };
 }
 
+const enDias = (n) => {
+  const d = new Date(Date.now() + n * 864e5);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
 const dentroDeUnMes = () => {
   const d = new Date(Date.now() + 30 * 864e5);
   return d.toISOString().slice(0, 10);
@@ -52,7 +57,7 @@ test("gratis no crea un HOP; premium sí, y lo comparte con un enlace", async ({
   await ana.ctx.close();
 });
 
-test("con el enlace se une cualquiera, y se propone, se vota y se habla", async ({ browser }) => {
+test("con el enlace se une cualquiera, se proponen fechas, se votan y se habla", async ({ browser }) => {
   test.setTimeout(60000);
   const ana = await persona(browser, "Ana");
   await E.hacerPremium(ana.uid);
@@ -64,32 +69,32 @@ test("con el enlace se une cualquiera, y se propone, se vota y se habla", async 
   await gus.page.locator("#hopUnirme").click();
   await expect(gus.page.locator(".hopx-portada h2")).toHaveText("Escapada");
 
-  // Gus propone un viaje.
-  await gus.page.locator("#hopOtras summary").click();
-  await gus.page.locator('[data-nueva="viaje"]').click();
-  await gus.page.locator("#hopPropForm [name=titulo]").fill("Lisboa barata");
-  await gus.page.locator("#hopPropForm [name=destino]").fill("Lisboa");
-  await gus.page.locator("#hopPropForm [name=precio]").fill("79");
-  await gus.page.locator("#hopPropForm button[type=submit]").click();
-  const prop = gus.page.locator(".hop-prop", { hasText: "Lisboa barata" });
-  await expect(prop).toContainText("79 €");
+  // Fase 1: Gus propone unas fechas y les da su voto.
+  await expect(gus.page.locator(".hopx-fase-cab h3")).toHaveText("Cuándo");
+  await gus.page.locator("#f1Form [name=ida]").fill(enDias(8));
+  await gus.page.locator("#f1Form [name=vuelta]").fill(enDias(10));
+  await gus.page.locator("#f1Form [name=titulo]").fill("Puente");
+  await gus.page.locator("#f1Form button[type=submit]").click();
+  const prop = gus.page.locator(".hopx-fechas-carta", { hasText: "Puente" });
   await prop.locator('[data-voto="si"]').click();
   await expect(prop.locator('[data-voto="si"]')).toHaveAttribute("aria-pressed", "true");
 
-  // Y escribe en el chat.
-  await gus.page.locator("#hopEscribir textarea").fill("¿Lisboa en mayo?");
+  // El chat va plegado: se abre con su botón.
+  await expect(gus.page.locator("#hopChat")).toBeHidden();
+  await gus.page.locator("#hopChatBoton").click();
+  await gus.page.locator("#hopEscribir textarea").fill("¿Os vale el puente?");
   await gus.page.locator("#hopEscribir button").click();
-  await expect(gus.page.locator(".hop-msj.mio")).toContainText("¿Lisboa en mayo?");
+  await expect(gus.page.locator(".hop-msj.mio")).toContainText("¿Os vale el puente?");
 
   // Ana lo ve todo, vota y contesta.
   await ana.page.goto(`/hop.html?j=${id}`);
-  await ana.page.locator("#hopOtras summary").click();
-  const suya = ana.page.locator(".hop-prop", { hasText: "Lisboa barata" });
+  const suya = ana.page.locator(".hopx-fechas-carta", { hasText: "Puente" });
   await expect(suya.locator('[data-voto="si"] b')).toHaveText("1");
   await expect(suya).toContainText("Falta: Ana");
   await suya.locator('[data-voto="quiza"]').click();
   await expect(suya).toContainText("Ya han votado todos");
-  await expect(ana.page.locator(".hop-msj").first()).toContainText("¿Lisboa en mayo?");
+  await ana.page.locator("#hopChatBoton").click();
+  await expect(ana.page.locator(".hop-msj").first()).toContainText("¿Os vale el puente?");
   await ana.page.locator("#hopEscribir textarea").fill("Me vale");
   await ana.page.keyboard.press("Enter");
 
@@ -131,86 +136,112 @@ test("quien lo crea lo borra, y entonces puede crear otro", async ({ browser }) 
   await ana.ctx.close();
 });
 
-/* El corazón del HOP: se busca desde el grupo, los resultados entran como
-   tarjetas, se votan (también en «votar rápido») y el más votado sale en el
-   resumen; con él se busca dónde dormir, que se vota igual. El workflow se
-   hace a mano: se publica en `resultados/` lo que dejaría al acabar. */
-test("buscar en grupo: los vuelos llegan como tarjetas, se votan y arman el viaje", async ({ browser }) => {
-  test.setTimeout(90000);
+/* El HOP entero, por fases: se fijan las fechas, se tacha una ciudad, se
+   busca, se guarda lo que convence (un vuelo, y otro con su alojamiento), se
+   vota lo guardado y el ganador es el plan, que se retoca. El workflow se hace
+   a mano: se publica en `resultados/` lo que dejaría al acabar. */
+test("por fases: fechas, vetos, buscar y guardar, votar y el plan", async ({ browser }) => {
+  test.setTimeout(120000);
   const ana = await persona(browser, "Ana");
   await E.hacerPremium(ana.uid);
-  await crear(ana.page, "Finde");
-  const id = new URL(ana.page.url()).searchParams.get("j");
+  const id = await crear(ana.page, "Finde");
   const gus = await persona(browser, "Gus");
   await gus.page.goto(`/hop.html?j=${id}`);
   await gus.page.locator("#hopUnirme").click();
   await expect(gus.page.locator(".hopx-portada h2")).toHaveText("Finde");
 
-  // Ana busca: donde sea, un finde, 2 personas (los del grupo).
+  // 1. Ana propone fechas, las vota y las fija.
   await ana.page.reload();
-  await expect(ana.page.locator("#hopBuscarForm [name=personas]")).toHaveValue("2");
-  await expect(ana.page.locator("#hopBuscarForm .hopx-frase")).toContainText("Salimos de");
-  await ana.page.locator("#hopBuscarForm button[type=submit]").click();
-  await expect(ana.page.locator(".hop-buscando")).toContainText("Buscando vuelos");
-  const [encargo] = await E.encargosDe(ana.uid);
-  expect(encargo).toMatchObject({ tipo: "search" });
-  expect(encargo.payload.adults).toBe("2");
-  const clave = encargo.payload.viaje.clave;
-  expect(clave).toMatch(/^[a-z0-9-]+$/);
-  // Lleva el HOP: así lo lanza cualquiera del grupo, aunque sea gratis.
-  expect(encargo.payload.viaje.hop).toBe(id);
+  await ana.page.locator("#f1Form [name=ida]").fill(enDias(10));
+  await ana.page.locator("#f1Form [name=vuelta]").fill(enDias(12));
+  await ana.page.locator("#f1Form button[type=submit]").click();
+  await ana.page.locator('.hopx-fechas-carta [data-voto="si"]').click();
+  await ana.page.locator("[data-fijar]").click();
+  await expect(ana.page.locator(".hopx-fase-cab h3")).toHaveText("Dónde no");
 
-  // Gus lo ve en marcha sin tocar nada.
+  // 2. Gus llega a la fase en la que está el grupo y tacha Roma. Siendo uno de
+  // dos, es más de un tercio: Roma queda fuera.
   await gus.page.reload();
-  await expect(gus.page.locator(".hop-buscando")).toContainText("Lo lanzó Ana");
+  await expect(gus.page.locator(".hopx-fase-cab h3")).toHaveText("Dónde no");
+  await gus.page.locator("#f2Buscar").fill("Rom");
+  await gus.page.locator("[data-tachar]").first().click();
+  await expect(gus.page.locator("#f2Todas")).toContainText("fuera de la búsqueda");
+  await expect(gus.page.locator("#f2Cuenta")).toContainText("1 de 3");
 
-  const oferta = (id, ciudad, pais, precio) => ({
-    id, provider: "ryanair", origin: "MAD", destination: id.slice(0, 3), destination_name: ciudad,
-    destination_country: pais, depart_date: "2026-12-11", return_date: "2026-12-13", depart_time: "07:10",
-    arrive_time: "09:00", nights: 2, price: precio, airline: "Ryanair", deep_link: "https://www.ryanair.com/x", adults: 2,
+  // 3. Buscar: con las fechas fijadas y sin Roma. Lo lanza Gus, que es gratis.
+  await gus.page.locator('[data-ir-fase="3"]').click();
+  await expect(gus.page.locator("#hopBuscarForm .hopx-fijo")).toBeVisible();
+  await expect(gus.page.locator(".hopx-tachadas")).toContainText("Roma");
+  await gus.page.locator("#hopBuscarForm button[type=submit]").click();
+  await expect(gus.page.locator(".hop-buscando")).toContainText("Buscando vuelos");
+  const [encargo] = await E.encargosDe(gus.uid);
+  expect(encargo.payload.viaje).toMatchObject({ hop: id, depart: enDias(10), return_date: enDias(12) });
+  expect(encargo.payload.viaje.sin).toContain("FCO");
+  const clave = encargo.payload.viaje.clave;
+
+  const oferta = (ofid, iata, ciudad, pais, precio) => ({
+    id: ofid, provider: "ryanair", origin: "MAD", destination: iata, destination_name: ciudad, destination_country: pais,
+    depart_date: enDias(10), return_date: enDias(12), depart_time: "07:10", arrive_time: "09:00", nights: 2,
+    price: precio, airline: "Ryanair", deep_link: "https://www.ryanair.com/x", adults: 2,
   });
   await E.publicarResultado(`busqueda-${clave}`, {
-    label: "x",
-    offers: [oferta("OPO-1", "Oporto", "Portugal", 80), oferta("BCN-1", "Barcelona", "España", 60), oferta("ROM-1", "Roma", "Italia", 140)],
+    offers: [oferta("OPO-1", "OPO", "Oporto", "Portugal", 80), oferta("LIS-1", "LIS", "Lisboa", "Portugal", 100),
+      oferta("BER-1", "BER", "Berlín", "Alemania", 140)],
   });
-  // Entran solos, en la siguiente vuelta del sondeo.
-  await expect(gus.page.locator("#hopVuelos .hopx-carta")).toHaveCount(3, { timeout: 20000 });
-  await expect(gus.page.locator("#hopVuelos")).toContainText("Oporto");
-  await expect(gus.page.locator("#hopVuelos")).toContainText("40 €"); // por persona
+  await expect(gus.page.locator(".hopx-res")).toHaveCount(3, { timeout: 20000 });
+  // Los resultados no se votan: se guardan.
+  const opo = gus.page.locator(".hopx-res", { hasText: "Oporto" });
+  await expect(opo).toContainText("40 €");
+  await opo.locator("[data-guardar]").click();
+  await expect(opo.locator("[data-guardar]")).toContainText("Guardada");
 
-  // Gus vota rápido: Oporto sí, el resto no.
-  await gus.page.locator('[data-rapido="vuelo"]').click();
+  // Lisboa, con alojamiento: se busca, llega y se guarda junto al vuelo.
+  const lis = gus.page.locator(".hopx-res", { hasText: "Lisboa" });
+  await lis.locator("[data-camas]").click();
+  await expect(lis.locator(".hop-buscando")).toBeVisible();
+  const stay = (await E.encargosDe(gus.uid)).find((e) => e.tipo === "stay");
+  expect(stay.payload).toMatchObject({ offer_id: "LIS-1", hop: id, adults: "2" });
+  await E.publicarResultado("stay-LIS-1", {
+    stays: [{ provider: "booking", name: "Casa do Fado", url: "https://www.booking.com/a", price_total: 120, rating: 9 }],
+  });
+  await expect(lis.locator(".hopx-camas li")).toHaveCount(1, { timeout: 20000 });
+  await lis.locator(".hopx-camas [data-guardar]").click();
+  await expect(lis.locator(".hopx-camas [data-guardar]")).toContainText("Guardada");
+
+  // 4. Votar entre las dos guardadas, deslizando: Oporto sí, Lisboa no.
+  await gus.page.locator('[data-ir-fase="4"]').click();
+  await expect(gus.page.locator(".hopx-carta")).toHaveCount(2);
+  await expect(gus.page.locator(".hopx-carta", { hasText: "Lisboa" })).toContainText("Casa do Fado");
+  await gus.page.locator('[data-rapido="guardada"]').click();
   const capa = gus.page.locator(".hopx-desliza");
-  for (let i = 0; i < 3; i++) {
-    await expect(capa.locator(".hopx-progreso")).toContainText(`${i + 1} de 3`);
+  for (let i = 0; i < 2; i++) {
+    await expect(capa.locator(".hopx-progreso")).toContainText(`${i + 1} de 2`);
     const txt = await capa.locator(".hopx-dcarta:not(.atras)").textContent();
     await capa.locator(txt.includes("Oporto") ? '[data-rv="si"]' : '[data-rv="no"]').click();
   }
   await expect(capa).toContainText("Votado");
   await capa.locator("[data-cerrar]").click();
-  await expect(gus.page.locator("#hopResumen")).toContainText("Oporto");
-  await expect(gus.page.locator("#hopResumen")).toContainText("1 de 2");
 
-  // Ana lo ve y vota también; luego busca dónde dormir.
+  // Ana, que sigue al grupo, vota y elige: el plan.
   await ana.page.reload();
-  const opo = ana.page.locator("#hopVuelos .hopx-carta", { hasText: "Oporto" });
-  await opo.locator('[data-voto="si"]').click();
-  await expect(ana.page.locator("#hopResumen")).toContainText("2 de 2");
-  await ana.page.locator("[data-hop-cama]").click();
-  await expect(ana.page.locator("#hopCamasCab .hop-buscando")).toBeVisible();
-  const stay = (await E.encargosDe(ana.uid)).find((e) => e.tipo === "stay");
-  expect(stay.payload).toMatchObject({ offer_id: "OPO-1", checkin: "2026-12-11", adults: "2", hop: id });
-  await E.publicarResultado("stay-OPO-1", {
-    stays: [
-      { provider: "booking", name: "Casa do Rio", url: "https://www.booking.com/a", price_total: 180, rating: 9.1, km_centro: 0.6 },
-      { provider: "booking", name: "Hostal Ribeira", url: "https://www.booking.com/b", price_total: 90, rating: 8.2 },
-    ],
-  });
-  await expect(ana.page.locator("#hopCamas .hopx-cama")).toHaveCount(2, { timeout: 20000 });
-  await ana.page.locator("#hopCamas .hopx-cama", { hasText: "Casa do Rio" }).locator('[data-voto="si"]').click();
-  // El resumen: vuelo + cama, por persona: 40 + 90.
-  await expect(ana.page.locator("#hopResumen")).toContainText("Casa do Rio");
-  await expect(ana.page.locator(".hopx-plan-total b")).toContainText("130 €");
+  await expect(ana.page.locator(".hopx-fase-cab h3")).toHaveText("Votar");
+  await ana.page.locator(".hopx-carta", { hasText: "Oporto" }).locator('[data-voto="si"]').click();
+  await ana.page.locator("[data-elegir]").click();
+  await expect(ana.page.locator(".hopx-fase-cab h3")).toHaveText("El plan");
+  await expect(ana.page.locator(".hopx-plan")).toContainText("Oporto");
+  await expect(ana.page.locator(".hopx-plan-total b")).toHaveText("40 €");
+
+  // 5. Se retoca: dónde dormir, lo que cuesta y una nota.
+  await ana.page.locator("[data-editar-plan]").click();
+  await ana.page.locator("#hopPlanForm [name=cama]").fill("Piso en la Ribeira");
+  await ana.page.locator("#hopPlanForm [name=cama_precio]").fill("30");
+  await ana.page.locator("#hopPlanForm [name=nota]").fill("T1 a las 6");
+  await ana.page.locator("#hopPlanForm button[type=submit]").click();
+  await expect(ana.page.locator(".hopx-plan-total b")).toHaveText("70 €");
+  await expect(ana.page.locator(".hopx-plan")).toContainText("T1 a las 6");
+  // Y Gus lo ve.
+  await gus.page.reload();
+  await expect(gus.page.locator(".hopx-plan")).toContainText("Piso en la Ribeira");
   await gus.ctx.close();
   await ana.ctx.close();
 });

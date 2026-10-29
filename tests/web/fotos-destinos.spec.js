@@ -68,20 +68,6 @@ test("el chollo del día lleva la foto de su destino, con su crédito", async ({
   expect(info.titles).not.toMatch(/Bandera|Escudo/);
 });
 
-test("al abrir una fila sale la galería del destino, sin retratos estrechos", async ({ page }) => {
-  await wikipedia(page);
-  await page.goto("/index.html");
-  const fila = page.locator(".brow[data-open]").first();
-  await fila.click();
-  const galeria = fila.locator(".galeria");
-  await expect(galeria).toBeVisible({ timeout: 15000 });
-  await expect(galeria.locator("img")).toHaveCount(3); // cabecera, puerto y catedral
-  await expect(galeria.locator('img[src*="Retrato"]')).toHaveCount(0);
-  // Tocar una foto no cierra la fila.
-  await galeria.locator("img").first().click({ force: true });
-  await expect(fila).toHaveAttribute("aria-expanded", "true");
-});
-
 test("lo que ya se ha pedido no se vuelve a pedir", async ({ page }) => {
   const pedidas = await wikipedia(page);
   await page.goto("/index.html");

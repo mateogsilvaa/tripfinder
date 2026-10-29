@@ -58,6 +58,12 @@ class SearchRequest:
     # la mañana y volver por la tarde. Una vacia es «me da igual»; "22-6"
     # cruza la medianoche. Ver `franjas_horarias`.
     horas: str = ""
+    # Afinar el «donde sea»: SOLO estos destinos (un pais, una region, un
+    # grupo tuyo de paises) y/o SIN estos (Londres no, Marruecos tampoco).
+    # Llegan como codigos IATA pegados ("OPOLISFAO") o separados por comas;
+    # la web ya ha pasado los paises y las regiones a sus aeropuertos.
+    solo: str = ""
+    sin: str = ""
     # Quien la pidio. Vacio = busqueda de antes de las cuentas: la ve todo el mundo.
     owner: str = ""
     owner_name: str = ""
@@ -74,6 +80,8 @@ class SearchRequest:
         par = dias_de_la_semana(self.dias)
         self.dias = f"{par[0]}-{par[1]}" if par else ""
         self.horas = normalizar_horas(self.horas)
+        self.solo = "".join(sorted(codigos_iata(self.solo)))
+        self.sin = "".join(sorted(codigos_iata(self.sin)))
         if par:
             # Las noches salen de los dos dias: de lunes a jueves son tres.
             self.nights_min = self.nights_max = (par[1] - par[0]) % 7 or 7
@@ -101,6 +109,11 @@ class SearchRequest:
             partes.append("h" + re.sub(r"[^0-9]+", "", self.horas.replace(",", "x")))
         if self.max_price:
             partes.append(str(int(self.max_price)))
+        if self.solo or self.sin:
+            # Un resumen corto: la lista entera puede ser de cientos de codigos.
+            import hashlib
+
+            partes.append("f" + hashlib.sha1(f"{self.solo}|{self.sin}".encode()).hexdigest()[:6])
         if self.depart:
             partes.append(self.depart.replace("-", ""))
             if self.return_date:
@@ -493,6 +506,18 @@ def en_sus_horas(o: FlightOffer, franjas: list[Franja]) -> bool:
     return all(en_franja(h, f) for h, f in zip(horas, franjas, strict=False))
 
 
+TOPE_CODIGOS = 2000
+
+
+def codigos_iata(texto: str) -> set[str]:
+    """Los codigos de un "solo" o un "sin": "OPOLIS", "OPO,LIS" u "opo lis".
+
+    Lo que no sean tres letras se ignora, y hay tope: viene de la web y acaba
+    en un fichero."""
+    limpio = re.sub(r"[^A-Za-z]", "", str(texto or "")).upper()
+    return {limpio[i : i + 3] for i in range(0, min(len(limpio), TOPE_CODIGOS * 3) - 2, 3)}
+
+
 def dias_de_la_semana(texto: str) -> tuple[int, int] | None:
     """ "0-3" -> (0, 3): lunes a jueves. None si no son dos dias de 0 a 6."""
     m = re.fullmatch(r"\s*([0-6])\s*-\s*([0-6])\s*", str(texto or ""))
@@ -683,6 +708,11 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
         # A donde se puede volar de verdad desde el origen, vuele quien vuele.
         # Esta es la lista que antes decidia Ryanair el solo.
         universo = rutas.destinos(req.origin, cfg)
+    solo, sin = codigos_iata(req.solo), codigos_iata(req.sin)
+    if destinos == "any" and solo:
+        universo = {k: v for k, v in universo.items() if k in solo}
+    if sin:
+        universo = {k: v for k, v in universo.items() if k not in sin}
 
     route = Route(
         origin=req.origin,
@@ -800,6 +830,12 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
         o.useful_hours = useful_hours(o)
     if req.max_price:
         ofertas = [o for o in ofertas if o.price <= req.max_price]
+    # Lo de «solo» y «sin» tambien con lo que devuelven Ryanair y Wizz, que
+    # contestan con todos sus destinos.
+    if destinos == "any" and solo:
+        ofertas = [o for o in ofertas if o.destination in solo]
+    if sin:
+        ofertas = [o for o in ofertas if o.destination not in sin]
     # Con dias fijos, solo los viajes que salen y vuelven esos dias: Google y
     # Wizz devuelven lo mas barato de alrededor y se colaba un martes.
     if req.par_de_dias:
