@@ -120,14 +120,20 @@ function salir(caja) {
 }
 
 /* ---------------------------------------------------------------- el panel
-   Tres pestañas y nada más: RESUMEN (cómo va la web: cifras, uso por día,
-   planes, pantallas y quién ha entrado), CUENTAS (la tabla, con el plan a un
-   toque) y ERRORES. Arriba, solo lo que pide que hagas algo. */
+   Una herramienta, no una página de la web: a la izquierda las tres partes
+   (resumen, cuentas, errores) con su cuenta, y quién eres; a la derecha la
+   parte elegida con su cabecera. En el móvil, las partes van arriba en una
+   fila. */
 const PESTANAS = [
-  ["resumen", "Resumen"],
-  ["cuentas", "Cuentas"],
-  ["errores", "Errores"],
+  ["resumen", "Resumen", '<path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/>'],
+  ["cuentas", "Cuentas", '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 19.5a5.5 5.5 0 0 0-3-4.9"/>'],
+  ["errores", "Errores", '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.1"/>'],
 ];
+const TITULOS = {
+  resumen: ["Resumen", "Cómo se usa la web"],
+  cuentas: ["Cuentas", "Quién hay y con qué plan"],
+  errores: ["Errores", "Lo que ha fallado, agrupado"],
+};
 let pestana = "resumen";
 try {
   pestana = sessionStorage.getItem("tf_adm_pestana") || "resumen";
@@ -155,78 +161,101 @@ async function lista(caja, yo, aviso = "") {
   const quieren = cuentas.filter((c) => c.prefs && c.prefs.quiere_premium && nubePlan(c) === "gratis").length;
 
   caja.innerHTML = `
-    <header class="adm-sup">
-      <div class="adm-quien">
-        <span class="adm-avatar grande" aria-hidden="true">${inicial(yo.name)}</span>
-        <span><b>Hola, ${esc(yo.name || "admin")}</b><small>${cuentas.length} cuenta${cuentas.length === 1 ? "" : "s"} en la web</small></span>
-      </div>
-      <div class="adm-acciones">
-        <button class="btn ghost small" type="button" id="nubeRecargar">${icono(
-          '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>'
-        )} Recargar</button>
-        <a class="btn ghost small" href="./">Volver a la web</a>
-        <button class="btn ghost small" type="button" id="nubeAdminSalir">Salir</button>
-      </div>
-    </header>
-    <div class="adm-pendiente" id="admPendiente">${
-      pendientes || quieren
-        ? `${pendientes ? `<button type="button" data-ir="cuentas" data-filtro="pendiente"><b>${pendientes}</b> pendiente${pendientes === 1 ? "" : "s"} de abrir</button>` : ""}
-           ${quieren ? `<button type="button" data-ir="cuentas" data-filtro="quiere"><b>${quieren}</b> quiere${quieren === 1 ? "" : "n"} premium</button>` : ""}`
-        : ""
-    }</div>
-    <div class="adm-aviso" id="nubeAviso" role="status">${esc(aviso)}</div>
-    <nav class="adm-tabs" role="tablist" aria-label="Partes del panel">${PESTANAS.map(
-      ([k, t]) => `<button type="button" role="tab" id="admTab-${k}" aria-controls="admPanel-${k}" data-tab="${k}"
-        aria-selected="${k === pestana}">${t}<i id="admTabN-${k}">${k === "cuentas" ? cuentas.length : ""}</i></button>`
-    ).join("")}</nav>
-
-    <section class="adm-panel" id="admPanel-resumen" role="tabpanel" aria-labelledby="admTab-resumen" ${pestana === "resumen" ? "" : "hidden"}>
-      <div class="adm-cab">
-        <h3 class="adm-tit">Cómo va la web</h3>
-        <div class="adm-periodo" role="radiogroup" aria-label="Periodo">${PERIODOS.map(
-          ([dias, rotulo]) =>
-            `<button type="button" class="adm-seg" role="radio" data-periodo="${dias}"
-              aria-checked="${dias === periodo ? "true" : "false"}">${rotulo}</button>`
-        ).join("")}</div>
-      </div>
-      <div id="admActividad"><div id="admActCuerpo"><p class="meta"><span class="spin"></span>Leyendo la actividad…</p></div></div>
-    </section>
-
-    <section class="adm-panel" id="admPanel-cuentas" role="tabpanel" aria-labelledby="admTab-cuentas" ${pestana === "cuentas" ? "" : "hidden"}>
-      <div class="adm-cab">
-        <div class="adm-chips" role="radiogroup" aria-label="Qué cuentas" id="admChips"></div>
-        <div class="adm-filtros">
-          <input type="search" id="admBuscar" placeholder="Buscar por nombre o correo" autocomplete="off"
-            aria-label="Buscar una cuenta">
-          <select id="admOrden" aria-label="Ordenar">
-            <option value="estado">Por estado</option>
-            <option value="ultima">Última entrada</option>
-            <option value="nuevas">Más nuevas</option>
-            <option value="nombre">Por nombre</option>
-          </select>
+    <div class="adm3">
+      <aside class="adm3-lado">
+        <p class="adm3-marca">Administración</p>
+        <nav class="adm-tabs" role="tablist" aria-label="Partes del panel" aria-orientation="vertical">${PESTANAS.map(
+          ([k, t, d]) => `<button type="button" role="tab" id="admTab-${k}" aria-controls="admPanel-${k}" data-tab="${k}"
+            aria-selected="${k === pestana}">${icono(d, 18)}<span>${t}</span><i id="admTabN-${k}">${
+              k === "cuentas" ? cuentas.length : ""
+            }</i></button>`
+        ).join("")}</nav>
+        <div class="adm3-yo">
+          <span class="adm-avatar" aria-hidden="true">${inicial(yo.name)}</span>
+          <span><b>${esc(yo.name || "admin")}</b><small>administradora</small></span>
         </div>
-      </div>
-      <div class="adm-tabla">
-        <div class="adm-fila adm-fila-cab" aria-hidden="true">
-          <span>Cuenta</span><span>Plan</span><span>Última entrada</span><span></span>
+        <div class="adm3-salidas">
+          <a href="./">Volver a la web</a>
+          <button type="button" id="nubeAdminSalir">Salir</button>
         </div>
-        <div class="adm-filas" id="nubeCuentas">${
-          cuentas.length
-            ? [...cuentas]
-                .sort((a, b) => (ORDEN[a.estado] ?? 3) - (ORDEN[b.estado] ?? 3) || tiempo(b.creado) - tiempo(a.creado))
-                .map((c) => fila(c, yo))
-                .join("")
-            : `<p class="meta">Todavía no se ha registrado nadie.</p>`
-        }</div>
-        <p class="meta adm-nadie" id="admNadie" hidden>Ninguna cuenta con eso.</p>
+      </aside>
+
+      <div class="adm3-main">
+        <header class="adm3-cab">
+          <div>
+            <h2 id="admTitulo">${TITULOS[pestana][0]}</h2>
+            <p id="admSubtitulo">${TITULOS[pestana][1]}</p>
+          </div>
+          <div class="adm3-herr">
+            <div class="adm-periodo" role="radiogroup" aria-label="Periodo">${PERIODOS.map(
+              ([dias, rotulo]) =>
+                `<button type="button" class="adm-seg" role="radio" data-periodo="${dias}"
+                  aria-checked="${dias === periodo ? "true" : "false"}">${rotulo}</button>`
+            ).join("")}</div>
+            <button class="adm3-recargar" type="button" id="nubeRecargar" aria-label="Recargar" title="Recargar">${icono(
+              '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+              18
+            )}</button>
+          </div>
+        </header>
+        <div class="adm-aviso" id="nubeAviso" role="status">${esc(aviso)}</div>
+
+        <section class="adm-panel" id="admPanel-resumen" role="tabpanel" aria-labelledby="admTab-resumen" ${pestana === "resumen" ? "" : "hidden"}>
+          <div class="adm-atencion" id="admPendiente">${
+            pendientes || quieren
+              ? `${
+                  pendientes
+                    ? `<button type="button" data-ir="cuentas" data-filtro="pendiente">${icono('<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>', 18)}
+                       <span><b>${pendientes}</b> cuenta${pendientes === 1 ? "" : "s"} por abrir</span><span class="adm-ver">Ver</span></button>`
+                    : ""
+                }${
+                  quieren
+                    ? `<button type="button" data-ir="cuentas" data-filtro="quiere">${icono('<path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>', 18)}
+                       <span><b>${quieren}</b> quiere${quieren === 1 ? "" : "n"} premium</span><span class="adm-ver">Ver</span></button>`
+                    : ""
+                }`
+              : ""
+          }</div>
+          <div id="admActividad"><div id="admActCuerpo"><p class="meta"><span class="spin"></span>Leyendo la actividad…</p></div></div>
+        </section>
+
+        <section class="adm-panel" id="admPanel-cuentas" role="tabpanel" aria-labelledby="admTab-cuentas" ${pestana === "cuentas" ? "" : "hidden"}>
+          <div class="adm-cab">
+            <div class="adm-chips" role="radiogroup" aria-label="Qué cuentas" id="admChips"></div>
+            <div class="adm-filtros">
+              <input type="search" id="admBuscar" placeholder="Buscar por nombre o correo" autocomplete="off"
+                aria-label="Buscar una cuenta">
+              <select id="admOrden" aria-label="Ordenar">
+                <option value="estado">Por estado</option>
+                <option value="ultima">Última entrada</option>
+                <option value="nuevas">Más nuevas</option>
+                <option value="nombre">Por nombre</option>
+              </select>
+            </div>
+          </div>
+          <div class="adm-tabla">
+            <div class="adm-fila adm-fila-cab" aria-hidden="true">
+              <span>Cuenta</span><span>Plan</span><span>Última entrada</span><span></span>
+            </div>
+            <div class="adm-filas" id="nubeCuentas">${
+              cuentas.length
+                ? [...cuentas]
+                    .sort((a, b) => (ORDEN[a.estado] ?? 3) - (ORDEN[b.estado] ?? 3) || tiempo(b.creado) - tiempo(a.creado))
+                    .map((c) => fila(c, yo))
+                    .join("")
+                : `<p class="meta">Todavía no se ha registrado nadie.</p>`
+            }</div>
+            <p class="meta adm-nadie" id="admNadie" hidden>Ninguna cuenta con eso.</p>
+          </div>
+        </section>
+
+        <section class="adm-panel" id="admPanel-errores" role="tabpanel" aria-labelledby="admTab-errores" ${pestana === "errores" ? "" : "hidden"}>
+          <div id="admErrores"><div id="admErrCuerpo"><p class="meta"><span class="spin"></span>Leyendo…</p></div></div>
+        </section>
       </div>
-    </section>
+    </div>`;
 
-    <section class="adm-panel" id="admPanel-errores" role="tabpanel" aria-labelledby="admTab-errores" ${pestana === "errores" ? "" : "hidden"}>
-      <div id="admErrores"><div id="admErrCuerpo"><p class="meta"><span class="spin"></span>Leyendo…</p></div></div>
-    </section>`;
-
-  /* Las pestañas. */
+  /* Las partes. */
   const ir = (k) => {
     pestana = k;
     try {
@@ -236,15 +265,20 @@ async function lista(caja, yo, aviso = "") {
     }
     caja.querySelectorAll("[data-tab]").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === k)));
     caja.querySelectorAll(".adm-panel").forEach((p) => (p.hidden = p.id !== `admPanel-${k}`));
+    caja.querySelector("#admTitulo").textContent = TITULOS[k][0];
+    caja.querySelector("#admSubtitulo").textContent = TITULOS[k][1];
   };
-  caja.querySelector(".adm-tabs").addEventListener("click", (e) => {
+  const tabs = caja.querySelector(".adm-tabs");
+  tabs.addEventListener("click", (e) => {
     const b = e.target.closest("[data-tab]");
     if (b) ir(b.dataset.tab);
   });
-  caja.querySelector(".adm-tabs").addEventListener("keydown", (e) => {
-    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  tabs.addEventListener("keydown", (e) => {
+    const atras = e.key === "ArrowUp" || e.key === "ArrowLeft";
+    if (!atras && e.key !== "ArrowDown" && e.key !== "ArrowRight") return;
+    e.preventDefault();
     const i = PESTANAS.findIndex(([k]) => k === pestana);
-    const j = (i + (e.key === "ArrowRight" ? 1 : PESTANAS.length - 1)) % PESTANAS.length;
+    const j = (i + (atras ? PESTANAS.length - 1 : 1)) % PESTANAS.length;
     ir(PESTANAS[j][0]);
     caja.querySelector(`[data-tab="${PESTANAS[j][0]}"]`).focus();
   });
@@ -302,7 +336,7 @@ async function lista(caja, yo, aviso = "") {
     filtrar();
   });
   ["#admBuscar", "#admOrden"].forEach((sel) => caja.querySelector(sel).addEventListener("input", filtrar));
-  caja.querySelector("#admPendiente").addEventListener("click", (e) => {
+  caja.querySelector(".adm3").addEventListener("click", (e) => {
     const b = e.target.closest("[data-ir]");
     if (!b) return;
     ir(b.dataset.ir);
@@ -362,8 +396,10 @@ function fila(c, yo) {
       .join("")}</div>`;
   } else if (c.estado === "pendiente") {
     planes = `<span class="adm-estado pendiente">Pendiente</span>
-      ${boton("aprobado", "Abrir gratis", { conPlan: "gratis", extra: "btn ghost small" })}
-      ${boton("aprobado", "Abrir premium", { conPlan: "premium", extra: "btn primary small" })}`;
+      <span class="adm-plan" role="group" aria-label="Abrir la cuenta de ${esc(c.nombre)}">${boton("aprobado", "Abrir gratis", {
+        conPlan: "gratis",
+        extra: "adm-plan-b",
+      })}${boton("aprobado", "Abrir premium", { conPlan: "premium", extra: "adm-plan-b p-abrir" })}</span>`;
   } else {
     planes = `<span class="adm-estado bloqueado">Bloqueada</span>`;
   }
@@ -610,14 +646,78 @@ const NO_PUBLICADAS = `<div class="adm-alerta">
     las cuentas se gestionan igual.
   </div>`;
 
+/* La diferencia con el periodo anterior, como se lee de un vistazo: «+12 %»
+   en verde, «−8 %» en naranja, nada si no hay con qué comparar. */
+function cambioHTML(ahora, antes) {
+  if (!antes) return ahora ? `<span class="adm-cambio nuevo">nuevo</span>` : "";
+  const pct = Math.round(((ahora - antes) / antes) * 100);
+  if (!pct) return `<span class="adm-cambio">igual</span>`;
+  return `<span class="adm-cambio ${pct > 0 ? "sube" : "baja"}">${pct > 0 ? "+" : "−"}${Math.abs(pct)} %</span>`;
+}
+
+/* El reparto de las cuentas: una barra partida por plan y su leyenda. */
+function repartoHTML(cuentas) {
+  const partes = [
+    ["gratis", "Gratis", nPlan(cuentas, "gratis")],
+    ["premium", "Premium", nPlan(cuentas, "premium")],
+    ["max", "Max", nPlan(cuentas, "max")],
+    ["pendiente", "Pendientes", cuentas.filter((c) => c.estado === "pendiente").length],
+    ["bloqueado", "Bloqueadas", cuentas.filter((c) => c.estado === "bloqueado").length],
+  ].filter(([, , n], i) => i < 3 || n);
+  const total = Math.max(1, cuentas.length);
+  return `
+    <div class="adm-reparto" role="img" aria-label="${esc(partes.map(([, t, n]) => `${t}: ${n}`).join(", "))}">${partes
+      .filter(([, , n]) => n)
+      .map(([k, t, n]) => `<i class="r-${k}" style="flex:${n}" title="${esc(t)}: ${n}"></i>`)
+      .join("")}</div>
+    <ul class="adm-leyenda">${partes
+      .map(
+        ([k, t, n]) => `<li><span class="r-${k}" aria-hidden="true"></span>${esc(t)}<b>${n}</b><small>${Math.round(
+          (n / total) * 100
+        )} %</small></li>`
+      )
+      .join("")}</ul>`;
+}
+
+/* Lo último que ha pasado: entradas, cuentas nuevas y errores, en una línea
+   de tiempo. */
+function recienteHTML(filas, cuentas, nombre) {
+  const desde = Date.now() - periodo * 864e5;
+  const cosas = [
+    // Quien se registra sale una vez, como cuenta nueva, y no también como entrada.
+    ...filas.filter((f) => f.tipo === "entrada" && f.metodo !== "registro").map((f) => ({
+      t: tiempo(f.creado), clase: "entrada", ini: inicial(nombre[f.uid]),
+      txt: `<b>${esc(nombre[f.uid] || "Alguien")}</b> ${esc(f.metodo === "vuelve" ? "volvió" : `entró ${METODOS[f.metodo] || ""}`)}`,
+    })),
+    ...cuentas.filter((c) => tiempo(c.creado) > desde).map((c) => ({
+      t: tiempo(c.creado), clase: "nueva", ini: inicial(c.nombre), txt: `<b>${esc(c.nombre)}</b> se registró`,
+    })),
+    ...filas.filter((f) => f.tipo === "error").map((f) => ({
+      t: tiempo(f.creado), clase: "error", ini: "!", txt: `Error en <b>${esc(f.pantalla)}</b>: ${esc(String(f.mensaje || "").slice(0, 80))}`,
+    })),
+  ]
+    .sort((a, b) => b.t - a.t)
+    .slice(0, 14);
+  return cosas.length
+    ? `<ol class="adm-reciente">${cosas
+        .map(
+          (c) => `<li class="${c.clase}"><span class="adm-avatar mini" aria-hidden="true">${c.ini}</span>
+            <span>${c.txt}</span><time>${esc(haceRato(new Date(c.t)))}</time></li>`
+        )
+        .join("")}</ol>`
+    : `<p class="meta">Nada en este periodo.</p>`;
+}
+
 async function actividad(caja, cuentas, alTerminar) {
   const cuerpo = caja.querySelector("#admActCuerpo");
   const errCuerpo = caja.querySelector("#admErrCuerpo");
   if (!cuerpo) return;
   cuerpo.innerHTML = `<p class="meta"><span class="spin"></span>Leyendo la actividad…</p>`;
-  let filas;
+  let todas;
+  // El doble del periodo: lo de ahora y lo de antes, para comparar.
+  const corte = Date.now() - periodo * 864e5;
   try {
-    filas = await nubeActividad(new Date(Date.now() - periodo * 864e5));
+    todas = await nubeActividad(new Date(Date.now() - 2 * periodo * 864e5));
   } catch (e) {
     cuerpo.innerHTML =
       e.codigo === "PERMISSION_DENIED" || e.estado === 403
@@ -627,33 +727,31 @@ async function actividad(caja, cuentas, alTerminar) {
     if (alTerminar) alTerminar();
     return;
   }
+  const filas = todas.filter((f) => tiempo(f.creado) >= corte);
   const r = resumirActividad(filas);
-  Object.assign(ULTIMA, r.ultima);
+  const antes = resumirActividad(todas.filter((f) => tiempo(f.creado) < corte));
+  Object.assign(ULTIMA, resumirActividad(todas).ultima);
   const { tramos } = porTramos(filas);
   const nombre = Object.fromEntries(cuentas.map((c) => [c.id, c.nombre || c.correo]));
-  const desde = Date.now() - periodo * 864e5;
-  const nuevas = cuentas.filter((c) => tiempo(c.creado) > desde).length;
-  const aprobadas = cuentas.filter((c) => c.estado === "aprobado").length;
+  const nuevas = cuentas.filter((c) => tiempo(c.creado) > corte).length;
 
-  const cifra = (valor, rotulo, serie, clase = "") =>
-    `<div class="adm-kpi ${clase}"><dt>${rotulo}</dt><dd>${valor}</dd>${chispa(serie, clase)}</div>`;
-  const planes = [
-    { nombre: "Gratis", valor: nPlan(cuentas, "gratis") },
-    { nombre: "Premium", valor: nPlan(cuentas, "premium") },
-    { nombre: "Max", valor: nPlan(cuentas, "max") },
-    { nombre: "Pendientes", valor: cuentas.filter((c) => c.estado === "pendiente").length },
-    { nombre: "Bloqueadas", valor: cuentas.filter((c) => c.estado === "bloqueado").length },
-  ]
-    .filter((p, i) => i < 3 || p.valor)
-    .map((p) => ({ ...p, dato: `${p.valor}${aprobadas && p.nombre !== "Pendientes" && p.nombre !== "Bloqueadas" ? ` · ${Math.round((p.valor / aprobadas) * 100)} %` : ""}` }));
+  const cifra = (valor, rotulo, serie, ahora, previo, clase = "") =>
+    `<div class="adm-kpi ${clase}"><dt>${rotulo}</dt><dd>${valor}</dd>${cambioHTML(ahora, previo)}${chispa(serie, clase)}</div>`;
 
   cuerpo.innerHTML = `
+    ${
+      r.errores.length
+        ? `<div class="adm-atencion solo"><button type="button" data-ir="errores">${icono(
+            '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.1"/>',
+            18
+          )}<span><b>${r.errores.length}</b> error${r.errores.length === 1 ? "" : "es"} en el periodo</span><span class="adm-ver">Ver</span></button></div>`
+        : ""
+    }
     <dl class="adm-kpis adm-cifras">
-      ${cifra(r.personas, "personas han entrado", tramos.map((t) => t.gente.size))}
-      ${cifra(r.entradas.length, "inicios de sesión", tramos.map((t) => t.entradas))}
-      ${cifra(r.visitas, "pantallas vistas", tramos.map((t) => t.vistas))}
-      ${cifra(esc(duracion(r.segundos)), "de uso", tramos.map((t) => t.segundos))}
-      ${cifra(r.errores.length, "errores", tramos.map((t) => t.errores), r.errores.length ? "mal" : "")}
+      ${cifra(r.personas, "personas han entrado", tramos.map((t) => t.gente.size), r.personas, antes.personas)}
+      ${cifra(r.entradas.length, "inicios de sesión", tramos.map((t) => t.entradas), r.entradas.length, antes.entradas.length)}
+      ${cifra(r.visitas, "pantallas vistas", tramos.map((t) => t.vistas), r.visitas, antes.visitas)}
+      ${cifra(esc(duracion(r.segundos)), "de uso", tramos.map((t) => t.segundos), r.segundos, antes.segundos)}
     </dl>
     ${
       !filas.length
@@ -666,15 +764,17 @@ async function actividad(caja, cuentas, alTerminar) {
         ${graficaHTML(filas)}
       </section>
       <section class="adm-caja" id="admPlanes">
-        <h4>Cuentas <small>${cuentas.length}${nuevas ? ` · ${nuevas} nueva${nuevas === 1 ? "" : "s"} en el periodo` : ""}</small></h4>
-        ${barrasHTML(planes, "adm-planes-l")}
+        <h4>Cuentas <span class="adm-caja-cifra">${cuentas.length}</span>${
+          nuevas ? `<small>+${nuevas} en el periodo</small>` : ""
+        }</h4>
+        ${repartoHTML(cuentas)}
       </section>
       <section class="adm-caja">
-        <h4>Tiempo por pantalla</h4>
+        <h4>Dónde pasan el rato</h4>
         ${
           r.pantallas.length
             ? barrasHTML(
-                r.pantallas.slice(0, 8).map((p) => ({
+                r.pantallas.slice(0, 6).map((p) => ({
                   nombre: p.pantalla,
                   valor: p.segundos,
                   dato: `${esc(duracion(p.segundos))} · ${p.visitas} visita${p.visitas === 1 ? "" : "s"}`,
@@ -685,21 +785,8 @@ async function actividad(caja, cuentas, alTerminar) {
         }
       </section>
       <section class="adm-caja adm-ancha">
-        <h4>Últimos inicios de sesión</h4>
-        ${
-          r.entradas.length
-            ? `<ul class="adm-lista">${r.entradas
-                .slice(0, 12)
-                .map(
-                  (f) => `<li>
-                    <span class="adm-avatar mini" aria-hidden="true">${inicial(nombre[f.uid])}</span>
-                    <span><b>${esc(nombre[f.uid] || f.uid || "?")}</b>
-                    <small>${esc(METODOS[f.metodo] || f.metodo || "")} · ${esc(f.pantalla)}</small></span>
-                    <time>${esc(haceRato(f.creado))}</time></li>`
-                )
-                .join("")}</ul>${r.entradas.length > 12 ? `<p class="meta">Y ${r.entradas.length - 12} más.</p>` : ""}`
-            : `<p class="meta">Nadie ha entrado en este periodo.</p>`
-        }
+        <h4>Lo último</h4>
+        ${recienteHTML(filas, cuentas, nombre)}
       </section>
     </div>`;
 
@@ -722,7 +809,7 @@ async function actividad(caja, cuentas, alTerminar) {
               ${e.detalle ? `<pre class="adm-detalle">${esc(e.detalle)}</pre>` : ""}</details></li>`
           )
           .join("")}</ul>`
-      : `<p class="meta">Ningún error en este periodo.</p>`;
+      : `<div class="adm-vacio">${icono('<path d="m5 12.5 4.5 4.5L19 7.5"/>', 28)}<p><b>Ningún error en este periodo.</b></p></div>`;
   }
 
   // La última entrada de cada cuenta, en su fila.

@@ -5307,3 +5307,154 @@ html.sin-scroll { overflow: hidden; }
 .sem7-atajo[aria-pressed="true"] { border-color: var(--ink); color: var(--ink); background: var(--surface2); }
 .sem7-dia.dentro { background: var(--surface2); border-color: var(--hair); }
 .sem7-dia.ida, .sem7-dia.vuelta { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+/* ==========================================================================
+   EL PANEL, COMO HERRAMIENTA
+   Fuera la cabecera de las páginas públicas: una barra lateral con las
+   partes y quién eres, y a la derecha la parte elegida. Superficies planas;
+   el verde es para lo que crece y el naranja para lo que pide atención.
+   ========================================================================== */
+body.adm-nube .masthead, body.adm-nube .foot { display: none; }
+body.adm-nube main { max-width: 1240px; padding-top: 20px; }
+.adm3 { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px; align-items: start; padding-bottom: 40px; }
+.adm3-lado { position: sticky; top: 76px; display: grid; gap: 18px; }
+.adm3-marca { margin: 0; font: 400 var(--fs-caps-l, 11px) / 1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.adm3 .adm-tabs { display: grid; gap: 2px; margin: 0; border: 0; }
+.adm3 .adm-tabs button {
+  display: flex; align-items: center; gap: 10px; min-height: 40px; margin: 0; padding: 0 12px;
+  border: 0; border-radius: var(--r-s); background: none; color: var(--muted); font: 500 var(--fs-body-s) var(--font-sans); text-align: left; cursor: pointer;
+}
+.adm3 .adm-tabs button span { flex: 1; }
+.adm3 .adm-tabs button:hover { color: var(--ink); background: var(--surface); }
+.adm3 .adm-tabs button[aria-selected="true"] { color: var(--ink); background: var(--surface2); border: 0; }
+.adm3 .adm-tabs i { font: 400 11px var(--font-mono); font-style: normal; color: var(--muted); }
+.adm3-yo { display: flex; align-items: center; gap: 10px; padding-top: 16px; border-top: 1px solid var(--hair); }
+.adm3-yo b { display: block; font-size: var(--fs-body-s); }
+.adm3-yo small { color: var(--muted); font-size: var(--fs-meta, 12px); }
+.adm3-salidas { display: flex; gap: 14px; font-size: var(--fs-ui-s); }
+.adm3-salidas a, .adm3-salidas button { padding: 0; border: 0; background: none; color: var(--muted); font: inherit; cursor: pointer; }
+.adm3-salidas a:hover, .adm3-salidas button:hover { color: var(--ink); }
+
+.adm3-main { min-width: 0; }
+.adm3-cab { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+.adm3-cab h2 { margin: 0; font: 700 30px / 1.1 var(--font-sans); letter-spacing: -0.02em; }
+.adm3-cab p { margin: 4px 0 0; color: var(--muted); font-size: var(--fs-body-s); }
+.adm3-herr { display: flex; align-items: center; gap: 8px; }
+.adm3-recargar { display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: var(--r-s); background: none; color: var(--muted); cursor: pointer; }
+.adm3-recargar:hover { color: var(--ink); border-color: var(--muted); }
+.adm3 .adm-panel { padding-top: 20px; }
+.adm3 .adm-aviso { margin-top: 14px; }
+
+/* Lo que pide atención. */
+.adm-atencion { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.adm-atencion:empty { display: none; }
+.adm-atencion.solo { grid-template-columns: 1fr; }
+.adm-atencion button {
+  display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px;
+  border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--r-s);
+  background: var(--surface); color: var(--ink); font: 400 var(--fs-body-s) var(--font-sans); text-align: left; cursor: pointer;
+}
+.adm-atencion button .ico, .adm-atencion button svg { color: var(--accent-txt); flex: none; }
+.adm-atencion button span { flex: 1; }
+.adm-atencion button b { font-variant-numeric: tabular-nums; }
+.adm-atencion button em { font-style: normal; color: var(--muted); font-size: var(--fs-ui-s); }
+.adm-atencion button:hover { background: var(--surface2); }
+
+/* Las cifras, cada una en su tarjeta, con la diferencia con el periodo de antes. */
+.adm3 .adm-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; border: 0; background: none; border-radius: 0; overflow: visible; }
+.adm3 .adm-kpi { position: relative; grid-template-columns: 1fr auto; grid-template-areas: "rot rot" "num cambio" "chispa chispa"; align-items: end; gap: 6px 8px; padding: 16px; border: 1px solid var(--line); border-radius: var(--r); }
+.adm3 .adm-kpi dt { grid-area: rot; }
+.adm3 .adm-kpi dd { grid-area: num; font-size: 32px; }
+.adm3 .adm-kpi .adm-cambio { grid-area: cambio; justify-self: end; margin-bottom: 6px; }
+.adm3 .adm-kpi .adm-chispa { grid-area: chispa; height: 32px; }
+.adm-cambio { font: 500 12px var(--font-mono); color: var(--muted); white-space: nowrap; }
+.adm-cambio.sube { color: var(--deep); }
+.adm-cambio.baja { color: var(--accent-txt); }
+.adm-cambio.nuevo { color: var(--deep); }
+
+.adm3 .adm-caja h4 { align-items: baseline; }
+.adm-caja-cifra { font: 700 22px / 1 var(--font-sans); letter-spacing: -0.02em; }
+.adm3 .adm-g-plano { height: 220px; }
+
+/* El reparto por plan: una barra partida y su leyenda. */
+.adm-reparto { display: flex; gap: 2px; height: 14px; margin: 4px 0 16px; border-radius: 3px; overflow: hidden; background: var(--hair); }
+.adm-reparto i { display: block; min-width: 3px; }
+.r-gratis { background: var(--muted); }
+.r-premium { background: var(--deep); }
+.r-max { background: #9bb8ff; }
+.r-pendiente { background: var(--accent); }
+.r-bloqueado { background: var(--line); }
+.adm-leyenda { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.adm-leyenda li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto 44px; align-items: center; gap: 10px; font-size: var(--fs-body-s); }
+.adm-leyenda li > span { width: 10px; height: 10px; border-radius: 2px; }
+.adm-leyenda b { font-variant-numeric: tabular-nums; }
+.adm-leyenda small { color: var(--muted); font: 400 11px var(--font-mono); text-align: right; }
+
+/* Lo último: una línea de tiempo. */
+.adm-reciente { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 24px; margin: 0; padding: 0; list-style: none; }
+.adm-reciente li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--hair); font-size: var(--fs-body-s); }
+.adm-reciente li > span:not(.adm-avatar) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.adm-reciente li b { color: var(--ink); font-weight: 500; }
+.adm-reciente time { color: var(--muted); font: 400 11px var(--font-mono); white-space: nowrap; }
+.adm-reciente li.nueva .adm-avatar { box-shadow: inset 0 0 0 2px var(--deep); }
+.adm-reciente li.error .adm-avatar { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent-txt); }
+
+.adm-vacio { display: grid; justify-items: center; gap: 8px; padding: 40px 16px; border: 1px dashed var(--line); border-radius: var(--r); color: var(--deep); text-align: center; }
+.adm-vacio p { margin: 0; color: var(--ink); }
+
+@media (max-width: 900px) {
+  .adm3 { grid-template-columns: 1fr; gap: 16px; }
+  .adm3-lado { position: static; grid-template-columns: 1fr auto; align-items: center; gap: 12px; }
+  .adm3-marca, .adm3-yo { display: none; }
+  .adm3 .adm-tabs { grid-column: 1 / -1; grid-row: 2; display: flex; gap: 4px; overflow-x: auto; border-bottom: 1px solid var(--line); }
+  .adm3 .adm-tabs button { flex: none; border-radius: var(--r-s) var(--r-s) 0 0; }
+  .adm3-salidas { grid-column: 1 / -1; grid-row: 1; justify-content: flex-end; }
+  .adm3 .adm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .adm3 .adm-kpis .adm-kpi:last-child { grid-column: auto; }
+  .adm-reciente { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .adm3-cab h2 { font-size: 24px; }
+  .adm3-herr { width: 100%; justify-content: space-between; }
+  .adm3 .adm-kpi dd { font-size: 24px; }
+  .adm3 .adm-g-plano { height: 150px; }
+}
+
+/* HOP, un poco más a la vista: las fechas como en un calendario, la ruta con
+   su avión y un icono por fase. Sigue plano: el dibujo es de líneas. */
+.hopx-fases-lista button { grid-template-columns: auto minmax(0, 1fr); grid-template-areas: "ico n" "ico t"; column-gap: 10px; row-gap: 2px; align-items: center; }
+.hopx-fases-ico { grid-area: ico; display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); }
+.hopx-fases-n { grid-area: n; }
+.hopx-fases-lista button > span:last-child { grid-area: t; }
+.hopx-fases-lista li.hecho .hopx-fases-ico { border-color: var(--deep); color: var(--deep); }
+.hopx-fases-lista li.actual .hopx-fases-ico { border-color: var(--accent); background: var(--accent); color: var(--sobre-acento); }
+
+.hopx-tramo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.hopx-dia { display: grid; justify-items: center; width: 54px; padding: 6px 0 5px; border: 1px solid var(--line); border-radius: var(--r-s); background: var(--surface2); line-height: 1; }
+.hopx-dia small { font: 400 10px / 1.2 var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.hopx-dia b { margin: 3px 0 2px; font: 700 22px / 1 var(--font-sans); letter-spacing: -0.02em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.hopx-tramo-linea { position: relative; display: grid; place-items: center; height: 20px; }
+.hopx-tramo-linea::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px dashed var(--line); }
+.hopx-tramo-linea em { position: relative; padding: 0 8px; background: var(--surface); font: 400 11px var(--font-mono); font-style: normal; color: var(--muted); white-space: nowrap; }
+.hopx-carta .hopx-tramo-linea em, .hopx-fechas-carta .hopx-tramo-linea em { background: var(--surface); }
+p.hopx-fechas-nombre { margin: 0; font-weight: 600; }
+
+.hopx-ruta { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; font: 500 13px var(--font-mono); letter-spacing: 0.04em; }
+.hopx-ruta b { font-weight: 500; }
+.hopx-ruta-linea { position: relative; display: grid; place-items: center; height: 18px; color: var(--deep); }
+.hopx-ruta-linea::before { content: ""; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--line); }
+.hopx-ruta-linea .ico { position: relative; padding: 0 6px; box-sizing: content-box; background: var(--surface); transform: rotate(45deg); }
+
+.hopx-plan-velo .hopx-ruta { margin-top: 18px; font-size: 15px; }
+.hopx-plan-velo .hopx-tramo { margin-top: 14px; }
+.hopx-plan-velo .hopx-tramo-linea em, .hopx-plan-velo .hopx-ruta-linea .ico { background: var(--surface); }
+@media (max-width: 720px) {
+  .hopx-fases-lista button { grid-template-columns: 1fr; grid-template-areas: "ico" "t"; justify-items: start; }
+  .hopx-fases-n { display: none; }
+  .hopx-fases-ico { width: 30px; height: 30px; }
+}
+body.adm-nube .topbar-in { max-width: 1240px; }
+.adm-ver { color: var(--muted); font-size: var(--fs-ui-s); }
+.adm3 .adm-fila { grid-template-columns: minmax(220px, 2fr) minmax(250px, 1.4fr) minmax(140px, 1fr) auto; }
+.adm-plan-b.p-abrir { background: var(--accent); color: var(--sobre-acento); }
+.adm-estado.pendiente { margin-right: 4px; }
