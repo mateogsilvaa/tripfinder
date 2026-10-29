@@ -26,7 +26,7 @@ const TEXTO_ESTADO = {
 };
 
 const textoDe = (s) =>
-  s.estado === "aprobado" ? TEXTO_ESTADO[s.plan === "max" ? "max" : s.plan === "premium" ? "premium" : "gratis"] : TEXTO_ESTADO[s.estado] || TEXTO_ESTADO.pendiente;
+  s.estado === "aprobado" ? TEXTO_ESTADO[nubeEsMax(s) ? "max" : nubeEsPremium(s) ? "premium" : "gratis"] : TEXTO_ESTADO[s.estado] || TEXTO_ESTADO.pendiente;
 
 /* ------------------------------------------------------------ entrar / crear
 

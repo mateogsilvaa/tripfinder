@@ -52,12 +52,16 @@ service cloud.firestore {
     // existieran los planes (sin el campo). Las nuevas nacen con `plan: gratis`
     // y ninguna regla deja a nadie cambiarse el suyo.
     // Max es premium sin límites: lo mismo y, además, tantas HOP como quiera.
+    // Quien administra la web tiene Max sin tener que ponérselo: su propia ficha
+    // no la puede tocar nadie desde el navegador, ni él.
     function premium() {
-      return aprobado() && ficha(request.auth.uid).get('plan', 'premium') in ['premium', 'max'];
+      return aprobado() && (ficha(request.auth.uid).get('plan', 'premium') in ['premium', 'max']
+        || ficha(request.auth.uid).get('admin', false) == true);
     }
 
     function max() {
-      return aprobado() && ficha(request.auth.uid).get('plan', 'premium') == 'max';
+      return aprobado() && (ficha(request.auth.uid).get('plan', 'premium') == 'max'
+        || ficha(request.auth.uid).get('admin', false) == true);
     }
 
     function admin() {
@@ -234,7 +238,10 @@ service cloud.firestore {
           && (!('descripcion' in j()) || (j().descripcion is string && j().descripcion.size() <= 300));
       }
 
-      allow get: if entra();
+      // Leer un HOP: cualquiera con su id, también sin cuenta. El id es el
+      // enlace de invitación (20 letras al azar): quien lo tiene ya podría
+      // unirse. Listarlos, solo los tuyos.
+      allow get: if true;
       allow list: if entra() && request.auth.uid in resource.data.miembros;
 
       allow create: if premium()
@@ -300,7 +307,8 @@ service cloud.firestore {
         function p() {
           return request.resource.data;
         }
-        allow read: if miembro(hopId);
+        // Las propuestas se ven con el enlace, como el HOP; el chat, no.
+        allow read: if true;
         allow create: if miembro(hopId)
           && p().keys().hasOnly(['tipo', 'titulo', 'nota', 'destino', 'ida', 'vuelta', 'precio', 'url', 'autor', 'nombre', 'votos', 'creado',
                 'compania', 'horario', 'oferta', 'iata', 'pais', 'foto', 'origen', 'cama', 'cama_url', 'cama_precio'])

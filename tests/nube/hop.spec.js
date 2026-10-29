@@ -89,9 +89,11 @@ test("con el enlace se une cualquiera, se proponen fechas, se votan y se habla",
   // Ana lo ve todo, vota y contesta.
   await ana.page.goto(`/hop.html?j=${id}`);
   const suya = ana.page.locator(".hopx-fechas-carta", { hasText: "Puente" });
-  await expect(suya.locator('[data-voto="si"] b')).toHaveText("1");
+  // Como en Reddit: uno a favor, un punto; uno en contra lo deja en cero.
+  await expect(suya.locator(".hopx-puntos")).toHaveText("1");
   await expect(suya).toContainText("Falta: Ana");
-  await suya.locator('[data-voto="quiza"]').click();
+  await suya.locator('[data-voto="no"]').click();
+  await expect(suya.locator(".hopx-puntos")).toHaveText("0");
   await expect(suya).toContainText("Ya han votado todos");
   await ana.page.locator("#hopChatBoton").click();
   await expect(ana.page.locator(".hop-msj").first()).toContainText("¿Os vale el puente?");
@@ -166,6 +168,8 @@ test("por fases: fechas, vetos, buscar y guardar, votar y el plan", async ({ bro
   await gus.page.locator("#f2Buscar").fill("Rom");
   await gus.page.locator("[data-tachar]").first().click();
   await expect(gus.page.locator("#f2Todas")).toContainText("fuera de la búsqueda");
+  // Y sale en el mapa, en naranja.
+  await expect(gus.page.locator("#f2Puntos .hopx-punto.fuera")).toHaveCount(1);
   await expect(gus.page.locator("#f2Cuenta")).toContainText("1 de 3");
 
   // 3. Buscar: con las fechas fijadas y sin Roma. Lo lanza Gus, que es gratis.
@@ -243,5 +247,56 @@ test("por fases: fechas, vetos, buscar y guardar, votar y el plan", async ({ bro
   await gus.page.reload();
   await expect(gus.page.locator(".hopx-plan")).toContainText("Piso en la Ribeira");
   await gus.ctx.close();
+  await ana.ctx.close();
+});
+
+/* Con el enlace se mira sin cuenta; para hacer algo se pide la cuenta, y lo
+   empezado no se pierde: al crearla se entra en el HOP y se sube solo. */
+test("sin cuenta se mira el HOP; al proponer se pide la cuenta y luego se sube solo", async ({ browser }) => {
+  test.setTimeout(90000);
+  const ana = await persona(browser, "Ana");
+  await E.hacerPremium(ana.uid);
+  const id = await crear(ana.page, "Escapada");
+  await ana.page.locator("#f1Form [name=ida]").fill(enDias(8));
+  await ana.page.locator("#f1Form [name=vuelta]").fill(enDias(10));
+  await ana.page.locator("#f1Form [name=titulo]").fill("Puente");
+  await ana.page.locator("#f1Form button[type=submit]").click();
+  await expect(ana.page.locator(".hopx-fechas-carta")).toHaveCount(1);
+
+  const ctx = await browser.newContext({ baseURL: "http://localhost:4173", timezoneId: "Europe/Madrid" });
+  await ctx.addInitScript((c) => {
+    window.TF_NUBE = c;
+  }, E.CONFIG);
+  const page = await ctx.newPage();
+  await page.goto(`/hop.html?j=${id}`);
+  await expect(page.locator(".hopx-portada h2")).toHaveText("Escapada");
+  await expect(page.locator(".hopx-invitado")).toContainText("Estás mirando el HOP de Ana");
+  // Se ve lo propuesto, en el calendario y en su carta.
+  await expect(page.locator(".hopx-fechas-carta")).toContainText("Puente");
+  await expect(page.locator(".hopx-cal-rayas i").first()).toBeVisible();
+  // Votar pide la cuenta.
+  await page.locator('.hopx-fechas-carta [data-voto="si"]').click();
+  await expect(page.locator("#tfModal")).toContainText("Crea tu cuenta para votar");
+  await page.locator("#tfModal [data-cerrar]").first().click();
+  // Proponer, también, pero se queda guardado.
+  await page.locator(`[data-dia-cal="${enDias(15)}"]`).click();
+  await page.locator(`[data-dia-cal="${enDias(17)}"]`).click();
+  await expect(page.locator("#f1Form [name=vuelta]")).toHaveValue(enDias(17));
+  await page.locator("#f1Form [name=titulo]").fill("El otro finde");
+  await page.locator("#f1Form button[type=submit]").click();
+  await expect(page.locator("#tfModal")).toContainText("Crea tu cuenta para proponer estas fechas");
+  await page.locator("#tfModal [data-hop-entrar]").click();
+  // Se registra desde aquí mismo.
+  await page.locator("#nubeCorreo").fill(E.correoNuevo());
+  await page.locator("#nubePass").fill(clave);
+  await page.locator("#nubeForm button[type=submit]").click();
+  await expect(page.locator("#nubeBienvenida")).toBeVisible();
+  await page.locator("#nubeNombre").fill("Lía");
+  await Promise.all([page.waitForEvent("load"), page.locator("#nubeListo").click()]);
+  // Dentro, sin pasar por «unirme», y con su propuesta subida.
+  await expect(page.locator(".hopx-invitado")).toHaveCount(0);
+  await expect(page.locator(".hopx-fechas-carta", { hasText: "El otro finde" })).toBeVisible({ timeout: 15000 });
+  await expect(ana.page.locator(".hopx-portada")).toContainText("Escapada");
+  await ctx.close();
   await ana.ctx.close();
 });

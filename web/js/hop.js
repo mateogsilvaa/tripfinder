@@ -39,6 +39,8 @@ let estado = { id: "", hop: null, vista: "props", ...NUEVO() };
 let relojes = [];
 
 const yo = () => (typeof tfSesion === "function" ? tfSesion() : null);
+// Sin cuenta (quien abre el enlace de un HOP antes de registrarse) no hay uid.
+const miUid = () => (yo() && yo().uid) || "";
 const inicial = (n) => esc(String(n || "?").trim().slice(0, 1).toUpperCase() || "?");
 const tono = (uid) => {
   let h = 0;
@@ -124,7 +126,10 @@ export async function montarHop() {
       Todavía no están encendidas aquí.</div>`;
     return;
   }
-  if (!yo() || !yo().nube) return vistaSinCuenta(app);
+  const conEnlace = new URLSearchParams(location.search).get("j");
+  // Con el enlace de un HOP se entra a mirarlo aunque no haya cuenta: para
+  // votar, proponer o escribir se pide al tocar (`pideCuenta`).
+  if (!yo() || !yo().nube) return conEnlace ? vistaHop(app, conEnlace, pendiente, true) : vistaSinCuenta(app);
   // La ficha de ahora: quizá te acaban de hacer premium o Max.
   if (typeof nubeSincronizar === "function") await nubeSincronizar().catch(() => null);
   const id = new URLSearchParams(location.search).get("j");
@@ -282,9 +287,8 @@ function tarjetaHop(j, s) {
 }
 
 /* ---------------------------------------------------------------- un HOP */
-async function vistaHop(app, id, pendiente) {
+async function vistaHop(app, id, pendiente, invitado = false) {
   app.innerHTML = `<p class="meta"><span class="spin"></span>Abriendo el HOP…</p>`;
-  const s = yo();
   let hop = null;
   try {
     hop = await nubeHop(id);
@@ -296,14 +300,98 @@ async function vistaHop(app, id, pendiente) {
       viaje, o puede que quien lo creó lo haya borrado. <a href="hop">Ver tus HOP</a></div>`;
     return;
   }
-  estado = { ...estado, ...NUEVO(), id, hop };
-  if (!(hop.miembros || []).includes(s.uid)) return vistaUnirse(app, hop);
+  estado = { ...estado, ...NUEVO(), id, hop, invitado };
+  if (invitado) {
+    // Sin cuenta: se ve todo menos el chat, y se pide cuenta al tocar.
+    pintarHop(app, null);
+    await cargarPropuestas(app);
+    relojes.push(setInterval(() => document.visibilityState === "visible" && cargarPropuestas(app), CADA_PROPUESTAS_MS));
+    return;
+  }
+  if (!(hop.miembros || []).includes(miUid())) {
+    // Venía de mirarlo sin cuenta y la acaba de crear: se une sin preguntar.
+    if (leerSesion(CLAVE_UNIRSE) === id) {
+      const r = await nubeHopUnirse(id);
+      olvidarSesion(CLAVE_UNIRSE);
+      if (r.ok) return vistaHop(app, id, pendiente);
+    }
+    return vistaUnirse(app, hop);
+  }
   pintarHop(app, pendiente);
   await Promise.all([cargarPropuestas(app), cargarMensajes(app, true)]);
+  subirBorrador(app);
   relojes.push(
     setInterval(() => document.visibilityState === "visible" && cargarMensajes(app), CADA_CHAT_MS),
     setInterval(() => document.visibilityState === "visible" && cargarPropuestas(app), CADA_PROPUESTAS_MS)
   );
+}
+
+/* SIN CUENTA. Quien abre el enlace lo ve todo y puede empezar a proponer; al
+   darle a guardar (votar, tachar, buscar, escribir) se le pide la cuenta. Lo
+   que había empezado se guarda en esta pestaña y se sube solo en cuanto
+   entra y se une. */
+const CLAVE_UNIRSE = "tf_hop_unirse";
+const CLAVE_BORRADOR = "tf_hop_borrador";
+function leerSesion(k) {
+  try {
+    return sessionStorage.getItem(k);
+  } catch {
+    return null;
+  }
+}
+function guardarSesion(k, v) {
+  try {
+    sessionStorage.setItem(k, v);
+  } catch {
+    /* navegación privada: se perderá, y ya */
+  }
+}
+function olvidarSesion(k) {
+  try {
+    sessionStorage.removeItem(k);
+  } catch {
+    /* nada */
+  }
+}
+
+function pideCuenta(que = "hacer eso", borrador = null) {
+  if (!estado.invitado) return false;
+  guardarSesion(CLAVE_UNIRSE, estado.id);
+  if (borrador) guardarSesion(CLAVE_BORRADOR, JSON.stringify({ ...borrador, hop: estado.id }));
+  const caja = tfModal(`
+    <header class="modal-head">
+      <div><p class="kicker-tag">${esc(estado.hop.nombre)}</p><h2>Crea tu cuenta para ${esc(que)}</h2></div>
+      <button type="button" data-cerrar aria-label="Cerrar">cerrar</button>
+    </header>
+    <p>Es gratis y tarda un minuto. ${
+      borrador ? "Lo que has empezado no se pierde: se sube solo en cuanto entres." : "En cuanto entres, ya estás dentro del HOP."
+    }</p>
+    <div class="hop-acc">
+      <button class="btn primary" type="button" data-hop-entrar>Crear cuenta o entrar</button>
+      <button class="btn ghost" type="button" data-cerrar>Seguir mirando</button>
+    </div>`);
+  caja.querySelector("[data-hop-entrar]").addEventListener("click", () => {
+    tfCerrarModal();
+    if (typeof tfAbrirLogin === "function") tfAbrirLogin();
+  });
+  caja.querySelectorAll("[data-cerrar]").forEach((b) => b.addEventListener("click", tfCerrarModal));
+  return true;
+}
+
+async function subirBorrador(app) {
+  let b = null;
+  try {
+    b = JSON.parse(leerSesion(CLAVE_BORRADOR) || "null");
+  } catch {
+    b = null;
+  }
+  if (!b || b.hop !== estado.id) return;
+  olvidarSesion(CLAVE_BORRADOR);
+  const r = await nubeProponer(estado.id, { tipo: b.tipo || "fechas", titulo: b.titulo, ida: b.ida, vuelta: b.vuelta });
+  if (r.ok) {
+    if (typeof tfAnunciar === "function") tfAnunciar("Ya estás dentro: tu propuesta está subida.");
+    cargarPropuestas(app);
+  }
 }
 
 function vistaUnirse(app, hop) {
@@ -442,9 +530,10 @@ const puntos = (p) => {
   const v = Object.values(p.votos || {});
   return { si: v.filter((x) => x === "si").length, quiza: v.filter((x) => x === "quiza").length, no: v.filter((x) => x === "no").length };
 };
+/* Como en Reddit: cada «a favor» suma uno y cada «en contra» resta uno. */
 const nota = (p) => {
   const n = puntos(p);
-  return n.si * 2 + n.quiza - n.no * 0.5;
+  return n.si - n.no;
 };
 
 /* ------------------------------------------------------------------ el chat */
@@ -524,6 +613,8 @@ const TRAZOS = {
   gente: '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 19.5a5.5 5.5 0 0 0-3-4.9"/>',
   enlace: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
   chat: '<path d="M20 12a7.5 7.5 0 0 1-11 6.6L4 20l1.4-4.4A7.5 7.5 0 1 1 20 12z"/>',
+  arriba: '<path d="M12 5 4.5 14H9v5h6v-5h4.5z"/>',
+  abajo: '<path d="M12 19 4.5 10H9V5h6v5h4.5z"/>',
   ajustes: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
 };
 const ico = (n, tam = 18) =>
@@ -563,12 +654,12 @@ const fase = () => Math.min(5, Math.max(1, Number(estado.hop.fase) || 1));
 const deTipo = (t) =>
   t === "guardada" ? guardadas() : estado.propuestas.filter((p) => p.tipo === t);
 const guardadas = () => estado.propuestas.filter((p) => p.tipo === "vuelo" || p.tipo === "viaje");
-const porVotos = (a, b) => nota(b) - nota(a) || (a.precio ?? 1e9) - (b.precio ?? 1e9);
+const porVotos = (a, b) => nota(b) - nota(a) || puntos(b).si - puntos(a).si || (a.precio ?? 1e9) - (b.precio ?? 1e9);
 const ordenadas = (lista) => [...lista].sort(porVotos);
-const ganadora = (t) => ordenadas(deTipo(t)).find((p) => puntos(p).si > 0) || null;
+const ganadora = (t) => ordenadas(deTipo(t)).find((p) => nota(p) > 0) || null;
 const personasHop = () => Math.min(8, Math.max(1, (estado.hop.miembros || []).length));
 const euros = (n) => `${Math.round(n)} €`;
-const sinVotar = (lista) => lista.filter((p) => !(p.votos || {})[yo().uid]);
+const sinVotar = (lista) => lista.filter((p) => !(p.votos || {})[miUid()]);
 const enlaceOk = (u) => !!u && escURL(u) !== "#";
 const manana = () => sumarDiasISO(hoyISO(), 1);
 function sumarDiasISO(iso, n) {
@@ -596,11 +687,11 @@ function pintarSi(caja, html) {
 }
 
 function pintarHop(app, pendiente) {
-  const s = yo();
+  const s = yo() || {};
   const { hop } = estado;
   const nombres = hop.nombres || {};
   const miembros = hop.miembros || [];
-  const mia = hop.creador === s.uid;
+  const mia = hop.creador === miUid();
   const nueva = new URLSearchParams(location.search).get("nueva") === "1";
   const quedan = Math.max(0, Math.ceil((parseISO(hop.fin) - parseISO(hoyISO())) / 864e5));
   const gente =
@@ -626,15 +717,26 @@ function pintarHop(app, pendiente) {
         </div>
       </div>
       <div class="hopx-portada-acc">
-        <button class="btn primary small" type="button" id="hopInvitar">${ico("enlace", 16)} Invitar</button>
+        ${
+          estado.invitado
+            ? `<button class="btn primary small" type="button" id="hopUnirmeInvitado">Unirme al HOP</button>`
+            : `<button class="btn primary small" type="button" id="hopInvitar">${ico("enlace", 16)} Invitar</button>
         ${
           mia
             ? `<button class="btn ghost small" type="button" id="hopEditar">Editar</button>
                <button class="btn ghost small" type="button" id="hopBorrar">Borrar</button>`
             : `<button class="btn ghost small" type="button" id="hopSalir">Salir</button>`
+        }`
         }
       </div>
     </header>
+    ${
+      estado.invitado
+        ? `<div class="hop-aviso hopx-invitado">${ico("gente", 18)}<p><b>Estás mirando el HOP de ${esc(
+            nombres[hop.creador] || "alguien"
+          )}.</b> Puedes verlo todo; para votar, proponer o escribir en el chat, crea tu cuenta (es gratis).</p></div>`
+        : ""
+    }
     <div class="hop-invitacion" id="hopInvitacion" ${nueva ? "" : "hidden"}>
       <span>${nueva ? "<b>HOP creado.</b> Pasa este enlace a los tuyos para que entren:" : "El enlace para entrar:"}</span>
       <code id="hopEnlace">${esc(enlaceHop(hop.id))}</code>
@@ -667,7 +769,8 @@ function pintarHop(app, pendiente) {
       $("#hopCopiar", app).textContent = "Selecciónalo y cópialo";
     }
   };
-  $("#hopInvitar", app).addEventListener("click", async () => {
+  $("#hopUnirmeInvitado", app)?.addEventListener("click", () => pideCuenta("unirte"));
+  $("#hopInvitar", app)?.addEventListener("click", async () => {
     $("#hopInvitacion", app).hidden = false;
     if (typeof navigator.share === "function") {
       try {
@@ -707,7 +810,7 @@ function pintarHop(app, pendiente) {
       chat.querySelector("textarea").focus();
     } else botonChat.focus();
   };
-  botonChat.addEventListener("click", () => abrirChat(chat.hidden));
+  botonChat.addEventListener("click", () => pideCuenta("escribir en el chat") || abrirChat(chat.hidden));
   chat.querySelector("[data-cerrar-chat]").addEventListener("click", () => abrirChat(false));
   chat.addEventListener("keydown", (e) => {
     if (e.key === "Escape") abrirChat(false);
@@ -823,7 +926,11 @@ function esqueleto(n) {
     5: "El ganador. Si algo no cuadra (otra hora, otro sitio para dormir), se retoca aquí.",
   }[n];
   const cuerpo = {
-    1: `<div id="f1Fijadas"></div><div class="hopx-mazo fechas" id="f1Lista"></div>
+    1: `<div id="f1Fijadas"></div>
+        <div class="hopx-cuando">
+          <div class="hopx-cal" id="f1Cal"></div>
+          <div class="hopx-mazo fechas" id="f1Lista"></div>
+        </div>
         <form class="hopx-proponer" id="f1Form" novalidate>
           <p class="hopx-proponer-tit">Proponer unas fechas</p>
           <label><span>Ida</span><input type="date" name="ida" min="${manana()}" max="${esc(estado.hop.fin)}" required></label>
@@ -833,16 +940,19 @@ function esqueleto(n) {
           <p class="hop-msg" role="status"></p>
         </form>`,
     2: `<div class="hopx-vetos">
-          <div class="hopx-vetos-mios">
-            <p class="hopx-sub">Tus tachadas <span id="f2Cuenta"></span></p>
-            <div class="hopx-chips" id="f2Mias"></div>
-            <label class="filtro-buscar"><span class="solo-lector">Tachar una ciudad</span>
-              <input type="search" id="f2Buscar" placeholder="Tachar una ciudad: Londres, Roma…" autocomplete="off"></label>
-            <div class="filtro-resultados" id="f2Res"></div>
-          </div>
-          <div class="hopx-vetos-todos">
-            <p class="hopx-sub">Lo que ha tachado el grupo</p>
-            <div id="f2Todas"></div>
+          <figure class="hopx-mapa" id="f2Mapa" aria-label="Mapa de las ciudades tachadas"><p class="meta"><span class="spin"></span>Cargando el mapa…</p></figure>
+          <div class="hopx-vetos-lado">
+            <div class="hopx-vetos-mios">
+              <p class="hopx-sub">Tus tachadas <span id="f2Cuenta"></span></p>
+              <div class="hopx-chips" id="f2Mias"></div>
+              <label class="filtro-buscar"><span class="solo-lector">Tachar una ciudad</span>
+                <input type="search" id="f2Buscar" placeholder="Tachar una ciudad: Londres, Roma…" autocomplete="off"></label>
+              <div class="filtro-resultados" id="f2Res"></div>
+            </div>
+            <div class="hopx-vetos-todos">
+              <p class="hopx-sub">Cómo va</p>
+              <div id="f2Todas"></div>
+            </div>
           </div>
         </div>`,
     3: `<div id="f3Buscar"></div><div id="f3Res"></div>`,
@@ -873,6 +983,7 @@ function montarFase(app, n) {
         return;
       }
       const titulo = f.titulo.value.trim() || `${fmtDate(f.ida.value)} → ${fmtDate(f.vuelta.value)}`;
+      if (pideCuenta("proponer estas fechas", { tipo: "fechas", titulo, ida: f.ida.value, vuelta: f.vuelta.value })) return;
       const r = await nubeProponer(estado.id, { tipo: "fechas", titulo, ida: f.ida.value, vuelta: f.vuelta.value });
       if (!r.ok) {
         msg.textContent = r.error;
@@ -880,8 +991,10 @@ function montarFase(app, n) {
       }
       form.reset();
       msg.textContent = "";
+      marcarCal(app);
       cargarPropuestas(app);
     });
+    form.addEventListener("input", () => marcarCal(app));
   }
   if (n === 2) {
     const input = $("#f2Buscar", app);
@@ -904,6 +1017,7 @@ function montarFase(app, n) {
           : `<p class="filtro-nada">No sale ninguna ciudad con «${esc(q)}».</p>`;
     });
   }
+  if (n === 2) montarMapa(app);
   if (n === 3) {
     $("#f3Buscar", app).dataset.huella = "";
   }
@@ -927,11 +1041,14 @@ function pintarFase1(app) {
         )}</b>. Si cambiáis de idea, fijad otras.</p></div>`
       : ""
   );
+  const colores = coloresFechas();
+  if (pintarSi($("#f1Cal", app), calendarioHTML(colores))) marcarCal(app);
   pintarSi(
     $("#f1Lista", app),
     fechas.length
-      ? fechas.map((p) => cartaFechas(p, p === top)).join("")
-      : `<div class="hop-vacio"><b>Aún no hay fechas.</b> Proponed las que os vengan bien aquí abajo.</div>`
+      ? fechas.map((p) => cartaFechas(p, p === top, colores.get(p.id))).join("")
+      : `<div class="hop-vacio"><b>Aún no hay fechas.</b> Proponed las que os vengan bien aquí abajo, o tocad dos días
+          en el calendario.</div>`
   );
   pintarSi(
     $("#hopFasePie", app),
@@ -942,6 +1059,64 @@ function pintarFase1(app) {
     }
     <button class="btn ghost small" type="button" data-sin-fechas>${fijadas ? "Seguir con estas →" : "Nos da igual la fecha →"}</button>`
   );
+}
+
+/* EL CALENDARIO de las fechas propuestas: cada propuesta, un color (por orden
+   de llegada, que no cambia al votar), y cada día pinta una raya por cada
+   propuesta que lo cubre. Si dos se pisan, se ven las dos rayas. Tocar dos
+   días rellena el formulario de abajo. Con más de seis propuestas, las de
+   más salen en gris: seis colores son los que se distinguen bien. */
+const COLORES = 6;
+function coloresFechas() {
+  const porLlegada = [...deTipo("fechas")].sort((a, b) => instante(a.creado) - instante(b.creado));
+  return new Map(porLlegada.map((p, i) => [p.id, i < COLORES ? i + 1 : 0]));
+}
+
+const MESES_CAL = 3;
+function calendarioHTML(colores) {
+  const fechas = deTipo("fechas").filter((p) => p.ida && p.vuelta);
+  const hoy = parseISO(hoyISO());
+  const fin = parseISO(estado.hop.fin) || hoy;
+  // Desde el mes de la primera propuesta (o este) hasta tres meses.
+  const primera = fechas.length ? fechas.map((p) => parseISO(p.ida)).sort((a, b) => a - b)[0] : hoy;
+  const inicio = new Date(Math.max(hoy.getTime(), Math.min(primera.getTime(), fin.getTime())));
+  const meses = [];
+  for (let m = 0; m < MESES_CAL; m++) {
+    const d = new Date(inicio.getFullYear(), inicio.getMonth() + m, 1);
+    if (d > fin && m > 0) break;
+    meses.push(d);
+  }
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const mes = (d0) => {
+    const dias = new Date(d0.getFullYear(), d0.getMonth() + 1, 0).getDate();
+    const hueco = (d0.getDay() + 6) % 7; // lunes primero
+    const celdas = [];
+    for (let i = 0; i < hueco; i++) celdas.push(`<span class="hopx-cal-vacio"></span>`);
+    for (let n = 1; n <= dias; n++) {
+      const d = new Date(d0.getFullYear(), d0.getMonth(), n);
+      const k = iso(d);
+      const fuera = d < hoy || d > fin;
+      const rayas = fechas
+        .filter((p) => p.ida <= k && k <= p.vuelta)
+        .map((p) => {
+          const c = colores.get(p.id) || 0;
+          return `<i class="${p.ida === k ? "ini " : ""}${p.vuelta === k ? "fin" : ""}" style="--c:var(--cal-${c})" title="${esc(p.titulo)}"></i>`;
+        });
+      celdas.push(`<button type="button" class="hopx-cal-dia${fuera ? " fuera" : ""}" data-dia-cal="${k}" ${
+        fuera ? "disabled" : ""
+      } aria-label="${esc(fmtDate(k, true))}${rayas.length ? `: ${rayas.length} propuesta${rayas.length === 1 ? "" : "s"}` : ""}">
+          <span>${n}</span><span class="hopx-cal-rayas">${rayas.slice(0, 4).join("")}${
+            rayas.length > 4 ? `<em>+${rayas.length - 4}</em>` : ""
+          }</span></button>`);
+    }
+    return `<div class="hopx-cal-mes">
+        <p class="hopx-cal-tit">${esc(d0.toLocaleDateString("es-ES", { month: "long", year: "numeric" }))}</p>
+        <div class="hopx-cal-rejilla">${["L", "M", "X", "J", "V", "S", "D"].map((x) => `<span class="hopx-cal-sem">${x}</span>`).join("")}${celdas.join(
+          ""
+        )}</div>
+      </div>`;
+  };
+  return `${meses.map(mes).join("")}<p class="hop-letra hopx-cal-ayuda">Toca la ida y la vuelta para proponer esas fechas.</p>`;
 }
 
 /* Un día como en un calendario de pared: el día de la semana, el número
@@ -971,14 +1146,16 @@ function rutaHTML(origen, destino) {
   )}</span><b>${esc(destino)}</b></div>`;
 }
 
-function cartaFechas(p, lider) {
-  return `<article class="hopx-fechas-carta${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
-      ${lider ? `<span class="hopx-lider">la más votada</span>` : ""}
-      ${tramoHTML(p.ida, p.vuelta)}
-      ${p.titulo && !p.titulo.startsWith(fmtDate(p.ida)) ? `<p class="hopx-fechas-nombre">${esc(p.titulo)}</p>` : ""}
-      ${medidorHTML(p)}
+function cartaFechas(p, lider, color) {
+  return `<article class="hopx-fechas-carta con-voto${lider ? " lider" : ""}" data-prop="${esc(p.id)}" style="--c:var(--cal-${color})">
       ${votarHTML(p)}
-      <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span>${borrarHTML(p)}</div>
+      <div class="hopx-voto-resto">
+        <p class="hopx-fechas-nombre"><span class="hopx-color" aria-hidden="true"></span>${
+          p.titulo && !p.titulo.startsWith(fmtDate(p.ida)) ? esc(p.titulo) : "Propuesta"
+        }${lider ? ` <span class="hopx-lider">la más votada</span>` : ""}</p>
+        ${tramoHTML(p.ida, p.vuelta)}
+        <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span>${borrarHTML(p)}</div>
+      </div>
     </article>`;
 }
 
@@ -994,21 +1171,28 @@ function vetos() {
     .map(([k, quienes]) => ({ k, n: nombreCiudad(k), quienes, fuera: quienes.length > umbral }))
     .sort((a, b) => b.quienes.length - a.quienes.length || a.n.localeCompare(b.n, "es"));
 }
-const misVetos = () => (estado.hop.vetos || {})[yo().uid] || [];
+const misVetos = () => (estado.hop.vetos || {})[miUid()] || [];
+
+/* Ya has votado cuando tienes tus tachadas apuntadas, aunque sean ninguna
+   («no quito ninguna» guarda una lista vacía). Hasta entonces no se ve lo de
+   los demás: así nadie se deja llevar. */
+const heVotadoVetos = () => Object.prototype.hasOwnProperty.call(estado.hop.vetos || {}, miUid());
 
 function pintarFase2(app) {
   const mios = misVetos();
+  const votado = heVotadoVetos();
   const todos = vetos();
   const nombres = estado.hop.nombres || {};
   const total = (estado.hop.miembros || []).length;
+  const yaVotaron = Object.keys(estado.hop.vetos || {}).filter((u) => (estado.hop.miembros || []).includes(u)).length;
   const fuera = todos.filter((v) => v.fuera);
-  $("#hopFaseEstado", app).textContent = fuera.length ? `${fuera.length} fuera` : "";
+  $("#hopFaseEstado", app).textContent = votado && fuera.length ? `${fuera.length} fuera` : `${yaVotaron} de ${total} han votado`;
   $("#f2Cuenta", app).textContent = `· ${mios.length} de 3`;
   $("#f2Buscar", app).disabled = mios.length >= 3;
   $("#f2Buscar", app).placeholder = mios.length >= 3 ? "Ya has tachado tres" : "Tachar una ciudad: Londres, Roma…";
   pintarSi(
     $("#f2Mias", app),
-    mios.length
+    (mios.length
       ? mios
           .map(
             (k) => `<button type="button" class="filtro-chip no" data-destachar="${esc(k)}" aria-label="Quitar ${esc(
@@ -1016,29 +1200,105 @@ function pintarFase2(app) {
             )}">${esc(nombreCiudad(k))}<span aria-hidden="true">×</span></button>`
           )
           .join("")
-      : `<span class="filtro-nada">No has tachado nada.</span>`
+      : `<span class="filtro-nada">${votado ? "No quitas ninguna." : "No has tachado nada todavía."}</span>`) +
+      (!votado && !mios.length
+        ? `<button type="button" class="btn ghost small" data-ninguna>No quito ninguna</button>`
+        : "")
   );
   pintarSi(
     $("#f2Todas", app),
-    todos.length
-      ? `<ul class="hopx-veto-lista">${todos
-          .map((v) => {
-            const pct = Math.round((v.quienes.length / Math.max(1, total)) * 100);
-            return `<li class="${v.fuera ? "fuera" : ""}">
-                <div class="hopx-veto-cab"><b>${esc(v.n)}</b>
-                  <span>${v.fuera ? "fuera de la búsqueda" : `${v.quienes.length} de ${total}`}</span></div>
-                <div class="hopx-veto-barra" aria-hidden="true"><i style="width:${pct}%"></i><em style="left:33.4%"></em></div>
-                <p class="hop-letra">${esc(v.quienes.map((u) => nombres[u] || "?").join(", "))}</p>
-              </li>`;
-          })
-          .join("")}</ul>`
-      : `<div class="hop-vacio"><b>Nadie ha tachado nada.</b> Si a todos os vale cualquier sitio, seguid.</div>`
+    !votado
+      ? `<div class="hopx-oculto">${ico("candado", 20)}<p><b>Vota primero.</b> Tacha tus ciudades (o di que no quitas
+          ninguna) y verás cómo va el grupo. Ya ha${yaVotaron === 1 ? "" : "n"} votado ${yaVotaron} de ${total}.</p></div>`
+      : todos.length
+        ? `<ol class="hopx-veto-lista">${todos
+            .map((v) => {
+              const pct = Math.round((v.quienes.length / Math.max(1, total)) * 100);
+              return `<li class="${v.fuera ? "fuera" : ""}">
+                  <div class="hopx-veto-cab"><b>${esc(v.n)}</b>
+                    <span>${v.fuera ? "fuera de la búsqueda" : `${v.quienes.length} de ${total}`}</span></div>
+                  <div class="hopx-veto-barra" aria-hidden="true"><i style="width:${pct}%"></i><em style="left:33.4%"></em></div>
+                  <p class="hop-letra">${esc(v.quienes.map((u) => nombres[u] || "?").join(", "))}</p>
+                </li>`;
+            })
+            .join("")}</ol>`
+        : `<div class="hop-vacio"><b>Nadie ha tachado nada.</b> Si a todos os vale cualquier sitio, seguid.</div>`
   );
+  pintarMapa(app, votado ? todos : todos.filter((v) => mios.includes(v.k)), mios);
   pintarSi(
     $("#hopFasePie", app),
     `<button class="btn primary" type="button" data-ir-fase="3">Seguir a buscar →</button>
-     ${fuera.length ? `<span class="hop-letra">No se buscará en: ${esc(fuera.map((v) => v.n).join(", "))}</span>` : ""}`
+     ${votado && fuera.length ? `<span class="hop-letra">No se buscará en: ${esc(fuera.map((v) => v.n).join(", "))}</span>` : ""}`
   );
+}
+
+/* EL MAPA de lo tachado: Europa (el mismo del Interrail) y un punto por
+   ciudad, más grande cuanta más gente la tacha, en naranja si queda fuera.
+   Las ciudades que caen fuera del mapa (Marrakech, Nueva York) solo salen en
+   la lista. */
+let MAPA = null;
+const PUNTOS_CIUDAD = new Map();
+async function cargarMapa() {
+  if (!MAPA) MAPA = await import("./mapa-hop.js");
+  return MAPA;
+}
+
+async function montarMapa(app) {
+  const caja = $("#f2Mapa", app);
+  if (!caja) return;
+  const m = await cargarMapa();
+  if (!caja.isConnected) return;
+  caja.innerHTML = `<svg viewBox="0 0 ${m.ANCHO} ${m.ALTO}" role="img" aria-label="Europa con las ciudades tachadas">
+      <g class="hopx-mapa-paises">${m.PAISES.map((p) => `<path d="${p.d}"/>`).join("")}</g>
+      <g id="f2Puntos"></g>
+    </svg>
+    <figcaption class="hop-letra" id="f2MapaPie"></figcaption>`;
+  pintarViaje(app);
+}
+
+async function puntoDe(k) {
+  if (PUNTOS_CIUDAD.has(k)) return PUNTOS_CIUDAD.get(k);
+  const [m, codigos] = await Promise.all([cargarMapa(), codigosDeCiudades([k])]);
+  const p = codigos.map((c) => m.AEROPUERTOS[c]).find(Boolean) || null;
+  PUNTOS_CIUDAD.set(k, p);
+  return p;
+}
+
+function pintarMapa(app, lista, mios) {
+  const g = $("#f2Puntos", app);
+  if (!g) return;
+  const faltan = lista.filter((v) => !PUNTOS_CIUDAD.has(v.k));
+  if (faltan.length) {
+    Promise.all(faltan.map((v) => puntoDe(v.k))).then(() => pintarMapa(app, lista, mios));
+  }
+  const total = Math.max(1, (estado.hop.miembros || []).length);
+  const conPunto = lista.filter((v) => PUNTOS_CIUDAD.get(v.k));
+  // Los grandes debajo, para que los pequeños no se tapen.
+  const orden = [...conPunto].sort((a, b) => b.quienes.length - a.quienes.length);
+  const html = orden
+    .map((v) => {
+      const [x, y] = PUNTOS_CIUDAD.get(v.k);
+      const r = 7 + Math.round((v.quienes.length / total) * 14);
+      return `<g class="hopx-punto${v.fuera ? " fuera" : ""}${mios.includes(v.k) ? " mio" : ""}">
+          <title>${esc(v.n)}: ${v.quienes.length} de ${total}</title>
+          <circle cx="${x}" cy="${y}" r="${r}"/>
+          <text x="${x + r + 6}" y="${y + 5}">${esc(v.n)}</text>
+        </g>`;
+    })
+    .join("");
+  if (g.dataset.huella !== hashCorto(html)) {
+    g.dataset.huella = hashCorto(html);
+    g.innerHTML = html;
+  }
+  const pie = $("#f2MapaPie", app);
+  const sinMapa = lista.filter((v) => PUNTOS_CIUDAD.has(v.k) && !PUNTOS_CIUDAD.get(v.k));
+  if (pie) {
+    pie.textContent = !lista.length
+      ? "Lo que se tache sale aquí."
+      : sinMapa.length
+        ? `Fuera del mapa: ${sinMapa.map((v) => v.n).join(", ")}.`
+        : "";
+  }
 }
 
 /* ------------------------------------------------------- fase 3: buscar */
@@ -1054,7 +1314,7 @@ function progresoHTML(b, tipico, que) {
   const min = Math.max(1, Math.round(b.pasado / 60000));
   const quedan = Math.max(0, Math.round((tipico - b.pasado) / 60000));
   return `<div class="hop-buscando hopx-buscando">
-      <span class="spin" aria-hidden="true"></span>
+      <div class="hopx-radar" aria-hidden="true"><i></i><i></i><i></i><span>${ico(que === "vuelos" ? "avion" : "cama", 22)}</span></div>
       <div class="hopx-buscando-txt">
         <p><b>Buscando ${que} para el grupo…</b></p>
         <p class="hop-letra">Lo lanzó ${esc(b.nombre || "alguien")} hace ${min} min · ${
@@ -1192,6 +1452,7 @@ function montarFormBuscar(app, caja) {
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (pideCuenta("buscar para el grupo")) return;
     const msg = form.querySelector(".hop-msg");
     const dest = f.donde.value === "one" ? destino.value.trim() : "";
     if (f.donde.value === "one" && !dest) {
@@ -1507,26 +1768,17 @@ async function resultadoDeBusqueda(b) {
 }
 
 /* ------------------------------------------------------- fase 4: votar */
-const ROTULOS = { si: "Me apunto", quiza: "Puede", no: "Paso" };
 
+/* El voto, como en Reddit: flecha arriba, la cuenta, flecha abajo. Tocar
+   otra vez la misma flecha quita el voto. */
 function votarHTML(p) {
-  const n = puntos(p);
-  const mio = (p.votos || {})[yo().uid] || "";
-  return `<div class="hopx-votar" role="group" aria-label="Tu voto">
-      ${["si", "quiza", "no"]
-        .map(
-          (v) => `<button type="button" class="hopx-voto v-${v}" data-voto="${v}" aria-pressed="${mio === v}"
-              title="${ROTULOS[v]}">${ico(v, 16)}<span>${ROTULOS[v]}</span><b>${n[v]}</b></button>`
-        )
-        .join("")}
+  const mio = (p.votos || {})[miUid()] || "";
+  const n = nota(p);
+  return `<div class="hopx-reddit${mio === "si" ? " arriba" : mio === "no" ? " abajo" : ""}" role="group" aria-label="Tu voto">
+      <button type="button" class="hopx-flecha arriba" data-voto="si" aria-pressed="${mio === "si"}" aria-label="A favor">${ico("arriba", 20)}</button>
+      <b class="hopx-puntos" aria-label="${n} punto${Math.abs(n) === 1 ? "" : "s"}">${n}</b>
+      <button type="button" class="hopx-flecha abajo" data-voto="no" aria-pressed="${mio === "no"}" aria-label="En contra">${ico("abajo", 20)}</button>
     </div>`;
-}
-
-function medidorHTML(p) {
-  const n = puntos(p);
-  const total = Math.max(1, (estado.hop.miembros || []).length);
-  const falta = Math.max(0, total - n.si - n.quiza - n.no);
-  return `<div class="hopx-medidor" aria-hidden="true"><i class="m-si" style="flex:${n.si}"></i><i class="m-quiza" style="flex:${n.quiza}"></i><i class="m-no" style="flex:${n.no}"></i><i class="m-falta" style="flex:${falta}"></i></div>`;
 }
 
 function quienesHTML(p) {
@@ -1547,7 +1799,7 @@ function faltanTxt(p) {
 }
 
 const borrarHTML = (p) =>
-  p.autor === yo().uid || estado.hop.creador === yo().uid
+  p.autor === miUid() || estado.hop.creador === miUid()
     ? `<button class="quitar" type="button" data-borrar-prop aria-label="Borrar «${esc(p.titulo)}»">borrar</button>`
     : "";
 
@@ -1578,9 +1830,8 @@ function cartaGuardada(p, puesto, lider) {
             : "sin alojamiento"
         }</span></p>
         ${p.nota ? `<p class="hopx-dato">${esc(p.nota)}</p>` : ""}
-        ${medidorHTML(p)}
-        ${votarHTML(p)}
-        <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span>${borrarHTML(p)}</div>
+        <div class="hopx-carta-voto">${votarHTML(p)}
+          <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span>${borrarHTML(p)}</div></div>
       </div>
     </article>`;
 }
@@ -1678,7 +1929,7 @@ function pintarFase5(app) {
             Number.isFinite(plan.cama_precio) ? ` + dormir ${euros(plan.cama_precio)}` : ""
           }</small>
         </div>
-        ${de ? `<p class="hopx-plan-apoyo">${ico("si", 16)} <b>${puntos(de).si} de ${(estado.hop.miembros || []).length}</b> se apuntaron</p>` : ""}
+        ${de ? `<p class="hopx-plan-apoyo">${ico("arriba", 16)} <b>${nota(de)} punto${Math.abs(nota(de)) === 1 ? "" : "s"}</b> · ${puntos(de).si} a favor de ${(estado.hop.miembros || []).length}</p>` : ""}
         <div class="hopx-plan-acc">
           ${enlaceOk(plan.url) ? `<a class="btn primary small" href="${escURL(plan.url)}" target="_blank" rel="noopener">Reservar el vuelo ${ico("fuera", 14)}</a>` : ""}
           ${enlaceOk(plan.cama_url) ? `<a class="btn ghost small" href="${escURL(plan.cama_url)}" target="_blank" rel="noopener">Ver el alojamiento ${ico("fuera", 14)}</a>` : ""}
@@ -1768,9 +2019,18 @@ async function irAFase(app, n, extra = {}) {
   $("#hopFases", app).scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+// Lo que se puede tocar sin cuenta: mirar y moverse hacia atrás.
+const SOLO_MIRAR = ["hopAbrirBuscar", "hopCerrarBuscar", "cerrarPlan", "diaCal"];
 async function alTocarFase(app, e) {
   const b = e.target.closest("button");
   if (!b) return;
+  if (estado.invitado) {
+    const mirar = SOLO_MIRAR.some((k) => k in b.dataset) || (b.dataset.irFase && Number(b.dataset.irFase) <= fase());
+    if (!mirar) {
+      pideCuenta(b.dataset.voto ? "votar" : b.dataset.tachar ? "tachar ciudades" : "hacer eso");
+      return;
+    }
+  }
   const s = yo();
   if (b.dataset.voto) {
     const tarjeta = b.closest("[data-prop]");
@@ -1815,6 +2075,8 @@ async function alTocarFase(app, e) {
     estado.ver = n;
     return pintarViaje(app);
   }
+  if (b.dataset.diaCal) return elegirDiaCal(app, b.dataset.diaCal);
+  if (b.hasAttribute("data-ninguna")) return vetar(app, []);
   if (b.dataset.tachar) {
     const mios = misVetos();
     if (mios.length >= 3 || mios.includes(b.dataset.tachar)) return;
@@ -1843,9 +2105,34 @@ async function alTocarFase(app, e) {
   if (b.hasAttribute("data-editar-plan")) abrirEditarPlan(app);
 }
 
+/* Tocar días en el calendario: el primero es la ida y el segundo la vuelta. */
+function elegirDiaCal(app, k) {
+  const form = $("#f1Form", app);
+  if (!form) return;
+  const f = form.elements;
+  if (!f.ida.value || f.vuelta.value || k <= f.ida.value) {
+    f.ida.value = k;
+    f.vuelta.value = "";
+  } else f.vuelta.value = k;
+  marcarCal(app);
+  (f.vuelta.value ? f.titulo : f.vuelta).focus({ preventScroll: true });
+}
+
+function marcarCal(app) {
+  const form = $("#f1Form", app);
+  if (!form) return;
+  const ida = form.elements.ida.value;
+  const vuelta = form.elements.vuelta.value;
+  app.querySelectorAll("[data-dia-cal]").forEach((b) => {
+    const k = b.dataset.diaCal;
+    b.classList.toggle("elegido", k === ida || k === vuelta);
+    b.classList.toggle("entre", !!(ida && vuelta && k > ida && k < vuelta));
+  });
+}
+
 async function vetar(app, lista) {
   const antes = misVetos();
-  estado.hop.vetos = { ...estado.hop.vetos, [yo().uid]: lista };
+  estado.hop.vetos = { ...estado.hop.vetos, [miUid()]: lista };
   const input = $("#f2Buscar", app);
   if (input) {
     input.value = "";
@@ -1854,7 +2141,7 @@ async function vetar(app, lista) {
   pintarViaje(app);
   const r = await nubeHopVetar(estado.id, lista);
   if (!r.ok) {
-    estado.hop.vetos = { ...estado.hop.vetos, [yo().uid]: antes };
+    estado.hop.vetos = { ...estado.hop.vetos, [miUid()]: antes };
     pintarViaje(app);
     alert(r.error);
   }
@@ -1897,9 +2184,9 @@ function votarDeslizando(app, tipo) {
         <div class="hopx-dcarta-foto">
           ${foto}
             <div class="hopx-fotos-barras"></div>
-          <span class="hopx-sello s-si">Me apunto</span>
-          <span class="hopx-sello s-no">Paso</span>
-          <span class="hopx-sello s-quiza">Puede</span>
+          <span class="hopx-sello s-si">A favor</span>
+          <span class="hopx-sello s-no">En contra</span>
+          <span class="hopx-sello s-quiza">Saltar</span>
           <div class="hopx-dcarta-velo">
             <b>${esc(p.titulo)}</b>
             <small>${esc(tipo === "cama" ? p.destino || "" : p.pais || "")}</small>
@@ -1929,7 +2216,7 @@ function votarDeslizando(app, tipo) {
           <h3>Votado</h3>
           <p>Así va el grupo:</p>
           <ol class="hopx-podio">${top
-            .map((x) => `<li><b>${esc(x.titulo)}</b><span>${puntos(x).si} se apuntan</span></li>`)
+            .map((x) => `<li><b>${esc(x.titulo)}</b><span>${nota(x)} punto${Math.abs(nota(x)) === 1 ? "" : "s"}</span></li>`)
             .join("")}</ol>
           <button class="btn primary" type="button" data-cerrar>Volver al viaje</button>
         </div>`;
@@ -1948,11 +2235,11 @@ function votarDeslizando(app, tipo) {
           ${cartaGrande(p)}
         </div>
         <div class="hopx-desliza-botones">
-          <button type="button" class="hopx-redondo no" data-rv="no" aria-label="Paso">${ico("no", 28)}</button>
-          <button type="button" class="hopx-redondo quiza" data-rv="quiza" aria-label="Puede">${ico("quiza", 26)}</button>
-          <button type="button" class="hopx-redondo si" data-rv="si" aria-label="Me apunto">${ico("si", 30)}</button>
+          <button type="button" class="hopx-redondo no" data-rv="no" aria-label="En contra">${ico("abajo", 26)}</button>
+          <button type="button" class="hopx-redondo quiza" data-rv="saltar" aria-label="Saltar">Saltar</button>
+          <button type="button" class="hopx-redondo si" data-rv="si" aria-label="A favor">${ico("arriba", 26)}</button>
         </div>
-        <p class="hop-letra hopx-teclas">Desliza la carta, o con el teclado: ← paso · ↑ puede · → me apunto</p>
+        <p class="hop-letra hopx-teclas">Desliza la carta, o con el teclado: ← en contra · ↑ saltar · → a favor</p>
       </div>`;
     capa.querySelector("[data-cerrar]").addEventListener("click", cerrar);
     capa.querySelectorAll("[data-rv]").forEach((b) => b.addEventListener("click", () => votarYSeguir(b.dataset.rv)));
@@ -2019,7 +2306,7 @@ function votarDeslizando(app, tipo) {
       carta.classList.remove("moviendo");
       if (dx > UMBRAL) return votarYSeguir("si");
       if (dx < -UMBRAL) return votarYSeguir("no");
-      if (dy < -UMBRAL) return votarYSeguir("quiza");
+      if (dy < -UMBRAL) return votarYSeguir("saltar");
       // Un toque sin arrastrar: en la foto, pasa a la siguiente o la anterior.
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6 && carta.cambiarFoto && e.target.closest(".hopx-dcarta-foto")) {
         const r = carta.getBoundingClientRect();
@@ -2043,13 +2330,16 @@ function votarDeslizando(app, tipo) {
       carta.style.transform = "";
       carta.classList.add(`sale-${voto}`);
     }
-    p.votos = { ...p.votos, [yo().uid]: voto };
-    nubeVotar(estado.id, p.id, voto).then((r) => {
-      if (!r.ok) {
-        delete p.votos[yo().uid];
-        alert(r.error);
-      }
-    });
+    // «Saltar» no vota: pasa a la siguiente.
+    if (voto !== "saltar") {
+      p.votos = { ...p.votos, [miUid()]: voto };
+      nubeVotar(estado.id, p.id, voto).then((r) => {
+        if (!r.ok) {
+          delete p.votos[miUid()];
+          alert(r.error);
+        }
+      });
+    }
     setTimeout(() => {
       i += 1;
       ocupado = false;
@@ -2059,7 +2349,7 @@ function votarDeslizando(app, tipo) {
   const teclas = (e) => {
     if (e.key === "Escape") return cerrar();
     if (!cola[i]) return;
-    const voto = { ArrowLeft: "no", ArrowUp: "quiza", ArrowDown: "quiza", ArrowRight: "si" }[e.key];
+    const voto = { ArrowLeft: "no", ArrowUp: "saltar", ArrowDown: "saltar", ArrowRight: "si" }[e.key];
     if (voto) {
       e.preventDefault();
       votarYSeguir(voto);

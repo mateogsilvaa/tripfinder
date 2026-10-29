@@ -491,3 +491,9 @@ def test_las_hop_pasadas_se_borran_enteras_y_sueltan_su_hueco():
     assert not db.collection("hop_slots").document(creador).get().exists
     assert db.collection("hops").document(viva).get().exists
     assert list(db.collection("hops").document(viva).collection("mensajes").stream())
+
+
+def test_quien_administra_cuenta_como_max_sin_ponerselo():
+    assert nube.es_premium({"estado": "aprobado", "plan": "gratis", "admin": True})
+    assert not nube.es_premium({"estado": "aprobado", "plan": "gratis"})
+    assert not nube.es_premium({"estado": "bloqueado", "plan": "gratis", "admin": True})
