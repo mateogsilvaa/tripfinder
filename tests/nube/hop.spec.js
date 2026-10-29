@@ -36,6 +36,9 @@ const dentroDeUnMes = () => {
 
 async function crear(page, nombre) {
   await page.goto("/hop.html");
+  // Con algún HOP ya hecho, crear otro va plegado.
+  const caja = page.locator("#hopCrearCaja");
+  if (!(await caja.evaluate((d) => d.open))) await caja.locator("summary").click();
   await page.locator("#hopCrear [name=nombre]").fill(nombre);
   await page.locator("#hopCrear [name=fin]").fill(dentroDeUnMes());
   await page.locator("#hopCrear button[type=submit]").click();
@@ -183,14 +186,16 @@ test("por fases: fechas, vetos, buscar y guardar, votar y el plan", async ({ bro
   expect(encargo.payload.viaje.sin).toContain("FCO");
   const clave = encargo.payload.viaje.clave;
 
+  // Ids nuevos en cada pasada: el emulador guarda los resultados de la anterior.
+  const tanda = Date.now().toString(36);
   const oferta = (ofid, iata, ciudad, pais, precio) => ({
     id: ofid, provider: "ryanair", origin: "MAD", destination: iata, destination_name: ciudad, destination_country: pais,
     depart_date: enDias(10), return_date: enDias(12), depart_time: "07:10", arrive_time: "09:00", nights: 2,
     price: precio, airline: "Ryanair", deep_link: "https://www.ryanair.com/x", adults: 2,
   });
   await E.publicarResultado(`busqueda-${clave}`, {
-    offers: [oferta("OPO-1", "OPO", "Oporto", "Portugal", 80), oferta("LIS-1", "LIS", "Lisboa", "Portugal", 100),
-      oferta("BER-1", "BER", "Berlín", "Alemania", 140)],
+    offers: [oferta(`OPO-${tanda}`, "OPO", "Oporto", "Portugal", 80), oferta(`LIS-${tanda}`, "LIS", "Lisboa", "Portugal", 100),
+      oferta(`BER-${tanda}`, "BER", "Berlín", "Alemania", 140)],
   });
   await expect(gus.page.locator(".hopx-res")).toHaveCount(3, { timeout: 20000 });
   // Los resultados no se votan: se guardan.
@@ -204,8 +209,8 @@ test("por fases: fechas, vetos, buscar y guardar, votar y el plan", async ({ bro
   await lis.locator("[data-camas]").click();
   await expect(lis.locator(".hop-buscando")).toBeVisible();
   const stay = (await E.encargosDe(gus.uid)).find((e) => e.tipo === "stay");
-  expect(stay.payload).toMatchObject({ offer_id: "LIS-1", hop: id, adults: "2" });
-  await E.publicarResultado("stay-LIS-1", {
+  expect(stay.payload).toMatchObject({ offer_id: `LIS-${tanda}`, hop: id, adults: "2" });
+  await E.publicarResultado(`stay-LIS-${tanda}`, {
     stays: [{ provider: "booking", name: "Casa do Fado", url: "https://www.booking.com/a", price_total: 120, rating: 9 }],
   });
   await expect(lis.locator(".hopx-camas li")).toHaveCount(1, { timeout: 20000 });
@@ -298,5 +303,43 @@ test("sin cuenta se mira el HOP; al proponer se pide la cuenta y luego se sube s
   await expect(page.locator(".hopx-fechas-carta", { hasText: "El otro finde" })).toBeVisible({ timeout: 15000 });
   await expect(ana.page.locator(".hopx-portada")).toContainText("Escapada");
   await ctx.close();
+  await ana.ctx.close();
+});
+
+/* Tus HOP, grandes: en qué fase va cada uno, si te toca y qué te has perdido. */
+test("la lista dice en qué va cada HOP, si te toca votar y lo nuevo desde la última vez", async ({ browser }) => {
+  test.setTimeout(90000);
+  const ana = await persona(browser, "Ana");
+  await E.hacerPremium(ana.uid);
+  const id = await crear(ana.page, "Escapada");
+  const gus = await persona(browser, "Gus");
+  await gus.page.goto(`/hop.html?j=${id}`);
+  await gus.page.locator("#hopUnirme").click();
+  await expect(gus.page.locator(".hopx-portada h2")).toHaveText("Escapada");
+  // Ana propone unas fechas y escribe; Gus no está mirando.
+  await gus.page.goto("/hop.html");
+  await ana.page.locator("#f1Form [name=ida]").fill(enDias(8));
+  await ana.page.locator("#f1Form [name=vuelta]").fill(enDias(10));
+  await ana.page.locator("#f1Form button[type=submit]").click();
+  await expect(ana.page.locator(".hopx-fechas-carta")).toHaveCount(1);
+  await ana.page.locator("#hopChatBoton").click();
+  await ana.page.locator("#hopEscribir textarea").fill("¿Os vale?");
+  await ana.page.locator("#hopEscribir button").click();
+  await expect(ana.page.locator(".hop-msj.mio")).toBeVisible();
+
+  await gus.page.reload();
+  const tarjeta = gus.page.locator(".hopv", { hasText: "Escapada" });
+  await expect(tarjeta).toContainText("1 fecha propuesta");
+  await expect(tarjeta.locator(".hopv-toca")).toContainText("Te toca votar 1 fecha");
+  await expect(tarjeta.locator(".hopv-nuevo")).toContainText("1 mensaje y 1 propuesta nuevos");
+  await expect(tarjeta.locator(".hopv-badge")).toHaveText("2");
+  // Crear otro va plegado, sin protagonismo.
+  await expect(gus.page.locator("#hopCrearCaja")).not.toHaveAttribute("open", "");
+  // Al entrar y volver, ya no hay nada nuevo.
+  await tarjeta.click();
+  await expect(gus.page.locator(".hopx-portada h2")).toHaveText("Escapada");
+  await gus.page.goto("/hop.html");
+  await expect(gus.page.locator(".hopv-badge")).toHaveCount(0);
+  await gus.ctx.close();
   await ana.ctx.close();
 });

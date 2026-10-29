@@ -110,21 +110,55 @@ const pelado = (s) =>
     .toLowerCase()
     .trim();
 
-/* El botón que abre el filtro, dentro de `caja`, y su resumen. */
-export function montarFiltroDestinos(caja, campo) {
-  if (!caja || !campo || caja.querySelector(".filtro-dest-btn")) return;
-  caja.insertAdjacentHTML(
-    "beforeend",
-    `<button type="button" class="date-btn filtro-dest-btn" aria-haspopup="dialog">Cualquier sitio</button>`
-  );
-  const boton = caja.querySelector(".filtro-dest-btn");
+/* El filtro va DENTRO del desplegable de «a dónde»: una opción más («unos
+   países o regiones…») que al elegirla abre el selector, y que después dice
+   lo elegido («solo Italia, Grecia»). Sin botón aparte. Si se cierra sin
+   elegir nada, el desplegable vuelve a «donde sea». */
+export function engancharFiltro(select, campo, { rotulo = "unos países o regiones…", todos = "any", mayus = false } = {}) {
+  const may = (t) => (mayus ? t.charAt(0).toUpperCase() + t.slice(1) : t);
+  if (!select || !campo || select.dataset.conFiltro) return;
+  select.dataset.conFiltro = "1";
+  let op = select.querySelector('option[value="afinar"]');
+  if (!op) {
+    op = document.createElement("option");
+    op.value = "afinar";
+    select.appendChild(op);
+  }
+  // Con algo elegido, una opción más para cambiarlo (la de arriba ya está
+  // elegida y volver a tocarla no avisa de nada).
+  const cambiar = document.createElement("option");
+  cambiar.value = "afinar-cambiar";
+  cambiar.textContent = may("cambiar países…");
   const pintar = () => {
     const t = textoFiltro(campo.value);
-    boton.textContent = t ? t.charAt(0).toUpperCase() + t.slice(1) : "Cualquier sitio · afinar";
-    boton.classList.toggle("con-filtro", !!t);
+    op.textContent = may(t || rotulo);
+    if (t && !cambiar.isConnected) select.appendChild(cambiar);
+    if (!t && cambiar.isConnected) cambiar.remove();
+    if (t && select.value === todos) select.value = "afinar";
+    if (!t && select.value === "afinar" && !abierto) select.value = todos;
   };
+  let abierto = false;
+  const abrir = async () => {
+    abierto = true;
+    await abrirFiltro(campo);
+    const modal = document.getElementById("tfModal");
+    if (!modal) return;
+    // Al cerrarse el diálogo, se mira si quedó algo elegido.
+    const obs = new MutationObserver(() => {
+      if (!modal.hidden) return;
+      obs.disconnect();
+      abierto = false;
+      pintar();
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    obs.observe(modal, { attributes: true, attributeFilter: ["hidden"] });
+  };
+  select.addEventListener("change", () => {
+    if (select.value === "afinar-cambiar") select.value = "afinar";
+    else if (select.value !== "afinar" || abierto || campo.value) return;
+    if (!abierto) abrir();
+  });
   campo.addEventListener("change", pintar);
-  boton.addEventListener("click", () => abrirFiltro(campo));
   pintar();
 }
 
