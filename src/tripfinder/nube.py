@@ -69,8 +69,13 @@ def plan_de(ficha: dict[str, Any] | None) -> str:
 
 
 def es_premium(ficha: dict[str, Any] | None) -> bool:
-    # Max es premium sin límites: cuenta como premium en todo.
-    return bool(ficha) and ficha.get("estado") == "aprobado" and plan_de(ficha) in ("premium", "max")
+    # Max es premium sin límites: cuenta como premium en todo. Y quien
+    # administra la web tiene Max sin ponérselo.
+    return (
+        bool(ficha)
+        and ficha.get("estado") == "aprobado"
+        and (plan_de(ficha) in ("premium", "max") or ficha.get("admin") is True)
+    )
 
 
 # Lo ya tramitado se borra pasada una semana: Firestore cobra por lo que se

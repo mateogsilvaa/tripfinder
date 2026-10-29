@@ -490,8 +490,11 @@ test("HOP: cualquier cuenta se une con el enlace, solo a sí misma, y se sale", 
   );
   // Meter a otro, no.
   await assertFails(updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("bea"), "nombres.bea": "Bea" }));
-  // Sin cuenta, tampoco.
-  await assertFails(getDoc(doc(anonimo(), "hops/hop1")));
+  // Sin cuenta se mira con el enlace, pero no se entra.
+  await assertSucceeds(getDoc(doc(anonimo(), "hops/hop1")));
+  await assertFails(updateDoc(doc(anonimo(), "hops/hop1"), { miembros: arrayUnion("x") }));
+  // Y listarlos todos, nadie.
+  await assertFails(getDocs(collection(anonimo(), "hops")));
   // Una bloqueada no entra.
   await assertFails(
     updateDoc(doc(como("cris", "cris@x.es"), "hops/hop1"), { miembros: arrayUnion("cris"), "nombres.cris": "C" })
@@ -513,7 +516,7 @@ test("HOP: solo quien la creó cambia el nombre y la fecha, o la borra", async (
   );
 });
 
-test("HOP: lo de dentro solo lo ven y lo escriben sus miembros", async () => {
+test("HOP: las propuestas se ven con el enlace; el chat y escribir, solo dentro", async () => {
   await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
   const ana = como("ana", "ana@x.es");
   const gus = como("gus", "gus@x.es");
@@ -521,8 +524,11 @@ test("HOP: lo de dentro solo lo ven y lo escriben sus miembros", async () => {
     precio: 120, url: "https://www.ryanair.com/x", autor: "ana", nombre: "Ana", votos: {}, creado: serverTimestamp() };
   await assertSucceeds(setDoc(doc(ana, "hops/hop1/propuestas/p1"), prop));
   await assertSucceeds(setDoc(doc(ana, "hops/hop1/mensajes/m1"), { autor: "ana", nombre: "Ana", texto: "¿Roma?", creado: serverTimestamp() }));
-  // Gus aún no está dentro.
-  await assertFails(getDoc(doc(gus, "hops/hop1/propuestas/p1")));
+  // Gus aún no está dentro: ve las propuestas (y sin cuenta, también), no el chat.
+  await assertSucceeds(getDoc(doc(gus, "hops/hop1/propuestas/p1")));
+  await assertSucceeds(getDocs(collection(anonimo(), "hops/hop1/propuestas")));
+  await assertFails(getDocs(collection(anonimo(), "hops/hop1/mensajes")));
+  await assertFails(setDoc(doc(gus, "hops/hop1/propuestas/p9"), { ...prop, autor: "gus" }));
   await assertFails(getDocs(collection(gus, "hops/hop1/mensajes")));
   await assertFails(setDoc(doc(gus, "hops/hop1/mensajes/m2"), { autor: "gus", nombre: "Gus", texto: "hola", creado: serverTimestamp() }));
   await updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" });
@@ -624,4 +630,10 @@ test("HOP: lo guardado puede llevar su alojamiento", async () => {
     cama_url: "https://www.booking.com/x", cama_precio: 45.5 }));
   await assertFails(setDoc(doc(ana, "hops/hop1/propuestas/v-1-c-b"), { ...base, cama_url: "http://x" }));
   await assertFails(setDoc(doc(ana, "hops/hop1/propuestas/v-1-c-c"), { ...base, cama_precio: "mucho" }));
+});
+
+test("quien administra tiene Max: crea los HOP que quiera", async () => {
+  const jefe = como("jefe", "jefe@x.es");
+  await assertSucceeds(crearHop(jefe, "jefe", "hopA", { hueco: false }));
+  await assertSucceeds(crearHop(jefe, "jefe", "hopB", { hueco: false }));
 });

@@ -8,6 +8,8 @@
                             ciudad de `interrail-datos.js` ya proyectada.
      web/js/mapa-mundo.js   el mundo para elegir países en el feed, con su
                             código ISO y su nombre en español.
+     web/js/mapa-hop.js     Europa y el Magreb para el HOP, con cada
+                            aeropuerto de `data/airports.json` en su sitio.
 
    Se vuelve a pasar cuando se añade una ciudad al Interrail (una prueba de
    pytest falla si alguna se queda sin punto). Necesita, solo aquí:
@@ -78,6 +80,54 @@ writeFileSync(
     `export const ANCHO = ${ANCHO_EU};\nexport const ALTO = ${ALTO_EU};\n` +
     `export const PAISES = ${JSON.stringify(paisesEu)};\n` +
     `export const PUNTOS = ${JSON.stringify(puntos)};\n`
+);
+
+/* ---------------------------------------------------------------- el HOP
+   Más ancho que el del Interrail: de Marruecos y Portugal a Escandinavia y
+   Chipre, que es por donde vuela el que sale de España. Con la posición de
+   cada aeropuerto con coordenadas (`data/airports.json`): el HOP pinta ahí
+   las ciudades que el grupo ha tachado. */
+const ANCHO_HOP = 900;
+const ALTO_HOP = 760;
+const proyHop = geoConicConformal()
+  .parallels([35, 60])
+  .rotate([-12, 0])
+  .fitExtent(
+    [
+      [20, 20],
+      [ANCHO_HOP - 20, ALTO_HOP - 20],
+    ],
+    {
+      type: "MultiPoint",
+      coordinates: [
+        [-10, 30],
+        [36, 33],
+        [-10, 62],
+        [30, 66],
+      ],
+    }
+  )
+  .clipExtent([
+    [0, 0],
+    [ANCHO_HOP, ALTO_HOP],
+  ]);
+const trazoHop = geoPath(proyHop);
+const paisesHop = europa
+  .map(({ f, iso: a2 }) => ({ iso: a2, d: recortar(trazoHop(f)) }))
+  .filter((p) => p.d && p.d.length > 12);
+const aeropuertos = Object.fromEntries(
+  JSON.parse(readFileSync(join(RAIZ, "data/airports.json"), "utf8"))
+    .filter((a) => a.coordinates)
+    .map((a) => [a.code, proyHop([a.coordinates.longitude, a.coordinates.latitude])])
+    .filter(([, p]) => p && p[0] >= 0 && p[0] <= ANCHO_HOP && p[1] >= 0 && p[1] <= ALTO_HOP)
+    .map(([c, p]) => [c, p.map((v) => Math.round(v * 10) / 10)])
+);
+writeFileSync(
+  join(RAIZ, "web/js/mapa-hop.js"),
+  cabecera("mapa-hop.js") +
+    `export const ANCHO = ${ANCHO_HOP};\nexport const ALTO = ${ALTO_HOP};\n` +
+    `export const PAISES = ${JSON.stringify(paisesHop)};\n` +
+    `export const AEROPUERTOS = ${JSON.stringify(aeropuertos)};\n`
 );
 
 /* ---------------------------------------------------------------- el mundo */

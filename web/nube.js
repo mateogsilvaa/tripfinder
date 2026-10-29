@@ -337,8 +337,9 @@ function nubeGuardarSesion(uid, ficha) {
    `firestore.rules`. */
 const nubePlan = (ficha) => (ficha && ficha.plan) || "premium";
 // Max es premium sin límites (más HOP a la vez): cuenta como premium en todo.
-const nubeEsPremium = (s) => !!s && s.estado === "aprobado" && (s.plan === "premium" || s.plan === "max");
-const nubeEsMax = (s) => !!s && s.estado === "aprobado" && s.plan === "max";
+// Quien administra la web tiene Max sin ponérselo (su ficha no se toca desde aquí).
+const nubeEsPremium = (s) => !!s && s.estado === "aprobado" && (s.plan === "premium" || s.plan === "max" || !!s.admin);
+const nubeEsMax = (s) => !!s && s.estado === "aprobado" && (s.plan === "max" || !!s.admin);
 /* Premium existe pero TODAVÍA NO SE EXIGE (igual que en firestore.rules y en
    nube.py): con esto en false, cualquier cuenta aprobada lanza búsquedas. */
 const TF_PREMIUM_OBLIGATORIO = false;
@@ -930,10 +931,11 @@ async function nubeHopCrear({ nombre, descripcion, fin }) {
   }
 }
 
+/* Un HOP. Sin cuenta también: con el enlace se mira (las reglas lo dejan
+   leer a cualquiera que tenga el id), aunque para tocar hace falta entrar. */
 async function nubeHop(id) {
   const t = await nubeHopToken();
-  if (t.error) return null;
-  return nubeLeerDoc(t.token, `hops/${id}`);
+  return nubeLeerDoc(t.error ? "" : t.token, `hops/${id}`);
 }
 
 async function nubeMisHops() {
@@ -1017,8 +1019,7 @@ async function nubeConsultarEn(token, ruta, consulta) {
 
 async function nubePropuestas(id) {
   const t = await nubeHopToken();
-  if (t.error) return [];
-  return nubeConsultarEn(t.token, `hops/${id}`, { from: [{ collectionId: "propuestas" }], limit: 200 });
+  return nubeConsultarEn(t.error ? "" : t.token, `hops/${id}`, { from: [{ collectionId: "propuestas" }], limit: 200 });
 }
 
 const NUBE_TIPOS_PROPUESTA = ["fechas", "viaje", "vuelo", "cama"];
