@@ -1,0 +1,29 @@
+{
+  "slug": "mad-londres-11-100-12m-finde-2p-ruyjkuruwqoijlob4slest1qxqg2",
+  "label": "Londres · findes · 12 meses · hasta 100 € · 2 pers.",
+  "request": {
+    "destination": "Londres",
+    "label": "Londres · findes · 12 meses · hasta 100 € · 2 pers.",
+    "max_price": 100.0,
+    "nights_min": 1,
+    "nights_max": 1,
+    "months": 12,
+    "weekend_only": true,
+    "adults": 2,
+    "origin": "MAD",
+    "depart": "",
+    "return_date": "",
+    "desde": "",
+    "hasta": "",
+    "dias": "",
+    "owner": "RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+    "owner_name": "Alicia Vereda",
+    "slug": "mad-londres-11-100-12m-finde-2p-ruyjkuruwqoijlob4slest1qxqg2"
+  },
+  "generated_at": "2026-10-29",
+  "errors": [],
+  "count": 0,
+  "owner": "RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+  "owner_name": "Alicia Vereda",
+  "offers": []
+}
