@@ -109,10 +109,17 @@ async function publicarResultado(clave, datos) {
   if (!r.ok) throw new Error(`no se pudo publicar: ${r.status}`);
 }
 
+/* Las suscripciones de push que ha guardado una cuenta. */
+async function aparatosDe(uid) {
+  const r = await fetch(`${FS}/usuarios/${uid}/aparatos`, { headers: DUENO });
+  if (!r.ok) return [];
+  return ((await r.json()).documents || []).map((d) => objeto(d.fields));
+}
+
 let n = 0;
 const correoNuevo = () => `prueba${Date.now()}${n++}@ejemplo.es`;
 
 module.exports = {
   CONFIG, ficha, poner, aprobar, hacerPremium, hacerAdmin, encargosDe, borrarCuenta, correoNuevo,
-  sembrarAntigua, antigua, verificarCorreo, publicarResultado,
+  sembrarAntigua, antigua, verificarCorreo, publicarResultado, aparatosDe,
 };

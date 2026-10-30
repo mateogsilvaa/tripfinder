@@ -448,7 +448,21 @@ window.addEventListener("appinstalled", () => {
   tfAvisoInstalar = null;
   document.getElementById("tfInstalar")?.remove();
   tfPintarBotonInstalar();
+  tfPreguntarCanal(1500);
 });
+
+/* Recién instalada (o abierta ya instalada, que en el iPhone es la única forma
+   de saberlo): se pregunta una vez si los avisos van por notificación, por
+   correo o por las dos. Ver `js/notificaciones.js`. */
+function tfPreguntarCanal(espera) {
+  setTimeout(() => {
+    import("./js/notificaciones.js")
+      .then((m) => m.preguntarCanal())
+      .catch(() => {
+        /* sin el módulo, se queda en el correo */
+      });
+  }, espera);
+}
 window.addEventListener("load", () => {
   try {
     localStorage.setItem(TF_VISITAS, String(Number(localStorage.getItem(TF_VISITAS) || 0) + 1));
@@ -457,4 +471,5 @@ window.addEventListener("load", () => {
   }
   tfPintarBotonInstalar();
   if (tfEsIOS()) setTimeout(() => tfOfrecerInstalar(), 4000);
+  if (tfInstalada()) tfPreguntarCanal(2500);
 });

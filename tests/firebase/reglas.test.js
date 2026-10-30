@@ -192,6 +192,50 @@ test("nadie borra fichas desde el navegador", async () => {
   await assertFails(deleteDoc(doc(como("jefe", "jefe@x.es"), "usuarios/ana")));
 });
 
+/* ------------------------------------------------- aparatos (notificaciones) */
+const aparato = (extra = {}) => ({
+  endpoint: "https://fcm.googleapis.com/fcm/send/abc",
+  p256dh: "BNc" + "x".repeat(84),
+  auth: "a".repeat(22),
+  nombre: "Android · Chrome",
+  creado: serverTimestamp(),
+  ...extra,
+});
+
+test("aparatos: cada cual guarda, lee y quita los suyos", async () => {
+  const db = como("ana", "ana@x.es");
+  await assertSucceeds(setDoc(doc(db, "usuarios/ana/aparatos/uno"), aparato()));
+  // Volver a activarlo pisa el mismo documento.
+  await assertSucceeds(setDoc(doc(db, "usuarios/ana/aparatos/uno"), aparato()));
+  await assertSucceeds(getDocs(collection(db, "usuarios/ana/aparatos")));
+  await assertSucceeds(deleteDoc(doc(db, "usuarios/ana/aparatos/uno")));
+});
+
+test("aparatos: nadie toca los de otro, ni sin cuenta", async () => {
+  await entorno.withSecurityRulesDisabled((ctx) =>
+    setDoc(doc(ctx.firestore(), "usuarios/ana/aparatos/uno"), { ...aparato(), creado: new Date() })
+  );
+  const gus = como("gus", "gus@x.es");
+  await assertFails(getDoc(doc(gus, "usuarios/ana/aparatos/uno")));
+  await assertFails(getDocs(collection(gus, "usuarios/ana/aparatos")));
+  await assertFails(setDoc(doc(gus, "usuarios/ana/aparatos/dos"), aparato()));
+  await assertFails(deleteDoc(doc(gus, "usuarios/ana/aparatos/uno")));
+  await assertFails(getDoc(doc(anonimo(), "usuarios/ana/aparatos/uno")));
+  // Ni el administrador: son las llaves para escribirle a su móvil.
+  await assertFails(getDoc(doc(como("jefe", "jefe@x.es"), "usuarios/ana/aparatos/uno")));
+});
+
+test("aparatos: solo una suscripción de verdad, sin campos de más", async () => {
+  const db = como("ana", "ana@x.es");
+  const ruta = doc(db, "usuarios/ana/aparatos/uno");
+  await assertFails(setDoc(ruta, aparato({ endpoint: "http://sin-cifrar.es/x" })));
+  await assertFails(setDoc(ruta, aparato({ endpoint: "https://x.es/" + "a".repeat(1000) })));
+  await assertFails(setDoc(ruta, aparato({ plan: "max" })));
+  await assertFails(setDoc(ruta, aparato({ creado: new Date(2020, 0, 1) })));
+  const { auth, ...sinAuth } = aparato();
+  await assertFails(setDoc(ruta, sinAuth));
+});
+
 test("el administrador aprueba, bloquea y devuelve a pendiente", async () => {
   const jefe = como("jefe", "jefe@x.es");
   await assertSucceeds(updateDoc(doc(jefe, "usuarios/bea"), { estado: "aprobado" }));

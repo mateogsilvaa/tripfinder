@@ -102,6 +102,9 @@ def comprobar(password: str, guardado: dict[str, Any] | None) -> bool:
 FRECUENCIAS = ("cada_vez", "diario", "dos_semana", "semanal", "quincenal", "mensual", "nunca")
 # A que hora del dia, mas o menos: el barrido de la manana o el de la tarde.
 FRANJAS = ("cualquiera", "manana", "noche")
+# Por donde: el correo de siempre, las notificaciones del aparato (si se
+# instalo la app y se dio permiso) o las dos cosas.
+CANALES = ("correo", "app", "ambos")
 
 PREFS_DEFECTO: dict[str, Any] = {
     # EL INTERRUPTOR. Nadie recibe ningun correo hasta que lo enciende el mismo
@@ -122,6 +125,7 @@ PREFS_DEFECTO: dict[str, Any] = {
     # que toque) y en que barrido.
     "dia": None,
     "franja": "cualquiera",
+    "canal": "correo",
 }
 
 
@@ -148,6 +152,8 @@ def prefs_validas(crudo: Any) -> dict[str, Any]:
         prefs["dia"] = None
     franja = str(crudo.get("franja", "")).strip().lower()
     prefs["franja"] = franja if franja in FRANJAS else "cualquiera"
+    canal = str(crudo.get("canal", "")).strip().lower()
+    prefs["canal"] = canal if canal in CANALES else "correo"
     return prefs
 
 

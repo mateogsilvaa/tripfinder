@@ -3679,6 +3679,22 @@ fieldset.avisos legend { padding: 0; }
 .avisos-opciones { display: grid; gap: 6px; padding-left: 12px; border-left: 2px solid var(--line); }
 .avisos-cuando { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .avisos-cuando > span { display: grid; gap: 4px; }
+/* Por dónde: correo, notificaciones o las dos, con lo que pasa en este aparato. */
+.avisos-canal { display: grid; gap: 6px; margin-bottom: 4px; }
+.avisos-rotulo { font: 400 var(--fs-caps) / 1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.avisos-aparato:empty { display: none; }
+.avisos-aparato { margin: 0; }
+.avisos-aparato .enlace { padding: 0; border: 0; background: none; color: var(--deep); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+/* La pregunta al instalar la app: tres respuestas grandes, una debajo de otra. */
+.canal-intro { margin: 0 0 12px; color: var(--muted); }
+.canal-opciones { display: grid; gap: 8px; }
+.canal-opcion { display: grid; gap: 2px; justify-items: start; padding: 12px 14px; min-height: var(--tap-min); border: 1px solid var(--line); border-radius: var(--r-s); background: none; color: var(--ink); text-align: left; cursor: pointer; }
+.canal-opcion:hover, .canal-opcion:focus-visible { border-color: var(--deep); }
+.canal-opcion:first-child { border-color: var(--deep); background: color-mix(in srgb, var(--deep) 10%, transparent); }
+.canal-opcion b { font-weight: 600; }
+.canal-opcion span { font-size: var(--fs-ui-s); color: var(--muted); }
+.canal-opcion:disabled { opacity: .55; cursor: default; }
 
 /* «Salgo el lunes → vuelvo el jueves»: dos desplegables con una flecha. */
 .dias-par { display: flex; align-items: flex-end; gap: 8px; }

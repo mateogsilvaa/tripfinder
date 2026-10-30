@@ -58,6 +58,7 @@ const PIEZAS = [
   "./js/hop.js",
   "./js/fotos.js",
   "./js/filtro-destinos.js",
+  "./js/notificaciones.js",
   "./js/alojamiento.js",
   "./js/busqueda.js",
   "./js/destinos.js",
@@ -227,6 +228,49 @@ self.addEventListener("fetch", (ev) => {
         }
         throw err;
       }
+    })()
+  );
+});
+
+/* LAS NOTIFICACIONES. El barrido las manda cifradas (`notify/push.py`) con
+   {titulo, cuerpo, url, etiqueta}; aquí se enseñan tal cual. La etiqueta hace
+   que un aviso de chollos nuevo sustituya al anterior en vez de apilarse. */
+self.addEventListener("push", (ev) => {
+  let d = {};
+  try {
+    d = ev.data ? ev.data.json() : {};
+  } catch {
+    d = { cuerpo: ev.data ? ev.data.text() : "" };
+  }
+  ev.waitUntil(
+    self.registration.showNotification(d.titulo || "TripFinder", {
+      body: d.cuerpo || "",
+      tag: d.etiqueta || "tripfinder",
+      renotify: true,
+      icon: "./iconos/icono-192.png",
+      badge: "./iconos/icono-192.png",
+      data: { url: d.url || "./" },
+    })
+  );
+});
+
+/* Al tocarla: a la página que diga, en la ventana de la app si ya hay una
+   abierta. Solo dentro del sitio: una URL de fuera se cambia por la portada. */
+self.addEventListener("notificationclick", (ev) => {
+  ev.notification.close();
+  const scope = self.registration.scope;
+  let destino = new URL((ev.notification.data && ev.notification.data.url) || "./", scope).href;
+  if (!destino.startsWith(scope)) destino = scope;
+  ev.waitUntil(
+    (async () => {
+      const ventanas = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      const suya = ventanas.find((w) => w.url.startsWith(scope));
+      if (suya) {
+        await suya.focus();
+        if ("navigate" in suya) return suya.navigate(destino);
+        return null;
+      }
+      return self.clients.openWindow(destino);
     })()
   );
 });
