@@ -814,13 +814,26 @@ function pintarHop(app, pendiente) {
         } · hasta el ${esc(fmtDate(hop.fin, true))}</p>
         <h2>${esc(hop.nombre)}</h2>
         ${hop.descripcion ? `<p class="hop-desc">${esc(hop.descripcion)}</p>` : ""}
-        <div class="hopx-gente">
-          <div class="hop-avs">${miembros
-            .slice(0, 8)
-            .map((u) => avatar(u, `${nombres[u] || "?"}${u === hop.creador ? " (organiza)" : ""}`))
-            .join("")}</div>
-          <span>${esc(gente)}</span>
-        </div>
+        <details class="hopx-gente" id="hopGente">
+          <summary>
+            <span class="hop-avs">${miembros
+              .slice(0, 8)
+              .map((u) => avatar(u, `${nombres[u] || "?"}${u === hop.creador ? " (organiza)" : ""}`))
+              .join("")}</span>
+            <span>${esc(gente)}</span>
+            <span class="hopx-gente-ver">Ver ${miembros.length === 1 ? "quién está" : `los ${miembros.length}`}</span>
+          </summary>
+          <ul class="hopx-gente-lista" aria-label="Quién está en el HOP">${[...miembros]
+            // Quien organiza primero, luego tú, y el resto por nombre.
+            .sort((a, b) => (b === hop.creador) - (a === hop.creador) || (b === miUid()) - (a === miUid()) ||
+              (nombres[a] || "").localeCompare(nombres[b] || "", "es"))
+            .map(
+              (u) => `<li>${avatar(u, nombres[u] || "?")}<span>${esc(nombres[u] || "Sin nombre")}</span>${
+                u === hop.creador ? `<small>organiza</small>` : ""
+              }${u === miUid() ? `<small>tú</small>` : ""}</li>`
+            )
+            .join("")}</ul>
+        </details>
       </div>
       <div class="hopx-portada-acc">
         ${
