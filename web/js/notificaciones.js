@@ -94,13 +94,17 @@ export async function apagarAparato() {
 export async function probar() {
   const reg = await registro();
   if (!reg || Notification.permission !== "granted") return false;
-  await reg.showNotification("TripFinder", {
-    body: "Así te llegarán los chollos y tus seguimientos.",
-    icon: "./iconos/icono-192.png",
-    badge: "./iconos/icono-192.png",
-    tag: "prueba",
-  });
-  return true;
+  try {
+    await reg.showNotification("TripFinder", {
+      body: "Así te llegarán los chollos y tus seguimientos.",
+      icon: "./iconos/icono-192.png",
+      badge: "./iconos/icono-192.png",
+      tag: "prueba",
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function textoSinSoporte() {

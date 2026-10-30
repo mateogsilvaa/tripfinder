@@ -14,6 +14,15 @@ async function persona(browser, { instalada = false } = {}) {
   await ctx.addInitScript(
     ({ c, instalada }) => {
       window.TF_NUBE = c;
+      // El permiso, también de mentira: el Chromium de Playwright del CI lo
+      // niega aunque se conceda con `grantPermissions`.
+      if (window.Notification) {
+        Object.defineProperty(Notification, "permission", { get: () => "granted", configurable: true });
+        Notification.requestPermission = async () => "granted";
+      }
+      if (window.ServiceWorkerRegistration) {
+        ServiceWorkerRegistration.prototype.showNotification = async () => {};
+      }
       if (window.PushManager) {
         const sub = {
           endpoint: "https://fcm.googleapis.com/fcm/send/de-mentira",
