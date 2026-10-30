@@ -100,6 +100,31 @@
       "last_checked": "2026-10-30",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "centroeuropa-6-20270319-RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+      "label": "Centroeuropa · 19 mar → 22 mar · avisa bajo 70 € · 3 pers.",
+      "destination": "Centroeuropa",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "2027-03-19",
+      "hasta": "2027-03-22",
+      "dias": "",
+      "horas": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 3,
+      "max_price": 70.0,
+      "source": "formulario",
+      "owner": "RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+      "owner_name": "Alicia Vereda",
+      "created": "2026-10-30",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
