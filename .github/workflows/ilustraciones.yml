@@ -1,0 +1,82 @@
+name: Ilustraciones de las ciudades
+
+# Las ilustraciones (un dibujo de dia y otro de noche por ciudad) viven en
+# ilustraciones/<pais>/<ciudad>/. Esto las pasa a WebP en web/ilustraciones/ con
+# su indice y vuelve a publicar la web. Corre:
+#
+#   · al subir dibujos al repo (push a ilustraciones/**);
+#   · cuando se suben desde el panel de administracion: quedan en Firestore
+#     (`ilustraciones_subidas`), `tripfinder encargos` lo ve y manda el
+#     `repository_dispatch`. Se escriben en ilustraciones/ como si se hubieran
+#     subido a mano y, ya publicadas, se borran de Firestore.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "ilustraciones/**"
+  repository_dispatch:
+    types: [ilustraciones]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: ilustraciones
+  cancel-in-progress: false
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PYTHONPATH: src
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Dependencias
+        run: pip install requests PyYAML python-dotenv Pillow "google-cloud-firestore>=2.19"
+
+      - name: Recoger, convertir y guardar
+        run: |
+          git config user.name  "tripfinder-bot"
+          git config user.email "actions@github.com"
+          for intento in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            python -m tripfinder ilustraciones --recoger
+            git add ilustraciones web/ilustraciones
+            if git diff --staged --quiet; then
+              echo "Sin cambios que guardar"
+              exit 0
+            fi
+            git commit -m "ilustraciones: $(date -u +%Y-%m-%dT%H:%M)"
+            if git push; then
+              echo "Guardado al intento $intento"
+              exit 0
+            fi
+            echo "Otro cambio llego antes; se reintenta"
+            sleep $((RANDOM % 6 + 2))
+          done
+          echo "No se pudo guardar tras varios intentos"
+          exit 1
+
+      # Solo ya publicadas: si el push fallo, siguen en Firestore y la proxima
+      # pasada de los encargos lo vuelve a intentar.
+      - name: Quitar de Firestore lo ya guardado
+        run: python -m tripfinder ilustraciones --borrar
+
+      # Un push del GITHUB_TOKEN no levanta otros workflows: la web se
+      # despliega a mano.
+      - name: Redesplegar la web
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run pages.yml --ref main

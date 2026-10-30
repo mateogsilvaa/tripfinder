@@ -375,6 +375,19 @@ test("un vuelo de fuera se manda a tu HOP y pasa a votarse", async ({ browser })
   await ana.page.locator('#hojaHopMsg a:has-text("Ir a votarlo")').click();
   await expect(ana.page).toHaveURL(new RegExp(`j=${id}`));
   // Directo a votar, aunque el HOP siga en la fase 1.
-  await expect(ana.page.locator(`.hopx-carta[data-prop^="v-"]`).first()).toContainText(destino);
+  const carta = ana.page.locator(`.hopx-carta[data-prop^="v-"]`).first();
+  await expect(carta).toContainText(destino);
+
+  // Y desde el guardado se busca dónde dormir, aunque la búsqueda que lo trajo
+  // no esté en pantalla. Aquí el resultado ya está publicado.
+  const oferta = (await carta.getAttribute("data-prop")).replace(/^v-/, "");
+  await E.publicarResultado(`stay-${oferta}`.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 200), {
+    stays: [{ name: "Piso con vistas", url: "https://www.airbnb.es/rooms/1", price_total: 180, provider: "airbnb" }],
+  });
+  await carta.locator(".hopx-carta-camas").click();
+  await expect(carta.locator(".hopx-camas")).toContainText("Piso con vistas");
+  await carta.locator(".hopx-camas [data-cama]").click();
+  // Pasa a ser otra opción, ya con su cama.
+  await expect(ana.page.locator(".hopx-carta", { hasText: "Piso con vistas" })).toBeVisible();
   await ana.ctx.close();
 });

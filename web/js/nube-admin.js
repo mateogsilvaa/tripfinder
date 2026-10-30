@@ -128,11 +128,13 @@ const PESTANAS = [
   ["resumen", "Resumen", '<path d="M4 19V10M10 19V5M16 19v-7M22 19H2"/>'],
   ["cuentas", "Cuentas", '<circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19.5a5.5 5.5 0 0 1 11 0"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17.5 19.5a5.5 5.5 0 0 0-3-4.9"/>'],
   ["errores", "Errores", '<path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.5v.1"/>'],
+  ["ilustraciones", "Ilustraciones", '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-8 8"/>'],
 ];
 const TITULOS = {
   resumen: ["Resumen", "Cómo se usa la web"],
   cuentas: ["Cuentas", "Quién hay y con qué plan"],
   errores: ["Errores", "Lo que ha fallado, agrupado"],
+  ilustraciones: ["Ilustraciones", "El dibujo de día y de noche de cada ciudad"],
 };
 let pestana = "resumen";
 try {
@@ -252,6 +254,10 @@ async function lista(caja, yo, aviso = "") {
         <section class="adm-panel" id="admPanel-errores" role="tabpanel" aria-labelledby="admTab-errores" ${pestana === "errores" ? "" : "hidden"}>
           <div id="admErrores"><div id="admErrCuerpo"><p class="meta"><span class="spin"></span>Leyendo…</p></div></div>
         </section>
+
+        <section class="adm-panel" id="admPanel-ilustraciones" role="tabpanel" aria-labelledby="admTab-ilustraciones" ${pestana === "ilustraciones" ? "" : "hidden"}>
+          <div id="admIlu"></div>
+        </section>
       </div>
     </div>`;
 
@@ -267,7 +273,17 @@ async function lista(caja, yo, aviso = "") {
     caja.querySelectorAll(".adm-panel").forEach((p) => (p.hidden = p.id !== `admPanel-${k}`));
     caja.querySelector("#admTitulo").textContent = TITULOS[k][0];
     caja.querySelector("#admSubtitulo").textContent = TITULOS[k][1];
+    // El periodo no pinta nada en las ilustraciones.
+    const per = caja.querySelector(".adm-periodo");
+    if (per) per.hidden = k === "ilustraciones";
+    // Las ilustraciones, solo la primera vez que se abren: bajan imágenes.
+    const ilu = caja.querySelector("#admIlu");
+    if (k === "ilustraciones" && ilu && !ilu.dataset.montada) {
+      ilu.dataset.montada = "1";
+      import("./admin-ilustraciones.js").then((m) => m.montarIlustraciones(ilu));
+    }
   };
+  if (pestana === "ilustraciones") ir(pestana);
   const tabs = caja.querySelector(".adm-tabs");
   tabs.addEventListener("click", (e) => {
     const b = e.target.closest("[data-tab]");

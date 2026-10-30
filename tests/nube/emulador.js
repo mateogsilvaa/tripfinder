@@ -109,6 +109,13 @@ async function publicarResultado(clave, datos) {
   if (!r.ok) throw new Error(`no se pudo publicar: ${r.status}`);
 }
 
+/* Lo que espera en una colección, saltándose las reglas. */
+async function coleccion(nombre) {
+  const r = await fetch(`${FS}/${nombre}`, { headers: DUENO });
+  if (!r.ok) return [];
+  return ((await r.json()).documents || []).map((d) => ({ id: d.name.split("/").pop(), ...objeto(d.fields) }));
+}
+
 /* Las suscripciones de push que ha guardado una cuenta. */
 async function aparatosDe(uid) {
   const r = await fetch(`${FS}/usuarios/${uid}/aparatos`, { headers: DUENO });
@@ -121,5 +128,5 @@ const correoNuevo = () => `prueba${Date.now()}${n++}@ejemplo.es`;
 
 module.exports = {
   CONFIG, ficha, poner, aprobar, hacerPremium, hacerAdmin, encargosDe, borrarCuenta, correoNuevo,
-  sembrarAntigua, antigua, verificarCorreo, publicarResultado, aparatosDe,
+  sembrarAntigua, antigua, verificarCorreo, publicarResultado, aparatosDe, coleccion,
 };

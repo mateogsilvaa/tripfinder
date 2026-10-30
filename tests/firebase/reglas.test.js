@@ -236,6 +236,46 @@ test("aparatos: solo una suscripción de verdad, sin campos de más", async () =
   await assertFails(setDoc(ruta, sinAuth));
 });
 
+/* ---------------------------------------- ilustraciones subidas del panel */
+const subida = (extra = {}) => ({
+  pais: "italia",
+  ciudad: "roma",
+  nombre: "Roma",
+  aeropuertos: ["FCO", "CIA"],
+  dia: "UklGR" + "x".repeat(1000),
+  encuadre: 60,
+  creado: serverTimestamp(),
+  ...extra,
+});
+
+test("ilustraciones: el administrador las sube, las ve y las quita", async () => {
+  const jefe = como("jefe", "jefe@x.es");
+  await assertSucceeds(setDoc(doc(jefe, "ilustraciones_subidas/a"), subida({ autor: "jefe" })));
+  await assertSucceeds(getDocs(collection(jefe, "ilustraciones_subidas")));
+  await assertSucceeds(deleteDoc(doc(jefe, "ilustraciones_subidas/a")));
+});
+
+test("ilustraciones: nadie más sube ni mira", async () => {
+  await entorno.withSecurityRulesDisabled((ctx) =>
+    setDoc(doc(ctx.firestore(), "ilustraciones_subidas/a"), { ...subida(), creado: new Date() })
+  );
+  const ana = como("ana", "ana@x.es");
+  await assertFails(setDoc(doc(ana, "ilustraciones_subidas/b"), subida()));
+  await assertFails(getDoc(doc(ana, "ilustraciones_subidas/a")));
+  await assertFails(deleteDoc(doc(ana, "ilustraciones_subidas/a")));
+  await assertFails(getDocs(collection(anonimo(), "ilustraciones_subidas")));
+});
+
+test("ilustraciones: carpetas limpias, imágenes con tope y nada de más", async () => {
+  const ruta = doc(como("jefe", "jefe@x.es"), "ilustraciones_subidas/a");
+  await assertFails(setDoc(ruta, subida({ pais: "../web" })));
+  await assertFails(setDoc(ruta, subida({ ciudad: "Roma Centro" })));
+  await assertFails(setDoc(ruta, subida({ noche: "x".repeat(480001) })));
+  await assertFails(setDoc(ruta, subida({ encuadre: 140 })));
+  await assertFails(setDoc(ruta, subida({ autor: "ana" })));
+  await assertFails(setDoc(ruta, subida({ script: "rm -rf" })));
+});
+
 test("el administrador aprueba, bloquea y devuelve a pendiente", async () => {
   const jefe = como("jefe", "jefe@x.es");
   await assertSucceeds(updateDoc(doc(jefe, "usuarios/bea"), { estado: "aprobado" }));
