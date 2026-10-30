@@ -1883,11 +1883,52 @@ def cmd_encargos(args: argparse.Namespace) -> int:
             print(f"HOP con la fecha pasada, borrados con lo de dentro: {hops}.")
     except Exception as exc:  # noqa: BLE001 - lo mismo: la cola va primero
         print(f"No se pudieron limpiar los HOP ({type(exc).__name__}).")
+    # Las ilustraciones subidas desde el panel: si hay alguna esperando, se
+    # levanta el workflow que las escribe en el repo y las publica.
+    try:
+        from .ilustraciones import COLECCION
+
+        if list(db.collection(COLECCION).select([]).limit(1).stream()):
+            nube.despachar_github("ilustraciones", {})
+            print("Hay ilustraciones subidas desde el panel: se publican.")
+    except Exception as exc:  # noqa: BLE001 - la cola va primero
+        print(f"No se pudieron mirar las ilustraciones subidas ({type(exc).__name__}).")
     print(
         f"Encargos: {cuenta['enviado']} enviados, {cuenta['rechazado']} rechazados, "
         f"{cuenta['error']} con error, {cuenta['atascado']} atascados, "
         f"{cuenta['borrado']} viejos borrados, {cuenta['abiertas']} cuentas pendientes abiertas."
     )
+    return 0
+
+
+def cmd_ilustraciones(args: argparse.Namespace) -> int:
+    """Pasa `ilustraciones/` a la web (WebP e indice). Con --recoger, antes
+    escribe lo subido desde el panel; con --borrar, lo quita de Firestore
+    (despues de publicarlo: si el push falla, sigue ahi para la proxima)."""
+    from . import ilustraciones as I
+
+    pendientes = I.RAIZ / ".ilustraciones-recogidas"
+    hay_nube = bool(os.environ.get("FIREBASE_SERVICE_ACCOUNT") or os.environ.get("FIRESTORE_EMULATOR_HOST"))
+    if args.borrar:
+        if hay_nube and pendientes.exists():
+            from . import nube
+
+            ids = [x for x in pendientes.read_text(encoding="utf-8").split() if x]
+            I.borrar(nube.abrir_firestore(), ids)
+            print(f"{len(ids)} subidas borradas de Firestore.")
+        pendientes.unlink(missing_ok=True)
+        return 0
+    if args.recoger and hay_nube:
+        from . import nube
+
+        ids = I.recoger(nube.abrir_firestore())
+        pendientes.write_text("\n".join(ids), encoding="utf-8")
+        print(f"{len(ids)} subidas recogidas del panel.")
+    indice = I.construir()
+    sin = [c["ruta"] for c in indice["ciudades"] if not c["aeropuertos"]]
+    print(f"{len(indice['ciudades'])} ciudades con ilustracion, {len(indice['por_iata'])} aeropuertos.")
+    if sin:
+        print("Sin aeropuerto (pon un aeropuertos.txt): " + ", ".join(sin))
     return 0
 
 
@@ -2135,6 +2176,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Probar SOLO ese transporte, sin la cadena de respaldo",
     )
     t.set_defaults(func=cmd_test_email)
+
+    il = sub.add_parser("ilustraciones", help="Pasa las ilustraciones de cada ciudad a la web")
+    il.add_argument("--recoger", action="store_true", help="Antes, escribe lo subido desde el panel")
+    il.add_argument("--borrar", action="store_true", help="Quita de Firestore lo ya publicado")
+    il.set_defaults(func=cmd_ilustraciones)
 
     v = sub.add_parser("vapid", help="Genera las claves de las notificaciones push")
     v.set_defaults(func=cmd_vapid)

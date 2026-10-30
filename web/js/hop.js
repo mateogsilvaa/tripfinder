@@ -20,7 +20,7 @@ import { abrirDestinos } from "./destinos.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { montarHoras, textoHoras } from "./horas.js";
 import { ORIGENES } from "./opciones.js";
-import { creditoHTML, fotosDe, huecoFoto, ponerFotos } from "./fotos.js";
+import { huecoFoto, ponerFotos } from "./fotos.js";
 import { enlaceOk, hashCorto, pidCombo, pidVuelo, propuestaDeVuelo } from "./propuesta-vuelo.js";
 import {
   buscarCiudades,
@@ -1795,6 +1795,22 @@ function montarFormBuscar(app, caja) {
    guardan, ya juntos con el vuelo. */
 const guardadaDe = (pid) => estado.propuestas.find((p) => p.id === pid);
 
+/* El vuelo de un id: de la búsqueda de ahora o, si ya no está, rehecho desde
+   lo que se guardó de él. Así un guardado puede buscar dónde dormir aunque la
+   búsqueda que lo trajo ya no esté en pantalla. */
+function ofertaDe(id) {
+  const o = (estado.resultados?.ofertas || []).find((x) => String(x.id) === String(id));
+  if (o) return o;
+  const p = guardadas().find((x) => x.tipo === "vuelo" && String(x.oferta) === String(id) && x.ida);
+  if (!p) return null;
+  const n = personasHop();
+  return {
+    id: p.oferta, origin: p.origen || "", destination: p.iata || "", destination_name: p.titulo,
+    destination_country: p.pais || "", depart_date: p.ida, return_date: p.vuelta || "", adults: n,
+    price: (Number(p.precio) || 0) * n, airline: p.compania || "", deep_link: p.url || "",
+  };
+}
+
 function pintarResultados(app) {
   const caja = $("#f3Res", app);
   const res = estado.resultados;
@@ -2022,7 +2038,7 @@ function cartaGuardada(p, puesto, lider) {
   const total = (Number.isFinite(p.precio) ? p.precio : 0) + (Number.isFinite(p.cama_precio) ? p.cama_precio : 0);
   return `<article class="hopx-carta${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
       <div class="hopx-carta-foto">
-        ${huecoFoto({ iata: p.iata, ciudad: p.titulo, pais: p.pais }, tono(p.iata || p.titulo))}
+        ${huecoFoto({ iata: p.iata, ciudad: p.titulo, pais: p.pais, foto: p.foto }, tono(p.iata || p.titulo))}
         ${lider ? `<span class="hopx-lider">la más votada</span>` : `<span class="hopx-puesto">${puesto}</span>`}
         <span class="hopx-precio">${total ? euros(total) : "—"}<small>por cabeza</small></span>
         <div class="hopx-carta-nombre"><b>${esc(p.titulo)}</b><small>${esc(p.pais || p.destino || "")}</small></div>
@@ -2045,6 +2061,14 @@ function cartaGuardada(p, puesto, lider) {
             : "sin alojamiento"
         }</span></p>
         ${p.nota ? `<p class="hopx-dato">${esc(p.nota)}</p>` : ""}
+        ${
+          // Dónde dormir, también con el vuelo ya guardado: con cama o sin ella.
+          p.tipo === "vuelo" && p.oferta && p.ida
+            ? `<button type="button" class="btn ghost small hopx-carta-camas" data-camas="${esc(p.oferta)}"
+                aria-expanded="${estado.abierta === p.oferta}">${ico("cama", 14)} ${p.cama ? "Otro alojamiento" : "Buscar alojamiento"}</button>
+              ${estado.abierta === p.oferta ? `<div class="hopx-res-camas">${camasHTML(ofertaDe(p.oferta), estado.camas[p.oferta])}</div>` : ""}`
+            : ""
+        }
         <div class="hopx-carta-voto">${votarHTML(p)}
           <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span>${borrarHTML(p)}</div></div>
       </div>
@@ -2301,14 +2325,14 @@ async function alTocarFase(app, e) {
   }
   if (b.dataset.destachar) return vetar(app, misVetos().filter((k) => k !== b.dataset.destachar));
   if (b.dataset.guardar) {
-    const o = (estado.resultados?.ofertas || []).find((x) => String(x.id) === b.dataset.guardar);
+    const o = ofertaDe(b.dataset.guardar);
     if (!o) return;
     b.disabled = true;
     const stay = b.dataset.cama !== undefined ? estado.camas[o.id]?.stays[Number(b.dataset.cama)] : null;
     return guardarOferta(app, o, stay);
   }
   if (b.dataset.camas) {
-    const o = (estado.resultados?.ofertas || []).find((x) => String(x.id) === b.dataset.camas);
+    const o = ofertaDe(b.dataset.camas);
     if (o) verCamas(app, o);
     return;
   }
@@ -2469,32 +2493,9 @@ function votarDeslizando(app, tipo) {
     capa.querySelector("[data-cerrar]").addEventListener("click", cerrar);
     capa.querySelectorAll("[data-rv]").forEach((b) => b.addEventListener("click", () => votarYSeguir(b.dataset.rv)));
     const carta = capa.querySelector(".hopx-dcarta:not(.atras)");
-    if (tipo !== "cama") galeriaEnCarta(carta, p);
-    else ponerFotos(carta);
+    ponerFotos(carta);
     arrastrable(carta);
     capa.querySelector('[data-rv="si"]').focus({ preventScroll: true });
-  };
-
-  // Las fotos del sitio dentro de la carta, con sus rayitas arriba.
-  const galeriaEnCarta = (carta, p) => {
-    const hueco = carta.querySelector(".foto-lugar");
-    const barras = carta.querySelector(".hopx-fotos-barras");
-    fotosDe({ iata: p.iata, ciudad: p.titulo, pais: p.pais }, 5).then((fotos) => {
-      if (!fotos.length || !carta.isConnected) return;
-      let k = 0;
-      const poner = () => {
-        hueco.style.backgroundImage = `url("${fotos[k].src.replace(/"/g, "%22")}")`;
-        hueco.classList.add("con-foto");
-        hueco.innerHTML = creditoHTML(fotos[k]);
-        barras.innerHTML = fotos.length > 1 ? fotos.map((_, j) => `<i class="${j === k ? "si" : ""}"></i>`).join("") : "";
-      };
-      poner();
-      carta.dataset.fotos = String(fotos.length);
-      carta.cambiarFoto = (paso) => {
-        k = (k + paso + fotos.length) % fotos.length;
-        poner();
-      };
-    });
   };
 
   const arrastrable = (carta) => {

@@ -9,3 +9,5 @@ google-cloud-firestore>=2.19
 # Cifrar y firmar las notificaciones push (src/tripfinder/notify/push.py).
 # Ya llega con la de Firestore; va aqui porque se usa directamente.
 cryptography>=42
+# Las ilustraciones de cada ciudad, a WebP (src/tripfinder/ilustraciones.py).
+Pillow>=10

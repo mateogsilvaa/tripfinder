@@ -133,6 +133,28 @@ service cloud.firestore {
         && request.resource.data.creado == request.time;
     }
 
+    // Las ilustraciones subidas desde el panel: el par día/noche de una ciudad
+    // (WebP en base64) y su encuadre, esperando a que `ilustraciones.yml` las
+    // escriba en el repo y las publique. Solo el administrador.
+    match /ilustraciones_subidas/{id} {
+      function d() {
+        return request.resource.data;
+      }
+      allow get, list, delete: if admin();
+      allow create: if admin()
+        && d().keys().hasOnly(['pais', 'ciudad', 'nombre', 'aeropuertos', 'dia', 'noche', 'encuadre', 'autor', 'creado'])
+        && d().keys().hasAll(['pais', 'ciudad', 'creado'])
+        && d().pais is string && d().pais.matches('[a-z0-9_]{1,40}')
+        && d().ciudad is string && d().ciudad.matches('[a-z0-9_]{1,60}')
+        && (!('nombre' in d()) || (d().nombre is string && d().nombre.size() <= 60))
+        && (!('aeropuertos' in d()) || (d().aeropuertos is list && d().aeropuertos.size() <= 10))
+        && (!('dia' in d()) || (d().dia is string && d().dia.size() <= 480000))
+        && (!('noche' in d()) || (d().noche is string && d().noche.size() <= 480000))
+        && (!('encuadre' in d()) || (d().encuadre is int && d().encuadre >= 0 && d().encuadre <= 100))
+        && (!('autor' in d()) || d().autor == request.auth.uid)
+        && d().creado == request.time;
+    }
+
     // Las cuentas de antes de Firebase, copiadas con `tripfinder migrar-cuentas`.
     // Ya no se vinculan (quien no migró a tiempo entra como nueva): las ve el
     // administrador y nada más. Las que se vincularon siguen con su `legado`.

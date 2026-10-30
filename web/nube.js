@@ -874,6 +874,43 @@ async function nubeQuitarAparato(endpoint) {
   }
 }
 
+/* ----------------------------------------- las ilustraciones (administrador)
+   El par día/noche de una ciudad, ya en WebP y en base64, a la cola de
+   `ilustraciones_subidas`. `tripfinder encargos` lo ve y levanta el workflow
+   que lo escribe en el repo y lo publica. */
+async function nubeSubirIlustracion({ pais, ciudad, nombre, aeropuertos, dia, noche, encuadre }) {
+  const s = tfSesion();
+  const token = await nubeToken();
+  if (!s || !token) return { ok: false, error: "Entra primero." };
+  const campos = { pais, ciudad, autor: s.uid };
+  if (nombre) campos.nombre = String(nombre).slice(0, 60);
+  if (aeropuertos && aeropuertos.length) campos.aeropuertos = aeropuertos.slice(0, 10);
+  if (dia) campos.dia = dia;
+  if (noche) campos.noche = noche;
+  if (Number.isInteger(encuadre)) campos.encuadre = encuadre;
+  try {
+    await nubeCommit(token, [nubeCrear(`ilustraciones_subidas/${nubeNuevoId()}`, campos)]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.codigo === "PERMISSION_DENIED" ? "Sin permiso: ¿están publicadas las reglas nuevas?" : e.message };
+  }
+}
+
+/* Lo que espera a publicarse: solo de qué ciudad es, sin bajarse las imágenes. */
+async function nubeIlustracionesPendientes() {
+  const token = await nubeToken();
+  if (!token) return [];
+  try {
+    return await nubeConsultar(token, {
+      from: [{ collectionId: "ilustraciones_subidas" }],
+      select: { fields: ["pais", "ciudad", "nombre", "creado"].map((fieldPath) => ({ fieldPath })) },
+      limit: 50,
+    });
+  } catch {
+    return [];
+  }
+}
+
 /* Solo el administrador: todas las fichas, y cambiar el estado de una. */
 async function nubeCuentas() {
   const token = await nubeToken();

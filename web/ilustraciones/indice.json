@@ -1,0 +1,653 @@
+{
+ "ciudades": [
+  {
+   "ruta": "alemania/berlin",
+   "nombre": "Berlín",
+   "iso": "de",
+   "aeropuertos": [
+    "BER"
+   ],
+   "y": 65,
+   "h": {
+    "noche": "e68c67c106"
+   },
+   "dia": false,
+   "noche": true
+  },
+  {
+   "ruta": "belgica/bruselas",
+   "nombre": "Bruselas",
+   "iso": "be",
+   "aeropuertos": [
+    "BRU",
+    "CRL"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "969ea880b8",
+    "noche": "cda978cb94"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "bulgaria/sofia",
+   "nombre": "Sofía",
+   "iso": "bg",
+   "aeropuertos": [
+    "SOF"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "4ab7ccbc62",
+    "noche": "7daa0f9a4e"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "chipre/larnaca",
+   "nombre": "Lárnaca",
+   "iso": "cy",
+   "aeropuertos": [
+    "LCA"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "de1d7f2809",
+    "noche": "67070b674f"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "espana/lanzarote",
+   "nombre": "Lanzarote",
+   "iso": "es",
+   "aeropuertos": [
+    "ACE"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "2ea9b1d473",
+    "noche": "3f92704228"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "espana/oviedo",
+   "nombre": "Oviedo",
+   "iso": "",
+   "aeropuertos": [
+    "OVD"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "977943264f",
+    "noche": "39d9d0b726"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "francia/paris",
+   "nombre": "París",
+   "iso": "fr",
+   "aeropuertos": [
+    "BVA",
+    "CDG",
+    "ORY",
+    "XCR"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "7099e2f3ff",
+    "noche": "7dcb6b25f2"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "georgia/kutaisi",
+   "nombre": "Kutaisi",
+   "iso": "",
+   "aeropuertos": [
+    "KUT"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "17a94eb5b1",
+    "noche": "351ccd8e57"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "hungria/budapest",
+   "nombre": "Budapest",
+   "iso": "hu",
+   "aeropuertos": [
+    "BUD"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "251a57011a",
+    "noche": "01b0a4d780"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "irlanda/dublin",
+   "nombre": "Dublín",
+   "iso": "ie",
+   "aeropuertos": [
+    "DUB"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "f7be4fba0e",
+    "noche": "e824eb3297"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "italia/bergamo",
+   "nombre": "Bérgamo",
+   "iso": "it",
+   "aeropuertos": [
+    "BGY"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "bcde88afbf",
+    "noche": "c2e05259e7"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "italia/bolonia",
+   "nombre": "Bolonia",
+   "iso": "it",
+   "aeropuertos": [
+    "BLQ",
+    "FRL"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "8d6843ec3f",
+    "noche": "606fc4a8af"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "italia/milan",
+   "nombre": "Milán",
+   "iso": "it",
+   "aeropuertos": [
+    "MXP"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "4af18a3394",
+    "noche": "3eb182d089"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "italia/napoles",
+   "nombre": "Nápoles",
+   "iso": "it",
+   "aeropuertos": [
+    "NAP"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "2fd130f0f8",
+    "noche": "4df3ab071b"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "italia/pisa",
+   "nombre": "Pisa",
+   "iso": "it",
+   "aeropuertos": [
+    "PSA"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "c8cdacb5b7",
+    "noche": "d1379ebe3c"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "italia/roma",
+   "nombre": "Roma",
+   "iso": "it",
+   "aeropuertos": [
+    "CIA",
+    "FCO"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "122de367f7",
+    "noche": "cda57042fd"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "italia/turin",
+   "nombre": "Turín",
+   "iso": "it",
+   "aeropuertos": [
+    "TRN"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "9afeae93ab",
+    "noche": "15636077b3"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "italia/venecia",
+   "nombre": "Venecia",
+   "iso": "it",
+   "aeropuertos": [
+    "TSF",
+    "VCE"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "f59a29f907",
+    "noche": "f2d59b98d4"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "macedonia/skopie",
+   "nombre": "Skopie",
+   "iso": "",
+   "aeropuertos": [
+    "SKP"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "0cafd67e49",
+    "noche": "4456a6f8e6"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "marruecos/marrakech",
+   "nombre": "Marrakech",
+   "iso": "ma",
+   "aeropuertos": [
+    "RAK"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "e5d83bef45",
+    "noche": "a0ff5ba8a9"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "polonia/breslavia",
+   "nombre": "Breslavia",
+   "iso": "pl",
+   "aeropuertos": [
+    "WRO"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "2663643bf2",
+    "noche": "94ae4bac53"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "polonia/cracovia",
+   "nombre": "Cracovia",
+   "iso": "pl",
+   "aeropuertos": [
+    "KRK"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "f45cb81ac5",
+    "noche": "e5cdac7b31"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "polonia/gdansk",
+   "nombre": "Gdansk",
+   "iso": "pl",
+   "aeropuertos": [
+    "GDN"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "dce2b49caf",
+    "noche": "adacebc8fe"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "polonia/katowice",
+   "nombre": "Katowice",
+   "iso": "pl",
+   "aeropuertos": [
+    "KTW"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "5b8e90f613",
+    "noche": "8d0d000fa1"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "polonia/varsovia",
+   "nombre": "Varsovia",
+   "iso": "pl",
+   "aeropuertos": [
+    "WAW",
+    "WMI"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "55c3f57ce8",
+    "noche": "4535c2ce09"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "portugal/lisboa",
+   "nombre": "Lisboa",
+   "iso": "pt",
+   "aeropuertos": [
+    "LIS"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "b193c63239",
+    "noche": "cda199fb49"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "portugal/oporto",
+   "nombre": "Oporto",
+   "iso": "pt",
+   "aeropuertos": [
+    "OPO"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "0b1df500d8",
+    "noche": "32c1c7edd7"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "republica_checa/praga",
+   "nombre": "Praga",
+   "iso": "cz",
+   "aeropuertos": [
+    "PRG"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "cfd9639392",
+    "noche": "4be4e2cfdc"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "rumania/arad",
+   "nombre": "Arad",
+   "iso": "",
+   "aeropuertos": [
+    "ARW"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "4870f68333",
+    "noche": "23f5e9702e"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "rumania/bucarest",
+   "nombre": "Bucarest",
+   "iso": "ro",
+   "aeropuertos": [
+    "BBU",
+    "OTP"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "95611b5c30",
+    "noche": "e5ba2080b1"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "rumania/cluj_napoca",
+   "nombre": "Cluj-Napoca",
+   "iso": "ro",
+   "aeropuertos": [
+    "CLJ"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "15e72a8c2e",
+    "noche": "5304e80930"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "rumania/craiova",
+   "nombre": "Craiova",
+   "iso": "",
+   "aeropuertos": [
+    "CRA"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "c188d27f46",
+    "noche": "19b5040792"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "rumania/iasi",
+   "nombre": "Iași",
+   "iso": "ro",
+   "aeropuertos": [
+    "IAS"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "08cf8a7ce8",
+    "noche": "c6f135099e"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "rumania/sibiu",
+   "nombre": "Sibiu",
+   "iso": "",
+   "aeropuertos": [
+    "SBZ"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "5e0675e44b",
+    "noche": "c5f2a60eef"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "rumania/timisoara",
+   "nombre": "Timișoara",
+   "iso": "",
+   "aeropuertos": [
+    "TSR"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "7907d4d960",
+    "noche": "e54739a710"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "serbia/belgrado",
+   "nombre": "Belgrado",
+   "iso": "",
+   "aeropuertos": [
+    "BEG"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "20a8cfbfca",
+    "noche": "1a392e61f4"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "uk/edimburgo",
+   "nombre": "Edimburgo",
+   "iso": "gb",
+   "aeropuertos": [
+    "EDI"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "df2543f294",
+    "noche": "130a83b5a0"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "uk/londres",
+   "nombre": "Londres",
+   "iso": "gb",
+   "aeropuertos": [
+    "LGW",
+    "LHR",
+    "LTN",
+    "STN"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "14ba5017e2",
+    "noche": "5d4e5f3489"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "uk/manchester",
+   "nombre": "Mánchester",
+   "iso": "gb",
+   "aeropuertos": [
+    "MAN"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "4bf9c6e3a0",
+    "noche": "d8c9f320ef"
+   },
+   "dia": true,
+   "noche": true
+  }
+ ],
+ "por_iata": {
+  "ACE": "espana/lanzarote",
+  "ARW": "rumania/arad",
+  "BBU": "rumania/bucarest",
+  "BEG": "serbia/belgrado",
+  "BER": "alemania/berlin",
+  "BGY": "italia/bergamo",
+  "BLQ": "italia/bolonia",
+  "BRU": "belgica/bruselas",
+  "BUD": "hungria/budapest",
+  "BVA": "francia/paris",
+  "CDG": "francia/paris",
+  "CIA": "italia/roma",
+  "CLJ": "rumania/cluj_napoca",
+  "CRA": "rumania/craiova",
+  "CRL": "belgica/bruselas",
+  "DUB": "irlanda/dublin",
+  "EDI": "uk/edimburgo",
+  "FCO": "italia/roma",
+  "FRL": "italia/bolonia",
+  "GDN": "polonia/gdansk",
+  "IAS": "rumania/iasi",
+  "KRK": "polonia/cracovia",
+  "KTW": "polonia/katowice",
+  "KUT": "georgia/kutaisi",
+  "LCA": "chipre/larnaca",
+  "LGW": "uk/londres",
+  "LHR": "uk/londres",
+  "LIS": "portugal/lisboa",
+  "LTN": "uk/londres",
+  "MAN": "uk/manchester",
+  "MXP": "italia/milan",
+  "NAP": "italia/napoles",
+  "OPO": "portugal/oporto",
+  "ORY": "francia/paris",
+  "OTP": "rumania/bucarest",
+  "OVD": "espana/oviedo",
+  "PRG": "republica_checa/praga",
+  "PSA": "italia/pisa",
+  "RAK": "marruecos/marrakech",
+  "SBZ": "rumania/sibiu",
+  "SKP": "macedonia/skopie",
+  "SOF": "bulgaria/sofia",
+  "STN": "uk/londres",
+  "TRN": "italia/turin",
+  "TSF": "italia/venecia",
+  "TSR": "rumania/timisoara",
+  "VCE": "italia/venecia",
+  "WAW": "polonia/varsovia",
+  "WMI": "polonia/varsovia",
+  "WRO": "polonia/breslavia",
+  "XCR": "francia/paris"
+ }
+}

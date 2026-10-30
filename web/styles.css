@@ -4686,7 +4686,7 @@ p.adm-sub { margin: 0 0 12px; color: var(--muted); font-size: var(--fs-body-s); 
 .adm-chip:hover { color: var(--ink); }
 .adm-chip[aria-checked="true"] { border-color: var(--ink); color: var(--ink); background: var(--surface2); }
 .adm-filtros { display: flex; flex-wrap: wrap; gap: 8px; }
-.adm-filtros input, .adm-filtros select {
+.adm-filtros input, .adm-filtros select, .adm-ilu-form select {
   min-height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-s);
   background: var(--field); color: var(--ink); font: inherit; font-size: var(--fs-ui-s);
 }
@@ -4933,7 +4933,8 @@ b.t0 { color: #ff8a5c; } b.t1 { color: #4fd6b0; } b.t2 { color: #e0b54a; } b.t3 
    con un fundido. El crédito va siempre: lo pide la licencia.
    ========================================================================== */
 .foto-lugar { position: relative; background: var(--surface2) center / cover no-repeat; transition: opacity 0.4s ease; }
-.foto-lugar.con-foto { animation: foto-entra 0.5s ease; }
+.foto-lugar.con-foto { animation: foto-entra 0.5s ease; background-image: var(--ilu-noche); background-position: center var(--ilu-y, 65%); }
+:root[data-tema="claro"] .foto-lugar.con-foto { background-image: var(--ilu-dia); }
 @keyframes foto-entra { from { opacity: 0; } to { opacity: 1; } }
 .foto-credito {
   position: absolute; right: 6px; bottom: 6px; z-index: 2; max-width: 70%;
@@ -5639,3 +5640,31 @@ details.hop-crear[open] > summary { border: 0; padding: 0; min-height: auto; fon
   .hopv { padding: 16px; }
   .hopv-fases small { font-size: 10px; }
 }
+
+/* Admin · ilustraciones: subir el par día/noche de una ciudad. */
+.adm-ilu-form { display: grid; gap: 14px; }
+.adm-ilu-donde { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.adm-ilu-donde label, .adm-ilu-encuadre { display: grid; gap: 6px; font-size: var(--fs-ui-s); color: var(--muted); }
+.adm-ilu-par { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.adm-ilu-hueco { display: grid; gap: 6px; cursor: pointer; }
+.adm-ilu-rot { font-size: var(--fs-ui-s); color: var(--muted); }
+.adm-ilu-vista { display: grid; place-items: center; aspect-ratio: 16 / 10; border: 1px dashed var(--line); border-radius: var(--r-s); background: var(--surface2) center / cover no-repeat; color: var(--muted); font-size: var(--fs-ui-s); text-align: center; padding: 8px; }
+.adm-ilu-vista.con { border-style: solid; }
+.adm-ilu-vista.con span { display: none; }
+.adm-ilu-hueco input[type=file] { font-size: var(--fs-ui-s); color: var(--muted); max-width: 100%; }
+.adm-ilu-hueco:hover .adm-ilu-vista, .adm-ilu-hueco:focus-within .adm-ilu-vista { border-color: var(--deep); }
+.adm-ilu-encuadre input { accent-color: var(--deep); }
+.adm-ilu-franja { height: clamp(70px, 14vw, 140px); border-radius: var(--r-s); background: var(--surface2) center / cover no-repeat; }
+.adm-ilu-form #admIluRuta { margin: 0; font-size: var(--fs-ui-s); color: var(--muted); }
+.adm-ilu-form #admIluRuta:empty { display: none; }
+.adm-ilu-form .btn.primary { justify-self: start; min-width: 160px; }
+.adm-ilu-pend { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.adm-ilu-pend small { color: var(--muted); margin-left: 6px; }
+.adm-ilu-lista { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.adm-ilu-lista li { display: flex; align-items: center; gap: 10px; padding: 8px; border: 1px solid var(--hair); border-radius: var(--r-s); min-width: 0; }
+.adm-ilu-mini { display: flex; gap: 4px; flex: none; }
+.adm-ilu-mini img, .adm-ilu-mini i { width: 56px; height: 35px; border-radius: 4px; object-fit: cover; background: var(--surface2); }
+.adm-ilu-mini i { display: grid; place-items: center; font: 400 9px var(--font-mono); font-style: normal; color: var(--warn, #d97706); border: 1px dashed currentColor; }
+.adm-ilu-nombre { display: grid; flex: 1; min-width: 0; }
+.adm-ilu-nombre b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.adm-ilu-nombre small { color: var(--muted); font-size: var(--fs-meta, 11px); }

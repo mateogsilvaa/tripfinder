@@ -11,6 +11,8 @@
     "TF_SESION_KEY": "readonly",
     "nubeActiva": "readonly",
     "nubeGuardarAparato": "readonly",
+    "nubeIlustracionesPendientes": "readonly",
+    "nubeSubirIlustracion": "readonly",
     "nubeQuitarAparato": "readonly",
     "nubeActividad": "readonly",
     "nubeApuntarError": "readonly",
