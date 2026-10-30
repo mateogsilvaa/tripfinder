@@ -49,7 +49,7 @@ def test_el_documento_lleva_lo_justo_para_recuperar_la_cuenta():
             "chollos": "diario", "chollos_max_precio": 90.0,
             "seguimientos": "diario", "seguimientos_solo_novedades": False,
             # Los correos llegan apagados: se enciende desde la cuenta nueva.
-            "avisos": False, "dia": None, "franja": "cualquiera",
+            "avisos": False, "dia": None, "franja": "cualquiera", "canal": "correo",
         },
         "activa": True, "creada": "2026-08-20",
     }

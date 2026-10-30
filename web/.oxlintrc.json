@@ -10,6 +10,8 @@
     "TF_REPO": "readonly",
     "TF_SESION_KEY": "readonly",
     "nubeActiva": "readonly",
+    "nubeGuardarAparato": "readonly",
+    "nubeQuitarAparato": "readonly",
     "nubeActividad": "readonly",
     "nubeApuntarError": "readonly",
     "nubeEsPremium": "readonly",

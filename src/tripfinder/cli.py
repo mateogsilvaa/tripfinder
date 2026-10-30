@@ -438,14 +438,16 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     # los chollos y a partir de que precio le interesan; el buzon de la config
     # sigue recibiendo lo de siempre si no hay una cuenta que ya lo cubra.
     reparto = _reparto_de_chollos(deals, to_notify, cfg, state, max_email)
-    if not reparto:
+    # Las notificaciones del movil van aparte del correo, con su propia cuenta
+    # de "ya te toco hoy". Cuentan igual para dar el chollo por avisado.
+    enviado_algo = _mandar_push_chollos(deals, to_notify, state, max_email)
+    if not reparto and not enviado_algo:
         print("Nada nuevo que notificar.")
         return 0
 
     from .notify import notify_offers  # import tardio: no hace falta para --dry-run
 
     today = date.today().isoformat()
-    enviado_algo = False
     for destino, (batch, motivo_destino) in reparto.items():
         try:
             used = notify_offers(
@@ -564,19 +566,14 @@ def _reparto_de_chollos(
         if not correo:
             continue
         cubiertos.add(correo.lower())
-        # Apagado salvo que lo haya encendido el: ver `users.PREFS_DEFECTO`.
-        if not u.prefs.get("avisos"):
+        # Apagado salvo que lo haya encendido el: ver `users.PREFS_DEFECTO`. Y
+        # quien los quiere solo en el movil no recibe correo.
+        if not u.prefs.get("avisos") or u.prefs.get("canal") == "app":
             continue
-        frecuencia = str(u.prefs.get("chollos", "cada_vez"))
         ultimo = ultimos.get(clave_buzon(correo)) or ultimos.get(correo, "")
-        if not _cada_cuanto(frecuencia, ultimo, u.prefs):
-            continue
-        tope = u.prefs.get("chollos_max_precio")
-        fuente = nuevas if frecuencia == "cada_vez" else deals
-        suyas = [o for o in fuente if not tope or o.price <= float(tope)]
-        if suyas:
-            motivo = "lo nuevo" if frecuencia == "cada_vez" else f"resumen {frecuencia}"
-            salida[correo] = (suyas[:max_email], motivo)
+        lote = _chollos_de(u.prefs, deals, nuevas, ultimo, max_email)
+        if lote:
+            salida[correo] = lote
 
     # El buzon de la configuracion tambien esta apagado salvo que se encienda
     # (`notify.buzon_fijo`). Y si hay una cuenta con ese mismo email, manda lo
@@ -586,6 +583,63 @@ def _reparto_de_chollos(
     if buzon_config and buzon_config.lower() not in cubiertos and nuevas:
         salida[buzon_config] = (nuevas[:max_email], "lo nuevo")
     return salida
+
+
+def _chollos_de(
+    prefs: dict, deals: list[FlightOffer], nuevas: list[FlightOffer], ultimo: str, max_email: int
+) -> tuple[list[FlightOffer], str] | None:
+    """Lo que le toca a una cuenta, si le toca algo: igual por correo que en el
+    movil, para que cambiar de canal no cambie lo que llega."""
+    frecuencia = str(prefs.get("chollos", "cada_vez"))
+    if not _cada_cuanto(frecuencia, ultimo, prefs):
+        return None
+    tope = prefs.get("chollos_max_precio")
+    fuente = nuevas if frecuencia == "cada_vez" else deals
+    suyas = [o for o in fuente if not tope or o.price <= float(tope)]
+    if not suyas:
+        return None
+    return suyas[:max_email], ("lo nuevo" if frecuencia == "cada_vez" else f"resumen {frecuencia}")
+
+
+def clave_aparato(uid: str) -> str:
+    """Con que se apunta en `state.json` el ultimo aviso al movil de una cuenta.
+    Aparte del correo: con «las dos», cada canal lleva su cuenta."""
+    return "app:" + clave_buzon(uid)
+
+
+def _reparto_push(
+    deals: list[FlightOffer], nuevas: list[FlightOffer], state: dict, max_email: int
+) -> dict[str, tuple[list[FlightOffer], str]]:
+    """Lo mismo que `_reparto_de_chollos`, pero por cuenta y para las que
+    quieren los avisos en el aparato."""
+    ultimos = state.get("digest", {})
+    salida: dict[str, tuple[list[FlightOffer], str]] = {}
+    for u in _cuentas_con_aviso()[0]:
+        if not u.prefs.get("avisos") or u.prefs.get("canal") not in ("app", "ambos"):
+            continue
+        lote = _chollos_de(u.prefs, deals, nuevas, ultimos.get(clave_aparato(u.id), ""), max_email)
+        if lote:
+            salida[u.id] = lote
+    return salida
+
+
+def _mandar_push_chollos(
+    deals: list[FlightOffer], nuevas: list[FlightOffer], state: dict, max_email: int
+) -> bool:
+    """Las notificaciones de chollos. Devuelve si llego alguna."""
+    from .notify import push
+
+    if not push.configurado():
+        return False
+    hoy = date.today().isoformat()
+    algo = False
+    for uid, (lote, motivo) in _reparto_push(deals, nuevas, state, max_email).items():
+        n = push.avisar(uid, push.datos_chollos(lote))
+        if n:
+            algo = True
+            state.setdefault("digest", {})[clave_aparato(uid)] = hoy
+            print(f"Notificacion enviada a {n} aparato(s) de una cuenta ({len(lote)} ofertas, {motivo}).")
+    return algo
 
 
 # --------------------------------------------------------------------------- #
@@ -1380,6 +1434,14 @@ def cmd_watch(args: argparse.Namespace) -> int:
         for destino, parte in _partes_por_dueno(estado, cfg, state).items():
             if _mandar_parte(cfg, parte, destino):
                 state.setdefault("watch_digest", {})[clave_buzon(destino)] = hoy
+        from .notify import push
+
+        if push.configurado():
+            for uid, parte in _partes_push(estado, state).items():
+                n = push.avisar(uid, push.datos_seguimientos(parte))
+                if n:
+                    state.setdefault("watch_digest", {})[clave_aparato(uid)] = hoy
+                    print(f"Notificacion de seguimientos a {n} aparato(s) de una cuenta.")
         store.save_state(state)
     return 0
 
@@ -1417,7 +1479,7 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
         cuenta = por_cuenta.get(getattr(w, "owner", "") or "")
         # Con cuenta y email, manda lo que esa cuenta haya encendido (o nada).
         if cuenta and cuenta.email:
-            if not cuenta.prefs.get("avisos"):
+            if not cuenta.prefs.get("avisos") or cuenta.prefs.get("canal") == "app":
                 continue
             destino, prefs = cuenta.email.strip(), cuenta.prefs
         else:
@@ -1440,6 +1502,29 @@ def _partes_por_dueno(estado: list, cfg: Config, state: dict | None = None) -> d
         ):
             del partes[correo]
     return partes
+
+
+def _partes_push(estado: list, state: dict | None = None) -> dict[str, list]:
+    """Los seguimientos con novedad de cada cuenta que los quiere en el aparato.
+
+    En el movil solo se avisa si hay algo: el «he mirado y no hay nada» tiene
+    sentido como correo diario, no como notificacion."""
+    ultimos = (state or {}).get("watch_digest", {})
+    cuentas, alias = _cuentas_con_aviso()
+    por_cuenta = {u.id: u for u in cuentas}
+    for viejo, nuevo in alias.items():
+        if nuevo in por_cuenta:
+            por_cuenta.setdefault(viejo, por_cuenta[nuevo])
+    partes: dict[str, list] = {}
+    for w, ofertas in estado:
+        cuenta = por_cuenta.get(getattr(w, "owner", "") or "")
+        if not cuenta or not cuenta.prefs.get("avisos") or cuenta.prefs.get("canal") not in ("app", "ambos"):
+            continue
+        ultimo = ultimos.get(clave_aparato(cuenta.id), "")
+        if not _cada_cuanto(str(cuenta.prefs.get("seguimientos", "diario")), ultimo, cuenta.prefs):
+            continue
+        partes.setdefault(cuenta.id, []).append((w, ofertas))
+    return {uid: p for uid, p in partes.items() if any(o for _, o in p)}
 
 
 def _mandar_parte(cfg: Config, estado: list, destinatario: str) -> bool:
@@ -1588,6 +1673,17 @@ def cmd_nocturno(args: argparse.Namespace) -> int:
     if salida:
         with open(salida, "a", encoding="utf-8") as fh:
             fh.write(f"toca={'si' if si else 'no'}\n")
+    return 0
+
+
+def cmd_vapid(args: argparse.Namespace) -> int:
+    """Un par de claves nuevo para las notificaciones. Cambiarlo deja muertas las
+    suscripciones que ya haya: cada aparato tiene que volver a activarlas."""
+    from .notify import push
+
+    privada, publica = push.claves_nuevas()
+    print(f"Publica (web/js/notificaciones.js, CLAVE_PUBLICA):\n  {publica}")
+    print(f"Privada (secreto VAPID_PRIVATE_KEY del repositorio, no la publiques):\n  {privada}")
     return 0
 
 
@@ -2039,6 +2135,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Probar SOLO ese transporte, sin la cadena de respaldo",
     )
     t.set_defaults(func=cmd_test_email)
+
+    v = sub.add_parser("vapid", help="Genera las claves de las notificaciones push")
+    v.set_defaults(func=cmd_vapid)
     return p
 
 

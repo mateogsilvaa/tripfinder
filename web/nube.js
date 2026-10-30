@@ -823,6 +823,57 @@ async function nubeGuardarPerfil(nombre, prefs) {
   }
 }
 
+/* ------------------------------------------ las notificaciones del aparato
+   La suscripción de push de este navegador, en `usuarios/{uid}/aparatos/{id}`.
+   El id sale del endpoint, así que activarla otra vez pisa la misma en vez de
+   duplicarla. Lo lee el barrido (`notify/push.py`) para mandar los avisos. */
+async function nubeIdAparato(endpoint) {
+  const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(endpoint));
+  return Array.from(new Uint8Array(h).slice(0, 16), (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function nubeNombreAparato() {
+  const ua = navigator.userAgent;
+  const so = /iphone|ipad/i.test(ua) ? "iPhone" : /android/i.test(ua) ? "Android" : /mac/i.test(ua) ? "Mac" : /win/i.test(ua) ? "Windows" : "Linux";
+  const nav = /edg\//i.test(ua) ? "Edge" : /firefox/i.test(ua) ? "Firefox" : /chrome|crios/i.test(ua) ? "Chrome" : /safari/i.test(ua) ? "Safari" : "navegador";
+  return `${so} · ${nav}`;
+}
+
+async function nubeGuardarAparato(sub) {
+  const s = tfSesion();
+  const token = await nubeToken();
+  if (!s || !token) return { ok: false, error: "Entra primero." };
+  const j = sub && typeof sub.toJSON === "function" ? sub.toJSON() : sub;
+  if (!j || !j.endpoint || !j.keys) return { ok: false, error: "El navegador no ha dado una suscripción." };
+  try {
+    const id = await nubeIdAparato(j.endpoint);
+    await nubeCommit(token, [
+      {
+        update: {
+          name: `${nubeBase()}/usuarios/${s.uid}/aparatos/${id}`,
+          fields: nubeCampos({ endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, nombre: nubeNombreAparato() }),
+        },
+        updateTransforms: [{ fieldPath: "creado", setToServerValue: "REQUEST_TIME" }],
+      },
+    ]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+async function nubeQuitarAparato(endpoint) {
+  const s = tfSesion();
+  const token = await nubeToken();
+  if (!s || !token || !endpoint) return { ok: false };
+  try {
+    await nubeCommit(token, [{ delete: `${nubeBase()}/usuarios/${s.uid}/aparatos/${await nubeIdAparato(endpoint)}` }]);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  }
+}
+
 /* Solo el administrador: todas las fichas, y cambiar el estado de una. */
 async function nubeCuentas() {
   const token = await nubeToken();

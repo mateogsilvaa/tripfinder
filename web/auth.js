@@ -791,22 +791,41 @@ const TF_FRANJAS = [
 // Las frecuencias que dejan elegir el día.
 const TF_CON_DIA = ["semanal", "quincenal", "mensual"];
 
-/* LOS CORREOS, en las dos fichas de cuenta (la de Firebase y la de antes). Van
+// Por dónde llegan los avisos. Las notificaciones solo en la ficha de Firebase:
+// la suscripción del aparato se guarda en tu cuenta de allí.
+const TF_CANALES = [
+  ["correo", "Correo"],
+  ["app", "Notificaciones"],
+  ["ambos", "Las dos"],
+];
+
+/* LOS AVISOS, en las dos fichas de cuenta (la de Firebase y la de antes). Van
    apagados para todo el mundo: nadie recibe nada hasta que enciende el
-   interruptor, y entonces elige qué, cada cuánto, qué día y a qué hora. Los
-   ids de siempre (`<p>Chollos`, `<p>Tope`…) se mantienen. */
-function tfAvisosHTML(p, prefs = {}, conSeguimientos = true) {
+   interruptor, y entonces elige por dónde, qué, cada cuánto, qué día y a qué
+   hora. Los ids de siempre (`<p>Chollos`, `<p>Tope`…) se mantienen. */
+function tfAvisosHTML(p, prefs = {}, conSeguimientos = true, conCanal = false) {
   const encendidos = prefs.avisos === true;
   const dia = prefs.dia === null || prefs.dia === undefined ? "" : String(prefs.dia);
+  const canal = conCanal ? prefs.canal || "correo" : "correo";
   return `
       <fieldset class="avisos" id="${p}AvisosCaja">
-        <legend class="bloque-head">Correos</legend>
+        <legend class="bloque-head">${conCanal ? "Avisos" : "Correos"}</legend>
         <label class="switch avisos-interruptor">
           <input type="checkbox" id="${p}Avisos"${encendidos ? " checked" : ""}>
-          <span>Quiero recibir correos</span>
+          <span>${conCanal ? "Quiero recibir avisos" : "Quiero recibir correos"}</span>
         </label>
-        <p class="meta avisos-apagados"${encendidos ? " hidden" : ""}>Apagados: no te escribimos nada.</p>
+        <p class="meta avisos-apagados"${encendidos ? " hidden" : ""}>Apagados: ${
+          conCanal ? "no te avisamos de nada" : "no te escribimos nada"
+        }.</p>
         <div class="avisos-opciones"${encendidos ? "" : " hidden"}>
+          <div class="avisos-canal"${conCanal ? "" : " hidden"}>
+            <span class="avisos-rotulo" id="${p}CanalRot">Por dónde</span>
+            <div class="horas-chips" role="radiogroup" aria-labelledby="${p}CanalRot" id="${p}Canal">${TF_CANALES.map(
+              ([v, t]) =>
+                `<button type="button" class="horas-chip" role="radio" data-canal="${v}" aria-checked="${v === canal}">${t}</button>`
+            ).join("")}</div>
+            <p class="meta avisos-aparato" id="${p}Aparato" role="status"></p>
+          </div>
           <label for="${p}Chollos">Chollos</label>
           <div class="par-campo">
             <select id="${p}Chollos">${tfOpciones(TF_FREQ_CHOLLOS, prefs.chollos || "cada_vez")}</select>
@@ -859,8 +878,10 @@ function tfAvisosLeer(caja, p) {
   const $ = (id) => caja.querySelector(`#${p}${id}`);
   const tope = Number($("Tope").value);
   const dia = $("Dia").value;
+  const canal = caja.querySelector(`#${p}Canal [aria-checked="true"]`);
   return {
     avisos: $("Avisos").checked,
+    canal: canal ? canal.dataset.canal : "correo",
     chollos: $("Chollos").value,
     chollos_max_precio: tope > 0 ? tope : null,
     seguimientos: $("Seg").value,

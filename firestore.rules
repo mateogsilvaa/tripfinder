@@ -113,6 +113,26 @@ service cloud.firestore {
       );
     }
 
+    // Los aparatos de cada cuenta que quieren los avisos como notificación: la
+    // suscripción de push que da el navegador (a dónde mandar y con qué claves
+    // cifrar). Cada cual, los suyos; los lee el barrido con la cuenta de
+    // servicio, que borra los que el servicio de push da por muertos.
+    match /usuarios/{uid}/aparatos/{id} {
+      allow get, list, delete: if entra() && request.auth.uid == uid;
+      allow create, update: if entra()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['endpoint', 'p256dh', 'auth', 'nombre', 'creado'])
+        && request.resource.data.keys().hasAll(['endpoint', 'p256dh', 'auth', 'creado'])
+        && request.resource.data.endpoint is string
+        && request.resource.data.endpoint.size() <= 1000
+        && request.resource.data.endpoint.matches('https://.+')
+        && request.resource.data.p256dh is string && request.resource.data.p256dh.size() <= 200
+        && request.resource.data.auth is string && request.resource.data.auth.size() <= 60
+        && (!('nombre' in request.resource.data)
+            || (request.resource.data.nombre is string && request.resource.data.nombre.size() <= 60))
+        && request.resource.data.creado == request.time;
+    }
+
     // Las cuentas de antes de Firebase, copiadas con `tripfinder migrar-cuentas`.
     // Ya no se vinculan (quien no migró a tiempo entra como nueva): las ve el
     // administrador y nada más. Las que se vincularon siguen con su `legado`.

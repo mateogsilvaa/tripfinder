@@ -322,7 +322,7 @@ export async function abrirCuenta() {
       <label class="bloque-head" for="nubeNombre">Cómo te llamamos</label>
       <input id="nubeNombre" maxlength="40" value="${esc(ahora.name)}" autocomplete="name">
 
-      ${tfAvisosHTML("nube", prefs, nubePuedeLanzar(ahora))}
+      ${tfAvisosHTML("nube", prefs, nubePuedeLanzar(ahora), true)}
 
       <p class="cuenta-guardado" id="nubePerfilMsg" role="status">Los cambios se guardan solos.</p>
       <button type="submit" hidden>Guardar</button>
@@ -403,6 +403,8 @@ export async function abrirCuenta() {
   };
   form.addEventListener("input", pronto);
   form.addEventListener("change", pronto);
+  // El «Por dónde»: botones y no campos, así que avisa él de que hay que guardar.
+  import("./notificaciones.js").then((m) => m.atarCanal(caja, "nube", pronto));
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     guardar();
