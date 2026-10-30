@@ -162,7 +162,13 @@ def test_el_repo_trae_las_suyas_publicadas():
     dibujos y no se convierten, la web no los ve."""
     ind = json.loads((I.DESTINO / "indice.json").read_text(encoding="utf-8"))
     rutas = {c["ruta"] for c in ind["ciudades"]}
-    en_repo = {f"{d.parent.name}/{d.name}" for d in I.ORIGEN.glob("*/*") if d.is_dir()}
+    # Las carpetas preparadas sin dibujo todavía (solo con su `aeropuertos.txt`)
+    # no cuentan: no hay nada que publicar.
+    en_repo = {
+        f"{d.parent.name}/{d.name}"
+        for d in I.ORIGEN.glob("*/*")
+        if d.is_dir() and any(I._fuente(d, m) for m in I.MOMENTOS)
+    }
     assert rutas == en_repo
     for c in ind["ciudades"]:
         assert c["aeropuertos"], c["ruta"]
