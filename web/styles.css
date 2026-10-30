@@ -4948,6 +4948,21 @@ b.t0 { color: #ff8a5c; } b.t1 { color: #4fd6b0; } b.t2 { color: #e0b54a; } b.t3 
 /* El chollo del día, con su sitio encima. Sin foto, no ocupa nada. */
 .ticket-foto { grid-column: 1 / -1; height: 0; transition: height 0.4s ease; }
 .ticket-foto.con-foto { height: clamp(140px, 22vw, 220px); }
+/* En el ordenador, la ilustración entera (16:10) y no una franja recortada.
+   Ancho: una columna a la izquierda del billete. Entre medias, encima del
+   billete en su columna, con el precio al lado. En el móvil, la franja. */
+@media (min-width: 1100px) {
+  .ticket:has(.ticket-foto.con-foto) { grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr) 300px; }
+  .ticket:has(.ticket-foto.con-foto) > .ticket-foto { grid-column: 1; grid-row: 1; height: auto; min-height: 100%; }
+  .ticket:has(.ticket-foto.con-foto) > .ticket-izq { grid-column: 2; grid-row: 1; }
+  .ticket:has(.ticket-foto.con-foto) > .ticket-der { grid-column: 3; grid-row: 1; }
+  .ticket:has(.ticket-foto.con-foto) .legs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 941px) and (max-width: 1099px) {
+  .ticket:has(.ticket-foto.con-foto) > .ticket-foto { grid-column: 1; grid-row: 1; height: auto; aspect-ratio: 16 / 10; }
+  .ticket:has(.ticket-foto.con-foto) > .ticket-izq { grid-column: 1; grid-row: 2; }
+  .ticket:has(.ticket-foto.con-foto) > .ticket-der { grid-column: 2; grid-row: 1 / span 2; }
+}
 .ticket-foto .foto-credito { opacity: 1; }
 
 
@@ -5668,3 +5683,91 @@ details.hop-crear[open] > summary { border: 0; padding: 0; min-height: auto; fon
 .adm-ilu-nombre { display: grid; flex: 1; min-width: 0; }
 .adm-ilu-nombre b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-ilu-nombre small { color: var(--muted); font-size: var(--fs-meta, 11px); }
+
+/* La barra de abajo del móvil, más grande: se usa con el pulgar y se leía
+   pequeña. Iconos de 26 px, rótulo de 12,5 y algo más de alto. */
+@media (max-width: 760px) {
+  .tabbar { padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .tab { min-height: 62px; gap: 5px; font-size: 12.5px; }
+  .tab .zona-ico { width: 26px; height: 26px; padding: 5px 18px; }
+  body { padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
+  .instalar { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .hopx-chat-boton { bottom: calc(96px + env(safe-area-inset-bottom)); }
+}
+
+/* Dentro de un HOP no hace falta la presentación del modo HOP. */
+body.hop-dentro .masthead, body.hop-dentro .hop > .finder-body > .kicker-num { display: none; }
+
+/* VOTAR DESLIZANDO, sobre todo en el móvil: a pantalla completa y opaco (la
+   página de detrás se transparentaba), la carta de detrás solo asoma su borde
+   (su texto se mezclaba con el de la de delante) y la ilustración de fondo con
+   su proporción. */
+.hopx-desliza {
+  background: #0f0f0e; overflow-y: auto; overscroll-behavior: contain;
+  padding: max(14px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+}
+.hopx-dcarta.atras > * { visibility: hidden; }
+.hopx-dcarta.atras { opacity: 0.55; }
+.hopx-dcarta-foto:has(.con-foto) { aspect-ratio: 16 / 10; min-height: 0; }
+.hopx-dcarta-foto:has(.con-foto)::after {
+  content: ""; position: absolute; inset: 40% 0 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(transparent, rgba(10, 10, 9, 0.78));
+}
+.hopx-dcarta-foto > .foto-lugar.con-foto { background: #1e1e1b var(--ilu-noche) center var(--ilu-y, 65%) / cover no-repeat; }
+:root[data-tema="claro"] .hopx-dcarta-foto > .foto-lugar.con-foto { background-image: var(--ilu-dia); }
+.hopx-teclas .solo-dedo { display: none; }
+@media (pointer: coarse) {
+  .hopx-teclas .solo-dedo { display: inline; }
+  .hopx-teclas .solo-raton { display: none; }
+}
+@media (max-width: 760px) {
+  .hopx-desliza { place-items: stretch; }
+  .hopx-desliza-caja { width: 100%; align-content: center; min-height: 100%; gap: 14px; }
+  .hopx-dcarta-velo b { font-size: 30px; }
+  .hopx-dcarta-datos { padding: 14px 16px 16px; }
+  .hopx-dcarta-datos p { font-size: 15px; line-height: 1.35; align-items: flex-start; }
+  .hopx-redondo { min-height: 60px; }
+}
+
+/* LAS OPCIONES DEL HOP, compactas: cabecera baja con la ilustración y, encima,
+   el nombre y el precio; una línea por dato; y el voto. */
+.hopx-op { align-content: start; }
+.hopx-op-cab {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px 12px;
+  padding: 12px 14px 10px; min-height: 0;
+}
+.hopx-op-cab > .foto-lugar { position: absolute; inset: 0; z-index: 0; height: auto; margin: 0; background-color: transparent; }
+.hopx-op-cab > .foto-lugar.con-foto { aspect-ratio: auto; }
+.hopx-op-cab:has(.con-foto) { aspect-ratio: 3 / 1; min-height: 104px; color: #f6f3ec; }
+.hopx-op-cab:has(.con-foto)::after {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(rgba(10, 10, 9, 0) 25%, rgba(10, 10, 9, 0.72));
+}
+.hopx-op-cab > *:not(.foto-lugar) { position: relative; z-index: 1; }
+.hopx-op-puesto {
+  position: absolute !important; top: 8px; left: 10px; padding: 2px 8px; border-radius: var(--r-pill);
+  font: 500 11px / 1.5 var(--font-mono); background: color-mix(in srgb, var(--surface) 86%, transparent); color: var(--muted);
+}
+.hopx-op.lider .hopx-op-puesto { background: var(--deep); color: #0f0f0e; }
+.hopx-op-cab:not(:has(.con-foto)) .hopx-op-puesto { position: static !important; justify-self: start; grid-column: 1 / -1; margin-bottom: 2px; }
+.hopx-op-nombre { display: grid; gap: 1px; min-width: 0; }
+.hopx-op-nombre b { font: 600 19px / 1.15 var(--font-sans); letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hopx-op-nombre small { font-size: var(--fs-meta, 12px); color: var(--muted); }
+.hopx-op-precio { display: grid; justify-items: end; font: 600 19px / 1.1 var(--font-sans); }
+.hopx-op-precio small { font: 400 10.5px var(--font-sans); color: var(--muted); }
+.hopx-op-cab:has(.con-foto) .hopx-op-nombre small, .hopx-op-cab:has(.con-foto) .hopx-op-precio small { color: rgba(246, 243, 236, 0.78); }
+.hopx-op-cuerpo { display: grid; gap: 6px; padding: 10px 14px 12px; }
+.hopx-op-cuerpo .hopx-dato { font-size: var(--fs-ui-s); }
+.hopx-op-cuerpo .hopx-carta-voto { margin-top: 2px; }
+.hopx-enlace { padding: 0; border: 0; background: none; color: var(--deep); font: inherit; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+/* «Votar de una en una»: discreto, como un enlace con su número. */
+.hopx-deslizar {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px;
+  border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--ink);
+  font: 500 var(--fs-ui-s) var(--font-sans); cursor: pointer;
+}
+.hopx-deslizar:hover, .hopx-deslizar:focus-visible { border-color: var(--deep); }
+.hopx-deslizar i { font: 500 11px var(--font-mono); font-style: normal; padding: 1px 7px; border-radius: var(--r-pill); background: var(--deep); color: #0f0f0e; opacity: 1; }
+@media (max-width: 760px) {
+  .hopx-deslizar { min-height: var(--tap-min); }
+}
