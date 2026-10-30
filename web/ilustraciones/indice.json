@@ -1,6 +1,21 @@
 {
  "ciudades": [
   {
+   "ruta": "albania/tirana",
+   "nombre": "Tirana",
+   "iso": "al",
+   "aeropuertos": [
+    "TIA"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "edab7e6850",
+    "noche": "7fbc4074fa"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
    "ruta": "alemania/berlin",
    "nombre": "Berlín",
    "iso": "de",
@@ -9,9 +24,10 @@
    ],
    "y": 65,
    "h": {
+    "dia": "2223adcf9b",
     "noche": "e68c67c106"
    },
-   "dia": false,
+   "dia": true,
    "noche": true
   },
   {
@@ -91,6 +107,36 @@
    "noche": true
   },
   {
+   "ruta": "espana/palma_de_mallorca",
+   "nombre": "Palma de Mallorca",
+   "iso": "es",
+   "aeropuertos": [
+    "PMI"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "c3f862c57c",
+    "noche": "95b7fd2ca0"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "espana/santiago_de_compostela",
+   "nombre": "Santiago de Compostela",
+   "iso": "es",
+   "aeropuertos": [
+    "SCQ"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "dc7c517c66",
+    "noche": "24cb907e0e"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
    "ruta": "francia/paris",
    "nombre": "París",
    "iso": "fr",
@@ -119,6 +165,21 @@
    "h": {
     "dia": "17a94eb5b1",
     "noche": "351ccd8e57"
+   },
+   "dia": true,
+   "noche": true
+  },
+  {
+   "ruta": "grecia/atenas",
+   "nombre": "Atenas",
+   "iso": "gr",
+   "aeropuertos": [
+    "ATH"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "682e69e718",
+    "noche": "55111edbc3"
    },
    "dia": true,
    "noche": true
@@ -528,7 +589,7 @@
    "y": 65,
    "h": {
     "dia": "7907d4d960",
-    "noche": "e54739a710"
+    "noche": "0d0ba06803"
    },
    "dia": true,
    "noche": true
@@ -558,7 +619,7 @@
    "y": 65,
    "h": {
     "dia": "df2543f294",
-    "noche": "130a83b5a0"
+    "noche": "2f0e590688"
    },
    "dia": true,
    "noche": true
@@ -600,6 +661,7 @@
  "por_iata": {
   "ACE": "espana/lanzarote",
   "ARW": "rumania/arad",
+  "ATH": "grecia/atenas",
   "BBU": "rumania/bucarest",
   "BEG": "serbia/belgrado",
   "BER": "alemania/berlin",
@@ -634,13 +696,16 @@
   "ORY": "francia/paris",
   "OTP": "rumania/bucarest",
   "OVD": "espana/oviedo",
+  "PMI": "espana/palma_de_mallorca",
   "PRG": "republica_checa/praga",
   "PSA": "italia/pisa",
   "RAK": "marruecos/marrakech",
   "SBZ": "rumania/sibiu",
+  "SCQ": "espana/santiago_de_compostela",
   "SKP": "macedonia/skopie",
   "SOF": "bulgaria/sofia",
   "STN": "uk/londres",
+  "TIA": "albania/tirana",
   "TRN": "italia/turin",
   "TSF": "italia/venecia",
   "TSR": "rumania/timisoara",
