@@ -72,6 +72,17 @@ test("con el enlace se une cualquiera, se proponen fechas, se votan y se habla",
   await gus.page.locator("#hopUnirme").click();
   await expect(gus.page.locator(".hopx-portada h2")).toHaveText("Escapada");
 
+  // Quién está: plegado en la portada, y al abrirlo, todos con su papel.
+  const gente = gus.page.locator("#hopGente");
+  await expect(gente.locator(".hopx-gente-lista")).toBeHidden();
+  await gente.locator("summary").click();
+  const filas = gente.locator(".hopx-gente-lista li");
+  await expect(filas).toHaveCount(2);
+  await expect(filas.nth(0)).toContainText("Ana");
+  await expect(filas.nth(0)).toContainText("organiza");
+  await expect(filas.nth(1)).toContainText("Gus");
+  await expect(filas.nth(1)).toContainText("tú");
+
   // Fase 1: Gus propone unas fechas y les da su voto.
   await expect(gus.page.locator(".hopx-fase-cab h3")).toHaveText("Cuándo");
   await gus.page.locator("#f1Form [name=ida]").fill(enDias(8));

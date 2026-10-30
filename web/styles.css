@@ -4997,7 +4997,15 @@ p.hopx-sub { margin: 0; font: 400 var(--fs-caps-l, 11px) / 1.3 var(--font-mono);
 .hopx-portada-velo { display: grid; gap: 8px; min-width: 0; }
 .hopx-portada h2 { margin: 0; font: 700 clamp(28px, 4.5vw, 44px) / 1.05 var(--font-sans); letter-spacing: -0.03em; text-wrap: balance; }
 .hopx-portada .hop-desc { margin: 0; max-width: 60ch; color: var(--muted); }
-.hopx-gente { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: var(--fs-body-s); }
+.hopx-gente { color: var(--muted); font-size: var(--fs-body-s); }
+.hopx-gente > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; cursor: pointer; list-style: none; min-height: var(--tap-min); }
+.hopx-gente > summary::-webkit-details-marker { display: none; }
+.hopx-gente-ver { color: var(--deep); text-decoration: underline; text-underline-offset: 2px; }
+.hopx-gente[open] .hopx-gente-ver { display: none; }
+.hopx-gente-lista { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 14px; }
+.hopx-gente-lista li { display: flex; align-items: center; gap: 8px; min-width: 0; color: var(--ink); }
+.hopx-gente-lista li > span:not(.hop-av) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hopx-gente-lista small { font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
 .hopx-portada-acc { display: flex; flex-wrap: wrap; gap: 8px; }
 .hopx-portada-acc .btn { display: inline-flex; align-items: center; gap: 6px; }
 
