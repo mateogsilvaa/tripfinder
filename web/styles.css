@@ -5684,15 +5684,28 @@ details.hop-crear[open] > summary { border: 0; padding: 0; min-height: auto; fon
 .adm-ilu-nombre b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-ilu-nombre small { color: var(--muted); font-size: var(--fs-meta, 11px); }
 
-/* La barra de abajo del móvil, más grande: se usa con el pulgar y se leía
-   pequeña. Iconos de 26 px, rótulo de 12,5 y algo más de alto. */
+/* LA BARRA DE ABAJO DEL MÓVIL, flotante y curva como la del ordenador: una
+   píldora separada de los bordes, y la zona en la que estás con su propia
+   píldora (fondo y filo), icono y rótulo juntos. */
 @media (max-width: 760px) {
-  .tabbar { padding: 8px 6px calc(8px + env(safe-area-inset-bottom, 0px)); }
-  .tab { min-height: 62px; gap: 5px; font-size: 12.5px; }
-  .tab .zona-ico { width: 26px; height: 26px; padding: 5px 18px; }
-  body { padding-bottom: calc(82px + env(safe-area-inset-bottom, 0px)); }
-  .instalar { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
-  .hopx-chat-boton { bottom: calc(96px + env(safe-area-inset-bottom)); }
+  .tabbar {
+    left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    gap: 2px; padding: 4px;
+    border: 1px solid var(--hair); border-radius: var(--r-pill);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  }
+  .tab {
+    min-height: 56px; gap: 3px; font-size: 10.5px; letter-spacing: 0; border-radius: var(--r-pill);
+    transition: color var(--t) var(--ease), background var(--t) var(--ease);
+  }
+  .tab .zona-ico { width: 23px; height: 23px; padding: 0; border-radius: 0; background: none !important; }
+  .tab.activa { color: var(--ink); background: var(--surface2); box-shadow: inset 0 0 0 1px var(--line); }
+  .tab.activa::before { display: none; }
+  body { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  .instalar { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+  .hopx-chat-boton { bottom: calc(90px + env(safe-area-inset-bottom)); }
+}
 }
 
 /* Dentro de un HOP no hace falta la presentación del modo HOP. */
