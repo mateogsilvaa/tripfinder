@@ -275,13 +275,45 @@ function pintarCabecera(o) {
   document.getElementById("hojaSub").textContent = [fechasDe(o, true), compania].filter(Boolean).join(" · ");
   const foto = document.getElementById("hojaFoto");
   foto.innerHTML = "";
+  FOTO = null;
   import("./fotos.js")
-    .then(({ huecoFoto, ponerFotos }) => {
+    .then(({ huecoFoto, ponerFotos, fotosDe }) => {
       if (VIAJE !== o) return;
       foto.innerHTML = huecoFoto(o, "hoja-ilu");
       ponerFotos(foto);
+      prepararFoto(o, fotosDe);
     })
     .catch(() => {});
+}
+
+/* LA FOTO VIAJA CON EL ENLACE. Si el destino tiene ilustración, «Más» (el
+   menú del sistema) la manda como imagen junto al enlace, y en WhatsApp o
+   Telegram llega el dibujo y no solo una línea de texto. Se baja al abrir la
+   hoja y no al pulsar: el menú del sistema solo se abre si se llama en el
+   mismo gesto del dedo, y una descarga en medio lo rompe. */
+let FOTO = null;
+
+async function prepararFoto(o, fotosDe) {
+  if (typeof navigator.canShare !== "function" || typeof File !== "function") return;
+  try {
+    const [f] = await fotosDe(o);
+    if (!f || VIAJE !== o) return;
+    const oscuro = document.documentElement.dataset.tema !== "claro";
+    const r = await fetch(oscuro ? f.noche : f.dia);
+    if (!r.ok || VIAJE !== o) return;
+    const blob = await r.blob();
+    const nombre = String(o.destination_name || o.destination || "viaje")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Za-z0-9]+/g, "-")
+      .toLowerCase();
+    const fichero = new File([blob], `tripfinder-${nombre}.${(blob.type.split("/")[1] || "webp").split("+")[0]}`, {
+      type: blob.type || "image/webp",
+    });
+    if (navigator.canShare({ files: [fichero] }) && VIAJE === o) FOTO = { viaje: o, fichero };
+  } catch {
+    /* sin foto: se comparte el enlace solo */
+  }
 }
 
 /* El precio que se enseña es por persona, como en el resto de la web: `price`
@@ -516,13 +548,18 @@ function wireHoja() {
     }
     const b = ev.target.closest("[data-sistema]");
     if (!b || !VIAJE) return;
-    navigator
-      .share({
-        title: `TripFinder · ${VIAJE.destination_name || VIAJE.destination}`,
-        text: resumen(VIAJE),
-        url: enlaceDe(VIAJE),
-      })
-      .catch(() => {});
+    const datos = {
+      title: `TripFinder · ${VIAJE.destination_name || VIAJE.destination}`,
+      text: resumen(VIAJE),
+      url: enlaceDe(VIAJE),
+    };
+    // Con la ilustración, si la hay y el sistema la acepta. Si no la acepta
+    // con todo lo demás, se manda sin ella antes que no mandar nada.
+    const conFoto = FOTO && FOTO.viaje === VIAJE ? { ...datos, files: [FOTO.fichero] } : null;
+    const envio = conFoto && navigator.canShare(conFoto) ? conFoto : datos;
+    navigator.share(envio).catch((e) => {
+      if (envio !== datos && e && e.name !== "AbortError") navigator.share(datos).catch(() => {});
+    });
   });
 }
 
