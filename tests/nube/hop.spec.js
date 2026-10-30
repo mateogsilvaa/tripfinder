@@ -354,3 +354,27 @@ test("la lista dice en qué va cada HOP, si te toca votar y lo nuevo desde la ú
   await gus.ctx.close();
   await ana.ctx.close();
 });
+
+test("un vuelo de fuera se manda a tu HOP y pasa a votarse", async ({ browser }) => {
+  const ana = await persona(browser, "Ana");
+  await E.hacerPremium(ana.uid);
+  const id = await crear(ana.page, `Mandar ${Date.now()}`);
+  const nombre = await ana.page.locator(".hopx-portada h2").textContent();
+
+  await ana.page.goto("/index.html");
+  await ana.page.locator(".hero [data-share]").click();
+  const bloque = ana.page.locator("#hojaHop");
+  await expect(bloque).toBeVisible();
+  const destino = (await ana.page.locator(".hero .dest").evaluate((n) => n.firstChild.textContent)).trim();
+  await bloque.locator("[data-hop]", { hasText: nombre }).click();
+  await expect(ana.page.locator("#hojaHopMsg")).toContainText(`Mandado a ${nombre}`);
+  // Otra vez: no se duplica.
+  await bloque.locator("[data-hop]", { hasText: nombre }).click();
+  await expect(ana.page.locator("#hojaHopMsg")).toContainText("Ya estaba en");
+
+  await ana.page.locator('#hojaHopMsg a:has-text("Ir a votarlo")').click();
+  await expect(ana.page).toHaveURL(new RegExp(`j=${id}`));
+  // Directo a votar, aunque el HOP siga en la fase 1.
+  await expect(ana.page.locator(`.hopx-carta[data-prop^="v-"]`).first()).toContainText(destino);
+  await ana.ctx.close();
+});

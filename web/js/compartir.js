@@ -169,9 +169,54 @@ export function alCalendario(o) {
 
 /* -------------------------------------------------------------- compartir */
 
+/* EL VUELO VA DENTRO DEL ENLACE. Con solo el id, quien lo abría veía el vuelo
+   si seguía en el tablón de hoy; uno sacado de una búsqueda, o uno que ya no
+   es chollo, no estaba en ningún sitio y se quedaba en la portada sin más.
+   Ahora el enlace lleva también lo que hace falta para enseñarlo (`v=`), y la
+   portada lo pinta aunque no lo encuentre. */
+const CAMPOS_ENLACE = [
+  "id", "provider", "origin", "destination", "depart_date", "return_date", "price", "currency",
+  "origin_name", "destination_name", "destination_country", "airline", "airline_back", "deep_link",
+  "airline_link", "airline_link_label", "adults", "nights", "depart_time", "arrive_time", "return_time",
+  "return_arrive_time", "stops", "weekend", "baseline", "discount_pct", "useful_hours", "price_per_hour",
+];
+
+const aB64 = (texto) =>
+  btoa(String.fromCharCode(...new TextEncoder().encode(texto))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const deB64 = (b64) =>
+  new TextDecoder().decode(
+    Uint8Array.from(atob(b64.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0))
+  );
+
 export function enlaceDe(o) {
   const base = `${location.origin}${location.pathname.replace(/[^/]*$/, "")}`;
-  return `${base}?offer=${encodeURIComponent(o.id)}`;
+  const datos = Object.fromEntries(
+    CAMPOS_ENLACE.filter((k) => o[k] !== undefined && o[k] !== null && o[k] !== "" && o[k] !== false).map((k) => [k, o[k]])
+  );
+  let v = "";
+  try {
+    v = `&v=${aB64(JSON.stringify(datos))}`;
+  } catch {
+    /* sin datos, el enlace de siempre */
+  }
+  return `${base}?offer=${encodeURIComponent(o.id)}${v}`;
+}
+
+/* El vuelo que trae un enlace compartido, o null. Solo lo que se sabe pintar,
+   y con los enlaces de reservar pasados por `escURL` al pintarlos. */
+export function vueloDelEnlace(params = new URLSearchParams(location.search)) {
+  const v = params.get("v");
+  if (!v) return null;
+  try {
+    const d = JSON.parse(deB64(v));
+    if (!d || typeof d !== "object" || !d.destination || !d.depart_date || !Number.isFinite(Number(d.price))) return null;
+    const o = Object.fromEntries(CAMPOS_ENLACE.filter((k) => k in d).map((k) => [k, d[k]]));
+    o.id = String(params.get("offer") || o.id || "");
+    o.price = Number(o.price);
+    return o;
+  } catch {
+    return null;
+  }
 }
 
 /* El texto que acompaña al enlace en un chat. Corto a proposito: lo que se
@@ -258,12 +303,56 @@ export function abrirHoja(o) {
   const copiar = document.getElementById("hojaCopiar");
   copiar.textContent = "Copiar";
   copiar.disabled = false;
+  pintarHops(o);
 
   caja.hidden = false;
   if (typeof tfAbrirDialogo === "function") {
     tfAbrirDialogo(caja, { foco: () => copiar, alCerrar: () => (caja.hidden = true) });
   }
   return true;
+}
+
+/* A UN HOP. Con la cuenta dentro y algún HOP del que seas miembro, el vuelo se
+   manda como opción para votar (`tipo: "vuelo"`), igual que si se hubiera
+   guardado desde el buscador del HOP: el mismo vuelo da la misma propuesta,
+   así que mandarlo dos veces no lo duplica. */
+async function pintarHops(o) {
+  const caja = document.getElementById("hojaHop");
+  if (!caja) return;
+  caja.hidden = true;
+  if (typeof nubeActiva !== "function" || !nubeActiva() || typeof tfSesion !== "function" || !tfSesion()) return;
+  let hops = [];
+  try {
+    hops = (await nubeMisHops()).filter((h) => !h.fin || h.fin >= new Date().toISOString().slice(0, 10));
+  } catch {
+    return;
+  }
+  if (VIAJE !== o || !hops.length) return;
+  const msg = document.getElementById("hojaHopMsg");
+  msg.textContent = "Pasa directo a las opciones del grupo para votarlo, esté en la fase que esté.";
+  const lista = document.getElementById("hojaHops");
+  lista.innerHTML = hops
+    .map((h) => `<button type="button" class="btn ghost" data-hop="${esc(h.id)}">${esc(h.nombre || "HOP")}</button>`)
+    .join("");
+  lista.onclick = async (e) => {
+    const b = e.target.closest("[data-hop]");
+    if (!b || b.disabled) return;
+    b.disabled = true;
+    msg.textContent = "Mandando…";
+    const { propuestaDeVuelo } = await import("./propuesta-vuelo.js");
+    const r = await nubeProponer(b.dataset.hop, propuestaDeVuelo(o));
+    b.disabled = false;
+    const nombre = b.textContent;
+    if (!r.ok) {
+      msg.textContent = r.error;
+      return;
+    }
+    msg.innerHTML = `${r.yaEstaba ? "Ya estaba en" : "Mandado a"} <b>${esc(nombre)}</b>. <a href="hop?j=${encodeURIComponent(
+      b.dataset.hop
+    )}&fase=4">Ir a votarlo</a>`;
+    if (typeof tfAnunciar === "function") tfAnunciar(`${r.yaEstaba ? "Ya estaba en" : "Mandado a"} ${nombre}.`);
+  };
+  caja.hidden = false;
 }
 
 function cerrarHoja() {

@@ -276,3 +276,57 @@ test.describe("la hoja de alojamiento", () => {
     await expect(page.locator("#hojaCompartir")).toBeVisible();
   });
 });
+
+/* EL ENLACE LLEVA EL VUELO. Antes solo llevaba el id: si quien lo abría no lo
+   tenía en el tablón de hoy (salió de una búsqueda, o ya no es chollo), se
+   quedaba en la portada sin nada. */
+test.describe("abrir un enlace compartido", () => {
+  const VUELO = {
+    id: "ryanair-MAD-OPO-2099-03-06-2099-03-08", provider: "ryanair", origin: "MAD", destination: "OPO",
+    destination_name: "Oporto", destination_country: "Portugal", depart_date: "2099-03-06",
+    return_date: "2099-03-08", depart_time: "07:10", arrive_time: "07:25", price: 58, adults: 1,
+    airline: "Ryanair", deep_link: "https://www.ryanair.com/es/es", nights: 2,
+  };
+
+  async function enlace(page, o) {
+    await conOferta(page);
+    await abierto(page);
+    return page.evaluate(async (v) => (await import("./js/compartir.js")).enlaceDe(v), o);
+  }
+
+  test("un vuelo que no está en el tablón se enseña igual, avisando del precio", async ({ page }) => {
+    const url = await enlace(page, VUELO);
+    expect(url).toContain("&v=");
+    await page.goto(url);
+    const caja = page.locator("#compartido");
+    await expect(caja).toBeVisible({ timeout: 15000 });
+    await expect(caja.locator(".dest")).toContainText("Oporto");
+    await expect(caja).toContainText("58");
+    await expect(caja).toContainText("precio es el de cuando lo compartieron");
+    await expect(caja.locator('a:has-text("Ver vuelo")')).toHaveAttribute("href", "https://www.ryanair.com/es/es");
+    // Y los chollos de hoy siguen debajo.
+    await expect(page.locator("#hero .ticket")).toBeVisible();
+  });
+
+  test("si sigue en el tablón, manda el tablón", async ({ page }) => {
+    const hoy = await (async () => {
+      await conOferta(page);
+      await abierto(page);
+      return page.evaluate(() => document.querySelector(".hero .ticket").id.replace(/^offer-/, ""));
+    })();
+    const url = await page.evaluate(
+      async (id) => (await import("./js/compartir.js")).enlaceDe({ id, destination: "X", depart_date: "2099-01-01", price: 1 }),
+      hoy
+    );
+    await page.goto(url);
+    await expect(page.locator(".hero .ticket")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("#compartido")).toHaveCount(0);
+  });
+
+  test("un enlace roto no rompe la portada", async ({ page }) => {
+    await conOferta(page);
+    await page.goto("/index.html?offer=nada&v=esto-no-es-json");
+    await expect(page.locator(".hero .ticket")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("#compartido")).toHaveCount(0);
+  });
+});

@@ -21,6 +21,7 @@ import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { montarHoras, textoHoras } from "./horas.js";
 import { ORIGENES } from "./opciones.js";
 import { creditoHTML, fotosDe, huecoFoto, ponerFotos } from "./fotos.js";
+import { enlaceOk, hashCorto, pidCombo, pidVuelo, propuestaDeVuelo } from "./propuesta-vuelo.js";
 import {
   buscarCiudades,
   codigosDeCiudades,
@@ -766,7 +767,6 @@ const ganadora = (t) => ordenadas(deTipo(t)).find((p) => nota(p) > 0) || null;
 const personasHop = () => Math.min(8, Math.max(1, (estado.hop.miembros || []).length));
 const euros = (n) => `${Math.round(n)} €`;
 const sinVotar = (lista) => lista.filter((p) => !(p.votos || {})[miUid()]);
-const enlaceOk = (u) => !!u && escURL(u) !== "#";
 const manana = () => sumarDiasISO(hoyISO(), 1);
 function sumarDiasISO(iso, n) {
   const d = parseISO(iso);
@@ -774,11 +774,6 @@ function sumarDiasISO(iso, n) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function hashCorto(t) {
-  let h = 0;
-  for (const c of String(t)) h = (h * 33 + c.charCodeAt(0)) >>> 0;
-  return h.toString(36);
-}
 
 /* Repintar SOLO SI HA CAMBIADO: el sondeo pasa cada pocos segundos y repintar
    igual borraría el foco del teclado, las fotos ya puestas y lo que estés
@@ -804,7 +799,9 @@ function pintarHop(app, pendiente) {
     miembros.length <= 3
       ? miembros.map((u) => nombres[u] || "?").join(", ")
       : `${miembros.slice(0, 2).map((u) => nombres[u] || "?").join(", ")} y ${miembros.length - 2} más`;
-  estado.ver = estado.ver || fase();
+  // `?fase=4`: de «Ir a votarlo», tras mandar un vuelo desde fuera del HOP.
+  const pedida = Number(new URLSearchParams(location.search).get("fase"));
+  estado.ver = estado.ver || (pedida >= 1 && pedida <= 5 ? pedida : fase());
   app.innerHTML = `
     <a class="hop-volver" href="hop">← Tus HOP</a>
     <header class="hopx-portada">
@@ -1797,8 +1794,6 @@ function montarFormBuscar(app, caja) {
    «dónde dormir» se despliegan los alojamientos de esas fechas, que también se
    guardan, ya juntos con el vuelo. */
 const guardadaDe = (pid) => estado.propuestas.find((p) => p.id === pid);
-const pidVuelo = (o) => `v-${o.id}`.slice(0, 120);
-const pidCombo = (o, c) => `v-${o.id}-c-${hashCorto(c.url || c.name)}`.slice(0, 120);
 
 function pintarResultados(app) {
   const caja = $("#f3Res", app);
@@ -1873,34 +1868,7 @@ function camasHTML(o, camas) {
 }
 
 async function guardarOferta(app, o, stay) {
-  const pax = Math.max(1, Number(o.adults) || 1);
-  const ida = [o.depart_time, o.arrive_time].filter(Boolean).join("–");
-  const vuelta = [o.return_time, o.return_arrive_time].filter(Boolean).join("–");
-  const datos = {
-    pid: stay ? pidCombo(o, stay) : pidVuelo(o),
-    tipo: "vuelo",
-    titulo: o.destination_name || o.destination,
-    destino: o.destination_country || "",
-    pais: o.destination_country || "",
-    iata: o.destination || "",
-    origen: o.origin || "",
-    ida: o.depart_date,
-    vuelta: o.return_date || "",
-    precio: (Number(o.price) || 0) / pax,
-    compania: o.airline_back && o.airline_back !== o.airline ? `${o.airline} + ${o.airline_back}` : o.airline || "",
-    horario: [ida && `ida ${ida}`, vuelta && `vuelta ${vuelta}`, o.stops ? `${o.stops} escala${o.stops === 1 ? "" : "s"}` : "directo"]
-      .filter(Boolean)
-      .join(" · "),
-    url: o.airline_link || o.deep_link || "",
-    oferta: String(o.id),
-  };
-  if (stay) {
-    datos.cama = String(stay.name || "Alojamiento").slice(0, 120);
-    if (enlaceOk(stay.url) && String(stay.url).startsWith("https://")) datos.cama_url = stay.url;
-    if (Number.isFinite(Number(stay.price_total))) datos.cama_precio = Number(stay.price_total) / pax;
-    const foto = stay.image || (Array.isArray(stay.images) ? stay.images[0] : "");
-    if (foto && String(foto).startsWith("https://")) datos.foto = foto;
-  }
+  const datos = propuestaDeVuelo(o, stay);
   const r = await nubeProponer(estado.id, datos);
   if (!r.ok) {
     alert(r.error);

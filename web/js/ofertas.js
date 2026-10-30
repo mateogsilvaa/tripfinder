@@ -35,6 +35,7 @@ import {
   compartirCeldaHTML,
   compartirPrincipalHTML,
   wireCompartir,
+  vueloDelEnlace,
 } from "./compartir.js";
 import { deltaHTML, favBtn, sincronizarFavs, wireFavs } from "./favoritos.js";
 import { HISTORIA, cargarHistoria, historiaHTML, minimoHTML } from "./historia.js";
@@ -209,8 +210,40 @@ export async function init() {
   const target = new URLSearchParams(location.search).get("offer");
   if (target) {
     ensureVisible(target);
-    focusOffer(target);
+    if (!pintarCompartido(target)) focusOffer(target);
   }
+}
+
+/* Un vuelo compartido que no está en el tablón de hoy (salió de una búsqueda,
+   o ya no es chollo): se pinta arriba con lo que trae el enlace, diciendo de
+   dónde sale el precio. Si sigue en el tablón, manda el tablón: su precio es
+   el de hoy. */
+function pintarCompartido(id) {
+  if (OFFERS.some((x) => x.id === id)) return false;
+  const o = vueloDelEnlace();
+  if (!o) return false;
+  let caja = document.getElementById("compartido");
+  if (!caja) {
+    caja = document.createElement("section");
+    caja.id = "compartido";
+    caja.className = "hero compartido";
+    caja.setAttribute("aria-label", "El vuelo que te han pasado");
+    $("#hero").before(caja);
+  }
+  const yaSalio = o.depart_date < new Date().toISOString().slice(0, 10);
+  caja.innerHTML = `
+    <p class="compartido-aviso">${
+      yaSalio
+        ? "<b>Este vuelo ya salió.</b> Te lo dejamos por si quieres ver cómo era; abajo, los chollos de hoy."
+        : "<b>Este es el vuelo que te han pasado.</b> El precio es el de cuando lo compartieron: puede haber cambiado, confírmalo en «Ver vuelo»."
+    }</p>
+    ${heroTicket(o, true)}`;
+  wireCompartir(caja, () => o);
+  wireFavs(caja);
+  const ticket = caja.querySelector(".ticket");
+  ticket.classList.add("target");
+  ticket.scrollIntoView({ block: "center", behavior: "smooth" });
+  return true;
 }
 
 
@@ -531,7 +564,7 @@ function altsHTML(o) {
    derecha el precio grande y los dos botones. El precio va aparte a propósito
    —es lo que se mira primero y lo único que decide— y el desglose de debajo es
    lo que nadie más te da: lo que sale de verdad para los que vais. */
-function heroTicket(o) {
+function heroTicket(o, compartido = false) {
   const pais = [banderaDe(o.destination_country), o.destination_country]
     .filter(Boolean)
     .join(" ");
@@ -546,8 +579,13 @@ function heroTicket(o) {
       ${huecoFoto(o, "ticket-foto")}
       <div class="ticket-izq">
         <div class="ticket-top">
-          <span class="kicker">chollo</span>
-          <span class="kicker-tag">del día · ${esc(DIA_DEL_SCAN || "hoy")}</span>
+          ${
+            compartido
+              ? `<span class="kicker">te lo han pasado</span>
+                 <span class="kicker-tag">precio de cuando lo compartieron</span>`
+              : `<span class="kicker">chollo</span>
+                 <span class="kicker-tag">del día · ${esc(DIA_DEL_SCAN || "hoy")}</span>`
+          }
           ${conCama(o.id) ? '<span class="kicker-tag cama-ok">cama buscada</span>' : ""}
           ${favBtn(o)}
         </div>
@@ -594,8 +632,12 @@ function heroTicket(o) {
         <div class="actions">
           ${compartirPrincipalHTML(o)}
           <a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
-          <button class="btn ${conCama(o.id) ? "deep-ghost" : "ghost"}" data-stay="${esc(o.id)}"
-            >${conCama(o.id) ? "Ver el alojamiento" : "Buscar alojamiento"}</button>
+          ${
+            compartido
+              ? ""
+              : `<button class="btn ${conCama(o.id) ? "deep-ghost" : "ghost"}" data-stay="${esc(o.id)}"
+            >${conCama(o.id) ? "Ver el alojamiento" : "Buscar alojamiento"}</button>`
+          }
           ${
             o.airline_link
               ? `<a class="btn ghost" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
