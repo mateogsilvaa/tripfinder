@@ -392,6 +392,9 @@ function tarjetaHop(j, s) {
 
 /* ---------------------------------------------------------------- un HOP */
 async function vistaHop(app, id, pendiente, invitado = false) {
+  // Dentro de un HOP, la presentación de la página sobra (en el móvil se
+  // comía la pantalla entera antes de llegar al viaje).
+  document.body.classList.add("hop-dentro");
   app.innerHTML = `<p class="meta"><span class="spin"></span>Abriendo el HOP…</p>`;
   let hop = null;
   try {
@@ -2036,16 +2039,26 @@ const borrarHTML = (p) =>
 
 function cartaGuardada(p, puesto, lider) {
   const total = (Number.isFinite(p.precio) ? p.precio : 0) + (Number.isFinite(p.cama_precio) ? p.cama_precio : 0);
-  return `<article class="hopx-carta${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
-      <div class="hopx-carta-foto">
+  const n = noches(p.ida, p.vuelta);
+  const fechas =
+    p.ida && p.vuelta
+      ? `${fmtDate(p.ida, true)} → ${fmtDate(p.vuelta, true)}${n ? ` · ${n} noche${n === 1 ? "" : "s"}` : ""}`
+      : "";
+  const camas = p.tipo === "vuelo" && p.oferta && p.ida;
+  /* COMPACTA: la ilustración de cabecera, baja, con el nombre y el precio
+     encima; debajo una línea por cosa (fechas, vuelo, dónde dormir) y el voto.
+     Antes cada opción ocupaba media pantalla del móvil. */
+  return `<article class="hopx-carta hopx-op${lider ? " lider" : ""}" data-prop="${esc(p.id)}">
+      <div class="hopx-op-cab">
         ${huecoFoto({ iata: p.iata, ciudad: p.titulo, pais: p.pais, foto: p.foto }, tono(p.iata || p.titulo))}
-        ${lider ? `<span class="hopx-lider">la más votada</span>` : `<span class="hopx-puesto">${puesto}</span>`}
-        <span class="hopx-precio">${total ? euros(total) : "—"}<small>por cabeza</small></span>
-        <div class="hopx-carta-nombre"><b>${esc(p.titulo)}</b><small>${esc(p.pais || p.destino || "")}</small></div>
+        <span class="hopx-op-puesto">${lider ? "la más votada" : puesto}</span>
+        <div class="hopx-op-nombre"><b>${esc(p.titulo)}</b><small>${esc(
+          [p.pais || p.destino || "", p.iata ? `${p.origen || "MAD"} → ${p.iata}` : ""].filter(Boolean).join(" · ")
+        )}</small></div>
+        <span class="hopx-op-precio">${total ? euros(total) : "—"}<small>por cabeza</small></span>
       </div>
-      <div class="hopx-carta-cuerpo">
-        ${rutaHTML(p.origen, p.iata)}
-        ${p.ida && p.vuelta ? tramoHTML(p.ida, p.vuelta) : ""}
+      <div class="hopx-op-cuerpo">
+        ${fechas ? `<p class="hopx-dato">${ico("calendario", 15)} <span>${esc(fechas)}</span></p>` : ""}
         ${
           p.horario || p.compania
             ? `<p class="hopx-dato">${ico("avion", 15)} <span>${esc([p.horario, p.compania].filter(Boolean).join(" · "))}${
@@ -2059,16 +2072,15 @@ function cartaGuardada(p, puesto, lider) {
                 enlaceOk(p.cama_url) ? ` · <a href="${escURL(p.cama_url)}" target="_blank" rel="noopener">ver</a>` : ""
               }`
             : "sin alojamiento"
+        }${
+          // Dónde dormir, también con el vuelo ya guardado: con cama o sin ella.
+          camas
+            ? ` · <button type="button" class="hopx-enlace hopx-carta-camas" data-camas="${esc(p.oferta)}"
+                aria-expanded="${estado.abierta === p.oferta}">${p.cama ? "buscar otro" : "buscar"}</button>`
+            : ""
         }</span></p>
         ${p.nota ? `<p class="hopx-dato">${esc(p.nota)}</p>` : ""}
-        ${
-          // Dónde dormir, también con el vuelo ya guardado: con cama o sin ella.
-          p.tipo === "vuelo" && p.oferta && p.ida
-            ? `<button type="button" class="btn ghost small hopx-carta-camas" data-camas="${esc(p.oferta)}"
-                aria-expanded="${estado.abierta === p.oferta}">${ico("cama", 14)} ${p.cama ? "Otro alojamiento" : "Buscar alojamiento"}</button>
-              ${estado.abierta === p.oferta ? `<div class="hopx-res-camas">${camasHTML(ofertaDe(p.oferta), estado.camas[p.oferta])}</div>` : ""}`
-            : ""
-        }
+        ${camas && estado.abierta === p.oferta ? `<div class="hopx-res-camas">${camasHTML(ofertaDe(p.oferta), estado.camas[p.oferta])}</div>` : ""}
         <div class="hopx-carta-voto">${votarHTML(p)}
           <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span>${borrarHTML(p)}</div></div>
       </div>
@@ -2087,7 +2099,7 @@ function pintarFase4(app) {
           <p><b>${lista.length} guardada${lista.length === 1 ? "" : "s"}</b> · ordenadas por lo que más gusta</p>
           ${
             pendientes
-              ? `<button class="btn primary small hopx-deslizar" type="button" data-rapido="guardada">${ico("cartas", 16)} Votar deslizando <i>${pendientes}</i></button>`
+              ? `<button class="hopx-deslizar" type="button" data-rapido="guardada">${ico("cartas", 15)} Votar de una en una <i>${pendientes}</i></button>`
               : `<span class="hop-chip">${ico("si", 14)} ya has votado todo</span>`
           }
         </div>
@@ -2425,10 +2437,8 @@ function votarDeslizando(app, tipo) {
 
   const cartaGrande = (p, atras = false) => {
     const dias = noches(p.ida, p.vuelta);
-    const foto =
-      tipo === "cama" && enlaceOk(p.foto)
-        ? `<div class="foto-lugar con-foto" style="background-image:url('${escURL(p.foto)}')"></div>`
-        : `<div class="foto-lugar ${tono(p.iata || p.titulo)}"></div>`;
+    // La ilustración de la ciudad (o la foto del alojamiento) de fondo.
+    const foto = huecoFoto({ iata: p.iata, ciudad: tipo === "cama" ? p.destino : p.titulo, pais: p.pais, foto: p.foto }, tono(p.iata || p.titulo));
     return `<div class="hopx-dcarta${atras ? " atras" : ""}" ${atras ? 'aria-hidden="true"' : ""}>
         <div class="hopx-dcarta-foto">
           ${foto}
@@ -2488,7 +2498,7 @@ function votarDeslizando(app, tipo) {
           <button type="button" class="hopx-redondo quiza" data-rv="saltar" aria-label="Saltar">Saltar</button>
           <button type="button" class="hopx-redondo si" data-rv="si" aria-label="A favor">${ico("arriba", 26)}</button>
         </div>
-        <p class="hop-letra hopx-teclas">Desliza la carta, o con el teclado: ← en contra · ↑ saltar · → a favor</p>
+        <p class="hop-letra hopx-teclas"><span class="solo-dedo">Desliza la carta: a la derecha a favor, a la izquierda en contra.</span><span class="solo-raton">Desliza la carta, o con el teclado: ← en contra · ↑ saltar · → a favor</span></p>
       </div>`;
     capa.querySelector("[data-cerrar]").addEventListener("click", cerrar);
     capa.querySelectorAll("[data-rv]").forEach((b) => b.addEventListener("click", () => votarYSeguir(b.dataset.rv)));
