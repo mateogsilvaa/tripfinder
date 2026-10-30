@@ -5712,10 +5712,12 @@ details.hop-crear[open] > summary { border: 0; padding: 0; min-height: auto; fon
   .tabbar {
     left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
     gap: 2px; padding: 5px; isolation: isolate;
-    border: 1px solid rgba(255, 255, 255, 0.14); border-radius: var(--r-pill);
-    background: color-mix(in srgb, var(--surface) 66%, transparent);
-    -webkit-backdrop-filter: blur(22px) saturate(1.9) brightness(1.06);
-    backdrop-filter: blur(22px) saturate(1.9) brightness(1.06);
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--r-pill);
+    /* Oscuro de verdad en el tema oscuro: un vidrio ahumado, que oscurece lo
+       que tiene debajo (el chollo del día es claro y lo aclaraba todo). */
+    background: color-mix(in srgb, var(--surface) 62%, rgba(0, 0, 0, 0.3));
+    -webkit-backdrop-filter: blur(22px) saturate(1.7) brightness(0.72);
+    backdrop-filter: blur(22px) saturate(1.7) brightness(0.72);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.22),
       inset 0 -1px 0 rgba(255, 255, 255, 0.04),
@@ -5725,7 +5727,7 @@ details.hop-crear[open] > summary { border: 0; padding: 0; min-height: auto; fon
   /* El canto: un brillo que se apaga hacia abajo. */
   .tabbar::before {
     content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0) 55%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 55%);
   }
   .tab {
     min-height: 54px; gap: 3px; font-size: 10.5px; letter-spacing: 0; border-radius: var(--r-pill);
@@ -5742,20 +5744,29 @@ details.hop-crear[open] > summary { border: 0; padding: 0; min-height: auto; fon
   /* La lente: un cristal dentro del cristal. Sin JavaScript va en la pestaña
      activa (`.tab.activa` de abajo); con él, es una pieza aparte que se mueve. */
   .tabbar:not(.con-lente) .tab.activa, .tab-lente {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.09);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.3),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.1),
-      0 3px 10px rgba(0, 0, 0, 0.22);
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+      0 3px 10px rgba(0, 0, 0, 0.3);
   }
+  .tab-lente.pulsada { background: rgba(255, 255, 255, 0.14); }
   .tab-lente {
     position: absolute; top: 5px; bottom: 5px; left: 0; z-index: -1; border-radius: var(--r-pill); pointer-events: none;
-    width: var(--lente-w, 20%); transform: translateX(var(--lente-x, 0));
-    transition: transform 0.42s cubic-bezier(0.3, 1.4, 0.5, 1), width 0.42s cubic-bezier(0.3, 1.4, 0.5, 1);
+    width: 20%; transform-origin: center; will-change: transform, width;
+    transition: scale 0.22s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, box-shadow 0.2s ease;
   }
+  /* Con el dedo encima, la lente se hincha un poco y brilla más: es la que se
+     está moviendo. */
+  .tab-lente.pulsada { scale: 1.08 1.12; }
+  .tabbar { touch-action: pan-y; }
+  .tabbar .tab { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
+  .tab.bajo { color: var(--ink); }
   :root[data-tema="claro"] .tabbar {
     border-color: rgba(255, 255, 255, 0.7);
     background: color-mix(in srgb, var(--surface) 64%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9) brightness(1.06);
+    backdrop-filter: blur(22px) saturate(1.9) brightness(1.06);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.9),
       inset 0 -1px 0 rgba(0, 0, 0, 0.03),
@@ -5862,41 +5873,74 @@ body.hop-dentro .masthead, body.hop-dentro .hop > .finder-body > .kicker-num { d
   .hopx-deslizar { min-height: var(--tap-min); }
 }
 
-/* ¡QUE ES PARA EL VERTICAL! (`log.js`, tfCaer): la web cae a trozos, cada uno
-   con su giro y su retraso, y en el hueco pasa el avión escribiendo. */
-html.tf-cayendo, html.tf-cayendo body { overflow: hidden; }
-.tf-trozo { transition: transform 0.95s cubic-bezier(0.55, 0, 0.85, 0.4) var(--retraso, 0ms), opacity 0.95s ease var(--retraso, 0ms); }
-html.tf-cayendo .tf-trozo { transform: translateY(115vh) rotate(var(--giro, 8deg)); opacity: 0.9; pointer-events: none; }
-html.tf-volviendo .tf-trozo { transition: transform 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.15) var(--retraso, 0ms), opacity 0.4s ease; }
-#tfGiro {
-  position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 10px;
-  padding: max(16px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
-  background: transparent; color: var(--ink); text-align: center; pointer-events: none;
+/* ¡QUE ES PARA EL VERTICAL! (`log.js`, tfCaer). Tres tiempos:
+   1. La web se cae: cada trozo da un respingo hacia arriba, y cae con gravedad
+      girando, cada uno a su ritmo.
+   2. Pasa el avión del icono haciendo un rizo, y deja la estela dibujada.
+   3. «Eyyyy,» entra letra a letra rebotando, y debajo el resto; al final, un
+      móvil que se pone de pie para decir qué hacer.
+   Al volver a vertical, los trozos caen de nuevo en su sitio desde arriba. */
+html.tf-cayendo, html.tf-cayendo body, html.tf-volviendo, html.tf-volviendo body { overflow: hidden; }
+html.tf-cayendo .tf-trozo {
+  pointer-events: none;
+  animation: tf-cae 1s cubic-bezier(0.5, 0, 0.75, 0.25) var(--retraso, 0ms) both;
 }
-.tf-giro-avion {
-  position: absolute; top: calc(50% - 64px); left: 0; width: 58px; height: 58px; color: var(--accent);
-  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35));
-  transform: translateX(-80px) rotate(12deg); opacity: 0;
-}
-#tfGiro.en-marcha .tf-giro-avion { animation: tf-avion 2.1s cubic-bezier(0.45, 0.05, 0.4, 1) 1.15s forwards; }
-.tf-giro-texto { margin: 0; font: 400 clamp(30px, 5.4vw, 54px) / 1.15 var(--font-script); max-width: 94vw; }
-.tf-giro-texto span { display: inline-block; clip-path: inset(0 100% 0 0); }
-#tfGiro.en-marcha .tf-giro-texto span { animation: tf-escribe 1.7s cubic-bezier(0.45, 0.05, 0.4, 1) 1.35s forwards; }
-.tf-giro-pie { margin: 0; color: var(--muted); font-size: var(--fs-ui-s); opacity: 0; }
-#tfGiro.en-marcha .tf-giro-pie { animation: tf-aparece 0.6s ease 3.1s forwards; }
-@keyframes tf-avion {
-  0% { transform: translate(-80px, 30px) rotate(18deg); opacity: 0; }
-  10% { opacity: 1; }
-  45% { transform: translate(45vw, -14px) rotate(4deg); }
+html.tf-volviendo .tf-trozo { animation: tf-vuelve 0.85s cubic-bezier(0.2, 0.8, 0.3, 1.18) var(--retraso, 0ms) both; }
+@keyframes tf-cae {
+  0% { transform: none; }
+  16% { transform: translateY(-14px) rotate(calc(var(--giro, 10deg) * -0.12)); }
+  /* Bien lejos: girada, una barra ancha levanta una punta, y se queda a la
+     vista si solo baja una pantalla. */
   85% { opacity: 1; }
-  100% { transform: translate(calc(100vw + 80px), -40px) rotate(-6deg); opacity: 0; }
+  100% { transform: translate(var(--lado, 0), 170vh) rotate(var(--giro, 10deg)); opacity: 0; }
 }
-@keyframes tf-escribe { to { clip-path: inset(0 0 0 0); } }
-@keyframes tf-aparece { to { opacity: 1; } }
+@keyframes tf-vuelve {
+  0% { transform: translate(calc(var(--lado, 0) * -0.5), -110vh) rotate(calc(var(--giro, 10deg) * -0.6)); }
+  100% { transform: none; }
+}
+#tfGiro {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 14px;
+  padding: max(16px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  color: var(--ink); text-align: center; pointer-events: none; transition: opacity 0.25s ease;
+}
+#tfGiro.se-va { opacity: 0; }
+.tf-giro-cielo { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.tf-giro-estela {
+  fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; opacity: 0.55;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+}
+#tfGiro.en-marcha .tf-giro-estela { animation: tf-estela 1.9s cubic-bezier(0.45, 0.05, 0.35, 1) 1.05s forwards, tf-se-apaga 1.4s ease 3.4s forwards; }
+/* Escondido hasta que despega (si no, espera en la esquina del dibujo). */
+.tf-giro-avion { color: var(--accent); filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35)); opacity: 0; }
+#tfGiro.en-marcha .tf-giro-avion { animation: tf-despega 1.9s linear 1.05s forwards; }
+@keyframes tf-despega { 0% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+.tf-giro-texto { position: relative; display: grid; gap: 6px; margin: 0; }
+.tf-giro-ey {
+  font: 700 clamp(46px, 9vw, 92px) / 0.95 var(--font-sans); letter-spacing: -0.045em; color: var(--accent);
+}
+.tf-giro-ey i { display: inline-block; font-style: normal; opacity: 0; transform: translateY(40px) scale(0.6); }
+#tfGiro.en-marcha .tf-giro-ey i { animation: tf-letra 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) calc(2.2s + var(--k) * 70ms) forwards; }
+.tf-giro-linea {
+  font: 700 clamp(20px, 3.4vw, 34px) / 1.15 var(--font-sans); letter-spacing: -0.025em;
+  opacity: 0; transform: translateY(12px);
+}
+#tfGiro.en-marcha .tf-giro-linea { animation: tf-sube 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) 2.8s forwards; }
+.tf-giro-pie {
+  position: relative; display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 0;
+  font: 500 var(--fs-ui-s) var(--font-mono); letter-spacing: 0.04em; color: var(--muted); opacity: 0;
+}
+.tf-giro-pie svg { transform: rotate(-90deg); }
+#tfGiro.en-marcha .tf-giro-pie { animation: tf-sube 0.5s ease 3.3s forwards; }
+#tfGiro.en-marcha .tf-giro-pie svg { animation: tf-ponlo 1.6s cubic-bezier(0.5, 0, 0.3, 1.4) 3.8s infinite; }
+@keyframes tf-estela { to { stroke-dashoffset: 0; } }
+@keyframes tf-se-apaga { to { opacity: 0; } }
+@keyframes tf-letra { to { opacity: 1; transform: none; } }
+@keyframes tf-sube { to { opacity: 1; transform: none; } }
+@keyframes tf-ponlo { 0%, 20% { transform: rotate(-90deg); } 60%, 100% { transform: rotate(0deg); } }
 @media (prefers-reduced-motion: reduce) {
-  .tf-trozo, html.tf-volviendo .tf-trozo { transition: none; }
-  html.tf-cayendo .tf-trozo { opacity: 0; transform: none; }
-  #tfGiro.en-marcha .tf-giro-avion { animation: none; }
-  #tfGiro.en-marcha .tf-giro-texto span { animation: none; clip-path: none; }
-  #tfGiro.en-marcha .tf-giro-pie { animation: none; opacity: 1; }
+  html.tf-cayendo .tf-trozo { animation: none; opacity: 0; }
+  html.tf-volviendo .tf-trozo { animation: none; }
+  .tf-giro-estela, .tf-giro-avion { display: none; }
+  #tfGiro.en-marcha .tf-giro-ey i, #tfGiro.en-marcha .tf-giro-linea, #tfGiro.en-marcha .tf-giro-pie { animation: none; opacity: 1; transform: none; }
+  #tfGiro.en-marcha .tf-giro-pie svg { animation: none; }
 }

@@ -516,33 +516,116 @@ function tfLente() {
   lente.setAttribute("aria-hidden", "true");
   barra.prepend(lente);
   barra.classList.add("con-lente");
-  const poner = (tab, deGolpe) => {
-    lente.style.opacity = tab ? "1" : "0";
-    if (!tab) return;
-    if (deGolpe) lente.style.transition = "none";
-    lente.style.setProperty("--lente-w", `${tab.offsetWidth}px`);
-    lente.style.setProperty("--lente-x", `${tab.offsetLeft}px`);
-    if (deGolpe) {
-      void lente.offsetWidth;
-      lente.style.transition = "";
-    }
+  const tabs = () => [...barra.querySelectorAll(".tab")];
+  const activa = () => barra.querySelector(".tab.activa");
+  let x = 0;
+  let w = 0;
+  let animacion = null;
+  const fijar = (nx, nw) => {
+    x = nx;
+    w = nw;
+    lente.style.width = `${nw}px`;
+    lente.style.transform = `translateX(${nx}px)`;
   };
-  poner(barra.querySelector(".tab.activa"), true);
+  const enTab = (tab) => fijar(tab.offsetLeft, tab.offsetWidth);
+  const marcar = (tab) => tabs().forEach((t) => t.classList.toggle("activa", t === tab));
+
+  /* EL MOVIMIENTO, COMO UNA GOTA. De una zona a otra la lente se estira hasta
+     cubrir las dos, se aplasta un poco al ir y llega con un rebote. */
+  const ir = (tab) => {
+    if (animacion) animacion.cancel();
+    const x1 = tab.offsetLeft;
+    const w1 = tab.offsetWidth;
+    if (tfSinMovimiento() || !lente.animate) return fijar(x1, w1);
+    const desde = Math.min(x, x1);
+    const largo = Math.max(x + w, x1 + w1) - desde;
+    animacion = lente.animate(
+      [
+        { transform: `translateX(${x}px) scaleY(1)`, width: `${w}px` },
+        { transform: `translateX(${desde}px) scaleY(0.86)`, width: `${largo}px`, offset: 0.45 },
+        { transform: `translateX(${x1}px) scaleY(1)`, width: `${w1}px` },
+      ],
+      { duration: 520, easing: "cubic-bezier(0.3, 1.25, 0.4, 1)" }
+    );
+    fijar(x1, w1);
+  };
+
+  enTab(activa() || tabs()[0]);
+  if (!activa()) lente.style.opacity = "0";
+
+  const irA = (tab) => {
+    if (!tab || tab.classList.contains("activa")) {
+      if (tab) ir(tab);
+      return;
+    }
+    marcar(tab);
+    lente.style.opacity = "1";
+    ir(tab);
+    setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 400);
+  };
+
+  /* ARRASTRARLA: con el dedo sobre la barra, la lente lo sigue (algo
+     agrandada, como una lupa) y al soltar se queda en la zona de debajo. */
+  let dedo = null;
+  const bajoDedo = (cx) =>
+    tabs().reduce((mejor, t) => {
+      const r = t.getBoundingClientRect();
+      const d = Math.abs(cx - (r.left + r.width / 2));
+      return !mejor || d < mejor.d ? { t, d } : mejor;
+    }, null).t;
+  barra.addEventListener("pointerdown", (e) => {
+    if (e.button) return;
+    dedo = { x0: e.clientX, arrastra: false, id: e.pointerId };
+    lente.classList.add("pulsada");
+  });
+  barra.addEventListener("pointermove", (e) => {
+    if (!dedo || e.pointerId !== dedo.id) return;
+    if (!dedo.arrastra && Math.abs(e.clientX - dedo.x0) < 8) return;
+    if (!dedo.arrastra) {
+      dedo.arrastra = true;
+      try {
+        barra.setPointerCapture(e.pointerId);
+      } catch {
+        /* sin captura, sigue igual */
+      }
+      if (animacion) animacion.cancel();
+    }
+    const caja = barra.getBoundingClientRect();
+    const nx = Math.max(4, Math.min(caja.width - w - 4, e.clientX - caja.left - w / 2));
+    fijar(nx, w);
+    tabs().forEach((t) => t.classList.toggle("bajo", t === bajoDedo(e.clientX)));
+  });
+  const soltar = (e) => {
+    if (!dedo) return;
+    lente.classList.remove("pulsada");
+    tabs().forEach((t) => t.classList.remove("bajo"));
+    if (dedo.arrastra && e.type === "pointerup") {
+      dedo.sinClic = true;
+      irA(bajoDedo(e.clientX));
+    }
+    const fue = dedo;
+    setTimeout(() => {
+      if (dedo === fue) dedo = null;
+    }, 0);
+  };
+  barra.addEventListener("pointerup", soltar);
+  barra.addEventListener("pointercancel", soltar);
+
   barra.addEventListener("click", (e) => {
     const tab = e.target.closest(".tab");
-    if (!tab || tab.classList.contains("activa") || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+    if (!tab || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
     e.preventDefault();
-    barra.querySelectorAll(".tab").forEach((t) => t.classList.toggle("activa", t === tab));
-    poner(tab);
-    setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 280);
+    // Tras arrastrar, el clic que llega ya está atendido.
+    if (dedo && dedo.sinClic) return;
+    irA(tab);
   });
-  window.addEventListener("resize", () => poner(barra.querySelector(".tab.activa"), true));
+  window.addEventListener("resize", () => activa() && enTab(activa()));
   // Volver con «atrás» deja la página como estaba al irse: la lente, en su sitio.
   window.addEventListener("pageshow", (ev) => {
     if (!ev.persisted) return;
-    const aqui = barra.querySelector(`.tab[data-zona="${document.body.dataset.zona || ""}"]`) || barra.querySelector(".tab[aria-current]");
-    if (aqui) barra.querySelectorAll(".tab").forEach((t) => t.classList.toggle("activa", t === aqui));
-    poner(barra.querySelector(".tab.activa"), true);
+    const aqui = barra.querySelector('.tab[aria-current="page"]');
+    if (aqui) marcar(aqui);
+    if (activa()) enTab(activa());
   });
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tfLente);
@@ -563,29 +646,56 @@ function tfCaer() {
   const trozos = [
     ...document.querySelectorAll("body > *:not(main):not(script):not(style):not(link), main > *"),
   ].filter((n) => n.getBoundingClientRect().height > 0);
+  // Cada trozo con su giro, su empujón de lado y su retraso: de arriba abajo,
+  // como si cediera el suelo, con un poco de desorden.
   trozos.forEach((n, i) => {
     n.classList.add("tf-trozo");
-    n.style.setProperty("--giro", `${Math.round(Math.random() * 50 - 25)}deg`);
-    n.style.setProperty("--retraso", `${Math.min(i, 8) * 70}ms`);
+    n.style.setProperty("--giro", `${Math.round(Math.random() * 60 - 30)}deg`);
+    n.style.setProperty("--lado", `${Math.round(Math.random() * 120 - 60)}px`);
+    n.style.setProperty("--retraso", `${Math.min(i, 9) * 55 + Math.round(Math.random() * 60)}ms`);
   });
+  raiz.classList.remove("tf-volviendo");
   raiz.classList.add("tf-cayendo");
+  const letras = (t, desde) =>
+    [...t]
+      .map((c, k) => `<i style="--k:${desde + k}">${c === " " ? "&nbsp;" : c}</i>`)
+      .join("");
   const capa = document.createElement("div");
   capa.id = "tfGiro";
   capa.setAttribute("role", "alert");
+  capa.setAttribute("aria-label", "Eyyyy, que está hecho para tenerlo vertical");
+  // La estela y el avión van en el mismo dibujo: el avión sigue la curva
+  // (`animateMotion`) mientras la estela se va pintando detrás.
+  const RUTA = "M -80 300 C 120 300 220 150 380 170 S 560 330 500 250 S 400 120 560 130 S 860 250 1100 150";
   capa.innerHTML = `
-    <svg class="tf-giro-avion" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
-      <path d="M7 18.5 25 7l-5.2 18-4.1-6.1-2.9 4.6-.6-5.2z" fill="currentColor"></path>
+    <svg class="tf-giro-cielo" viewBox="0 0 1000 420" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false">
+      <path class="tf-giro-estela" d="${RUTA}" pathLength="1"></path>
+      <g class="tf-giro-avion">
+        <path d="M-14 4 14 -14 6 14 -0.5 4.5 -5 12 -6 4z" fill="currentColor"></path>
+        <animateMotion dur="1.9s" begin="indefinite" fill="freeze" rotate="auto" keyPoints="0;1" keyTimes="0;1"
+          calcMode="spline" keySplines="0.45 0.05 0.35 1" path="${RUTA}"></animateMotion>
+      </g>
     </svg>
-    <p class="tf-giro-texto"><span>Eyyyy, que está hecho para tenerlo vertical</span></p>
-    <p class="tf-giro-pie">Gíralo y vuelve todo a su sitio.</p>`;
+    <p class="tf-giro-texto" aria-hidden="true">
+      <span class="tf-giro-ey">${letras("Eyyyy,", 0)}</span>
+      <span class="tf-giro-linea">que está hecho para tenerlo vertical</span>
+    </p>
+    <p class="tf-giro-pie" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+      stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg>
+      Gíralo y vuelve todo a su sitio</p>`;
   document.body.appendChild(capa);
-  requestAnimationFrame(() => capa.classList.add("en-marcha"));
+  requestAnimationFrame(() => {
+    capa.classList.add("en-marcha");
+    const vuelo = capa.querySelector("animateMotion");
+    if (!tfSinMovimiento() && vuelo && vuelo.beginElementAt) vuelo.beginElementAt(1.05);
+  });
 }
 
 function tfLevantar() {
   const capa = document.getElementById("tfGiro");
   if (!capa) return;
-  capa.remove();
+  capa.classList.add("se-va");
+  setTimeout(() => capa.remove(), 260);
   const raiz = document.documentElement;
   raiz.classList.remove("tf-cayendo");
   raiz.classList.add("tf-volviendo");
@@ -593,10 +703,9 @@ function tfLevantar() {
     raiz.classList.remove("tf-volviendo");
     document.querySelectorAll(".tf-trozo").forEach((n) => {
       n.classList.remove("tf-trozo");
-      n.style.removeProperty("--giro");
-      n.style.removeProperty("--retraso");
+      ["--giro", "--lado", "--retraso"].forEach((v) => n.style.removeProperty(v));
     });
-  }, 1100);
+  }, 1400);
 }
 
 function tfGiro() {
