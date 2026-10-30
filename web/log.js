@@ -342,6 +342,33 @@ function tfEsDeLaCaja() {
   return tfDeLaCaja;
 }
 
+/* ------------------------------------------------- banderas donde no las hay
+   Windows no dibuja el emoji de bandera: pinta las dos letras del código. Se
+   mira en un lienzo de un píxel si una bandera sale en color (como hace
+   `country-flag-emoji-polyfill`); si no, `html.sin-banderas` y la hoja de
+   estilos usa una fuente que solo trae banderas. Donde sí las hay, nada. */
+(function tfBanderas() {
+  try {
+    const c = document.createElement("canvas");
+    c.width = c.height = 1;
+    const x = c.getContext("2d", { willReadFrequently: true });
+    x.textBaseline = "top";
+    x.font = '100px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+    x.scale(0.01, 0.01);
+    const pinta = (t, color) => {
+      x.clearRect(0, 0, 100, 100);
+      x.fillStyle = color;
+      x.fillText(t, 0, 0);
+      return x.getImageData(0, 0, 1, 1).data.join(",");
+    };
+    // En color de verdad: igual pintado en blanco que en negro, y no vacío.
+    const enColor = (t) => pinta(t, "#fff") === pinta(t, "#000") && !pinta(t, "#000").startsWith("0,0,0,");
+    if (enColor("\u{1F60A}") && !enColor("\u{1F1E8}\u{1F1ED}")) document.documentElement.classList.add("sin-banderas");
+  } catch {
+    /* sin lienzo: se queda como esté */
+  }
+})();
+
 /* ------------------------------------------------- ofrecer instalarla como app
    En el móvil, a la pantalla de inicio; en el ordenador, como una ventana
    propia, sin la barra del navegador. Chrome y Edge avisan con
@@ -473,3 +500,112 @@ window.addEventListener("load", () => {
   if (tfEsIOS()) setTimeout(() => tfOfrecerInstalar(), 4000);
   if (tfInstalada()) tfPreguntarCanal(2500);
 });
+
+/* ------------------------------------------- la lente de la barra de abajo
+   En el móvil, la zona en la que estás va en una lente de cristal. Al tocar
+   otra, la lente se desliza hasta ella y entonces se cambia de página: el
+   gesto se ve, en vez de saltar. Sin esto (sin JavaScript), la lente es el
+   fondo de la pestaña activa (ver `.tabbar:not(.con-lente)` en la hoja). */
+const tfSinMovimiento = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function tfLente() {
+  const barra = document.querySelector(".tabbar");
+  if (!barra || getComputedStyle(barra).display === "none" || barra.querySelector(".tab-lente")) return;
+  const lente = document.createElement("span");
+  lente.className = "tab-lente";
+  lente.setAttribute("aria-hidden", "true");
+  barra.prepend(lente);
+  barra.classList.add("con-lente");
+  const poner = (tab, deGolpe) => {
+    lente.style.opacity = tab ? "1" : "0";
+    if (!tab) return;
+    if (deGolpe) lente.style.transition = "none";
+    lente.style.setProperty("--lente-w", `${tab.offsetWidth}px`);
+    lente.style.setProperty("--lente-x", `${tab.offsetLeft}px`);
+    if (deGolpe) {
+      void lente.offsetWidth;
+      lente.style.transition = "";
+    }
+  };
+  poner(barra.querySelector(".tab.activa"), true);
+  barra.addEventListener("click", (e) => {
+    const tab = e.target.closest(".tab");
+    if (!tab || tab.classList.contains("activa") || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
+    e.preventDefault();
+    barra.querySelectorAll(".tab").forEach((t) => t.classList.toggle("activa", t === tab));
+    poner(tab);
+    setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 280);
+  });
+  window.addEventListener("resize", () => poner(barra.querySelector(".tab.activa"), true));
+  // Volver con «atrás» deja la página como estaba al irse: la lente, en su sitio.
+  window.addEventListener("pageshow", (ev) => {
+    if (!ev.persisted) return;
+    const aqui = barra.querySelector(`.tab[data-zona="${document.body.dataset.zona || ""}"]`) || barra.querySelector(".tab[aria-current]");
+    if (aqui) barra.querySelectorAll(".tab").forEach((t) => t.classList.toggle("activa", t === aqui));
+    poner(barra.querySelector(".tab.activa"), true);
+  });
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tfLente);
+else tfLente();
+
+/* ------------------------------------------------ ¡que es para el vertical!
+   En la app instalada en el móvil, al ponerlo de lado la web se cae a trozos,
+   pasa el avión del icono y deja escrito que esto es para tenerlo de pie. Al
+   volver a ponerlo en vertical, todo vuelve a su sitio. Con «menos movimiento»
+   en el sistema, sale el mensaje sin la caída. */
+const tfApaisado = window.matchMedia
+  ? window.matchMedia("(orientation: landscape) and (max-height: 500px) and (pointer: coarse)")
+  : null;
+
+function tfCaer() {
+  if (document.getElementById("tfGiro")) return;
+  const raiz = document.documentElement;
+  const trozos = [
+    ...document.querySelectorAll("body > *:not(main):not(script):not(style):not(link), main > *"),
+  ].filter((n) => n.getBoundingClientRect().height > 0);
+  trozos.forEach((n, i) => {
+    n.classList.add("tf-trozo");
+    n.style.setProperty("--giro", `${Math.round(Math.random() * 50 - 25)}deg`);
+    n.style.setProperty("--retraso", `${Math.min(i, 8) * 70}ms`);
+  });
+  raiz.classList.add("tf-cayendo");
+  const capa = document.createElement("div");
+  capa.id = "tfGiro";
+  capa.setAttribute("role", "alert");
+  capa.innerHTML = `
+    <svg class="tf-giro-avion" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+      <path d="M7 18.5 25 7l-5.2 18-4.1-6.1-2.9 4.6-.6-5.2z" fill="currentColor"></path>
+    </svg>
+    <p class="tf-giro-texto"><span>Eyyyy, que está hecho para tenerlo vertical</span></p>
+    <p class="tf-giro-pie">Gíralo y vuelve todo a su sitio.</p>`;
+  document.body.appendChild(capa);
+  requestAnimationFrame(() => capa.classList.add("en-marcha"));
+}
+
+function tfLevantar() {
+  const capa = document.getElementById("tfGiro");
+  if (!capa) return;
+  capa.remove();
+  const raiz = document.documentElement;
+  raiz.classList.remove("tf-cayendo");
+  raiz.classList.add("tf-volviendo");
+  setTimeout(() => {
+    raiz.classList.remove("tf-volviendo");
+    document.querySelectorAll(".tf-trozo").forEach((n) => {
+      n.classList.remove("tf-trozo");
+      n.style.removeProperty("--giro");
+      n.style.removeProperty("--retraso");
+    });
+  }, 1100);
+}
+
+function tfGiro() {
+  if (!tfApaisado || !tfInstalada()) return;
+  if (tfApaisado.matches) tfCaer();
+  else tfLevantar();
+}
+if (tfApaisado) {
+  if (tfApaisado.addEventListener) tfApaisado.addEventListener("change", tfGiro);
+  else if (tfApaisado.addListener) tfApaisado.addListener(tfGiro);
+  window.addEventListener("load", tfGiro);
+}
