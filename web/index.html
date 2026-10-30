@@ -422,37 +422,40 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
 
 <div id="hojaCompartir" class="modal" hidden>
   <div class="modal-caja hoja-compartir" role="dialog" aria-labelledby="hojaCompartirTit">
-    <header class="modal-head">
-      <h2 id="hojaCompartirTit">Compartir este viaje</h2>
-      <button id="hojaCompartirClose" type="button" aria-label="Cerrar">cerrar</button>
+    <header class="hoja-cabeza" id="hojaFicha">
+      <div class="hoja-foto" id="hojaFoto"></div>
+      <div class="hoja-titulo">
+        <div class="hoja-titulo-txt">
+          <span class="hoja-kicker">Compartir</span>
+          <h2 id="hojaCompartirTit">Compartir este viaje</h2>
+          <span class="hoja-sub" id="hojaSub"></span>
+        </div>
+        <div class="hoja-precio"><b id="hojaPrecio"></b><span>por persona</span></div>
+      </div>
+      <button id="hojaCompartirClose" class="hoja-cerrar" type="button" aria-label="Cerrar"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
     </header>
+    <p class="hoja-datos" id="hojaDatos"></p>
 
-    <div class="hoja-ficha" id="hojaFicha"></div>
-
-    <div class="hoja-bloque">
-      <span class="hoja-rotulo">el enlace</span>
+    <div class="hoja-cuerpo">
       <div class="hoja-enlace">
         <span id="hojaURL" class="hoja-url"></span>
-        <button id="hojaCopiar" type="button" class="btn primary">Copiar</button>
+        <button id="hojaCopiar" type="button" class="btn primary small">Copiar enlace</button>
       </div>
-      <p class="hoja-nota">Abre el feed con este viaje resaltado. Si mañana ya no está barato, quien lo abra lo verá dicho y no un hueco.</p>
-    </div>
 
-    <div class="hoja-bloque">
-      <span class="hoja-rotulo">mandarlo por</span>
       <div class="hoja-apps" id="hojaApps"></div>
-    </div>
 
-    <div class="hoja-bloque" id="hojaHop" hidden>
-      <span class="hoja-rotulo">a un HOP</span>
-      <div class="hoja-apps" id="hojaHops"></div>
-      <p class="hoja-nota" id="hojaHopMsg" role="status">Pasa directo a las opciones del grupo para votarlo, esté en la fase que esté.</p>
-    </div>
+      <div class="hoja-bloque" id="hojaHop" hidden>
+        <span class="hoja-rotulo">Proponerlo en un HOP</span>
+        <ul class="hoja-hops" id="hojaHops"></ul>
+        <p class="hoja-nota" id="hojaHopMsg" role="status"></p>
+      </div>
 
-    <div class="hoja-bloque hoja-guardar">
-      <span class="hoja-rotulo">guardártelo</span>
-      <button id="hojaICS" type="button" class="btn deep-ghost">Al calendario (.ics)</button>
-      <p class="hoja-nota">Dos eventos, ida y vuelta, con la hora del billete. No caduca ni depende de que esta web siga en pie.</p>
+      <div class="hoja-calendario">
+        <div class="hoja-calendario-txt"><b>Al calendario</b><span>Ida y vuelta con la hora del billete (.ics)</span></div>
+        <button id="hojaICS" type="button" class="btn ghost small"><span class="hoja-ics-largo">Descargar</span><span class="hoja-ics-corto" aria-hidden="true">→</span></button>
+      </div>
+
+      <p class="hoja-nota">Si mañana ya no está barato, quien abra el enlace lo verá dicho.</p>
     </div>
   </div>
 </div><!-- /tf:parte -->
@@ -463,7 +466,6 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
   <span id="frescura">—</span>
   <span>Los precios vuelan: confirma siempre antes de reservar.</span>
   <span class="foot-enlaces"><a class="foot-enlace" href="planes">Planes</a><a class="foot-enlace" href="privacidad">Privacidad</a><a class="foot-enlace" href="condiciones">Condiciones</a></span>
-    <span class="build">build dev</span>
   </div>
 </footer>
 <nav class="tabbar" aria-label="Zonas">

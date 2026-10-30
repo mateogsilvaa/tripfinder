@@ -438,6 +438,9 @@ def render(nombre_parte: str, datos: dict, version: str = BUILD) -> str:
         huecos[clave] = str(huecos.get(clave, "")).format(v=version)
     huecos["nav"] = str(huecos.get("nav", "")).format(**_zonas(datos.get("zona")))
     huecos["tabbar"] = str(huecos.get("tabbar", "")).format(**_zonas(datos.get("zona"), "tab"))
+    # El `build` del pie, solo con una version de verdad: «build dev» no le
+    # dice nada a quien abre la web, y en el repo es lo que hay siempre.
+    huecos["build"] = "" if str(version) == BUILD else f'    <span class="build">build {version}</span>\n'
 
     def sustituir(m: re.Match) -> str:
         clave = m.group(1)

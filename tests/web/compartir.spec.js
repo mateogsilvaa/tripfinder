@@ -94,8 +94,11 @@ test.describe("la hoja de compartir", () => {
     await conOferta(page);
     await abierto(page);
     await abrirHoja(page);
-    // Ver la cara de lo que mandas evita mandar el que no era.
-    await expect(page.locator("#hojaFicha")).toContainText("MAD →");
+    // Ver la cara de lo que mandas evita mandar el que no era: la ciudad, lo
+    // que cuesta por persona y las fechas.
+    await expect(page.locator("#hojaCompartirTit")).not.toHaveText("");
+    await expect(page.locator("#hojaPrecio")).toContainText("€");
+    await expect(page.locator("#hojaDatos")).toContainText("→");
     await expect(page.locator("#hojaURL")).toContainText("?offer=");
   });
 
@@ -107,9 +110,9 @@ test.describe("la hoja de compartir", () => {
     const boton = page.locator("#hojaCopiar");
     await boton.click();
     // Un botón que no da señal parece roto y se pulsa tres veces.
-    await expect(boton).toHaveText("copiado");
+    await expect(boton).toHaveText("Copiado ✓");
     expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("?offer=");
-    await expect(boton).toHaveText("Copiar", { timeout: 4000 });
+    await expect(boton).toHaveText("Copiar enlace", { timeout: 4000 });
   });
 
   test("WhatsApp, Telegram y correo llevan el enlace puesto", async ({ page }) => {

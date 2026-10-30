@@ -39,6 +39,15 @@ export function fmtDate(iso, withDay = false) {
   return withDay ? `${DAYS[d.getDay()]} ${base}` : base;
 }
 
+/* El tono de una persona (o de un sitio): siempre el mismo para el mismo uid,
+   para que su avatar tenga el mismo color en el HOP, en el chat y en la hoja
+   de compartir. Son las clases `t0`…`t5`, que pintan `--tono-0`…`--tono-5`. */
+export function tonoDe(clave) {
+  let h = 0;
+  for (const c of String(clave)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return `t${h % 6}`;
+}
+
 export function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])

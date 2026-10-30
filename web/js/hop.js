@@ -15,7 +15,7 @@
 
    Las reglas de Firestore son las que mandan (quién ve y escribe qué); esto
    solo lo enseña. */
-import { esc, escURL, fetchJSON, fmtDate, parseISO } from "./base.js";
+import { esc, escURL, fetchJSON, fmtDate, parseISO, tonoDe } from "./base.js";
 import { abrirDestinos } from "./destinos.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { montarHoras, textoHoras } from "./horas.js";
@@ -46,11 +46,7 @@ const yo = () => (typeof tfSesion === "function" ? tfSesion() : null);
 // Sin cuenta (quien abre el enlace de un HOP antes de registrarse) no hay uid.
 const miUid = () => (yo() && yo().uid) || "";
 const inicial = (n) => esc(String(n || "?").trim().slice(0, 1).toUpperCase() || "?");
-const tono = (uid) => {
-  let h = 0;
-  for (const c of String(uid)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return `t${h % 6}`;
-};
+const tono = tonoDe;
 const avatar = (uid, nombre, extra = "") =>
   `<span class="hop-av ${tono(uid)} ${extra}" title="${esc(nombre)}" aria-hidden="true">${inicial(nombre)}</span>`;
 const instante = (d) => (d instanceof Date && !Number.isNaN(d.getTime()) ? d.getTime() : 0);

@@ -50,6 +50,20 @@
   --code-bg: #f4f1e8;
   --code-ink: #12110f;
   --sobre-acento: #12110f; /* lo que se lee ENCIMA del naranja */
+  --sobre-deep: #0e1614;   /* lo que se lee ENCIMA del verde */
+
+  /* ---- los tonos de la gente: el mismo miembro, el mismo color en su
+     avatar, en su nombre del chat y en la hoja de compartir ------------ */
+  --tono-0: #ff8a5c;
+  --tono-1: #4fd6b0;
+  --tono-2: #e0b54a;
+  --tono-3: #9bb8ff;
+  --tono-4: #f49ac1;
+  --tono-5: #a8cf6e;
+  --sobre-tono: #12110f;
+  /* Los del calendario del HOP: uno por fecha propuesta, el 0 para «nadie». */
+  --cal-0: #6e6a5e; --cal-1: #3987e5; --cal-2: #199e70; --cal-3: #c98500;
+  --cal-4: #d55181; --cal-5: #8a6bd6; --cal-6: #5a9e2c;
 
 
   /* ---- forma -------------------------------------------------------- */
@@ -132,6 +146,17 @@
   --code-bg: #16150f;
   --code-ink: #fffdf8;
   --sobre-acento: #12110f;
+  /* El verde de día es oscuro: encima, tinta clara (con la oscura daba 2.4:1). */
+  --sobre-deep: #fffdf8;
+  --tono-0: #c2410c;
+  --tono-1: #0f766e;
+  --tono-2: #a16207;
+  --tono-3: #1d4ed8;
+  --tono-4: #be185d;
+  --tono-5: #4d7c0f;
+  --sobre-tono: #ffffff;
+  --cal-0: #a9a497; --cal-1: #2a78d6; --cal-2: #1baf7a; --cal-3: #eda100;
+  --cal-4: #e87ba4; --cal-5: #7c5cd6; --cal-6: #4f8f1f;
   --velo: rgba(22, 21, 15, 0.5);
   --sombra: 0 1px 0 rgb(22 21 15 / 0.03), 0 8px 24px -14px rgb(22 21 15 / 0.18);
 }
@@ -366,6 +391,10 @@ em, .script {
   transition: color var(--t) var(--ease), border-color var(--t) var(--ease);
 }
 .tema:hover { color: var(--ink); border-color: var(--ink); }
+/* 38 a la vista y 44 al dedo, como `.fav` y el botón del test. */
+.tema { position: relative; }
+.tema::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; }
+.tema:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tema-txt {
   position: absolute;
   width: 1px; height: 1px;
@@ -732,7 +761,7 @@ h1 em { font-size: 1.3em; }
 }
 .btn.ghost:hover { border-color: var(--ink); color: var(--ink); filter: none; }
 .btn.small { padding: 9px 16px; font-size: var(--fs-ui-s); }
-.btn.deep { background: var(--deep); border-color: var(--deep); color: #0e1614; }
+.btn.deep { background: var(--deep); border-color: var(--deep); color: var(--sobre-deep); }
 .btn.deep:hover { background: transparent; color: var(--deep); filter: none; }
 /* Un botón apagado no se difumina: sobre el relleno naranja, bajarle la
    opacidad dejaba el rótulo casi ilegible. Se vacía y se queda con el hilo. */
@@ -1022,9 +1051,9 @@ h1 em { font-size: 1.3em; }
 .fav.on {
   border-color: var(--deep);
   background: var(--deep);
-  color: #0e1614;
+  color: var(--sobre-deep);
 }
-.fav.on:hover { color: #0e1614; }
+.fav.on:hover { color: var(--sobre-deep); }
 .fav::after {
   content: "";
   position: absolute;
@@ -1041,7 +1070,7 @@ h1 em { font-size: 1.3em; }
 .ticket .fav:hover { border-color: var(--deep); color: var(--hero-ink); }
 /* Encendido manda el relleno, dentro y fuera de la lámina: si no, la regla de
    arriba le devolvía el `--hero-muted` encima del verde y no se veía. */
-.ticket .fav.on, .ticket .fav.on:hover { color: #0e1614; border-color: var(--deep); }
+.ticket .fav.on, .ticket .fav.on:hover { color: var(--sobre-deep); border-color: var(--deep); }
 .ticket .iata { color: var(--hero-muted); border-color: var(--hero-hair); }
 
 .dest-cell { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
@@ -1209,77 +1238,261 @@ h1 em { font-size: 1.3em; }
    existe en los navegadores de escritorio, así que allí lo único que quedaba
    era copiar el enlace. Quien pasa un chollo lo manda por WhatsApp o por
    correo, y esos son enlaces normales que funcionan en todas partes. */
-.hoja-compartir {
+.modal-caja.hoja-compartir {
   width: min(470px, 100%);
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 24px 26px 28px;
+  gap: 0;
+  padding: 0;
+  overflow-x: hidden;
 }
+/* El asa y la cabecera pegajosa de los diálogos en el móvil no van aquí: la
+   hoja trae su propia cabecera, con la foto. */
+.hoja-compartir > .hoja-cabeza { position: relative; }
+
+/* LA CABECERA, CON LA ILUSTRACIÓN DEL DESTINO detrás y un velo abajo para
+   que la ciudad y el precio se lean encima. Sin ilustración, `--surface2`. */
+.hoja-cabeza {
+  height: 132px;
+  display: flex;
+  align-items: flex-end;
+  padding: 16px 20px;
+  background: var(--surface2);
+  overflow: hidden;
+}
+.hoja-foto, .hoja-foto > .foto-lugar { position: absolute; inset: 0; }
+.hoja-foto > .foto-lugar.con-foto::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, color-mix(in srgb, var(--surface) 92%, transparent) 0%, color-mix(in srgb, var(--surface) 35%, transparent) 55%, transparent 100%);
+}
+.hoja-titulo {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  width: 100%;
+  min-width: 0;
+}
+.hoja-titulo-txt { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.hoja-kicker {
+  font: 400 11px / 1 var(--font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.hoja-cabeza h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.045em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hoja-sub { display: none; }
+.hoja-precio { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.hoja-precio b {
+  font: 600 28px / 1 var(--font-mono);
+  letter-spacing: -0.03em;
+  color: var(--accent-txt);
+  font-variant-numeric: tabular-nums;
+}
+.hoja-precio span { font-size: 12px; color: var(--muted); }
+/* El cerrar, un círculo de 34 sobre la foto con 44 de área para el dedo. */
+.hoja-cerrar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background var(--t) var(--ease);
+}
+.hoja-cerrar::after { content: ""; position: absolute; inset: -5px; }
+.hoja-cerrar:hover { background: var(--paper); }
+.hoja-cerrar:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.hoja-datos {
+  margin: 0;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--hair);
+  font: 400 13px / 1.4 var(--font-mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.hoja-cuerpo { display: flex; flex-direction: column; gap: 20px; padding: 20px; min-width: 0; }
+
 /* `minmax(0, 1fr)` y no `auto`: un enlace largo es una sola palabra sin sitios
    por donde partir, y con la pista en `auto` el bloque crecía hasta los 477 px
    dentro de una hoja de 350 y se salía de la pantalla en un móvil. */
 .hoja-bloque { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
 .hoja-rotulo {
-  font: 400 var(--fs-caps) / 1 var(--font-mono);
-  letter-spacing: var(--ls-caps);
+  font: 400 11px / 1 var(--font-mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
 }
-.hoja-nota { margin: 0; font-size: var(--fs-meta); line-height: 1.45; color: var(--muted); }
+.hoja-nota { margin: 0; font-size: 12px; line-height: 1.45; color: var(--muted); }
+.hoja-nota:empty { display: none; }
 
-/* La ficha del viaje va en la lámina invertida, como el chollo del día: lo que
-   se comparte tiene cara, y verla antes de mandarla evita mandar la que no es. */
-.hoja-ficha {
-  background: var(--hero-bg);
-  color: var(--hero-ink);
-  border: 1px solid var(--hero-hair);
-  border-radius: var(--r);
-  padding: 16px 18px;
-}
-.hoja-ficha-cab {
+/* EL ENLACE Y COPIAR, EN UNA SOLA PÍLDORA: lo que más se hace con la hoja. */
+.hoja-enlace {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--field);
+  min-width: 0;
 }
-.hoja-ficha-cab b,
-.hoja-ficha-cab span { font: 700 var(--fs-h3) var(--font-sans); letter-spacing: -0.04em; }
-.hoja-ficha-pie {
-  margin-top: 6px;
-  font: 400 var(--fs-meta) / 1.5 var(--font-mono);
-  color: var(--hero-muted);
-}
-
-.hoja-enlace { display: flex; gap: 8px; align-items: stretch; }
 .hoja-url {
   flex: 1;
   min-width: 0;
-  border: 1px solid var(--hair);
-  background: var(--field);
-  border-radius: var(--r);
-  padding: 11px 12px;
-  font: 400 var(--fs-meta) var(--font-mono);
+  font: 400 12px var(--font-mono);
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.hoja-enlace .btn { flex: none; }
-.hoja-apps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.hoja-apps .btn { justify-content: center; text-align: center; }
-.hoja-guardar { border-top: 1px solid var(--hair); padding-top: 16px; }
-.hoja-guardar .btn { justify-self: start; }
+.hoja-enlace .btn { flex: none; min-height: 40px; padding: 11px 20px; }
 
-/* El botón de guardárselo va en verde y perfilado: no es la acción principal
-   de la hoja —esa es mandarlo— pero tampoco es una más de la lista. */
+/* LAS APPS, EN TILES: icono en su círculo y el nombre debajo. Tres o cuatro
+   columnas según haya o no menú del sistema. */
+.hoja-apps { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
+.hoja-app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 4px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--ink);
+  font: 500 12px / 1.2 var(--font-sans);
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color var(--t) var(--ease), background var(--t) var(--ease);
+}
+.hoja-app:hover { border-color: var(--line); background: var(--surface2); color: var(--ink); }
+.hoja-app:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hoja-app-ico {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface2);
+}
+.hoja-app-copiar { display: none; }
+
+/* LOS HOP, EN LISTA: quién está, en qué fase va y si ya lo tiene. */
+.hoja-hops { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.hoja-hop { display: flex; align-items: center; gap: 12px; padding: 12px 14px; min-height: 56px; box-sizing: border-box; }
+.hoja-hop + .hoja-hop { border-top: 1px solid var(--hair); }
+.hoja-hop .hop-avs { flex: none; }
+.hoja-hop .hop-avs .hop-av { border: 2px solid var(--surface); }
+.hoja-hop .hop-avs .hop-av + .hop-av { margin-left: -6px; }
+.hoja-hop-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hoja-hop-txt b { font: 600 14px / 1.3 var(--font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hoja-hop-txt span { font: 400 12px / 1.3 var(--font-mono); color: var(--muted); }
+.hoja-hop .btn { flex: none; min-height: 36px; padding: 8px 14px; }
+.hoja-hop .btn::after { content: ""; position: absolute; inset: -4px 0; }
+.hoja-hop .btn { position: relative; }
+.hoja-hop-hecho {
+  flex: none;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--deep) 12%, var(--surface));
+  color: var(--deep);
+  font: 600 12px / 1.2 var(--font-sans);
+  text-decoration: none;
+}
+.hoja-hop-hecho:hover { color: var(--deep); background: color-mix(in srgb, var(--deep) 20%, var(--surface)); }
+
+/* EL CALENDARIO, COMO FILA SECUNDARIA: no compite con copiar. */
+.hoja-calendario { display: flex; align-items: center; gap: 12px; padding-top: 16px; border-top: 1px solid var(--hair); }
+.hoja-calendario-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.hoja-calendario-txt b { font: 600 14px / 1.3 var(--font-sans); }
+.hoja-calendario-txt span { font-size: 12px; color: var(--muted); }
+.hoja-calendario .btn { flex: none; min-height: 36px; padding: 9px 16px; }
+.hoja-ics-corto { display: none; }
+
+/* EN EL MÓVIL, DESDE ABAJO: cabecera compacta (miniatura, ciudad y precio),
+   una fila de cuatro redondos con Copiar el primero y en naranja, los HOP y
+   el calendario como fila con flecha. El correo vive dentro de «Más». */
+@media (max-width: 760px) {
+  .modal-caja.hoja-compartir {
+    padding: 10px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+    gap: 16px;
+    transition: transform var(--t) var(--ease);
+  }
+  .modal-caja.hoja-compartir::before { width: 36px; margin: 0; }
+  .hoja-cabeza {
+    height: auto;
+    padding: 0;
+    gap: 12px;
+    align-items: center;
+    background: none;
+    overflow: visible;
+  }
+  .hoja-foto {
+    position: relative;
+    inset: auto;
+    flex: none;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--r-s);
+    overflow: hidden;
+    background: var(--surface2);
+  }
+  .hoja-foto > .foto-lugar.con-foto::after { display: none; }
+  .hoja-titulo { align-items: center; gap: 12px; }
+  .hoja-kicker, .hoja-precio span, .hoja-datos, .hoja-cerrar { display: none; }
+  .hoja-titulo-txt { gap: 2px; }
+  .hoja-cabeza h2 { font-size: 20px; letter-spacing: -0.04em; line-height: 1.2; }
+  .hoja-sub { display: block; font: 400 12px / 1.3 var(--font-mono); color: var(--muted); }
+  .hoja-precio b { font-size: 22px; }
+  .hoja-cuerpo { padding: 0; gap: 16px; }
+  .hoja-enlace, .hoja-cuerpo > .hoja-nota { display: none; }
+  .hoja-apps { gap: 4px; }
+  .hoja-app { padding: 8px 0; border: 0; gap: 6px; font-size: 11px; }
+  .hoja-app:hover { background: none; }
+  .hoja-app-ico { width: 52px; height: 52px; }
+  .hoja-app-ico svg { width: 22px; height: 22px; }
+  .hoja-app-copiar { display: flex; }
+  .hoja-app-copiar .hoja-app-ico { background: var(--accent); color: var(--sobre-acento); }
+  .hoja-app-correo { display: none; }
+  .hoja-calendario { min-height: 48px; padding-top: 12px; }
+  .hoja-calendario-txt span { display: none; }
+  .hoja-calendario .btn { border-color: transparent; padding: 0 8px; min-height: var(--tap-min); color: var(--muted); font-size: 14px; }
+  .hoja-ics-largo { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .hoja-ics-corto { display: inline; }
+  .hoja-hop .btn { min-height: 40px; padding: 10px 14px; }
+}
+
+/* El botón de proponer en un HOP va en verde y perfilado: no es la acción
+   principal de la hoja —esa es mandarlo— pero tampoco es una más. */
 .btn.deep-ghost {
   border-color: var(--deep);
   background: transparent;
   color: var(--deep);
   font-weight: 600;
 }
-.btn.deep-ghost:hover { background: var(--deep); color: var(--sobre); }
+.btn.deep-ghost:hover { background: var(--deep); color: var(--sobre-deep); }
 
 /* El filo que separa, al abrir una fila, lo de mirar y reservar de lo de
    llevárselo: sin él son seis botones seguidos y ninguno manda. */
@@ -4786,17 +4999,15 @@ p.adm-nadie { padding: 16px; margin: 0; }
 .hop-av {
   flex: none; display: inline-grid; place-items: center;
   width: 30px; height: 30px; border-radius: 50%;
-  font: 700 12px / 1 var(--font-sans); color: #12110f;
+  font: 700 12px / 1 var(--font-sans); color: var(--sobre-tono);
   border: 2px solid var(--surface);
 }
-.hop-av.t0 { background: #ff8a5c; } .hop-av.t1 { background: #4fd6b0; } .hop-av.t2 { background: #ffd166; }
-.hop-av.t3 { background: #9bb8ff; } .hop-av.t4 { background: #f49ac1; } .hop-av.t5 { background: #c3e88d; }
+.hop-av.t0 { background: var(--tono-0); } .hop-av.t1 { background: var(--tono-1); } .hop-av.t2 { background: var(--tono-2); }
+.hop-av.t3 { background: var(--tono-3); } .hop-av.t4 { background: var(--tono-4); } .hop-av.t5 { background: var(--tono-5); }
 .hop-av.mas { background: var(--surface2); color: var(--muted); }
 .hop-av.hueco { visibility: hidden; }
-b.t0 { color: #ff8a5c; } b.t1 { color: #4fd6b0; } b.t2 { color: #e0b54a; } b.t3 { color: #9bb8ff; } b.t4 { color: #f49ac1; } b.t5 { color: #a8cf6e; }
-:root[data-tema="claro"] b.t0 { color: #c2410c; } :root[data-tema="claro"] b.t1 { color: #0f766e; }
-:root[data-tema="claro"] b.t2 { color: #a16207; } :root[data-tema="claro"] b.t3 { color: #1d4ed8; }
-:root[data-tema="claro"] b.t4 { color: #be185d; } :root[data-tema="claro"] b.t5 { color: #4d7c0f; }
+b.t0 { color: var(--tono-0); } b.t1 { color: var(--tono-1); } b.t2 { color: var(--tono-2); }
+b.t3 { color: var(--tono-3); } b.t4 { color: var(--tono-4); } b.t5 { color: var(--tono-5); }
 .hop-avs { display: flex; align-items: center; }
 .hop-avs .hop-av + .hop-av { margin-left: -8px; }
 .hop-avs.grande .hop-av { width: 40px; height: 40px; font-size: 15px; }
@@ -5514,8 +5725,6 @@ p.hopx-tachadas small { color: var(--muted); }
    ========================================================================== */
 /* Un color por propuesta de fechas. Validados para que se distingan (también
    con daltonismo) sobre el fondo de cada tema; el 0 es «de más». */
-.hop-app { --cal-0: #6e6a5e; --cal-1: #3987e5; --cal-2: #199e70; --cal-3: #c98500; --cal-4: #d55181; --cal-5: #8a6bd6; --cal-6: #5a9e2c; }
-:root[data-tema="claro"] .hop-app { --cal-0: #a9a497; --cal-1: #2a78d6; --cal-2: #1baf7a; --cal-3: #eda100; --cal-4: #e87ba4; --cal-5: #7c5cd6; --cal-6: #4f8f1f; }
 
 /* El voto: flecha arriba, puntos, flecha abajo, en columna a la izquierda. */
 .hopx-reddit { display: grid; justify-items: center; align-content: start; gap: 2px; width: 40px; }

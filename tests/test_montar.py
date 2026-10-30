@@ -79,7 +79,8 @@ def test_la_version_de_los_assets_sale_de_un_solo_sitio():
         html = (WEB / fichero).read_text(encoding="utf-8")
         versiones = set(re.findall(r"\.(?:css|js)\?v=([A-Za-z0-9.]+)", html))
         assert versiones == {str(montar.BUILD)}, f"{fichero}: {versiones}"
-        assert f"build {montar.BUILD}" in html, f"{fichero}: el pie va por otra version"
+        # Sin version de verdad el pie no enseña «build dev».
+        assert 'class="build"' not in html, f"{fichero}: el pie enseña la version del repo"
 
 
 def test_cada_pagina_publica_dice_lo_suyo():

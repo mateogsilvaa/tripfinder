@@ -101,7 +101,7 @@ test.describe("el armazón que comparten las páginas", () => {
       await expect(page.locator(".zona")).toHaveCount(5);
       await expect(page.locator(".zona.activa")).toHaveText(activa);
       await expect(page.locator("#tema")).toBeVisible();
-      await expect(page.locator(".foot .build")).toBeVisible();
+      await expect(page.locator(".foot .foot-in")).toBeVisible();
     });
   }
 
