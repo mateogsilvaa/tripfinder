@@ -82,34 +82,42 @@ export function recordarCama(id, offer) {
   }
 }
 
-/* Y las que ha buscado CUALQUIERA, que es lo que hay publicado.
-
-   `tf_camas` vive en tu navegador: se borra al limpiar el historial, no llega
-   a tu movil y no sabe nada de lo que buscaron los demas. Pero el resultado si
-   esta publicado —`data/stays/<id>.json`— y abrirlo es instantaneo. El indice
-   es la lista de esos ficheros, que escribe el backend de la misma pasada con
-   la que destila `camas.json`, asi que marcar una fila no cuesta una peticion
-   por vuelo. */
+/* CADA UNO, LO SUYO. El resultado de una busqueda de cama se publica
+   (`data/stays/<id>.json`, con su indice), pero lo que busco otra persona no
+   es asunto de los demas: antes el tablon marcaba «cama buscada» y ponia el
+   precio con cama en cualquier vuelo para el que hubiera buscado alguien. Ahora
+   solo cuentan las tuyas: las de este navegador (`tf_camas`) y, con la cuenta
+   dentro, las que encargaste desde cualquier otro (tus encargos `stay`). */
 export const CAMAS_PUBLICAS = {};
+const MIAS = new Set();
+
+export const esMiCama = (id) => Boolean(id) && (MIAS.has(id) || camasBuscadas().some((c) => c.id === id));
 
 export async function cargarCamasHechas() {
+  try {
+    if (typeof nubeActiva === "function" && nubeActiva() && typeof nubeMisEncargos === "function") {
+      (await nubeMisEncargos())
+        .filter((e) => e.tipo === "stay" && e.payload && e.payload.offer_id && !e.payload.hop)
+        .forEach((e) => MIAS.add(String(e.payload.offer_id)));
+    }
+  } catch {
+    /* sin la nube, las de este navegador */
+  }
   try {
     const { viajes } = await fetchJSON("data/stays/index.json");
     Object.entries(viajes || {}).forEach(([id, v]) => {
       CAMAS_PUBLICAS[id] = v;
-      // Si el fichero trae el precio de la escapada entera, la fila ya puede
-      // decir el numero REAL sin abrir el panel: hasta ahora solo lo sabia
-      // quien lo hubiera abierto en esa misma sesion.
-      if (v && v.t > 0 && !ESCAPADAS_REALES[id]) ESCAPADAS_REALES[id] = { total: v.t };
+      // Con el precio de la escapada entera, tu fila dice el numero REAL sin
+      // abrir el panel. Solo en las tuyas.
+      if (esMiCama(id) && v && v.t > 0 && !ESCAPADAS_REALES[id]) ESCAPADAS_REALES[id] = { total: v.t };
     });
   } catch {
-    /* sin indice, solo se marcan las tuyas */
+    /* sin indice, se ve al abrir cada una */
   }
 }
 
-/* Si este vuelo ya tiene cama buscada: la tuya o la de cualquiera. */
-export const conCama = (id) =>
-  Boolean(id) && (Boolean(CAMAS_PUBLICAS[id]) || camasBuscadas().some((c) => c.id === id));
+/* Si este vuelo ya tiene cama buscada por ti. */
+export const conCama = (id) => esMiCama(id);
 
 /* Un viaje que ya ha pasado no hay donde dormirlo. */
 export const camasVivas = (hoy = new Date().toISOString().slice(0, 10)) =>
@@ -148,6 +156,9 @@ export async function openStays(id, conocida = null) {
 
   let datos = null;
   try {
+    // Lo que buscó otra persona no se enseña: se ofrece buscar (y si al
+    // pedirlo ya está, sale al momento: ver `askForSearch`).
+    if (!esMiCama(id)) throw new Error("no es tuya");
     datos = await fetchJSON(`data/stays/${id}.json`);
   } catch {
     if (!offer) {
@@ -208,6 +219,18 @@ function pintarStays(datos, offer) {
   }
 }
 
+async function hecha(id, adultos) {
+  if (!CAMAS_PUBLICAS[id]) return null;
+  try {
+    const d = await fetchJSON(`data/stays/${id}.json`);
+    const dias = (Date.now() - new Date(d.generated_at).getTime()) / 864e5;
+    const para = Number(d.summary && d.summary.party) || 0;
+    return dias <= 2 && para === adultos ? d : null;
+  } catch {
+    return null;
+  }
+}
+
 function askForSearch(offer, aviso = "") {
   $("#panelBody").innerHTML = `
     <div class="status wait">
@@ -233,6 +256,17 @@ function askForSearch(offer, aviso = "") {
     // El precio del alojamiento depende de cuántos vais, así que el número
     // viaja en la petición: buscar para 2 y reservar para 4 no vale de nada.
     const adultos = Math.min(8, Math.max(1, Number($("#party").value) || 2));
+    // Si ya está buscada para esas fechas y para los mismos, y es de hace
+    // menos de dos días, no hace falta lanzar nada: sale ahora.
+    const ya = await hecha(offer.id, adultos);
+    if (ya) {
+      recordarCama(offer.id, offer);
+      OFERTA_ABIERTA = offer;
+      ponerFechas(offer, adultos);
+      pintarStays(ya, offer);
+      if (existe("#offers")) render();
+      return;
+    }
     const r = await dispatch("stay", {
       offer_id: offer.id,
       city: offer.destination_name || offer.destination,
@@ -243,6 +277,7 @@ function askForSearch(offer, aviso = "") {
       adults: String(adultos),
     });
     if (r.ok) {
+      recordarCama(offer.id, offer);
       ponerFechas(offer, adultos);
       startPolling(offer.id);
       return;

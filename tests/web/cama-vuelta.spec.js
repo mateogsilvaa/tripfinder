@@ -6,6 +6,7 @@
    día. Al día siguiente el vuelo ya no estaba, el botón tampoco, y lo buscado
    quedaba ahí sin que nadie pudiera verlo. */
 const { test, expect } = require("@playwright/test");
+const { camasMias } = require("./camas-mias.js");
 
 const UID = "u-mateo";
 const SESION = { uid: UID, user: "mateo", name: "Mateo" };
@@ -40,13 +41,15 @@ const CAMA = {
   ],
 };
 
-const conFav = (page) =>
-  page.addInitScript(([s, uid, f]) => {
+const conFav = async (page) => {
+  await camasMias(page, UID, [ID]);
+  return page.addInitScript(([s, uid, f]) => {
     try {
       localStorage.setItem("tf_sesion", JSON.stringify(s));
       localStorage.setItem(`tf_favoritos:${uid}`, JSON.stringify(f));
     } catch (e) { /* nada */ }
   }, [SESION, UID, FAV]);
+};
 
 test("desde un viaje apuntado se vuelve a lo ya buscado", async ({ page }) => {
   await conFav(page);
@@ -69,6 +72,7 @@ test("desde un viaje apuntado se vuelve a lo ya buscado", async ({ page }) => {
 /* El vuelo ya no está en ninguna lista y el fichero sí: con el id basta, porque
    el propio fichero lleva dentro el vuelo entero. */
 test("con el fichero basta, aunque el vuelo ya no esté en ninguna lista", async ({ page }) => {
+  await camasMias(page, UID, [ID]);
   await page.addInitScript((s) => {
     try {
       localStorage.setItem("tf_sesion", JSON.stringify(s));

@@ -10,6 +10,7 @@
    recomendar una zona, que NO aparece cuando no, y que no se come el sitio del
    precio, que es lo que de verdad decide. */
 const { test, expect } = require("@playwright/test");
+const { camasMias } = require("./camas-mias.js");
 
 const SESION = { uid: "u-z", user: "z", name: "Z" };
 
@@ -43,6 +44,7 @@ const CAMAS = [
 ];
 
 const conPanel = async (page, resumen) => {
+  await camasMias(page, SESION.uid);
   await page.addInitScript((s) => {
     try {
       localStorage.setItem("tf_sesion", JSON.stringify(s));
