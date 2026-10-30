@@ -693,6 +693,10 @@ h1 em { font-size: 1.3em; }
 .perdido { padding: 24px 0; display: grid; gap: 12px; justify-items: start; }
 .perdido .vacio { max-width: 60ch; font-family: var(--font-sans); font-size: var(--fs-body-s); }
 .hero-extra { font-size: var(--fs-ui-s); color: var(--hero-muted); }
+/* El vuelo de un enlace compartido, encima de los chollos de hoy. */
+.compartido { margin-bottom: 18px; }
+.compartido-aviso { margin: 0 0 10px; color: var(--muted); font-size: var(--fs-body-s); }
+.compartido-aviso b { color: var(--ink); font-weight: 600; }
 .hidden-warn { color: var(--accent-txt); }
 .alts summary { cursor: pointer; }
 

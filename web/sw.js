@@ -59,6 +59,7 @@ const PIEZAS = [
   "./js/fotos.js",
   "./js/filtro-destinos.js",
   "./js/notificaciones.js",
+  "./js/propuesta-vuelo.js",
   "./js/alojamiento.js",
   "./js/busqueda.js",
   "./js/destinos.js",
