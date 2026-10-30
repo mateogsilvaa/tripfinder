@@ -27,8 +27,8 @@
       "nombre": "Cluj"
     },
     "GDN": {
-      "noche": 90.67,
-      "muestras": 3,
+      "noche": 108.5,
+      "muestras": 6,
       "nombre": "Dánzig"
     },
     "OSL": {
@@ -83,8 +83,8 @@
       "muestras": 3
     },
     "Polonia": {
-      "noche": 56.66,
-      "muestras": 6
+      "noche": 90.67,
+      "muestras": 9
     },
     "República Checa": {
       "noche": 30.0,
