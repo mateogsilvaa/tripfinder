@@ -319,8 +319,14 @@ em, .script {
 
 /* La marca: un avión de papel, "Trip" manuscrito y "finder" en negrita muy
    apretada. El margen negativo es lo que las hace una sola palabra. */
-.marca { display: flex; align-items: baseline; gap: 9px; flex: none; }
-.marca svg { align-self: center; }
+/* Todo centrado en vertical, y no en la línea base: con la línea base, cada
+   tipografía de respaldo de la manuscrita (la del sistema cuando Pinyon no ha
+   cargado, que en la app instalada pasa) colocaba «Trip» y «finder» a alturas
+   distintas, y el avión, centrado aparte, se quedaba arriba. */
+.marca { display: flex; align-items: center; gap: 9px; flex: none; }
+.marca svg { align-self: center; flex: none; }
+.marca-trip, .marca-finder { display: inline-block; line-height: 1; }
+.marca-trip { transform: translateY(0.06em); }
 .marca-trip {
   font-family: var(--font-script);
   font-size: 26px;
@@ -1074,10 +1080,23 @@ h1 em { font-size: 1.3em; }
    que leer es a donde vas. */
 /* La bandera, pegada al nombre del país. `font-style: normal` porque va en un
    `<i>` —que aquí es «un trocito distinto», no una cursiva— y un emoji en
-   cursiva se ve torcido en algunas tipografías.
-
-   En Windows no hay glifo de bandera y salen las dos letras del código. Es un
-   mal menor honesto: se sigue sabiendo de qué país habla. */
+   cursiva se ve torcido en algunas tipografías. */
+/* BANDERAS EN WINDOWS. Windows no dibuja el emoji de bandera (salen las dos
+   letras del código). Ahí, y solo ahí, `log.js` marca `html.sin-banderas` y se
+   usa esta fuente, que solo trae banderas (Twemoji Country Flags, CC-BY 4.0,
+   en `web/fuentes/`): el `unicode-range` hace que el resto del texto ni la
+   toque, y el navegador solo la descarga si de verdad hay una bandera. */
+@font-face {
+  font-family: "Twemoji Country Flags";
+  unicode-range: U+1F1E6-1F1FF, U+1F3F4, U+E0062-E0063, U+E0065, U+E0067, U+E006C, U+E006E, U+E0073-E0074, U+E0077, U+E007F;
+  src: url("fuentes/TwemojiCountryFlags.woff2") format("woff2");
+  font-display: swap;
+}
+html.sin-banderas .bandera,
+html.sin-banderas .dest small,
+html.sin-banderas .country {
+  font-family: "Twemoji Country Flags", var(--font-sans);
+}
 .bandera {
   font-style: normal;
   margin-right: 0.35em;
@@ -5684,28 +5703,97 @@ details.hop-crear[open] > summary { border: 0; padding: 0; min-height: auto; fon
 .adm-ilu-nombre b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .adm-ilu-nombre small { color: var(--muted); font-size: var(--fs-meta, 11px); }
 
-/* LA BARRA DE ABAJO DEL MÓVIL, flotante y curva como la del ordenador: una
-   píldora separada de los bordes, y la zona en la que estás con su propia
-   píldora (fondo y filo), icono y rótulo juntos. */
+/* LA BARRA DE ABAJO DEL MÓVIL, DE CRISTAL (a lo «liquid glass»): una píldora
+   flotante, despegada del borde, que deja ver lo que pasa por debajo muy
+   desenfocado y con más color; un brillo arriba como el canto de un vidrio y
+   la zona en la que estás en una lente de cristal más clara, que al tocar otra
+   zona se desliza hasta ella antes de cambiar de página (`log.js`). */
 @media (max-width: 760px) {
   .tabbar {
-    left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-    gap: 2px; padding: 4px;
-    border: 1px solid var(--hair); border-radius: var(--r-pill);
-    background: color-mix(in srgb, var(--surface) 88%, transparent);
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+    left: 12px; right: 12px; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    gap: 2px; padding: 5px; isolation: isolate;
+    border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--r-pill);
+    /* Oscuro de verdad en el tema oscuro: un vidrio ahumado, que oscurece lo
+       que tiene debajo (el chollo del día es claro y lo aclaraba todo). */
+    background: color-mix(in srgb, var(--surface) 62%, rgba(0, 0, 0, 0.3));
+    -webkit-backdrop-filter: blur(22px) saturate(1.7) brightness(0.72);
+    backdrop-filter: blur(22px) saturate(1.7) brightness(0.72);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.04),
+      0 12px 32px rgba(0, 0, 0, 0.32),
+      0 2px 6px rgba(0, 0, 0, 0.18);
+  }
+  /* El canto: un brillo que se apaga hacia abajo. */
+  .tabbar::before {
+    content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 55%);
   }
   .tab {
-    min-height: 56px; gap: 3px; font-size: 10.5px; letter-spacing: 0; border-radius: var(--r-pill);
-    transition: color var(--t) var(--ease), background var(--t) var(--ease);
+    min-height: 54px; gap: 3px; font-size: 10.5px; letter-spacing: 0; border-radius: var(--r-pill);
+    transition: color 0.25s var(--ease), transform 0.18s var(--ease);
   }
+  .tab:active { transform: scale(0.94); }
+  /* Encima de cualquier cosa (el chollo del día va en el color contrario) el
+     rótulo se tiene que leer: tinta casi entera, no el gris de siempre. */
+  .tabbar .tab { color: color-mix(in srgb, var(--ink) 74%, transparent); }
+  .tabbar .tab.activa { color: var(--ink); }
   .tab .zona-ico { width: 23px; height: 23px; padding: 0; border-radius: 0; background: none !important; }
-  .tab.activa { color: var(--ink); background: var(--surface2); box-shadow: inset 0 0 0 1px var(--line); }
+  .tab.activa { color: var(--ink); font-weight: 600; background: none; box-shadow: none; }
   .tab.activa::before { display: none; }
-  body { padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
-  .instalar { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
-  .hopx-chat-boton { bottom: calc(90px + env(safe-area-inset-bottom)); }
+  /* La lente: un cristal dentro del cristal. Sin JavaScript va en la pestaña
+     activa (`.tab.activa` de abajo); con él, es una pieza aparte que se mueve. */
+  .tabbar:not(.con-lente) .tab.activa, .tab-lente {
+    background: rgba(255, 255, 255, 0.09);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.07),
+      0 3px 10px rgba(0, 0, 0, 0.3);
+  }
+  .tab-lente.pulsada { background: rgba(255, 255, 255, 0.14); }
+  .tab-lente {
+    position: absolute; top: 5px; bottom: 5px; left: 0; z-index: -1; border-radius: var(--r-pill); pointer-events: none;
+    width: 20%; transform-origin: center; will-change: transform, width;
+    transition: scale 0.22s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s ease, box-shadow 0.2s ease;
+  }
+  /* Con el dedo encima, la lente se hincha un poco y brilla más: es la que se
+     está moviendo. */
+  .tab-lente.pulsada { scale: 1.08 1.12; }
+  .tabbar { touch-action: pan-y; }
+  .tabbar .tab { -webkit-user-drag: none; user-select: none; -webkit-touch-callout: none; }
+  .tab.bajo { color: var(--ink); }
+  :root[data-tema="claro"] .tabbar {
+    border-color: rgba(255, 255, 255, 0.7);
+    background: color-mix(in srgb, var(--surface) 64%, transparent);
+    -webkit-backdrop-filter: blur(22px) saturate(1.9) brightness(1.06);
+    backdrop-filter: blur(22px) saturate(1.9) brightness(1.06);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.03),
+      0 12px 32px rgba(40, 30, 10, 0.16),
+      0 2px 6px rgba(40, 30, 10, 0.08);
+  }
+  :root[data-tema="claro"] .tabbar::before { background: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0) 60%); }
+  :root[data-tema="claro"] .tabbar:not(.con-lente) .tab.activa, :root[data-tema="claro"] .tab-lente {
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 1), inset 0 0 0 1px rgba(255, 255, 255, 0.6), 0 3px 10px rgba(40, 30, 10, 0.14);
+  }
+  body { padding-bottom: calc(94px + env(safe-area-inset-bottom, 0px)); }
+  .instalar { bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+  .hopx-chat-boton { bottom: calc(96px + env(safe-area-inset-bottom)); }
 }
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  .tab-lente { transition: none; }
+}
+
+/* La barra de desplazamiento, fuera en todas partes: se sigue desplazando con
+   el dedo, la rueda o el teclado, solo que sin la tira gris. */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+/* En el ordenador, un poco más de aire entre la marca y las zonas. */
+@media (min-width: 761px) {
+  .topbar .zonas { margin-left: 14px; }
 }
 
 /* Dentro de un HOP no hace falta la presentación del modo HOP. */
@@ -5783,4 +5871,76 @@ body.hop-dentro .masthead, body.hop-dentro .hop > .finder-body > .kicker-num { d
 .hopx-deslizar i { font: 500 11px var(--font-mono); font-style: normal; padding: 1px 7px; border-radius: var(--r-pill); background: var(--deep); color: #0f0f0e; opacity: 1; }
 @media (max-width: 760px) {
   .hopx-deslizar { min-height: var(--tap-min); }
+}
+
+/* ¡QUE ES PARA EL VERTICAL! (`log.js`, tfCaer). Tres tiempos:
+   1. La web se cae: cada trozo da un respingo hacia arriba, y cae con gravedad
+      girando, cada uno a su ritmo.
+   2. Pasa el avión del icono haciendo un rizo, y deja la estela dibujada.
+   3. «Eyyyy,» entra letra a letra rebotando, y debajo el resto; al final, un
+      móvil que se pone de pie para decir qué hacer.
+   Al volver a vertical, los trozos caen de nuevo en su sitio desde arriba. */
+html.tf-cayendo, html.tf-cayendo body, html.tf-volviendo, html.tf-volviendo body { overflow: hidden; }
+html.tf-cayendo .tf-trozo {
+  pointer-events: none;
+  animation: tf-cae 1s cubic-bezier(0.5, 0, 0.75, 0.25) var(--retraso, 0ms) both;
+}
+html.tf-volviendo .tf-trozo { animation: tf-vuelve 0.85s cubic-bezier(0.2, 0.8, 0.3, 1.18) var(--retraso, 0ms) both; }
+@keyframes tf-cae {
+  0% { transform: none; }
+  16% { transform: translateY(-14px) rotate(calc(var(--giro, 10deg) * -0.12)); }
+  /* Bien lejos: girada, una barra ancha levanta una punta, y se queda a la
+     vista si solo baja una pantalla. */
+  85% { opacity: 1; }
+  100% { transform: translate(var(--lado, 0), 170vh) rotate(var(--giro, 10deg)); opacity: 0; }
+}
+@keyframes tf-vuelve {
+  0% { transform: translate(calc(var(--lado, 0) * -0.5), -110vh) rotate(calc(var(--giro, 10deg) * -0.6)); }
+  100% { transform: none; }
+}
+#tfGiro {
+  position: fixed; inset: 0; z-index: 200; display: grid; place-content: center; justify-items: center; gap: 14px;
+  padding: max(16px, env(safe-area-inset-top)) max(24px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(24px, env(safe-area-inset-left));
+  color: var(--ink); text-align: center; pointer-events: none; transition: opacity 0.25s ease;
+}
+#tfGiro.se-va { opacity: 0; }
+.tf-giro-cielo { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.tf-giro-estela {
+  fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linecap: round; opacity: 0.55;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+}
+#tfGiro.en-marcha .tf-giro-estela { animation: tf-estela 1.9s cubic-bezier(0.45, 0.05, 0.35, 1) 1.05s forwards, tf-se-apaga 1.4s ease 3.4s forwards; }
+/* Escondido hasta que despega (si no, espera en la esquina del dibujo). */
+.tf-giro-avion { color: var(--accent); filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35)); opacity: 0; }
+#tfGiro.en-marcha .tf-giro-avion { animation: tf-despega 1.9s linear 1.05s forwards; }
+@keyframes tf-despega { 0% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+.tf-giro-texto { position: relative; display: grid; gap: 6px; margin: 0; }
+.tf-giro-ey {
+  font: 700 clamp(46px, 9vw, 92px) / 0.95 var(--font-sans); letter-spacing: -0.045em; color: var(--accent);
+}
+.tf-giro-ey i { display: inline-block; font-style: normal; opacity: 0; transform: translateY(40px) scale(0.6); }
+#tfGiro.en-marcha .tf-giro-ey i { animation: tf-letra 0.6s cubic-bezier(0.3, 1.6, 0.5, 1) calc(2.2s + var(--k) * 70ms) forwards; }
+.tf-giro-linea {
+  font: 700 clamp(20px, 3.4vw, 34px) / 1.15 var(--font-sans); letter-spacing: -0.025em;
+  opacity: 0; transform: translateY(12px);
+}
+#tfGiro.en-marcha .tf-giro-linea { animation: tf-sube 0.55s cubic-bezier(0.2, 0.8, 0.3, 1) 2.8s forwards; }
+.tf-giro-pie {
+  position: relative; display: inline-flex; align-items: center; gap: 8px; margin: 4px 0 0;
+  font: 500 var(--fs-ui-s) var(--font-mono); letter-spacing: 0.04em; color: var(--muted); opacity: 0;
+}
+.tf-giro-pie svg { transform: rotate(-90deg); }
+#tfGiro.en-marcha .tf-giro-pie { animation: tf-sube 0.5s ease 3.3s forwards; }
+#tfGiro.en-marcha .tf-giro-pie svg { animation: tf-ponlo 1.6s cubic-bezier(0.5, 0, 0.3, 1.4) 3.8s infinite; }
+@keyframes tf-estela { to { stroke-dashoffset: 0; } }
+@keyframes tf-se-apaga { to { opacity: 0; } }
+@keyframes tf-letra { to { opacity: 1; transform: none; } }
+@keyframes tf-sube { to { opacity: 1; transform: none; } }
+@keyframes tf-ponlo { 0%, 20% { transform: rotate(-90deg); } 60%, 100% { transform: rotate(0deg); } }
+@media (prefers-reduced-motion: reduce) {
+  html.tf-cayendo .tf-trozo { animation: none; opacity: 0; }
+  html.tf-volviendo .tf-trozo { animation: none; }
+  .tf-giro-estela, .tf-giro-avion { display: none; }
+  #tfGiro.en-marcha .tf-giro-ey i, #tfGiro.en-marcha .tf-giro-linea, #tfGiro.en-marcha .tf-giro-pie { animation: none; opacity: 1; transform: none; }
+  #tfGiro.en-marcha .tf-giro-pie svg { animation: none; }
 }

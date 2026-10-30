@@ -35,8 +35,10 @@ test("en el móvil se navega con la barra de abajo, y marca dónde estás", asyn
   await expect(barra).toBeVisible();
   await expect(page.locator(".topbar .zonas")).toBeHidden();
   await expect(barra.locator(".tab.activa")).toHaveText("Buscar");
+  // Abajo y flotando: despegada del borde (es una píldora de cristal), pero cerca.
   const caja = await barra.boundingBox();
-  expect(caja.y + caja.height).toBeGreaterThan(830);
+  expect(caja.y + caja.height).toBeGreaterThan(810);
+  expect(caja.y + caja.height).toBeLessThan(844);
 });
 
 test("los planes: gratis, premium y Max, y «Me interesa» sin cuenta pide entrar", async ({ page }) => {
