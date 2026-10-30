@@ -5,9 +5,9 @@
    tablón de mañana enseña el mismo vuelo como si nunca se hubiera mirado y se
    vuelve a pedir lo que ya está hecho.
 
-   Dos fuentes, y las dos cuentan: el índice público —lo que ha buscado
-   cualquiera, y que se abre al instante— y `tf_camas`, que es tuyo y vive solo
-   en este navegador. */
+   Solo las TUYAS: lo que busca otra persona se publica (el índice), pero no es
+   asunto de los demás y no marca su fila. Tuyas son las de `tf_camas` (este
+   navegador) y, con la cuenta dentro, tus encargos de alojamiento. */
 const { test, expect } = require("@playwright/test");
 
 const CON_INDICE = "ryanair-MAD-ACE-20270115"; // Lanzarote, en el índice
@@ -15,15 +15,32 @@ const SIN_NADA = "ryanair-MAD-BGY-20270108"; // Bérgamo, nadie ha mirado
 
 const fila = (page, id) => page.locator(`#offer-${id}`);
 
+/* Que ese vuelo lo buscaste tú, en este navegador. */
+const mia = (page, id) =>
+  page.addInitScript((id_) => {
+    try {
+      localStorage.setItem("tf_sesion", JSON.stringify({ uid: "u-mateo", user: "mateo", name: "Mateo" }));
+      localStorage.setItem("tf_camas:u-mateo", JSON.stringify([{ id: id_, ida: "2027-01-15" }]));
+    } catch (e) { /* nada */ }
+  }, id);
+
 const abrir = async (page) => {
   await page.goto("/index.html", { waitUntil: "domcontentloaded" });
   await expect(page.locator(".brow").first()).toBeVisible();
 };
 
 test("la fila de un vuelo con cama buscada va marcada", async ({ page }) => {
+  await mia(page, CON_INDICE);
   await abrir(page);
   await expect(fila(page, CON_INDICE)).toHaveClass(/con-cama/);
   await expect(fila(page, CON_INDICE).locator(".cama-ok")).toHaveText("cama buscada");
+});
+
+test("lo que buscó otra persona no marca tu fila", async ({ page }) => {
+  await abrir(page);
+  await expect(fila(page, CON_INDICE)).not.toHaveClass(/con-cama/);
+  await fila(page, CON_INDICE).click();
+  await expect(fila(page, CON_INDICE).locator(".brow-detail [data-stay]")).toHaveText(/Buscar alojamiento/);
 });
 
 test("y la de uno que nadie ha mirado, no", async ({ page }) => {
@@ -46,6 +63,7 @@ test("la marca no se come el nombre de la ciudad", async ({ page }) => {
 });
 
 test("el botón ya no dice «buscar», dice «ver»", async ({ page }) => {
+  await mia(page, CON_INDICE);
   await abrir(page);
   await fila(page, CON_INDICE).click();
   const detalle = fila(page, CON_INDICE).locator(".brow-detail");
@@ -76,6 +94,7 @@ test("el precio de la escapada sale REAL sin abrir el panel", async ({ page }) =
       }),
     })
   );
+  await mia(page, CON_INDICE);
   await abrir(page);
   const escapada = fila(page, CON_INDICE).locator(".escapada");
   await expect(escapada).toHaveClass(/real/);

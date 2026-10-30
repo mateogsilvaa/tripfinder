@@ -5,6 +5,7 @@
    minutos era que una barra de progreso desaparecía y la búsqueda se colaba
    entre las guardadas de hace tres días, sin decir si había salido algo. */
 const { test, expect } = require("@playwright/test");
+const { camasMias } = require("./camas-mias.js");
 
 const UID = "u-mateo";
 const SESION = { uid: UID, user: "mateo", name: "Mateo" };
@@ -205,6 +206,7 @@ test.describe("la hoja de alojamiento", () => {
      medias. En cuanto el resultado dice para cuántos se buscó, la cabecera lo
      lleva. */
   test("la cabecera dice para cuántos se buscó", async ({ page }) => {
+    await camasMias(page, UID);
     await page.addInitScript((s) => {
       try {
         localStorage.setItem("tf_sesion", JSON.stringify(s));

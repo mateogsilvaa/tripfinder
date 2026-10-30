@@ -4,6 +4,7 @@
    podía hacer con él era marcarlo como favorito —que vive en el `localStorage`
    de ESE navegador y se queda atrás en cuanto cambias de móvil—. */
 const { test, expect } = require("@playwright/test");
+const { camasMias } = require("./camas-mias.js");
 
 const conOferta = (page, cambios = {}) =>
   page.route("**/data/offers.json*", async (route) => {
@@ -204,6 +205,7 @@ test.describe("la hoja de alojamiento", () => {
     });
 
   const abrirCamas = async (page, stays, summary) => {
+    await camasMias(page);
     await conCamas(page, stays, summary);
     await conOferta(page);
     await abierto(page);

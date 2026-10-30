@@ -8,6 +8,7 @@
    la conexión, que con seis fotos por alojamiento y dieciocho alojamientos no
    es un detalle. */
 const { test, expect } = require("@playwright/test");
+const { camasMias } = require("./camas-mias.js");
 
 const SESION = { uid: "u-p", user: "p", name: "P" };
 
@@ -18,6 +19,7 @@ const FOTOS = [
 ];
 
 const conPanel = async (page, stays) => {
+  await camasMias(page, SESION.uid);
   await page.addInitScript((s) => {
     try {
       localStorage.setItem("tf_sesion", JSON.stringify(s));
