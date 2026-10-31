@@ -22,6 +22,7 @@ class Leg:
     date: str  # ISO
     time: str  # HH:MM
     price: float
+    arrive: str = ""  # HH:MM de llegada; sin ella no se puede encadenar otro vuelo
     currency: str = "EUR"
     destination_name: str = ""
     destination_country: str = ""
@@ -84,6 +85,16 @@ class FlightOffer:
     # se pone cuando el precio baja de todo lo registrado hasta hoy.
     minimo_historico: bool = False
     minimo_anterior: float | None = None  # lo mas bajo de antes, para poder decirlo
+    # ESCALA PROPIA (`escalas.py`): dos low cost encadenadas por un aeropuerto
+    # puente, cada una con su billete. `via` es el puente; `tramos`, los cuatro
+    # vuelos (ida, ida, vuelta, vuelta) con su hora, su precio y su enlace, que
+    # se reservan uno a uno; `escala_ida`/`escala_vuelta`, los minutos de
+    # espera en el puente.
+    via: str = ""
+    via_name: str = ""
+    escala_ida: int = 0
+    escala_vuelta: int = 0
+    tramos: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def mixed(self) -> bool:

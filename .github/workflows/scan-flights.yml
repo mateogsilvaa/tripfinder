@@ -25,9 +25,10 @@ concurrency:
 
 jobs:
   scan:
-    # El barrido completo son ~37 minutos. Si pasa de una hora es que un
-    # proveedor esta colgado, y sin esto arrastra hasta las 6 horas de GitHub.
-    timeout-minutes: 60
+    # El barrido de Madrid son ~37 minutos, y las escalas y las otras ciudades
+    # de salida tienen su propio tope (12 + 15). Si pasa de hora y media es que
+    # un proveedor esta colgado, y sin esto arrastra hasta las 6 horas de GitHub.
+    timeout-minutes: 90
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,6 +93,25 @@ jobs:
           REPO_SLUG: ${{ github.repository }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python -m tripfinder watch run
+
+      - name: Escalas propias (dos low cost por un puente)
+        # Los destinos sin directo desde Madrid. Va despues del barrido para
+        # saber cuales SI tienen directo, y nunca lo tumba: si falla, el
+        # tablon de siempre ya esta escrito.
+        continue-on-error: true
+        timeout-minutes: 12
+        env:
+          PYTHONPATH: src
+        run: python -m tripfinder scan-escalas
+
+      - name: Otras ciudades de salida
+        # Barcelona, Valencia, Malaga... unas pocas por pasada, las mas viejas
+        # primero, para que ninguna alargue el barrido.
+        continue-on-error: true
+        timeout-minutes: 15
+        env:
+          PYTHONPATH: src
+        run: python -m tripfinder scan-origenes
 
       - name: Publicar resultados
         run: |

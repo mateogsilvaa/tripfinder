@@ -148,6 +148,48 @@ skiplagging:
     VIE: [OTP, SOF, KRK, TLV]
     BRU: [OTP, WAW, KRK]
 
+# ESCALA PROPIA (`escalas.py`): dos vuelos de Ryanair encadenados por un
+# aeropuerto puente, cada uno con su billete. Es lo que trae los destinos a los
+# que no hay directo desde Madrid (Tirana, Riga, Pafos, Fez...). Cada pasada
+# mira `por_tanda` puentes y va rotando; lo encontrado se queda hasta que sale.
+escalas:
+  enabled: true
+  puentes: [BGY, STN, CRL, DUB, BUD, MLA, BLQ, KRK]
+  por_tanda: 2
+  # Los proximos N viernes (dia 4) como dias de salida, y cuantas noches.
+  salidas: 6
+  dias_salida: [4]
+  noches: [2, 3]
+  # Entre aterrizar y volver a despegar: ni menos de tres horas (un retraso no
+  # te deja tirado) ni mas de diez (no es una escala, es un dia en el puente).
+  margen_horas: 3
+  espera_max_horas: 10
+  # Cuantos destinos nuevos se casan con vuelta por cada dia de salida: cada
+  # uno cuesta una consulta mas.
+  destinos_por_dia: 6
+  max_consultas: 160
+
+# MAS CIUDADES DE SALIDA (`scan-origenes`): el tablon de cada una se guarda en
+# `data/tablon/<IATA>.json` y la portada deja elegir «desde». Solo Ryanair y
+# Wizz (Google se queda en Madrid, que es donde tiene el tope de consultas).
+# Cada pasada barre las `por_tanda` mas viejas.
+origenes:
+  por_tanda: 3
+  wizz_destinos: 12
+  wizz_meses: 2
+  findes: 16
+  lista:
+    - [BCN, Barcelona]
+    - [VLC, Valencia]
+    - [AGP, Málaga]
+    - [ALC, Alicante]
+    - [SVQ, Sevilla]
+    - [BIO, Bilbao]
+    - [PMI, Palma]
+    - [SCQ, Santiago]
+    - [LPA, Gran Canaria]
+    - [TFS, Tenerife Sur]
+
 # Nombre de ciudad por aeropuerto. Lo usa Google Flights (que solo devuelve IATA)
 # y, sobre todo, la busqueda de alojamiento: buscar "MXP" en Airbnb no da nada.
 city_names:

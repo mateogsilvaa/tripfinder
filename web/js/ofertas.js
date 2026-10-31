@@ -72,10 +72,44 @@ function dejarDeCargar(motivo = "") {
   caja.innerHTML = `<p class="vacio">${esc(motivo)}</p>`;
 }
 
+/* DESDE DÓNDE SE MIRA EL TABLÓN. Madrid es el de siempre y el que llega
+   primero (`offers.json`, las mejores); el resto de ciudades de salida tienen
+   su tablón entero en `data/tablon/<IATA>.json`. Se recuerda en este aparato. */
+const CLAVE_DESDE = "tf_desde";
+let ORIGEN = "MAD";
+function leerDesde() {
+  try {
+    return (localStorage.getItem(CLAVE_DESDE) || "MAD").toUpperCase();
+  } catch {
+    return "MAD";
+  }
+}
+function guardarDesde(iata) {
+  try {
+    localStorage.setItem(CLAVE_DESDE, iata);
+  } catch {
+    /* sin almacenamiento, se queda en esta visita */
+  }
+}
+
+/* El tablón entero de un origen, o null si no lo hay. */
+async function tablonDe(iata) {
+  try {
+    const datos = await fetchJSON(`data/tablon/${iata}.json`);
+    return Array.isArray(datos.offers) ? datos : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function init() {
   let payload;
+  ORIGEN = existe("#offers") ? leerDesde() : "MAD";
   try {
-    payload = await fetchJSON("data/offers.json");
+    // Otra ciudad de salida: su tablón entero va directamente.
+    const otro = ORIGEN !== "MAD" ? await tablonDe(ORIGEN) : null;
+    if (!otro) ORIGEN = "MAD";
+    payload = otro || (await fetchJSON("data/offers.json"));
   } catch {
     if (existe("#offers")) pintarStats(stat("estado", "sin datos aún"));
     dejarDeCargar(
@@ -99,12 +133,8 @@ export async function init() {
   }
   if (!OFFERS.length || !existe("#offers")) return;
 
-  const maxPrice = Math.max(60, ...OFFERS.map((o) => o.price));
-  const priceInput = $("#price");
-  priceInput.max = Math.ceil(maxPrice / 10) * 10;
-  priceInput.value = priceInput.max;
-  $("#priceOut").textContent = priceInput.value;
-  pintarRegla(priceInput);
+  $("#price").value = $("#price").max;
+  ajustarTope();
 
   // El continente no viene en la oferta: se cruza con un mapa aparte.
   //
@@ -135,43 +165,8 @@ export async function init() {
         CONTINENTES[codigos.slice(i, i + 3)] = continente;
       }
     }
-    const presentes = [...new Set(OFFERS.map((o) => CONTINENTES[o.destination]).filter(Boolean))].sort();
-    const hayLejos = OFFERS.some((o) => o.long_haul);
-
-    /* Y las regiones, que son el escalon que falta entre el continente —Europa
-       son 44 paises— y el pais suelto. Solo salen las que hoy tienen algun
-       vuelo: una lista con quince opciones de las que doce no dan nada es peor
-       que no tenerla. Se derivan del MISMO sitio que el backend
-       (`regiones.REGIONES` -> `data/regiones.json`), para que no puedan decir
-       cosas distintas. */
-    let conRegion = [];
-    try {
-      const mapa = await fetchJSON("data/regiones.json");
-      for (const [region, { n, c }] of Object.entries(mapa)) {
-        NOMBRE_REGION[region] = n;
-        for (let i = 0; i < c.length; i += 3) {
-          (REGIONES[c.slice(i, i + 3)] ||= []).push(region);
-        }
-      }
-      const vivas = new Set();
-      OFFERS.forEach((o) => (REGIONES[o.destination] || []).forEach((r) => vivas.add(r)));
-      conRegion = [...vivas].sort((a, b) =>
-        (NOMBRE_REGION[a] || a).localeCompare(NOMBRE_REGION[b] || b)
-      );
-    } catch {
-      /* sin regiones el filtro sigue siendo el de continentes de siempre */
-    }
-
-    $("#cont").insertAdjacentHTML(
-      "beforeend",
-      (hayLejos ? '<option value="__lejos__">Otros continentes</option>' : "") +
-        presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("") +
-        (conRegion.length
-          ? `<optgroup label="Regiones">${conRegion
-              .map((r) => `<option value="r:${esc(r)}">${esc(NOMBRE_REGION[r] || r)}</option>`)
-              .join("")}</optgroup>`
-          : "")
-    );
+    await cargarRegiones();
+    pintarZonas();
   } catch {
     $("#cont").parentElement.hidden = true;
   }
@@ -211,6 +206,127 @@ export async function init() {
     ensureVisible(target);
     if (!pintarCompartido(target)) focusOffer(target);
   }
+  montarDesde();
+  completarTablon();
+}
+
+/* Las regiones, una vez: el mapa código -> región. */
+let conRegiones = false;
+async function cargarRegiones() {
+  if (conRegiones) return;
+  conRegiones = true;
+  try {
+    const mapa = await fetchJSON("data/regiones.json");
+    for (const [region, { n, c }] of Object.entries(mapa)) {
+      NOMBRE_REGION[region] = n;
+      for (let i = 0; i < c.length; i += 3) {
+        (REGIONES[c.slice(i, i + 3)] ||= []).push(region);
+      }
+    }
+  } catch {
+    /* sin regiones el filtro sigue siendo el de continentes de siempre */
+  }
+}
+
+/* Las zonas del filtro: los continentes y las regiones que HOY tienen algún
+   vuelo. Una lista con quince opciones de las que doce no dan nada es peor que
+   no tenerla. Se vuelve a pintar cuando cambia la lista (llega el tablón
+   entero, o se cambia de ciudad de salida), sin perder la que estaba puesta. */
+function pintarZonas() {
+  const sel = $("#cont");
+  if (!sel) return;
+  const antes = sel.value;
+  const presentes = [...new Set(OFFERS.map((o) => CONTINENTES[o.destination]).filter(Boolean))].sort();
+  const hayLejos = OFFERS.some((o) => o.long_haul);
+  const vivas = new Set();
+  OFFERS.forEach((o) => (REGIONES[o.destination] || []).forEach((r) => vivas.add(r)));
+  const conRegion = [...vivas].sort((a, b) => (NOMBRE_REGION[a] || a).localeCompare(NOMBRE_REGION[b] || b));
+  sel.innerHTML =
+    '<option value="">Todos</option>' +
+    (hayLejos ? '<option value="__lejos__">Otros continentes</option>' : "") +
+    presentes.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join("") +
+    (conRegion.length
+      ? `<optgroup label="Regiones">${conRegion
+          .map((r) => `<option value="r:${esc(r)}">${esc(NOMBRE_REGION[r] || r)}</option>`)
+          .join("")}</optgroup>`
+      : "");
+  sel.value = [...sel.options].some((o) => o.value === antes) ? antes : "";
+}
+
+/* El tope de precio se ajusta a la lista. Si estaba al máximo, sigue al
+   máximo: es «sin tope», no un número que alguien eligiera. */
+function ajustarTope() {
+  const input = $("#price");
+  if (!input || !OFFERS.length) return;
+  const estabaArriba = Number(input.value) >= Number(input.max);
+  const maxPrice = Math.max(60, ...OFFERS.map((o) => o.price));
+  input.max = Math.ceil(maxPrice / 10) * 10;
+  if (estabaArriba || Number(input.value) > Number(input.max)) input.value = input.max;
+  $("#priceOut").textContent = input.value;
+  pintarRegla(input);
+}
+
+/* Cambiar la lista entera: llega el tablón completo o se cambia de ciudad. */
+function ponerLista(lista, payload) {
+  OFFERS = lista;
+  sincronizarFavs(OFFERS);
+  if (payload) renderStats(payload);
+  pintarZonas();
+  ajustarTope();
+  render();
+}
+
+/* EL RESTO DEL TABLÓN. `offers.json` trae las mejores para pintar rápido; lo
+   demás —más fechas por destino, los sitios con escala— está en el tablón
+   entero de Madrid, que se trae después, sin que nadie espere. */
+async function completarTablon() {
+  if (ORIGEN !== "MAD") return;
+  const entero = await tablonDe("MAD");
+  if (!entero || ORIGEN !== "MAD" || entero.offers.length <= OFFERS.length) return;
+  // Si ya había una fila abierta, se vuelve a abrir tras repintar: llegar el
+  // resto no puede cerrarle a nadie lo que está mirando.
+  const abierta = document.querySelector("#offers .brow.open")?.id;
+  // Lo del tablón rápido manda (es lo mismo, con todos sus campos); se añade lo que falta.
+  const ya = new Set(OFFERS.map((o) => o.id));
+  ponerLista([...OFFERS, ...entero.offers.filter((o) => !ya.has(o.id))]);
+  const fila = abierta && document.getElementById(abierta);
+  if (fila) toggleRow(fila);
+  const target = new URLSearchParams(location.search).get("offer");
+  if (target && OFFERS.some((o) => o.id === target)) ensureVisible(target);
+}
+
+/* El selector «desde»: solo si hay tablón de más de una ciudad. */
+async function montarDesde() {
+  const campo = document.getElementById("desdeCampo");
+  const sel = document.getElementById("desde");
+  if (!campo || !sel) return;
+  let origenes = [];
+  try {
+    origenes = ((await fetchJSON("data/tablon/index.json")).origenes || []).filter((x) => x.count > 0);
+  } catch {
+    return;
+  }
+  if (origenes.length < 2) return;
+  sel.innerHTML = origenes
+    .map((x) => `<option value="${esc(x.iata)}">${esc(x.nombre || x.iata)} · ${x.destinos || x.count} destinos</option>`)
+    .join("");
+  sel.value = ORIGEN;
+  campo.hidden = false;
+  sel.addEventListener("change", async () => {
+    const iata = sel.value;
+    const datos = iata === "MAD" ? (await tablonDe("MAD")) || (await fetchJSON("data/offers.json")) : await tablonDe(iata);
+    if (!datos) {
+      sel.value = ORIGEN;
+      return;
+    }
+    ORIGEN = iata;
+    guardarDesde(iata);
+    ampliado = false;
+    ponerLista(datos.offers || [], datos);
+    if (typeof tfAnunciar === "function") {
+      tfAnunciar(`Tablón desde ${sel.options[sel.selectedIndex].textContent}: ${OFFERS.length} viajes.`);
+    }
+  });
 }
 
 /* Un vuelo compartido que no está en el tablón de hoy (salió de una búsqueda,
@@ -517,9 +633,42 @@ function currentList() {
   return list;
 }
 
+const horasMin = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ""}` : `${m} min`);
+
 function escalas(o) {
   if (o.hidden_city) return `te bajas en la escala (billete a ${esc(o.hidden_city_ticket_to)})`;
+  if (o.via) return `escala propia en ${esc(o.via_name || o.via)}`;
   return o.stops ? `${o.stops} escala${o.stops > 1 ? "s" : ""}` : "directo";
+}
+
+/* ESCALA PROPIA: dos billetes por cada lado. Se dice antes que nada, igual
+   que el «te bajas en la escala»: si el primero se retrasa, nadie te recoloca
+   en el segundo, y eso hay que saberlo antes de comprar. */
+const AVISO_ESCALA = (o) => `
+  <div class="hidden-warn escala-warn">
+    <strong>Escala por tu cuenta en ${esc(o.via_name || o.via)}.</strong> Son cuatro billetes que se
+    compran por separado: si el primero se retrasa, la aerolínea no te recoloca en el segundo. Hemos
+    dejado al menos tres horas en el puente; ve solo con equipaje de mano y pasa el control otra vez.
+  </div>`;
+
+/* Los cuatro billetes de una escala propia: cada uno con su hora y su enlace. */
+function tramosEscalaHTML(o) {
+  const tramos = o.tramos || [];
+  if (tramos.length !== 4) return "";
+  const fila = (t, n) => `
+    <li class="esc-tramo">
+      <span class="esc-n">${n}</span>
+      <span class="esc-ruta"><b>${esc(t.origin)} → ${esc(t.destination)}</b>
+        <small>${esc(fmtDate(t.date, true))} · ${esc(t.time || "")}${t.arrive ? `–${esc(t.arrive)}` : ""} · ${esc(t.airline || "")}</small></span>
+      <span class="esc-precio">${fmtEUR(t.price)}</span>
+      <a class="esc-link" href="${escURL(t.deep_link)}" target="_blank" rel="noopener">Reservar</a>
+    </li>`;
+  const pausa = (min, rotulo) =>
+    min ? `<li class="esc-pausa">${esc(rotulo)}: ${esc(horasMin(min))} en ${esc(o.via_name || o.via)}</li>` : "";
+  return `<ol class="esc-tramos">
+      ${fila(tramos[0], 1)}${pausa(o.escala_ida, "Escala de ida")}${fila(tramos[1], 2)}
+      ${fila(tramos[2], 3)}${pausa(o.escala_vuelta, "Escala de vuelta")}${fila(tramos[3], 4)}
+    </ol>`;
 }
 
 /* El aviso no es decorativo: sin equipaje facturado y sin vuelta, esto sale
@@ -575,7 +724,9 @@ function heroTicket(o, compartido = false) {
   const sub = [pais, o.airline, escalas(o), o.weekend ? "escapada de finde" : ""]
     .filter(Boolean)
     .join(" · ");
-  const extra = [o.hidden_city ? AVISO_HIDDEN : "", altsHTML(o)].filter(Boolean).join("");
+  const extra = [o.hidden_city ? AVISO_HIDDEN : "", o.via ? AVISO_ESCALA(o) : "", altsHTML(o)]
+    .filter(Boolean)
+    .join("");
   const gente = Math.max(1, pax(o) > 1 ? pax(o) : grupo());
   const esc_ = escapadaHTML(o);
   return `
@@ -692,7 +843,7 @@ export function boardRow(o, i) {
          style="animation-delay:${Math.min(i, 14) * 35}ms">
       ${favBtn(o)}
       <span class="dest-cell">
-        <span class="iata ${o.hidden_city ? "hidden" : ""}">${esc(o.destination)}</span>
+        <span class="iata ${o.hidden_city ? "hidden" : ""}${o.via ? " via" : ""}">${esc(o.destination)}</span>
         <span class="city">${esc(o.destination_name || o.destination)}</span>
         <span class="country">${bandera(o)}${esc(o.destination_country || "")}</span>
       </span>
@@ -772,7 +923,9 @@ function detalleHTML(o) {
   ].filter(Boolean);
   return `
     ${o.hidden_city ? AVISO_HIDDEN : ""}
-    <div class="det-viaje">
+    ${o.via ? AVISO_ESCALA(o) : ""}
+    ${o.via ? tramosEscalaHTML(o) : ""}
+    <div class="det-viaje"${o.via ? " hidden" : ""}>
       ${tramoHTML("Ida", o.origin, o.destination, o.depart_date, o.depart_time, o.arrive_time)}
       ${tramoHTML("Vuelta", o.destination, o.origin, o.return_date, o.return_time, o.return_arrive_time)}
     </div>
@@ -780,7 +933,9 @@ function detalleHTML(o) {
     ${historiaHTML(o)}
     ${altsHTML(o)}
     <div class="det-acciones">
-      <a class="btn primary det-ver" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+      <a class="btn primary det-ver" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">${
+        o.via ? "Primer vuelo" : "Ver vuelo"
+      }</a>
       ${
         o.airline_link
           ? `<a class="btn ghost det-ver" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">

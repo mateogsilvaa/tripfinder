@@ -62,6 +62,7 @@ def precios_por_dia(
             salida[dia] = {
                 "price": round(float(precio), 2),
                 "time": str(t.get("departureDate") or "")[11:16],
+                "arrive": str(t.get("arrivalDate") or "")[11:16],
                 "origin": origen,
                 "destination": destino,
                 "airline": "Ryanair",
@@ -241,6 +242,7 @@ class RyanairProvider(FlightProvider):
                     date=when[:10],
                     time=when[11:16],
                     price=round(float(price), 2),
+                    arrive=str(out.get("arrivalDate") or "")[11:16],
                     currency=(out.get("price") or {}).get("currencyCode", "EUR"),
                     destination_name=(city.get("city") or {}).get("name") or city.get("iataCode", ""),
                     destination_country=city.get("countryName", ""),

@@ -76,6 +76,55 @@ class Store:
             compacto=True,
         )
 
+    # -- el tablon entero, por origen ------------------------------------
+    @staticmethod
+    def _ligera(o: FlightOffer) -> dict[str, Any]:
+        """La oferta sin los campos vacios. En el tablon entero son cientos, y
+        la mitad de cada una son comillas vacias y `false`: la web ya trata un
+        campo que falta igual que uno vacio."""
+        return {k: v for k, v in o.to_dict().items() if v not in ("", None, False, [], {})}
+
+    def load_tablon(self, origen: str) -> list[FlightOffer]:
+        raw = self._read(f"tablon/{origen.upper()}.json", {"offers": []})
+        return [FlightOffer.from_dict(o) for o in raw.get("offers", [])]
+
+    def save_tablon(self, origen: str, nombre: str, offers: list[FlightOffer]) -> None:
+        """TODO lo que ha salido desde un origen, no solo lo que cabe en la
+        portada. `offers.json` sigue siendo el tablon rapido de Madrid —las
+        mejores, lo primero que se pinta—; esto es el resto, que la web trae
+        despues sin que nadie espere, y el tablon de las demas ciudades de
+        salida. Y el indice, para que la web sepa desde donde hay tablon."""
+        origen = origen.upper()
+        (self.root / "tablon").mkdir(parents=True, exist_ok=True)
+        self._write(
+            f"tablon/{origen}.json",
+            {
+                "origin": origen,
+                "origin_name": nombre,
+                "generated_at": date.today().isoformat(),
+                "count": len(offers),
+                "offers": [self._ligera(o) for o in offers],
+            },
+            compacto=True,
+        )
+        indice = self._read("tablon/index.json", {"origenes": []})
+        otros = [x for x in indice.get("origenes", []) if x.get("iata") != origen]
+        otros.append(
+            {
+                "iata": origen,
+                "nombre": nombre,
+                "count": len(offers),
+                "destinos": len({o.destination for o in offers}),
+                "generated_at": date.today().isoformat(),
+            }
+        )
+        # Madrid primero, que es la de siempre; las demas, por nombre.
+        otros.sort(key=lambda x: (x["iata"] != "MAD", x.get("nombre") or x["iata"]))
+        self._write("tablon/index.json", {"origenes": otros})
+
+    def tablon_index(self) -> list[dict[str, Any]]:
+        return list(self._read("tablon/index.json", {"origenes": []}).get("origenes", []))
+
     # -- continentes -----------------------------------------------------
     def save_continents(self) -> dict[str, str] | None:
         """El mapa codigo -> continente que necesita la portada, y nada mas.
