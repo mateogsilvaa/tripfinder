@@ -12,6 +12,7 @@ import {
   pintarStats,
   stat,
   statPie,
+  tarjetaViaje,
 } from "./base.js";
 import { conGrupo } from "./precios.js";
 import { alCambiarFavs, cuantosFavs, sincronizarFavs } from "./favoritos.js";
@@ -244,21 +245,25 @@ export async function cargarWatches() {
     vivos
       .map(
         (w) => `
-        <div class="watch" data-abrir="${esc(w.id)}">
-          <b>${esc(w.label || w.destination || "Donde sea")}</b>
-          <span class="meta">${
-            w.depart
-              ? esc(w.depart)
-              : w.desde
-                ? `del ${esc(fmtDate(w.desde))} al ${esc(fmtDate(w.hasta || w.desde))}`
-                : `próximos ${w.months} meses`
-          }${w.max_price ? ` · hasta ${Math.round(w.max_price)} €` : ""}${
-          w.best_price ? ` · mejor visto ${Math.round(w.best_price)} €` : ""
-        }${w.last_checked ? ` · revisado ${esc(desde(w.last_checked))}` : ""}${
-          (w.last_offers || []).length ? ` · ${w.last_offers.length} resultados` : " · sin resultados aún"
-        }</span>
-          <button class="quitar" type="button" data-unwatch="${esc(w.id)}"
-            aria-label="Dejar de seguir">quitar</button>
+        <div class="watch tv" data-abrir="${esc(w.id)}">${tarjetaViaje({
+          rotulo: [
+            w.label || w.destination || "Donde sea",
+            // Las condiciones que no estén ya dichas en el rótulo.
+            ...(w.label ? [] : [w.depart ? w.depart : w.desde
+              ? `del ${fmtDate(w.desde)} al ${fmtDate(w.hasta || w.desde)}`
+              : `próximos ${w.months} meses`, w.max_price ? `hasta ${Math.round(w.max_price)} €` : ""]),
+          ].filter(Boolean).join(" · "),
+          precio: w.best_price,
+          vivo: true,
+          ver: (w.last_offers || []).length ? "Ver lo último" : "",
+          estado: `${
+            (w.last_offers || []).length
+              ? `${w.last_offers.length} resultado${w.last_offers.length === 1 ? "" : "s"}`
+              : "sin resultados aún"
+          }${w.last_checked ? ` · revisado ${esc(desde(w.last_checked))}` : " · se revisa cada día"}`,
+          quitar: `<button class="quitar" type="button" data-unwatch="${esc(w.id)}"
+            aria-label="Dejar de seguir">quitar</button>`,
+        })}
           <div class="watch-rows" hidden></div>
         </div>`
       )

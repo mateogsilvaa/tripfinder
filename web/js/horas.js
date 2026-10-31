@@ -17,6 +17,16 @@ const FRANJAS = [
   ["16-21", "Tarde", "16–21 h"],
   ["21-6", "Noche", "21–6 h"],
 ];
+/* Un dibujito por franja: el sol que sale, el de mediodía, el que se pone y la
+   luna. Se reconoce antes que la palabra. */
+const ICONOS = {
+  "6-12": '<path d="M4 17h16M7 17a5 5 0 0 1 10 0M12 7V4M5.6 10.6 4 9M18.4 10.6 20 9"/>',
+  "12-16": '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>',
+  "16-21": '<path d="M4 17h16M7 17a5 5 0 0 1 10 0M12 10v-3M12 7l-2 2M12 7l2 2"/>',
+  "21-6": '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5 7.5 7.5 0 1 0 19 14.5Z"/>',
+};
+const icono = (v) =>
+  `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${ICONOS[v]}</svg>`;
 const TRAMOS = ["Salida de la ida", "Llegada de la ida", "Salida de la vuelta", "Llegada de la vuelta"];
 const CORTOS = ["sale", "llega", "vuelve", "llega a casa"];
 
@@ -49,30 +59,41 @@ const opcionesHora = (sel) =>
 
 export function montarHoras(caja, campo) {
   if (!caja || !campo || caja.querySelector(".horas")) return;
+  /* Ida y vuelta, cada una con su salida y su llegada. Cada fila es el día
+     partido en cuatro: se toca la franja, y tocarla otra vez la quita («me da
+     igual»). Lo que no encaja en las cuatro, «a mano», desde-hasta. */
+  const fila = (i, rot) => `<div class="horas-fila" data-tramo="${i}">
+      <div class="horas-cab">
+        <span class="horas-rot">${rot}</span>
+        <button type="button" class="horas-otra" data-franja="otra" aria-pressed="false">a mano</button>
+      </div>
+      <div class="horas-chips" role="radiogroup" aria-label="${TRAMOS[i]}">
+        ${FRANJAS.slice(1).map(
+          ([v, nombre, sub]) => `<button type="button" class="horas-chip" role="radio" data-franja="${v}"
+            aria-checked="false">${icono(v)}<span>${nombre}</span><small>${sub}</small></button>`
+        ).join("")}
+      </div>
+      <div class="horas-mano" hidden>
+        <label><span class="solo-lector">Desde</span><select data-desde>${opcionesHora(8)}</select></label>
+        <span aria-hidden="true">→</span>
+        <label><span class="solo-lector">Hasta</span><select data-hasta>${opcionesHora(14)}</select></label>
+      </div>
+    </div>`;
   caja.insertAdjacentHTML(
     "beforeend",
     `<details class="horas">
       <summary><span class="horas-tit">Horarios</span> <span class="horas-resumen"></span></summary>
       <div class="horas-filas">
-        ${TRAMOS.map(
-          (t, i) => `<div class="horas-fila" data-tramo="${i}">
-            <span class="horas-rot">${t}</span>
-            <div class="horas-chips" role="radiogroup" aria-label="${t}">
-              ${FRANJAS.map(
-                ([v, rot, sub]) => `<button type="button" class="horas-chip" role="radio" data-franja="${v}"
-                  aria-checked="false">${rot}${sub ? `<small>${sub}</small>` : ""}</button>`
-              ).join("")}
-              <button type="button" class="horas-chip" role="radio" data-franja="otra" aria-checked="false">Otra</button>
-            </div>
-            <div class="horas-mano" hidden>
-              <label><span class="solo-lector">Desde</span><select data-desde>${opcionesHora(8)}</select></label>
-              <span aria-hidden="true">→</span>
-              <label><span class="solo-lector">Hasta</span><select data-hasta>${opcionesHora(14)}</select></label>
-            </div>
-          </div>`
-        ).join("")}
-        <p class="horas-nota">Lo que no cae en tu franja no sale. Si una compañía no dice la hora, el vuelo se
-          enseña igual.</p>
+        <section class="horas-bloque" aria-label="La ida">
+          <h4 class="horas-bloque-tit">Ida</h4>
+          ${fila(0, "Salir")}${fila(1, "Llegar")}
+        </section>
+        <section class="horas-bloque" aria-label="La vuelta">
+          <h4 class="horas-bloque-tit">Vuelta</h4>
+          ${fila(2, "Salir")}${fila(3, "Llegar")}
+        </section>
+        <p class="horas-nota">Toca una franja para quedarte solo con esos vuelos; otra vez, y se quita. Si una
+          compañía no dice la hora, el vuelo se enseña igual. <button type="button" class="horas-borrar" data-horas-borrar>Quitar todas</button></p>
       </div>
     </details>`
   );
@@ -90,9 +111,10 @@ export function montarHoras(caja, campo) {
       const fija = FRANJAS.some(([v]) => v === f);
       // «Otra» se queda marcada mientras se está eligiendo a mano.
       const aMano = (f && !fija) || fila.dataset.aMano === "1";
-      fila.querySelectorAll("[data-franja]").forEach((b) =>
-        b.setAttribute("aria-checked", String(aMano ? b.dataset.franja === "otra" : b.dataset.franja === f))
+      fila.querySelectorAll(".horas-chip").forEach((b) =>
+        b.setAttribute("aria-checked", String(!aMano && b.dataset.franja === f))
       );
+      fila.querySelector(".horas-otra").setAttribute("aria-pressed", String(!!aMano));
       fila.querySelector(".horas-mano").hidden = !aMano;
       if (f && !fija) {
         const [a, b] = f.split("-");
@@ -103,20 +125,32 @@ export function montarHoras(caja, campo) {
     const txt = textoHoras(campo.value);
     raiz.querySelector(".horas-resumen").textContent = txt || "me da igual";
     raiz.classList.toggle("con-horas", !!txt);
+    raiz.querySelector("[data-horas-borrar]").hidden = !txt;
   };
 
   raiz.addEventListener("click", (e) => {
+    if (e.target.closest("[data-horas-borrar]")) {
+      raiz.querySelectorAll(".horas-fila").forEach((f) => delete f.dataset.aMano);
+      poner(["", "", "", ""]);
+      return;
+    }
     const chip = e.target.closest("[data-franja]");
     if (!chip) return;
     const fila = chip.closest(".horas-fila");
     const i = Number(fila.dataset.tramo);
     const franjas = leerFranjas(campo.value);
     if (chip.dataset.franja === "otra") {
-      fila.dataset.aMano = "1";
-      franjas[i] = `${fila.querySelector("[data-desde]").value}-${fila.querySelector("[data-hasta]").value}`;
+      // «a mano» es un interruptor: otra vez, y vuelve a «me da igual».
+      if (fila.dataset.aMano === "1") {
+        delete fila.dataset.aMano;
+        franjas[i] = "";
+      } else {
+        fila.dataset.aMano = "1";
+        franjas[i] = `${fila.querySelector("[data-desde]").value}-${fila.querySelector("[data-hasta]").value}`;
+      }
     } else {
       delete fila.dataset.aMano;
-      franjas[i] = chip.dataset.franja;
+      franjas[i] = franjas[i] === chip.dataset.franja ? "" : chip.dataset.franja;
     }
     poner(franjas);
   });

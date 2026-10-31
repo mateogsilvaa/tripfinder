@@ -166,7 +166,7 @@ test.describe("el selector de destino", () => {
   });
 });
 
-test.describe("el selector de destino, con mapa", () => {
+test.describe("el selector de destino, en lista", () => {
   const abrir = async (page) => {
     await page.addInitScript(() => {
       try {
@@ -181,27 +181,27 @@ test.describe("el selector de destino, con mapa", () => {
     await expect(page.locator("#destModal")).toBeVisible();
   };
 
-  test("se abre con el mapa, no con la lista de todos los aeropuertos", async ({ page }) => {
+  test("se abre con los países plegados: sin mapa y sin la lista de todos los aeropuertos", async ({ page }) => {
     await abrir(page);
-    await expect(page.locator("#destList .dest-mapa svg")).toBeVisible();
-    await expect(page.locator("#destList .pais:not(.regiones)")).toHaveCount(0);
+    await expect(page.locator("#destList svg")).toHaveCount(0);
+    // Los nueve países del listado de ejemplo, cada uno en una fila.
+    await expect(page.locator("#destList details.pais")).toHaveCount(9);
+    await expect(page.locator("#destList details.pais .ciudad").first()).toBeHidden();
   });
 
   test("tocar un país enseña sus ciudades, y se elige una", async ({ page }) => {
     await abrir(page);
-    await page.locator('#destList [data-mapa-iso="IT"]').dispatchEvent("click");
     const italia = page.locator('#destList .pais[data-pais-iso="IT"]');
-    await expect(italia).toBeVisible();
+    await italia.locator(".pais-fila").click();
     await expect(italia.locator(".pais-todo")).toContainText("Italia");
     await italia.locator(".ciudad").first().click();
     await expect(page.locator("#destModal")).toBeHidden();
     await expect(page.locator("#fDest")).not.toHaveValue("");
   });
 
-  test("y la lista entera sigue ahí, si se pide", async ({ page }) => {
+  test("escribir abre los países que coinciden", async ({ page }) => {
     await abrir(page);
-    await page.click("[data-lista-entera]");
-    // Los nueve países del listado de ejemplo.
-    await expect(page.locator("#destList .pais:not(.regiones)")).toHaveCount(9);
+    await page.fill("#destSearch", "ital");
+    await expect(page.locator('#destList .pais[data-pais-iso="IT"] .ciudad').first()).toBeVisible();
   });
 });

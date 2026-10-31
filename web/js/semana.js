@@ -3,15 +3,15 @@
    Eran dos desplegables, «Salgo el» y «Vuelvo el», con una flecha en medio:
    había que abrir dos listas de siete nombres para decir «de jueves a
    domingo», y no se veía cuántas noches eran. Ahora es la semana entera en
-   una fila: se toca el día de salida, luego el de vuelta, y se pinta el tramo
-   con las noches contadas. Arriba, los tres que pide casi todo el mundo.
+   una tira: se toca el día de salida, luego el de vuelta, y se pinta el tramo
+   como una banda seguida, con las noches contadas. Arriba, los tres que pide casi todo el mundo.
 
    LOS DESPLEGABLES SIGUEN AHÍ, escondidos para la vista y no para el lector de
    pantalla: son la fuente de verdad que leen el envío, la URL de la portada
    (`ampliar.js`) y las pruebas. La fila solo los cambia y se repinta con su
    `change`, venga el cambio de donde venga. */
 
-const LETRAS = ["L", "M", "X", "J", "V", "S", "D"];
+const CORTOS = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"];
 const NOMBRES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 const ATAJOS = [
   ["4-0", "Finde largo", "vie → lun"],
@@ -36,9 +36,9 @@ export function montarSemana(caja, selIda, selVuelta) {
         ([v, rot, sub]) =>
           `<button type="button" class="sem7-atajo" data-atajo="${v}" aria-pressed="false">${rot}<small>${sub}</small></button>`
       ).join("")}</div>
-      <div class="sem7-dias">${LETRAS.map(
+      <div class="sem7-dias">${CORTOS.map(
         (l, i) =>
-          `<button type="button" class="sem7-dia" data-dia="${i}" aria-label="${NOMBRES[i]}"><b>${l}</b></button>`
+          `<button type="button" class="sem7-dia" data-dia="${i}" aria-label="${NOMBRES[i]}"><b>${l}</b><small></small></button>`
       ).join("")}</div>
       <p class="sem7-resumen" aria-live="polite"></p>
     </div>`
@@ -55,6 +55,9 @@ export function montarSemana(caja, selIda, selVuelta) {
       b.classList.toggle("ida", d === ida);
       b.classList.toggle("vuelta", paso === "ida" && d === vuelta && d !== ida);
       b.classList.toggle("dentro", dentro && d !== vuelta);
+      // Debajo de cada punta, qué es: así se lee sin mirar el resumen.
+      b.querySelector("small").textContent =
+        d === ida ? "sales" : paso === "ida" && d === vuelta ? "vuelves" : "";
       b.setAttribute(
         "aria-pressed",
         String(d === ida || (paso === "ida" && d === vuelta))

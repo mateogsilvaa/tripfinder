@@ -1215,9 +1215,9 @@ test.describe("el selector de destinos", () => {
 
   test("agrupa por país y deja elegir el país entero", async ({ page }) => {
     await abrir(page);
-    // De entrada se ve el mapa; la lista entera, si se pide.
-    await page.click("[data-lista-entera]");
-    expect(await page.locator("#destList .pais").count()).toBeGreaterThan(1);
+    // Cada país es una fila que se despliega en «todo el país» y sus ciudades.
+    expect(await page.locator("#destList details.pais").count()).toBeGreaterThan(1);
+    await page.locator("#destList .pais-fila").first().click();
     await expect(page.locator("#destList .pais-todo").first()).toBeVisible();
   });
 

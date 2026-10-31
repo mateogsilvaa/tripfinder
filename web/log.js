@@ -169,14 +169,21 @@ window.fetch = async function (...args) {
    navegador. */
 
 const TF_FOCABLES = [
-  "a[href]", "button:not([disabled])", "input:not([disabled])",
+  "a[href]", "details > summary", "button:not([disabled])", "input:not([disabled])",
   "select:not([disabled])", "textarea:not([disabled])",
   '[tabindex]:not([tabindex="-1"])',
 ].join(",");
 
 /* Solo lo que de verdad se puede enfocar: un boton dentro de algo con [hidden]
    sale en el querySelectorAll pero no recibe el foco, y el ciclo se atascaria. */
-const tfVisible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+const tfPlegado = (el) => {
+  // Lo de dentro de un <details> cerrado tiene caja para Chrome (se oculta con
+  // content-visibility), pero no recibe el foco: el resumen sí.
+  const d = el.parentElement && el.parentElement.closest("details:not([open])");
+  return !!d && !(el.tagName === "SUMMARY" && el.parentElement === d);
+};
+const tfVisible = (el) =>
+  !tfPlegado(el) && !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
 
 let tfDialogoAbierto = null;
 

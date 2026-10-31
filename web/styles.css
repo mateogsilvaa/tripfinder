@@ -6282,3 +6282,232 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
   .hop-pasos li { grid-template-columns: auto 1fr; align-items: center; border: 0; border-radius: 0; }
   .hop-pasos li + li { border-top: 1px solid var(--hair); }
 }
+
+/* «¿A DÓNDE?» EN LISTA (`destinos.js`): las regiones y los países como filas
+   de lista, como el selector de zona. Cada país se despliega en «todo el país»
+   y sus ciudades, una por fila. Nada de mapa ni de chips apretados. */
+#destList { display: block; }
+#destList .pais { border: 0; padding: 0; margin: 0; }
+#destList .pais.regiones { border: 0; padding: 0; margin: 0 0 6px; }
+#destList .regiones-rotulo { margin: 4px 0 6px; }
+#destList .pais.regiones .ciudades {
+  display: grid; gap: 0; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface);
+}
+/* Los países, una sola caja: cada uno pone su lado y su raya de arriba; el
+   primero redondea arriba y el último abajo. */
+#destList details.pais { display: block; border: 1px solid var(--line); border-top-color: var(--hair); border-bottom: 0; background: var(--surface); overflow: hidden; }
+#destList :not(details) + details.pais { border-top-color: var(--line); border-radius: var(--r) var(--r) 0 0; }
+#destList details.pais:last-child { border-bottom: 1px solid var(--line); border-radius: 0 0 var(--r) var(--r); }
+#destList :not(details) + details.pais:last-child { border-radius: var(--r); }
+#destList .ciudad, #destList .pais-todo, #destList .pais-fila {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; margin: 0;
+  padding: 0 14px; border: 0; border-radius: 0; background: none; color: var(--ink); font: inherit; font-size: var(--fs-ui);
+  text-align: left; cursor: pointer; transition: background-color 0.15s ease;
+}
+#destList .ciudad + .ciudad, #destList .pais-todo + .ciudad { border-top: 1px solid var(--hair); }
+#destList .ciudad:hover, #destList .pais-todo:hover, #destList .pais-fila:hover { background: var(--surface2); color: var(--ink); border-color: var(--hair); }
+#destList .ciudad i, #destList .pais-fila em, #destList .pais-todo em {
+  font: 400 var(--fs-meta, 11px) var(--font-mono); font-style: normal; color: var(--muted); letter-spacing: 0.04em;
+}
+#destList .pais-fila { list-style: none; }
+#destList .pais-fila::-webkit-details-marker { display: none; }
+#destList .pais-fila > span { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+#destList .pais-fila .bandera { margin: 0; font-size: 18px; }
+#destList .pais-fila em::after { content: "›"; margin-left: 10px; font-family: var(--font-sans); font-size: 16px; display: inline-block; transition: transform 0.25s var(--ease); }
+#destList details[open] > .pais-fila em::after { transform: rotate(90deg); }
+#destList details[open] > .pais-fila { font-weight: 600; }
+#destList details.pais .ciudades { display: grid; border-top: 1px solid var(--hair); background: color-mix(in srgb, var(--surface2) 45%, transparent); }
+#destList details.pais .ciudad, #destList details.pais .pais-todo { padding-left: 46px; }
+#destList .pais-todo span { font-weight: 600; }
+#destList .ciudad.region { font-weight: 500; }
+#destList .pais-todo span { text-transform: none; letter-spacing: 0; font-family: var(--font-sans); }
+#destList .regiones-rotulo.dest-paises-rot { margin-top: 18px; }
+
+/* LA SEMANA COMO UNA TIRA (`semana.js`): los atajos son un control segmentado
+   y los siete días una banda seguida; el tramo elegido se pinta de punta a
+   punta, con «sales» y «vuelves» debajo de cada extremo. */
+.sem7 { gap: 12px; }
+.sem7-atajos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; max-width: 560px;
+  border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.sem7-atajo { display: grid; justify-items: center; gap: 2px; min-height: 52px; padding: 6px 4px; margin: 0;
+  border: 0; border-left: 1px solid var(--hair); border-radius: 0; background: none; color: var(--ink);
+  font-size: var(--fs-ui-s); font-weight: 500; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; }
+.sem7-atajo:first-child { border-left: 0; }
+.sem7-atajo:hover { background: var(--surface2); }
+.sem7-atajo[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: transparent; }
+.sem7-atajo[aria-pressed="true"] small { color: color-mix(in srgb, var(--paper) 70%, transparent); }
+.sem7-dias { gap: 0; max-width: 560px; padding: 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.sem7-dia { position: relative; display: grid; justify-items: center; align-content: center; gap: 1px; min-height: 54px; padding: 0;
+  border: 0; border-radius: 0; background: none; color: var(--ink); cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease, border-radius 0.25s ease; }
+.sem7-dia b { font-size: var(--fs-ui-s); font-weight: 600; text-transform: capitalize; }
+.sem7-dia small { min-height: 1.2em; font: 400 10px var(--font-mono); letter-spacing: 0.04em; color: inherit; opacity: 0.85; }
+.sem7-dia:hover { background: var(--surface2); border-radius: var(--r-s); }
+.sem7-dia.dentro { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 0; }
+.sem7-dia.ida { background: var(--accent); color: var(--sobre-acento); border-radius: var(--r-s) 0 0 var(--r-s); }
+.sem7-dia.vuelta { background: var(--accent); color: var(--sobre-acento); border-radius: 0 var(--r-s) var(--r-s) 0; }
+/* Mientras falta la vuelta, la ida es una sola pastilla. */
+.sem7-dia.ida:not(:has(~ .vuelta)):not(:has(~ .dentro)) { border-radius: var(--r-s); }
+
+/* LOS HORARIOS (`horas.js`): ida y vuelta en dos bloques; cada fila es el día
+   partido en cuatro franjas con su dibujo, de una tirada, sin envolver. */
+.horas .horas-filas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; padding: 6px 12px 16px; }
+.horas-bloque { display: grid; gap: 12px; align-content: start; margin: 0; }
+.horas-bloque-tit { margin: 0; font: 600 var(--fs-ui) var(--font-sans); color: var(--ink); }
+.horas .horas-fila { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.horas-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.horas .horas-rot { font: 400 var(--fs-caps) / 1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.horas-otra { padding: 4px 0; border: 0; background: none; color: var(--muted); font-size: var(--fs-meta, 12px); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 0; }
+.horas-otra[aria-pressed="true"] { color: var(--deep); font-weight: 600; }
+.horas .horas-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: auto; max-width: none; gap: 0;
+  border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.horas .horas-chip { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 62px; padding: 6px 2px; margin: 0;
+  border: 0; border-left: 1px solid var(--hair); border-radius: 0; background: none; color: var(--muted);
+  font-size: var(--fs-ui-s); cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; }
+.horas .horas-chip:first-child { border-left: 0; }
+.horas .horas-chip svg { width: 20px; height: 20px; }
+.horas .horas-chip span { color: var(--ink); font-weight: 500; }
+.horas .horas-chip small { font: 400 10px var(--font-mono); color: var(--muted); white-space: nowrap; }
+.horas .horas-chip:hover { background: var(--surface2); }
+.horas .horas-chip[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.horas .horas-chip[aria-checked="true"] span, .horas .horas-chip[aria-checked="true"] small { color: var(--paper); }
+.horas .horas-mano { grid-column: 1; }
+.horas .horas-nota { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.horas-borrar { padding: 0; border: 0; background: none; color: var(--deep); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; min-height: 0; }
+.horas-borrar[hidden] { display: none; }
+@media (max-width: 720px) {
+  .horas .horas-filas { grid-template-columns: 1fr; padding: 4px 0 14px; }
+  .horas .horas-chip { min-height: 58px; }
+}
+@media (max-width: 720px) {
+  .horas .horas-filas { padding: 4px 12px 14px; gap: 18px; }
+  .horas .horas-chip { min-height: 52px; }
+}
+
+/* LAS TARJETAS DE BUSCADO Y SEGUIDO (`tarjetaViaje`, base.js): el sitio
+   grande con su precio, las condiciones como etiquetas planas debajo, y una
+   raya fina con el estado y «ver». Toda la tarjeta se toca. */
+.watch.tv, .saved.tv { display: block; padding: 0; overflow: hidden; cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.2s ease; }
+.watch.tv:hover, .saved.tv:hover { border-color: var(--muted); }
+.watch.tv:active, .saved.tv:active { transform: scale(0.99); }
+.tv-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px 0; }
+.tv-sitio { font: 600 clamp(18px, 2.2vw, 22px) / 1.15 var(--font-sans); letter-spacing: -0.01em; min-width: 0; overflow-wrap: anywhere; }
+.tv-precio { flex: none; font-size: clamp(18px, 2.2vw, 22px); white-space: nowrap; }
+.tv-precio small { font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); letter-spacing: 0.04em; margin-right: 2px; }
+.tv-cond { display: flex; flex-wrap: wrap; gap: 4px 0; margin: 8px 0 0; padding: 0 16px; list-style: none;
+  font: 400 var(--fs-meta, 12px) / 1.5 var(--font-mono); color: var(--muted); }
+.tv-cond li + li::before { content: "·"; margin: 0 8px; color: var(--line); }
+.tv-pie { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px 8px 8px 16px; border-top: 1px solid var(--hair); }
+.tv-pie .meta { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-ui-s); }
+.tv-punto { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ok, #3aa76d);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok, #3aa76d) 50%, transparent); animation: tv-late 2.4s ease-out infinite; }
+@keyframes tv-late { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.tv-ver { font-size: var(--fs-ui-s); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.tv-ver:empty { display: none; }
+.tv-ver::after { content: "›"; display: inline-block; margin-left: 6px; transition: transform 0.25s var(--ease); }
+.tv:has(> .saved-rows:not([hidden])) .tv-ver::after, .tv:has(> .watch-rows:not([hidden])) .tv-ver::after { transform: rotate(90deg); }
+.tv-pie .quitar { margin: 0; min-height: 36px; padding: 0 12px; }
+.tv > .saved-rows, .tv > .watch-rows { padding: 0 8px 8px; border-top: 1px solid var(--hair); }
+@media (prefers-reduced-motion: reduce) { .tv-punto { animation: none; } }
+/* En el ordenador, dos o tres por fila; la que se abre ocupa la fila entera. */
+@media (min-width: 900px) {
+  #searches, #watches { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px; align-items: start; }
+  #searches > *, #watches > * { grid-column: 1 / -1; margin-bottom: 0; }
+  #searches > .tv, #watches > .tv { grid-column: auto; }
+  #searches > .tv:has(> .saved-rows:not([hidden])), #watches > .tv:has(> .watch-rows:not([hidden])) { grid-column: 1 / -1; }
+}
+/* «a mano» y «Quitar todas» se tocan con el dedo: el área llega a los 44 px
+   aunque el texto sea pequeño. */
+@media (max-width: 760px) {
+  .horas-otra, .horas-borrar { min-height: var(--tap-min, 44px); min-width: 44px; padding: 0 6px; }
+  .horas-cab { align-items: center; }
+  .tv-pie .quitar { min-height: var(--tap-min, 44px); }
+}
+
+/* INTERRAIL · ELEGIR LAS CIUDADES. Una lista como la de los ajustes del móvil
+   —buscador, zonas plegables, una fila por ciudad con su marca— y, en el
+   ordenador, el mapa a su lado, encuadrado a las ciudades para que llene su
+   caja. En el móvil el mapa no se usa para elegir: solo aparece con la ruta. */
+.ir-escoger { display: grid; gap: 14px; }
+.ir-escoger-lista { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.ir-buscar { width: 100%; min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r); background: var(--field); color: var(--ink); font: inherit; }
+.ir-elegidas { margin: 0; font: inherit; color: var(--muted); display: grid; gap: 6px; }
+.ir-elegidas p { margin: 0; font-size: var(--fs-ui-s); }
+.ir-mias { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; counter-reset: mia; }
+.ir-mias button { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px 0 6px; margin: 0;
+  border: 0; border-radius: 999px; background: var(--accent); color: var(--sobre-acento); font: 600 var(--fs-ui-s) var(--font-sans); cursor: pointer; counter-increment: mia; }
+.ir-mias button::before { content: counter(mia); display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%;
+  background: color-mix(in srgb, var(--sobre-acento) 18%, transparent); font: 600 11px var(--font-mono); }
+.ir-mias button span { opacity: 0.75; font-size: 15px; }
+.ir-ciudades { display: block; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); overflow: hidden; }
+.ir-zona + .ir-zona { border-top: 1px solid var(--hair); }
+.ir-zona > summary { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 50px; padding: 0 14px;
+  list-style: none; cursor: pointer; font-weight: 600; font-size: var(--fs-ui); }
+.ir-zona > summary::-webkit-details-marker { display: none; }
+.ir-zona > summary::after { content: "›"; margin-left: 8px; color: var(--muted); transition: transform 0.25s var(--ease); }
+.ir-zona[open] > summary::after { transform: rotate(90deg); }
+.ir-zona-n { margin-left: auto; font: 400 var(--fs-meta, 11px) var(--font-mono); font-style: normal; color: var(--accent-txt, var(--accent)); }
+.ir-zona-filas { display: grid; border-top: 1px solid var(--hair); background: color-mix(in srgb, var(--surface2) 45%, transparent); }
+.ir-chip.ir-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto 24px; align-items: center; gap: 10px; width: 100%;
+  min-height: 48px; margin: 0; padding: 0 14px 0 28px; border: 0; border-radius: 0; background: none; color: var(--ink);
+  font: inherit; font-size: var(--fs-ui); font-weight: 400; text-align: left; cursor: pointer; transition: background-color 0.15s ease; }
+.ir-chip.ir-fila + .ir-fila { border-top: 1px solid var(--hair); }
+.ir-chip.ir-fila[hidden] { display: none; }
+.ir-chip.ir-fila:hover { background: var(--surface2); border-color: var(--hair); }
+.ir-chip.ir-fila::before { content: none; }
+.ir-chip.ir-fila[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--ink); font-weight: 600; }
+.ir-fila small { font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); }
+.ir-marca { width: 22px; height: 22px; border: 1.5px solid var(--line); border-radius: 50%; transition: background-color 0.2s ease, border-color 0.2s ease; position: relative; }
+.ir-fila[aria-pressed="true"] .ir-marca { background: var(--accent); border-color: var(--accent); }
+.ir-fila[aria-pressed="true"] .ir-marca::after { content: ""; position: absolute; left: 7px; top: 3px; width: 5px; height: 10px;
+  border: solid var(--sobre-acento); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+.ir-mapa .ir-mapa-svg { max-height: none; }
+@media (max-width: 860px) {
+  .ir-mapa:not(.con-ruta) { display: none; }
+  .ir-mapa.con-ruta .ir-nodo { pointer-events: none; }
+}
+@media (min-width: 861px) {
+  .ir-escoger { grid-template-columns: minmax(280px, 360px) minmax(0, 1fr); align-items: start; }
+  .ir-mapa { margin: 0; position: sticky; top: 84px; }
+  .ir-escoger-lista { max-height: 760px; }
+  .ir-ciudades { max-height: 600px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+}
+
+/* INTERRAIL · EL RESULTADO, repartido. Arriba el viaje y lo que cuesta en una
+   tarjeta; las cifras en una rejilla; el pase contra los billetes, lado a
+   lado y con el veredicto delante; y el día a día con los enlaces pequeños,
+   en la línea de cada cosa, en vez de un botón grande por renglón. */
+.ir-resumen { gap: 16px 24px; padding-bottom: 18px; margin-bottom: 18px; }
+.ir-resumen h3 { font-size: clamp(20px, 3vw, 26px); line-height: 1.2; }
+.ir-res-datos { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0; margin-top: 14px;
+  border: 1px solid var(--hair); border-radius: var(--r); overflow: hidden; }
+.ir-res-datos li { padding: 10px 12px; border-right: 1px solid var(--hair); border-bottom: 1px solid var(--hair); margin: 0 -1px -1px 0; }
+.ir-res-total { align-self: stretch; align-content: center; padding: 16px 18px; border-radius: var(--r);
+  background: color-mix(in srgb, var(--deep) 10%, var(--surface2)); min-width: 220px; }
+.ir-res-acciones .btn { min-height: 44px; }
+.ir-precio { display: flex; flex-direction: column; padding: 16px; border: 1px solid var(--line); border-left: 0; border-radius: var(--r); background: var(--surface); }
+.ir-precio .ir-precio-titulo { order: 0; }
+.ir-precio .ir-veredicto { order: 1; margin: 0 0 12px; font-weight: 600; font-size: var(--fs-ui); }
+.ir-precio dl { order: 2; gap: 8px; }
+.ir-precio dl > div { padding: 12px; border: 1px solid var(--hair); border-radius: var(--r-s); }
+.ir-precio dl > .gana { border-color: var(--deep); background: color-mix(in srgb, var(--deep) 8%, transparent); }
+.ir-precio .ir-desglose { order: 3; margin-top: 12px; }
+.ir-precio .ir-grupo { order: 4; }
+.ir-precio .ir-comprar { order: 5; align-self: flex-start; margin-top: 12px; }
+.ir-ev { padding: 14px 0; }
+.ir-ev-cuerpo { gap: 4px; }
+.ir-ev-titulo { font-size: var(--fs-ui); }
+.ir-nocturno { padding: 8px 10px; gap: 6px 10px; font-size: var(--fs-ui-s); line-height: 1.4; }
+.ir-nocturno .btn, .ir-largo .btn { min-height: 36px; padding: 0 12px; }
+@media (max-width: 760px) {
+  .ir-res-datos { grid-template-columns: 1fr 1fr; }
+  .ir-res-total { min-width: 0; }
+  .ir-res-acciones { display: grid; grid-template-columns: 1fr 1fr; }
+  .ir-precio dl { grid-template-columns: 1fr 1fr; }
+  /* «Horarios» y «Ver vuelos» como enlaces de la línea, no como botones sueltos. */
+  .ir-ev .ir-ev-accion, .ir-ev-vuelo a.btn { min-height: 44px; padding: 0; margin: 0; border: 0; background: none;
+    color: var(--deep); font-weight: 600; font-size: var(--fs-ui-s); text-decoration: underline; text-underline-offset: 3px; }
+  .ir-ev .ir-ev-accion::after, .ir-ev-vuelo a.btn::after { content: " ↗"; }
+  .ir-nocturno .btn, .ir-largo .btn { min-height: 44px; }
+}

@@ -2,7 +2,6 @@
 
 import { $, esc, fetchJSON, fmtEUR, on } from "./base.js";
 import { banderaDe, isoDe } from "./paises.js";
-import { ALTO as ALTO_MUNDO, ANCHO as ANCHO_MUNDO, PAISES as PAISES_MUNDO } from "./mapa-mundo.js";
 
 let destinoPara = "fDest";
 
@@ -172,17 +171,19 @@ async function cargarDestinos() {
   return DESTINOS;
 }
 
-/* El bloque de un pais: «todo el pais» y sus ciudades. */
-function paisHTML(p, aeropuertos = p.aeropuertos) {
+/* EL BLOQUE DE UN PAÍS, como una fila de lista que se despliega: la bandera,
+   el país y cuántos aeropuertos; dentro, «todo el país» y sus ciudades, una
+   por fila. Antes era un mapamundi donde no se acertaba a los países pequeños
+   (y menos con el dedo) y una nube de chips redondeados. */
+function paisHTML(p, aeropuertos = p.aeropuertos, abierto = false) {
   return `
-    <div class="pais" data-pais-iso="${esc(isoDe(p.pais))}">
-      <button type="button" class="pais-todo" data-valor="${esc(p.pais)}">
-        <span>${
-          banderaDe(p.pais) ? `<i class="bandera" aria-hidden="true">${banderaDe(p.pais)}</i>` : ""
-        }${esc(p.pais)}</span>
-        <em>todo el país · ${p.aeropuertos.length} aeropuertos</em>
-      </button>
+    <details class="pais" data-pais-iso="${esc(isoDe(p.pais))}"${abierto ? " open" : ""}>
+      <summary class="pais-fila"><span>${
+        banderaDe(p.pais) ? `<i class="bandera" aria-hidden="true">${banderaDe(p.pais)}</i>` : ""
+      }${esc(p.pais)}</span><em>${p.aeropuertos.length} aeropuerto${p.aeropuertos.length === 1 ? "" : "s"}</em></summary>
       <div class="ciudades">
+        <button type="button" class="pais-todo" data-valor="${esc(p.pais)}"><span>Todo ${esc(p.pais)}</span>
+          <em>cualquier aeropuerto</em></button>
         ${aeropuertos
           .map(
             (a) =>
@@ -191,43 +192,7 @@ function paisHTML(p, aeropuertos = p.aeropuertos) {
           )
           .join("")}
       </div>
-    </div>`;
-}
-
-/* Que pais del mapa es cada pais del listado. Los nombres llegan en ingles o
-   en español (`isoDe` los casa); dos nombres del mismo pais se juntan. */
-function porIso() {
-  const m = {};
-  for (const p of DESTINOS || []) {
-    const iso = isoDe(p.pais);
-    if (iso) (m[iso] ||= []).push(p);
-  }
-  return m;
-}
-
-let PAIS_MAPA = "";
-let LISTA_ENTERA = false;
-
-function mapaHTML() {
-  const hay = porIso();
-  return `
-    <div class="dest-mapa">
-      <svg class="mundo-svg" viewBox="0 0 ${ANCHO_MUNDO} ${ALTO_MUNDO}" role="group"
-        aria-label="Mapamundi: toca un país para ver sus ciudades">
-        ${PAISES_MUNDO.map((p) =>
-          hay[p.iso]
-            ? `<path class="mp con${p.iso === PAIS_MAPA ? " sel" : ""}" data-mapa-iso="${p.iso}" d="${p.d}"
-                tabindex="0" role="button" aria-pressed="${p.iso === PAIS_MAPA}"
-                aria-label="${esc(p.nombre)}"><title>${esc(p.nombre)}</title></path>`
-            : `<path class="mp" d="${p.d}" aria-hidden="true"></path>`
-        ).join("")}
-      </svg>
-      <p class="dest-mapa-pie">${
-        PAIS_MAPA
-          ? ""
-          : "Toca un país para ver sus ciudades, o escribe arriba."
-      }</p>
-    </div>`;
+    </details>`;
 }
 
 function pintarDestinos(filtro = "") {
@@ -240,63 +205,17 @@ function pintarDestinos(filtro = "") {
         const aeropuertos = coincidePais
           ? p.aeropuertos
           : p.aeropuertos.filter((a) => a.ciudad.toLowerCase().includes(q) || a.code.toLowerCase() === q);
-        return aeropuertos.length ? paisHTML(p, aeropuertos) : "";
+        return aeropuertos.length ? paisHTML(p, aeropuertos, true) : "";
       })
       .join("");
   } else {
-    const elegido = PAIS_MAPA ? porIso()[PAIS_MAPA] || [] : [];
-    cuerpo =
-      mapaHTML() +
-      elegido.map((p) => paisHTML(p)).join("") +
-      (LISTA_ENTERA
-        ? (DESTINOS || []).filter((p) => !elegido.includes(p)).map((p) => paisHTML(p)).join("")
-        : `<p class="dest-entera"><button type="button" class="btn ghost small" data-lista-entera>Ver todos los
-            países en una lista</button></p>`);
+    cuerpo = `<p class="regiones-rotulo dest-paises-rot">Países</p>${(DESTINOS || []).map((p) => paisHTML(p)).join("")}`;
   }
   const todo = regionesHTML(q) + cuerpo;
   $("#destList").innerHTML = todo || '<p class="meta">Nada con ese nombre.</p>';
   $("#destList")
     .querySelectorAll("[data-valor]")
     .forEach((b) => b.addEventListener("click", () => elegirDestino(b.dataset.valor)));
-  const tocar = (iso) => {
-    PAIS_MAPA = PAIS_MAPA === iso ? "" : iso;
-    pintarDestinos($("#destSearch").value);
-    const bloque = $("#destList").querySelector(`.pais[data-pais-iso="${PAIS_MAPA}"]`);
-    if (bloque) bloque.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    $("#destList").querySelector(`[data-mapa-iso="${iso}"]`)?.focus({ preventScroll: true });
-  };
-  $("#destList")
-    .querySelectorAll("[data-mapa-iso]")
-    .forEach((el) => {
-      el.addEventListener("click", () => tocar(el.dataset.mapaIso));
-      el.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        tocar(el.dataset.mapaIso);
-      });
-    });
-  $("#destList")
-    .querySelector("[data-lista-entera]")
-    ?.addEventListener("click", () => {
-      LISTA_ENTERA = true;
-      pintarDestinos("");
-    });
-  // Al pasar por una región, sus países se encienden en el mapa.
-  $("#destList")
-    .querySelectorAll(".ciudad.region")
-    .forEach((b) => {
-      const isos = new Set(
-        (REGION_AEROPUERTOS[b.dataset.region] || []).map((c) => ISO_DE_CODIGO[c]).filter(Boolean)
-      );
-      const luz = (si) =>
-        $("#destList")
-          .querySelectorAll("[data-mapa-iso]")
-          .forEach((el) => el.classList.toggle("region-luz", si && isos.has(el.dataset.mapaIso)));
-      b.addEventListener("mouseenter", () => luz(true));
-      b.addEventListener("mouseleave", () => luz(false));
-      b.addEventListener("focus", () => luz(true));
-      b.addEventListener("blur", () => luz(false));
-    });
 }
 
 function elegirDestino(valor) {
@@ -331,8 +250,6 @@ function rotular(campo, boton) {
    que tocaba cada llamador; ahora viaja con la llamada. */
 export function abrirDestinos(para = "fDest") {
   destinoPara = para;
-  PAIS_MAPA = "";
-  LISTA_ENTERA = false;
   $("#destModal").hidden = false;
   tfAbrirDialogo($("#destModal"), {
     foco: () => $("#destSearch"),
