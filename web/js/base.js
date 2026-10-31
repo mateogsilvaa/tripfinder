@@ -145,3 +145,24 @@ export const REGIONES = {};
 export const NOMBRE_REGION = {};
 export const SEARCH_OFFERS = {}; // ofertas de busquedas guardadas, por id
 
+
+/* LA TARJETA DE UN VIAJE GUARDADO O SEGUIDO. El rótulo llega como una frase
+   larga —«Roma · findes de mayo · hasta 150 € · 2 pers.»— y en el móvil era
+   un renglón partido por cualquier sitio. Aquí se separa: el sitio, grande;
+   las condiciones, en una fila de etiquetas debajo; el precio, a la derecha,
+   que es lo que se mira primero; y abajo, cómo va (cuántos viajes, cuándo se
+   miró) con un punto que dice si está vivo. Sirve a buscar y a seguir. */
+export function tarjetaViaje({ rotulo, precio, estado, vivo = false, ver = "Ver viajes", quitar = "" }) {
+  const [sitio, ...resto] = String(rotulo || "Donde sea").split(" · ");
+  return `
+    <div class="tv-cab">
+      <b class="tv-sitio">${esc(sitio)}</b>
+      ${precio ? `<span class="best tv-precio"><small>desde</small> ${fmtEUR(precio)}</span>` : ""}
+    </div>
+    ${resto.length ? `<ul class="tv-cond">${resto.map((r) => `<li>${esc(r)}</li>`).join("")}</ul>` : ""}
+    <div class="tv-pie">
+      <span class="meta">${vivo ? '<i class="tv-punto" aria-hidden="true"></i>' : ""}${estado}</span>
+      <span class="tv-ver" aria-hidden="true">${esc(ver)}</span>
+      ${quitar}
+    </div>`;
+}

@@ -6282,3 +6282,138 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
   .hop-pasos li { grid-template-columns: auto 1fr; align-items: center; border: 0; border-radius: 0; }
   .hop-pasos li + li { border-top: 1px solid var(--hair); }
 }
+
+/* «¿A DÓNDE?» EN LISTA (`destinos.js`): las regiones y los países como filas
+   de lista, como el selector de zona. Cada país se despliega en «todo el país»
+   y sus ciudades, una por fila. Nada de mapa ni de chips apretados. */
+#destList { display: block; }
+#destList .pais { border: 0; padding: 0; margin: 0; }
+#destList .pais.regiones { border: 0; padding: 0; margin: 0 0 6px; }
+#destList .regiones-rotulo { margin: 4px 0 6px; }
+#destList .pais.regiones .ciudades {
+  display: grid; gap: 0; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface);
+}
+/* Los países, una sola caja: cada uno pone su lado y su raya de arriba; el
+   primero redondea arriba y el último abajo. */
+#destList details.pais { display: block; border: 1px solid var(--line); border-top-color: var(--hair); border-bottom: 0; background: var(--surface); overflow: hidden; }
+#destList :not(details) + details.pais { border-top-color: var(--line); border-radius: var(--r) var(--r) 0 0; }
+#destList details.pais:last-child { border-bottom: 1px solid var(--line); border-radius: 0 0 var(--r) var(--r); }
+#destList :not(details) + details.pais:last-child { border-radius: var(--r); }
+#destList .ciudad, #destList .pais-todo, #destList .pais-fila {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 48px; margin: 0;
+  padding: 0 14px; border: 0; border-radius: 0; background: none; color: var(--ink); font: inherit; font-size: var(--fs-ui);
+  text-align: left; cursor: pointer; transition: background-color 0.15s ease;
+}
+#destList .ciudad + .ciudad, #destList .pais-todo + .ciudad { border-top: 1px solid var(--hair); }
+#destList .ciudad:hover, #destList .pais-todo:hover, #destList .pais-fila:hover { background: var(--surface2); color: var(--ink); border-color: var(--hair); }
+#destList .ciudad i, #destList .pais-fila em, #destList .pais-todo em {
+  font: 400 var(--fs-meta, 11px) var(--font-mono); font-style: normal; color: var(--muted); letter-spacing: 0.04em;
+}
+#destList .pais-fila { list-style: none; }
+#destList .pais-fila::-webkit-details-marker { display: none; }
+#destList .pais-fila > span { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+#destList .pais-fila .bandera { margin: 0; font-size: 18px; }
+#destList .pais-fila em::after { content: "›"; margin-left: 10px; font-family: var(--font-sans); font-size: 16px; display: inline-block; transition: transform 0.25s var(--ease); }
+#destList details[open] > .pais-fila em::after { transform: rotate(90deg); }
+#destList details[open] > .pais-fila { font-weight: 600; }
+#destList details.pais .ciudades { display: grid; border-top: 1px solid var(--hair); background: color-mix(in srgb, var(--surface2) 45%, transparent); }
+#destList details.pais .ciudad, #destList details.pais .pais-todo { padding-left: 46px; }
+#destList .pais-todo span { font-weight: 600; }
+#destList .ciudad.region { font-weight: 500; }
+#destList .pais-todo span { text-transform: none; letter-spacing: 0; font-family: var(--font-sans); }
+#destList .regiones-rotulo.dest-paises-rot { margin-top: 18px; }
+
+/* LA SEMANA COMO UNA TIRA (`semana.js`): los atajos son un control segmentado
+   y los siete días una banda seguida; el tramo elegido se pinta de punta a
+   punta, con «sales» y «vuelves» debajo de cada extremo. */
+.sem7 { gap: 12px; }
+.sem7-atajos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; max-width: 560px;
+  border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.sem7-atajo { display: grid; justify-items: center; gap: 2px; min-height: 52px; padding: 6px 4px; margin: 0;
+  border: 0; border-left: 1px solid var(--hair); border-radius: 0; background: none; color: var(--ink);
+  font-size: var(--fs-ui-s); font-weight: 500; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; }
+.sem7-atajo:first-child { border-left: 0; }
+.sem7-atajo:hover { background: var(--surface2); }
+.sem7-atajo[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: transparent; }
+.sem7-atajo[aria-pressed="true"] small { color: color-mix(in srgb, var(--paper) 70%, transparent); }
+.sem7-dias { gap: 0; max-width: 560px; padding: 4px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+.sem7-dia { position: relative; display: grid; justify-items: center; align-content: center; gap: 1px; min-height: 54px; padding: 0;
+  border: 0; border-radius: 0; background: none; color: var(--ink); cursor: pointer;
+  transition: background-color 0.25s ease, color 0.25s ease, border-radius 0.25s ease; }
+.sem7-dia b { font-size: var(--fs-ui-s); font-weight: 600; text-transform: capitalize; }
+.sem7-dia small { min-height: 1.2em; font: 400 10px var(--font-mono); letter-spacing: 0.04em; color: inherit; opacity: 0.85; }
+.sem7-dia:hover { background: var(--surface2); border-radius: var(--r-s); }
+.sem7-dia.dentro { background: color-mix(in srgb, var(--accent) 16%, transparent); border-radius: 0; }
+.sem7-dia.ida { background: var(--accent); color: var(--sobre-acento); border-radius: var(--r-s) 0 0 var(--r-s); }
+.sem7-dia.vuelta { background: var(--accent); color: var(--sobre-acento); border-radius: 0 var(--r-s) var(--r-s) 0; }
+/* Mientras falta la vuelta, la ida es una sola pastilla. */
+.sem7-dia.ida:not(:has(~ .vuelta)):not(:has(~ .dentro)) { border-radius: var(--r-s); }
+
+/* LOS HORARIOS (`horas.js`): ida y vuelta en dos bloques; cada fila es el día
+   partido en cuatro franjas con su dibujo, de una tirada, sin envolver. */
+.horas .horas-filas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; padding: 6px 12px 16px; }
+.horas-bloque { display: grid; gap: 12px; align-content: start; margin: 0; }
+.horas-bloque-tit { margin: 0; font: 600 var(--fs-ui) var(--font-sans); color: var(--ink); }
+.horas .horas-fila { display: grid; grid-template-columns: 1fr; gap: 6px; }
+.horas-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.horas .horas-rot { font: 400 var(--fs-caps) / 1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.horas-otra { padding: 4px 0; border: 0; background: none; color: var(--muted); font-size: var(--fs-meta, 12px); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: 0; }
+.horas-otra[aria-pressed="true"] { color: var(--deep); font-weight: 600; }
+.horas .horas-chips { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: auto; max-width: none; gap: 0;
+  border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.horas .horas-chip { display: grid; justify-items: center; align-content: center; gap: 2px; min-height: 62px; padding: 6px 2px; margin: 0;
+  border: 0; border-left: 1px solid var(--hair); border-radius: 0; background: none; color: var(--muted);
+  font-size: var(--fs-ui-s); cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; }
+.horas .horas-chip:first-child { border-left: 0; }
+.horas .horas-chip svg { width: 20px; height: 20px; }
+.horas .horas-chip span { color: var(--ink); font-weight: 500; }
+.horas .horas-chip small { font: 400 10px var(--font-mono); color: var(--muted); white-space: nowrap; }
+.horas .horas-chip:hover { background: var(--surface2); }
+.horas .horas-chip[aria-checked="true"] { background: var(--ink); color: var(--paper); }
+.horas .horas-chip[aria-checked="true"] span, .horas .horas-chip[aria-checked="true"] small { color: var(--paper); }
+.horas .horas-mano { grid-column: 1; }
+.horas .horas-nota { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.horas-borrar { padding: 0; border: 0; background: none; color: var(--deep); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; min-height: 0; }
+.horas-borrar[hidden] { display: none; }
+@media (max-width: 720px) {
+  .horas .horas-filas { grid-template-columns: 1fr; padding: 4px 0 14px; }
+  .horas .horas-chip { min-height: 58px; }
+}
+@media (max-width: 720px) {
+  .horas .horas-filas { padding: 4px 12px 14px; gap: 18px; }
+  .horas .horas-chip { min-height: 52px; }
+}
+
+/* LAS TARJETAS DE BUSCADO Y SEGUIDO (`tarjetaViaje`, base.js): el sitio
+   grande con su precio, las condiciones como etiquetas planas debajo, y una
+   raya fina con el estado y «ver». Toda la tarjeta se toca. */
+.watch.tv, .saved.tv { display: block; padding: 0; overflow: hidden; cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.2s ease; }
+.watch.tv:hover, .saved.tv:hover { border-color: var(--muted); }
+.watch.tv:active, .saved.tv:active { transform: scale(0.99); }
+.tv-cab { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 14px 16px 0; }
+.tv-sitio { font: 600 clamp(18px, 2.2vw, 22px) / 1.15 var(--font-sans); letter-spacing: -0.01em; min-width: 0; overflow-wrap: anywhere; }
+.tv-precio { flex: none; font-size: clamp(18px, 2.2vw, 22px); white-space: nowrap; }
+.tv-precio small { font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); letter-spacing: 0.04em; margin-right: 2px; }
+.tv-cond { display: flex; flex-wrap: wrap; gap: 4px 0; margin: 8px 0 0; padding: 0 16px; list-style: none;
+  font: 400 var(--fs-meta, 12px) / 1.5 var(--font-mono); color: var(--muted); }
+.tv-cond li + li::before { content: "·"; margin: 0 8px; color: var(--line); }
+.tv-pie { display: flex; align-items: center; gap: 10px; margin-top: 12px; padding: 8px 8px 8px 16px; border-top: 1px solid var(--hair); }
+.tv-pie .meta { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-ui-s); }
+.tv-punto { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--ok, #3aa76d);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok, #3aa76d) 50%, transparent); animation: tv-late 2.4s ease-out infinite; }
+@keyframes tv-late { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.tv-ver { font-size: var(--fs-ui-s); font-weight: 600; color: var(--ink); white-space: nowrap; }
+.tv-ver:empty { display: none; }
+.tv-ver::after { content: "›"; display: inline-block; margin-left: 6px; transition: transform 0.25s var(--ease); }
+.tv:has(> .saved-rows:not([hidden])) .tv-ver::after, .tv:has(> .watch-rows:not([hidden])) .tv-ver::after { transform: rotate(90deg); }
+.tv-pie .quitar { margin: 0; min-height: 36px; padding: 0 12px; }
+.tv > .saved-rows, .tv > .watch-rows { padding: 0 8px 8px; border-top: 1px solid var(--hair); }
+@media (prefers-reduced-motion: reduce) { .tv-punto { animation: none; } }
+/* En el ordenador, dos o tres por fila; la que se abre ocupa la fila entera. */
+@media (min-width: 900px) {
+  #searches, #watches { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px; align-items: start; }
+  #searches > *, #watches > * { grid-column: 1 / -1; margin-bottom: 0; }
+  #searches > .tv, #watches > .tv { grid-column: auto; }
+  #searches > .tv:has(> .saved-rows:not([hidden])), #watches > .tv:has(> .watch-rows:not([hidden])) { grid-column: 1 / -1; }
+}

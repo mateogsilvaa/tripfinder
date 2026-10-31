@@ -15,6 +15,7 @@ import {
   pintarStats,
   stat,
   statPie,
+  tarjetaViaje,
 } from "./base.js";
 import { conGrupo } from "./precios.js";
 import { CAMPOS_BUSCAR, ampliar, recogerAmpliado } from "./ampliar.js";
@@ -522,12 +523,13 @@ export async function loadSearches() {
   $("#searches").innerHTML = cabecera + guardadas
     .map(
       (s) => `
-      <div class="saved" data-slug="${esc(s.slug)}">
-        <b>${esc(s.label)}</b>
-        <span class="meta">${s.count} viajes · buscado ${esc(desde(s.generated_at))}</span>
-        ${s.best_price ? `<span class="best">desde ${fmtEUR(s.best_price)}</span>` : ""}
-        <button class="quitar" type="button" data-borrar="${esc(s.slug)}"
-          aria-label="Quitar esta búsqueda">quitar</button>
+      <div class="saved tv" data-slug="${esc(s.slug)}">${tarjetaViaje({
+        rotulo: s.label,
+        precio: s.best_price,
+        estado: `${s.count} viaje${s.count === 1 ? "" : "s"} · buscado ${esc(desde(s.generated_at))}`,
+        quitar: `<button class="quitar" type="button" data-borrar="${esc(s.slug)}"
+          aria-label="Quitar esta búsqueda">quitar</button>`,
+      })}
         <div class="saved-rows" hidden></div>
       </div>`
     )
