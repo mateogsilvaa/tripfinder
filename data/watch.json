@@ -100,6 +100,31 @@
       "last_checked": "2026-10-31",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "roma-1-DoLUhQrNHjesKpsVh5fPtqwtyAk1",
+      "label": "Roma · findes · 1 meses · avisa bajo 90 € · 2 pers.",
+      "destination": "Roma",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "",
+      "horas": "",
+      "months": 1,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 2,
+      "max_price": 90.0,
+      "source": "formulario",
+      "owner": "DoLUhQrNHjesKpsVh5fPtqwtyAk1",
+      "owner_name": "LUCAS GONZALEZ SILVA",
+      "created": "2026-10-31",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
