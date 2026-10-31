@@ -115,6 +115,10 @@ try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscu
       <span>Filtros</span>
       <button type="button" id="filtrosCerrar" data-cerrar>cerrar</button>
     </div>
+    <div class="field" id="desdeCampo" hidden>
+      <label for="desde">Desde</label>
+      <select id="desde"><option value="MAD">Madrid</option></select>
+    </div>
     <div class="field grow">
       <label for="q">Destino</label>
       <input type="search" id="q" placeholder="Roma, Italia, FCO…" autocomplete="off">

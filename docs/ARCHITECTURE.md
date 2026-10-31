@@ -88,11 +88,23 @@ decir de qué estación habla: `tests/test_crons.py` lo comprueba.
    recorrido el mapa entero.
 2. Se normaliza todo a `FlightOffer` y se calcula `score` contra `data/history.json`.
 3. Las ofertas que superan `min_score` **y** no están en `state.json` generan email.
-4. Se commitean `data/offers.json` y `data/history.json` → Pages se redespliega solo.
-5. El usuario pulsa *Buscar alojamiento* → la web apunta un encargo en Firestore y
+4. Se escriben dos tablones de Madrid: `data/offers.json`, las mejores (lo que la
+   portada pinta primero), y `data/tablon/MAD.json`, **todo** lo encontrado, sin
+   campos vacíos, que la portada trae después en segundo plano.
+5. **Escala propia** → `scan-escalas` (`escalas.py`). Dos vuelos de Ryanair por un
+   aeropuerto puente (`escalas.puentes`, unos pocos por pasada y rotando), con al
+   menos `margen_horas` en el puente, solo a destinos sin directo desde Madrid. Cada
+   oferta lleva `via` y sus cuatro `tramos`; se guardan en el tablón entero y la mejor
+   de cada destino nuevo, en `offers.json`.
+6. **Otras ciudades de salida** → `scan-origenes`. Ryanair y Wizz desde
+   `origenes.lista` (las `por_tanda` más viejas en cada pasada) a
+   `data/tablon/<IATA>.json`, con su índice en `data/tablon/index.json`. La portada
+   enseña el selector «desde» cuando hay más de una.
+7. Se commitea `data/` → Pages se redespliega solo.
+8. El usuario pulsa *Buscar alojamiento* → la web apunta un encargo en Firestore y
    `encargos.yml` lo recoge y levanta `stay-request.yml`.
-6. `stay-request.yml` corre `scan-stays` y commitea `data/stays/<offer_id>.json`.
-7. La web hace polling de ese JSON (cada 20 s, 15 min máx) y pinta los alojamientos.
+9. `stay-request.yml` corre `scan-stays` y commitea `data/stays/<offer_id>.json`.
+10. La web hace polling de ese JSON (cada 20 s, 15 min máx) y pinta los alojamientos.
 
 ## Cuentas
 

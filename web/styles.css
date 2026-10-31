@@ -6511,3 +6511,33 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
   .ir-ev .ir-ev-accion::after, .ir-ev-vuelo a.btn::after { content: " ↗"; }
   .ir-nocturno .btn, .ir-largo .btn { min-height: 44px; }
 }
+
+/* ESCALA PROPIA (`ofertas.js`): el código del destino lleva una marca de
+   «hay que cambiar de avión», y el detalle enseña los cuatro billetes, cada
+   uno con su hora, su precio y su botón, con la espera en el puente entre medias. */
+.iata.via { position: relative; }
+.iata.via::after { content: "+1"; position: absolute; top: -6px; right: -10px; padding: 0 4px; border-radius: 6px;
+  background: var(--accent); color: var(--sobre-acento); font: 600 9px/14px var(--font-mono); }
+.escala-warn { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+.esc-tramos { display: grid; gap: 0; margin: 12px 0; padding: 0; list-style: none; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.esc-tramo { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; }
+.esc-tramo + .esc-tramo, .esc-pausa + .esc-tramo { border-top: 1px solid var(--hair); }
+.esc-tramo:nth-child(n + 4) { background: color-mix(in srgb, var(--surface2) 50%, transparent); }
+.esc-n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--surface2); font: 600 11px var(--font-mono); }
+.esc-ruta { display: grid; min-width: 0; }
+.esc-ruta small { font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); }
+.esc-precio { font: 600 var(--fs-ui-s) var(--font-mono); }
+.esc-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--ink); font-size: var(--fs-ui-s); font-weight: 600; text-decoration: none; }
+.esc-link:hover { border-color: var(--ink); }
+.esc-pausa { padding: 6px 12px 6px 48px; border-top: 1px dashed var(--hair); font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--accent-txt, var(--accent)); }
+@media (max-width: 520px) {
+  .esc-tramo { grid-template-columns: 26px minmax(0, 1fr) auto; row-gap: 0; }
+  .esc-precio { grid-column: 3; grid-row: 1; justify-self: end; }
+  .esc-link { grid-column: 3; grid-row: 2; justify-self: end; min-height: 44px; padding: 0; border: 0;
+    color: var(--deep); text-decoration: underline; text-underline-offset: 3px; }
+  .esc-link::after { content: " ↗"; }
+  .esc-ruta { grid-row: 1 / span 2; }
+  .esc-n { grid-row: 1 / span 2; }
+}
+.iata.via::after { right: -14px; }

@@ -208,6 +208,167 @@ def _publicables(found: list[FlightOffer], limite: int) -> list[FlightOffer]:
     return publicadas
 
 
+def _escalas_vigentes(store: Store, origen: str) -> list[FlightOffer]:
+    """Las escalas propias del tablon que todavia no han salido."""
+    hoy = date.today().isoformat()
+    return [o for o in store.load_tablon(origen) if o.via and o.depart_date > hoy]
+
+
+ESCALAS_EN_PORTADA = 40
+
+
+def _para_portada(todo: list[FlightOffer], escalas: int = ESCALAS_EN_PORTADA) -> list[FlightOffer]:
+    """Lo que entra en el tablon rapido: todo lo directo y, de las escalas
+    propias, la mejor de cada destino nuevo hasta un tope. El resto de escalas
+    —otras fechas, otros puentes— esta en el tablon entero."""
+    directas = [o for o in todo if not o.via]
+    mejores: dict[str, FlightOffer] = {}
+    for o in todo:
+        if o.via and (o.destination not in mejores or o.score > mejores[o.destination].score):
+            mejores[o.destination] = o
+    elegidas = sorted(mejores.values(), key=lambda o: (-o.score, o.price))[:escalas]
+    return directas + elegidas
+
+
+# --------------------------------------------------------------------------- #
+# scan-escalas: dos low cost por un aeropuerto puente
+# --------------------------------------------------------------------------- #
+def _tanda(lista: list[str], cuantos: int, hoy: date | None = None, *, hora: int | None = None) -> list[str]:
+    """Que trozo de una lista toca en esta pasada. Gira con el dia y con la
+    media jornada (hay dos barridos al dia), asi que en dos o tres dias se ha
+    pasado por todos sin que ninguna pasada se alargue."""
+    if not lista or cuantos <= 0:
+        return []
+    if cuantos >= len(lista):
+        return list(lista)
+    hoy = hoy or date.today()
+    hora = datetime.now(UTC).hour if hora is None else hora
+    vuelta = hoy.toordinal() * 2 + (1 if hora >= 12 else 0)
+    inicio = (vuelta * cuantos) % len(lista)
+    return [lista[(inicio + i) % len(lista)] for i in range(cuantos)]
+
+
+def cmd_scan_escalas(args: argparse.Namespace) -> int:
+    from . import routes as rutas
+    from .escalas import Escalas, salidas_de_finde
+
+    cfg = load_config(args.config)
+    conf = dict(cfg.raw.get("escalas", {}) or {})
+    if not conf.get("enabled", True):
+        print("Escalas propias apagadas en la config.")
+        return 0
+    store = Store()
+    ruta = cfg.routes[0]
+    origen, nombre = ruta.origin, ruta.origin_name or ruta.origin
+    # Los destinos con directo desde Madrid ya estan en el tablon: aqui solo
+    # interesan los que no.
+    try:
+        directos = set(rutas.destinos(origen, cfg))
+    except Exception as exc:  # noqa: BLE001 - sin el mapa de rutas, al menos lo publicado
+        log.warning("Escalas: sin mapa de rutas (%s)", exc)
+        directos = set()
+    directos |= {o.destination for o in store.load_tablon(origen) if not o.via}
+    puentes = [p.upper() for p in conf.get("puentes", ["BGY", "STN", "CRL", "DUB", "BUD", "MLA"])]
+    tanda = args.puentes.split(",") if args.puentes else _tanda(puentes, int(conf.get("por_tanda", 2)))
+    salidas = salidas_de_finde(int(conf.get("salidas", 6)), dias=tuple(conf.get("dias_salida", [4])))
+    noches = [int(n) for n in conf.get("noches", [2, 3])]
+
+    buscador = Escalas({**cfg.search, **conf}, directos)
+    nuevas: list[FlightOffer] = []
+    for puente in tanda:
+        if puente in directos or puente == origen:
+            try:
+                nuevas += buscador.buscar(origen, nombre, puente, salidas, noches)
+            except Exception as exc:  # noqa: BLE001 - un puente caido no tumba los demas
+                log.warning("Escalas via %s: %s", puente, exc)
+        else:
+            log.info("Escalas: %s no tiene directo desde %s, no sirve de puente", puente, origen)
+    history = store.load_history()
+    for o in nuevas:
+        score_offer(o, history, ruta, cfg.weekend)
+    print(f"{len(nuevas)} viajes con escala propia via {', '.join(tanda)} "
+          f"({len({o.destination for o in nuevas})} destinos, {buscador.consultas} consultas)")
+    if args.dry_run:
+        return 0
+
+    # Se sustituyen las de los puentes de esta tanda; las de los demas se quedan.
+    antes = store.load_tablon(origen)
+    hoy = date.today().isoformat()
+    quedan = [o for o in antes if not (o.via and (o.via in tanda or o.depart_date <= hoy))]
+    todo = _dedupe(quedan + nuevas)
+    todo.sort(key=lambda o: (-o.score, o.price))
+    store.save_tablon(origen, nombre, todo)
+    # Y la mejor de cada destino nuevo, tambien en el tablon rapido: son
+    # justo los sitios que antes no salian.
+    portada = store._read("offers.json", {"offers": []})
+    sin_escala = [FlightOffer.from_dict(o) for o in portada.get("offers", []) if not o.get("via")]
+    juntas = _para_portada(sin_escala + [o for o in todo if o.via])
+    juntas.sort(key=lambda o: (-o.score, o.price))
+    store.save_offers(juntas, errors=portada.get("errors"), fuentes=portada.get("fuentes"))
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+# scan-origenes: el tablon de otras ciudades de salida
+# --------------------------------------------------------------------------- #
+def cmd_scan_origenes(args: argparse.Namespace) -> int:
+    cfg = load_config(args.config)
+    conf = dict(cfg.raw.get("origenes", {}) or {})
+    lista = [(str(x[0]).upper(), str(x[1])) for x in conf.get("lista", [])]
+    if not lista:
+        print("No hay mas ciudades de salida en la config.")
+        return 0
+    store = Store()
+    nombres = dict(lista)
+    if args.origenes:
+        tanda = [x.upper() for x in args.origenes.split(",")]
+    else:
+        # Las mas viejas primero: la que nunca se ha barrido, antes que ninguna.
+        fechas = {x["iata"]: x.get("generated_at", "") for x in store.tablon_index()}
+        orden = sorted(nombres, key=lambda c: (fechas.get(c, ""), c))
+        tanda = orden[: int(conf.get("por_tanda", 3))]
+
+    # Menos Wizz que en Madrid: es el proveedor caro en consultas (una por mes
+    # y destino) y aqui se barren varias ciudades en la misma pasada.
+    busqueda = {
+        **cfg.search,
+        "wizz_max_destinations": int(conf.get("wizz_destinos", 12)),
+        "wizz_months": int(conf.get("wizz_meses", 2)),
+        "weekend": {**cfg.weekend, "max_weeks": int(conf.get("findes", 16))},
+    }
+    nombres_proveedores = [p for p in cfg.providers if p in ("ryanair", "wizzair")]
+    providers = build_providers(nombres_proveedores, busqueda)
+    base = cfg.routes[0]
+    history = store.load_history()
+    for origen in tanda:
+        ruta = Route(
+            origin=origen,
+            origin_name=nombres.get(origen, origen),
+            destinations="any",
+            max_price=base.max_price,
+            max_price_weekend=base.max_price_weekend,
+            baseline_price=base.baseline_price,
+            baseline_price_weekend=base.baseline_price_weekend,
+        )
+        encontradas: list[FlightOffer] = []
+        for p in providers:
+            try:
+                encontradas += p.search(ruta)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("%s desde %s: %s", p.name, origen, exc)
+        for o in encontradas:
+            score_offer(o, history, ruta, cfg.weekend)
+            if not o.destination_name or o.destination_name == o.destination:
+                o.destination_name, pais = _nombre_mundial(o.destination)
+                o.destination_country = o.destination_country or pais
+        todo = _dedupe(encontradas)
+        todo.sort(key=lambda o: (-o.score, o.price))
+        print(f"{ruta.origin_name}: {len(todo)} viajes a {len({o.destination for o in todo})} destinos")
+        if not args.dry_run and todo:
+            store.save_tablon(origen, ruta.origin_name, todo)
+    return 0
+
+
 # --------------------------------------------------------------------------- #
 # scan-flights
 # --------------------------------------------------------------------------- #
@@ -399,7 +560,14 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
     cache.limpiar()
 
     store.record_prices(found)
-    store.save_offers(_publicables(found, args.limit), errors=errors, fuentes=fuentes)
+    # Las escalas propias las busca otro paso (`scan-escalas`) y se quedan de
+    # una tanda a la siguiente mientras no hayan salido: sin esto, cada barrido
+    # de Madrid borraria las que encontro el paso de despues.
+    origen = cfg.routes[0].origin
+    todo = _dedupe(found + _escalas_vigentes(store, origen))
+    todo.sort(key=lambda o: (-o.score, o.price))
+    store.save_tablon(origen, cfg.routes[0].origin_name or origen, todo)
+    store.save_offers(_publicables(_para_portada(todo), args.limit), errors=errors, fuentes=fuentes)
     # El mapa de continentes que usa el filtro de la portada. Sale del listado
     # mundial, que es estatico, asi que casi siempre escribe lo mismo y no
     # genera commit; esta aqui para que no se pueda quedar viejo.
@@ -2017,6 +2185,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Marca lo encontrado como salido del barrido de madrugada",
     )
     f.set_defaults(func=cmd_scan_flights)
+
+    es = sub.add_parser("scan-escalas", help="Viajes con escala propia por un aeropuerto puente")
+    es.add_argument("--dry-run", action="store_true")
+    es.add_argument("--puentes", default="", help="Puentes concretos, separados por comas")
+    es.set_defaults(func=cmd_scan_escalas)
+
+    og = sub.add_parser("scan-origenes", help="El tablon de otras ciudades de salida")
+    og.add_argument("--dry-run", action="store_true")
+    og.add_argument("--origenes", default="", help="Origenes concretos, separados por comas")
+    og.set_defaults(func=cmd_scan_origenes)
 
     n = sub.add_parser(
         "nocturno", help="Dice si toca el barrido de madrugada (lo usa scan-nocturno.yml)"
