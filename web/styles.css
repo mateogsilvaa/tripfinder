@@ -5944,3 +5944,98 @@ html.tf-volviendo .tf-trozo { animation: tf-vuelve 0.85s cubic-bezier(0.2, 0.8, 
   #tfGiro.en-marcha .tf-giro-ey i, #tfGiro.en-marcha .tf-giro-linea, #tfGiro.en-marcha .tf-giro-pie { animation: none; opacity: 1; transform: none; }
   #tfGiro.en-marcha .tf-giro-pie svg { animation: none; }
 }
+
+/* ======================================================= LA WEB, FLUIDA
+   (ver `log.js`, «La web, fluida»). Todo dentro de «sin preferencia por menos
+   movimiento»: con esa opción del sistema, la web se queda quieta. */
+
+/* El deslizador va detrás de las opciones, y la elegida deja de pintar su
+   propio fondo (lo pinta él, que es el que se mueve). */
+.con-deslizador { position: relative; isolation: isolate; }
+.tf-desliza {
+  position: absolute; top: 0; left: 0; z-index: -1; pointer-events: none; transform-origin: center;
+  border-radius: var(--r-s); background: var(--surface2); box-shadow: inset 0 0 0 1px var(--hair);
+  will-change: transform, width;
+}
+.horas-chips.con-deslizador .horas-chip[aria-checked="true"] { background: transparent; border-color: transparent; }
+.horas-chips.con-deslizador .tf-desliza { border-radius: 0; box-shadow: inset 0 -2px 0 var(--deep); }
+.adm-periodo.con-deslizador .adm-seg[aria-checked="true"] { background: transparent; }
+.adm-periodo.con-deslizador .tf-desliza { border-radius: 4px; box-shadow: none; }
+/* En las pestañas es la raya de debajo la que se mueve. */
+.pestanas.con-deslizador [role="tab"][aria-selected="true"]::after { display: none; }
+.pestanas.con-deslizador .tf-desliza { background: none; box-shadow: inset 0 -2px 0 var(--ink); border-radius: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* --- de una página a otra: las barras se quedan, el contenido funde --- */
+  @view-transition { navigation: auto; }
+  .topbar { view-transition-name: tf-arriba; }
+  .tabbar { view-transition-name: tf-abajo; }
+  ::view-transition-old(root) { animation: tf-vt-sale 0.18s ease both; }
+  ::view-transition-new(root) { animation: tf-vt-entra 0.34s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+  ::view-transition-group(tf-arriba), ::view-transition-group(tf-abajo) { animation-duration: 0.3s; }
+  @keyframes tf-vt-sale { to { opacity: 0; transform: translateY(-6px); } }
+  @keyframes tf-vt-entra { from { opacity: 0; transform: translateY(12px); } }
+
+  /* --- el tema: el nuevo se abre en un círculo encima del viejo --- */
+  html.tf-tema-vt::view-transition-old(root),
+  html.tf-tema-vt::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+  html.tf-tema-vt::view-transition-new(root) { z-index: 2; }
+
+  /* --- al pulsar: se hunde un poco y vuelve con un muelle --- */
+  .btn, .chip, .horas-chip, .adm-seg, .pestanas [role="tab"], .hopv, .hopx-carta, .brow, .compartir-btn,
+  .canal-opcion, .hoja-apps .btn, .tema, #tfCuenta, .flap-boton {
+    transition: transform 0.32s cubic-bezier(0.3, 1.6, 0.5, 1), background-color 0.2s ease, border-color 0.2s ease,
+      color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .btn:active, .chip:active, .horas-chip:active, .adm-seg:active, .pestanas [role="tab"]:active,
+  .compartir-btn:active, .canal-opcion:active, .tema:active, #tfCuenta:active, .flap-boton:active {
+    transform: scale(0.95); transition-duration: 0.08s;
+  }
+  .hopv:active, .hopx-carta:active { transform: scale(0.985); transition-duration: 0.1s; }
+
+  /* --- los diálogos entran con un muelle; en el móvil suben desde abajo --- */
+  .modal:not([hidden]) > .modal-caja { animation: tf-dialogo-entra 0.38s cubic-bezier(0.2, 0.9, 0.3, 1.12) both; }
+  .modal.tf-se-va { animation: tf-velo-sale 0.26s ease both; pointer-events: none; }
+  .modal.tf-se-va > .modal-caja { animation: tf-dialogo-sale 0.24s cubic-bezier(0.4, 0, 1, 1) both; }
+  .panel:not([hidden]) { animation: tf-panel-entra 0.42s cubic-bezier(0.2, 0.9, 0.3, 1.05) both; }
+  .panel.tf-se-va { animation: tf-panel-sale 0.26s cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none; }
+  .backdrop.tf-se-va, #backdrop + .tf-se-va { animation: tf-velo-sale 0.26s ease both; }
+  .tf-se-va { pointer-events: none; }
+  @keyframes tf-dialogo-entra { from { opacity: 0; transform: translateY(14px) scale(0.96); } }
+  @keyframes tf-dialogo-sale { to { opacity: 0; transform: translateY(8px) scale(0.97); } }
+  @keyframes tf-velo-sale { to { opacity: 0; } }
+  @keyframes tf-panel-entra { from { transform: translateX(100%); } }
+  @keyframes tf-panel-sale { to { transform: translateX(100%); } }
+  @media (max-width: 760px) {
+    .modal:not([hidden]) > .modal-caja { animation-name: tf-hoja-sube; animation-duration: 0.42s; }
+    .modal.tf-se-va > .modal-caja { animation-name: tf-hoja-baja; }
+    @keyframes tf-hoja-sube { from { transform: translateY(40%); opacity: 0; } }
+    @keyframes tf-hoja-baja { to { transform: translateY(30%); opacity: 0; } }
+  }
+
+  /* --- lo que llega a una lista entra escalonado, de arriba abajo --- */
+  .brow, .hopv, .adm-fila:not(.adm-fila-cab), .stay,
+  .hopx-fase-entra :is(.hopx-op, .hopx-fechas-carta, .hopx-res, .hopx-mazo > *, .hopx-fase-cab) {
+    animation: tf-entra-fila 0.42s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  }
+  :is(.brow, .hopv, .adm-fila, .stay, .hopx-op, .hopx-fechas-carta, .hopx-res):nth-child(2) { animation-delay: 35ms; }
+  :is(.brow, .hopv, .adm-fila, .stay, .hopx-op, .hopx-fechas-carta, .hopx-res):nth-child(3) { animation-delay: 70ms; }
+  :is(.brow, .hopv, .adm-fila, .stay, .hopx-op, .hopx-fechas-carta, .hopx-res):nth-child(4) { animation-delay: 105ms; }
+  :is(.brow, .hopv, .adm-fila, .stay, .hopx-op, .hopx-fechas-carta, .hopx-res):nth-child(5) { animation-delay: 140ms; }
+  :is(.brow, .hopv, .adm-fila, .stay, .hopx-op, .hopx-fechas-carta, .hopx-res):nth-child(6) { animation-delay: 175ms; }
+  :is(.brow, .hopv, .adm-fila, .stay, .hopx-op, .hopx-fechas-carta, .hopx-res):nth-child(n + 7) { animation-delay: 210ms; }
+  @keyframes tf-entra-fila { from { opacity: 0; transform: translateY(10px); } }
+  /* En el HOP, cada fase entra deslizándose al cambiar a ella. Sus tarjetas solo
+     escalonan entonces: el HOP se repinta solo cada pocos segundos con los
+     votos de los demás, y si entraran cada vez, parpadearían. */
+  .hopx-fase-entra { animation: tf-fase-entra 0.38s cubic-bezier(0.2, 0.8, 0.3, 1) both; }
+  @keyframes tf-fase-entra { from { opacity: 0; transform: translateX(var(--fase-desde, 18px)); } }
+
+  /* --- los desplegables se abren y se cierran, no saltan --- */
+  :root { interpolate-size: allow-keywords; }
+  details::details-content {
+    height: 0; overflow: clip;
+    transition: height 0.32s cubic-bezier(0.2, 0.8, 0.3, 1), content-visibility 0.32s allow-discrete;
+  }
+  details[open]::details-content { height: auto; }
+}

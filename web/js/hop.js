@@ -1022,6 +1022,15 @@ export function pintarViaje(app) {
   if (!caja) return;
   pintarFases(app);
   if (caja.dataset.fase !== String(estado.ver)) {
+    // Entra deslizándose desde el lado de la fase a la que vas (ver la hoja:
+    // `.hopx-fase-entra`), y solo ahora: no en cada repintado del sondeo.
+    const antes = Number(caja.dataset.fase) || 0;
+    caja.style.setProperty("--fase-desde", `${antes && antes > estado.ver ? -18 : 18}px`);
+    caja.classList.remove("hopx-fase-entra");
+    void caja.offsetWidth;
+    caja.classList.add("hopx-fase-entra");
+    clearTimeout(caja._entra);
+    caja._entra = setTimeout(() => caja.classList.remove("hopx-fase-entra"), 900);
     caja.dataset.fase = String(estado.ver);
     caja.dataset.huella = "";
     caja.innerHTML = esqueleto(estado.ver);
