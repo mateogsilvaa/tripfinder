@@ -40,7 +40,6 @@ async function crear(page, nombre) {
   const caja = page.locator("#hopCrearCaja");
   if (!(await caja.evaluate((d) => d.open))) await caja.locator("summary").click();
   await page.locator("#hopCrear [name=nombre]").fill(nombre);
-  await page.locator("#hopCrear [name=fin]").fill(dentroDeUnMes());
   await page.locator("#hopCrear button[type=submit]").click();
   await expect(page.locator(".hopx-portada h2")).toHaveText(nombre);
   return new URL(page.url()).searchParams.get("j");
@@ -85,6 +84,8 @@ test("con el enlace se une cualquiera, se proponen fechas, se votan y se habla",
 
   // Fase 1: Gus propone unas fechas y les da su voto.
   await expect(gus.page.locator(".hopx-fase-cab h3")).toHaveText("Cuándo");
+  // Las fechas a mano van plegadas debajo del calendario.
+  await gus.page.locator("#f1Form .hopx-a-mano").evaluate((d) => (d.open = true));
   await gus.page.locator("#f1Form [name=ida]").fill(enDias(8));
   await gus.page.locator("#f1Form [name=vuelta]").fill(enDias(10));
   await gus.page.locator("#f1Form [name=titulo]").fill("Puente");
@@ -168,6 +169,8 @@ test("por fases: fechas, vetos, buscar y guardar, votar y el plan", async ({ bro
 
   // 1. Ana propone fechas, las vota y las fija.
   await ana.page.reload();
+  // Las fechas a mano van plegadas debajo del calendario.
+  await ana.page.locator("#f1Form .hopx-a-mano").evaluate((d) => (d.open = true));
   await ana.page.locator("#f1Form [name=ida]").fill(enDias(10));
   await ana.page.locator("#f1Form [name=vuelta]").fill(enDias(12));
   await ana.page.locator("#f1Form button[type=submit]").click();
@@ -273,6 +276,8 @@ test("sin cuenta se mira el HOP; al proponer se pide la cuenta y luego se sube s
   const ana = await persona(browser, "Ana");
   await E.hacerPremium(ana.uid);
   const id = await crear(ana.page, "Escapada");
+  // Las fechas a mano van plegadas debajo del calendario.
+  await ana.page.locator("#f1Form .hopx-a-mano").evaluate((d) => (d.open = true));
   await ana.page.locator("#f1Form [name=ida]").fill(enDias(8));
   await ana.page.locator("#f1Form [name=vuelta]").fill(enDias(10));
   await ana.page.locator("#f1Form [name=titulo]").fill("Puente");
@@ -329,6 +334,8 @@ test("la lista dice en qué va cada HOP, si te toca votar y lo nuevo desde la ú
   await expect(gus.page.locator(".hopx-portada h2")).toHaveText("Escapada");
   // Ana propone unas fechas y escribe; Gus no está mirando.
   await gus.page.goto("/hop.html");
+  // Las fechas a mano van plegadas debajo del calendario.
+  await ana.page.locator("#f1Form .hopx-a-mano").evaluate((d) => (d.open = true));
   await ana.page.locator("#f1Form [name=ida]").fill(enDias(8));
   await ana.page.locator("#f1Form [name=vuelta]").fill(enDias(10));
   await ana.page.locator("#f1Form button[type=submit]").click();

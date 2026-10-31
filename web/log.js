@@ -839,6 +839,17 @@ function tfDeslizador(grupo) {
     if (animacion) animacion.cancel();
     if (!r || deGolpe || tfSinMovimiento() || !marca.animate) return fijar(c);
     if (r.x === c.x && r.y === c.y && r.w === c.w) return;
+    // Una raya (las pestañas) no se estira como una gota: se desliza recta.
+    if (grupo.matches(".pestanas")) {
+      animacion = marca.animate(
+        [
+          { transform: `translate(${r.x}px, ${r.y}px)`, width: `${r.w}px` },
+          { transform: `translate(${c.x}px, ${c.y}px)`, width: `${c.w}px` },
+        ],
+        { duration: 360, easing: "cubic-bezier(0.25, 0.8, 0.25, 1)" }
+      );
+      return fijar(c);
+    }
     const enFila = r.y === c.y;
     const desde = Math.min(r.x, c.x);
     const largo = Math.max(r.x + r.w, c.x + c.w) - desde;

@@ -31,7 +31,6 @@ import {
   precioCorto,
 } from "./precios.js";
 import {
-  botonesHTML,
   compartirCeldaHTML,
   compartirPrincipalHTML,
   wireCompartir,
@@ -451,7 +450,12 @@ function montarPaises() {
   const rotular = () => ($("#mundoBtn").textContent = rotuloPaises(nombreZona()));
   $("#cont").addEventListener("input", rotular);
   $("#mundoBtn").addEventListener("click", () => {
-    const conChollo = new Set(OFFERS.map((o) => isoDe(o.destination_country)).filter(Boolean));
+    // Cuántos vuelos hay hoy en cada país: el selector lo dice en cada fila.
+    const conChollo = new Map();
+    OFFERS.forEach((o) => {
+      const iso = isoDe(o.destination_country);
+      if (iso) conChollo.set(iso, (conChollo.get(iso) || 0) + 1);
+    });
     abrirMundo(
       conChollo,
       () => {
@@ -715,42 +719,87 @@ export function boardRow(o, i) {
     </div>`;
 }
 
-/* Cualquier viaje se abre y enseña sus vuelos, no solo el destacado. */
+/* EL DETALLE DE UN VUELO. Cada tramo como un trayecto que se lee de un
+   vistazo («16:10 MAD ──✈── 18:30 BGY»), una línea con lo demás, y los
+   botones ordenados: «Ver vuelo» manda, y el resto son accesos con su icono,
+   en fila en el ordenador y en una rejilla de cuatro en el móvil (antes eran
+   seis píldoras iguales que en el móvil se amontonaban). Los `data-*` y los
+   textos son los de siempre: `wireDetalle` y `wireCompartir` los cablean. */
+const ICO = {
+  cama: '<path d="M3 18v-8m0 4h18m0 4v-6a3 3 0 0 0-3-3h-7v6"/><circle cx="7" cy="11" r="1.6"/>',
+  lupa: '<circle cx="11" cy="11" r="6"/><path d="m20 20-4.5-4.5"/>',
+  cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4m6-4v4"/>',
+  comp: '<path d="M12 4v11m0-11-4 4m4-4 4 4"/><path d="M5 14v4a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-4"/>',
+  avion: '<path d="M10.5 13.5 3 11l1.5-1.5L12 10l4.5-5a1.6 1.6 0 0 1 2.4 2.1L14 11.5l.5 7.5L13 20.5l-2.5-7"/>',
+};
+const ico = (d) =>
+  `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${d}</svg>`;
+
+function duracion(sale, llega) {
+  const m = (t) => {
+    const [h, mm] = String(t || "").split(":").map(Number);
+    return Number.isFinite(h) && Number.isFinite(mm) ? h * 60 + mm : null;
+  };
+  const a = m(sale);
+  const b = m(llega);
+  if (a === null || b === null) return "";
+  const d = (b - a + 1440) % 1440;
+  return d ? `${Math.floor(d / 60)} h${d % 60 ? ` ${String(d % 60).padStart(2, "0")}` : ""}` : "";
+}
+
+function tramoHTML(rotulo, de, a, iso, sale, llega) {
+  if (!iso) return "";
+  const dur = duracion(sale, llega);
+  return `<div class="det-tramo">
+      <span class="det-rot">${rotulo} · ${esc(fmtDate(iso, true))}</span>
+      ${
+        sale
+          ? `<div class="det-linea">
+              <span class="det-punto"><b>${esc(sale)}</b><small>${esc(de || "")}</small></span>
+              <span class="det-raya" aria-hidden="true">${ico(ICO.avion)}${dur ? `<em>${esc(dur)}</em>` : ""}</span>
+              <span class="det-punto fin"><b>${esc(llega || "—")}</b><small>${esc(a || "")}</small></span>
+            </div>`
+          : `<p class="det-sin-hora">${esc(de || "")} → ${esc(a || "")} · horario en el enlace</p>`
+      }
+    </div>`;
+}
+
 function detalleHTML(o) {
+  const nota = [
+    escalas(o),
+    o.airline,
+    o.useful_hours ? `${Math.round(o.useful_hours)} h de viaje real · ${o.price_per_hour} €/h` : "",
+  ].filter(Boolean);
   return `
     ${o.hidden_city ? AVISO_HIDDEN : ""}
+    <div class="det-viaje">
+      ${tramoHTML("Ida", o.origin, o.destination, o.depart_date, o.depart_time, o.arrive_time)}
+      ${tramoHTML("Vuelta", o.destination, o.origin, o.return_date, o.return_time, o.return_arrive_time)}
+    </div>
+    <p class="det-nota">${nota.map(esc).join(" · ")}</p>
     ${historiaHTML(o)}
-    <dl class="legs">
-      ${leg("Ida", o.depart_date, o.depart_time, o.arrive_time, o.weekend)}
-      ${leg("Vuelta", o.return_date, o.return_time, o.return_arrive_time, o.weekend)}
-      <div><dt>Vuelo</dt><dd>${escalas(o)}</dd></div>
-      ${
-        o.useful_hours
-          ? `<div><dt>Viaje real</dt><dd class="useful">${Math.round(o.useful_hours)} h · ${
-              o.price_per_hour
-            } €/h</dd></div>`
-          : ""
-      }
-    </dl>
     ${altsHTML(o)}
-    <div class="actions">
-      <a class="btn primary" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+    <div class="det-acciones">
+      <a class="btn primary det-ver" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
       ${
         o.airline_link
-          ? `<a class="btn ghost" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
+          ? `<a class="btn ghost det-ver" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">
                Reservar en ${esc(o.airline_link_label || o.airline)}</a>`
           : ""
       }
-      <button class="btn ${conCama(o.id) ? "deep-ghost" : "ghost"}" data-stay="${esc(o.id)}"
-        >${conCama(o.id) ? "Ver el alojamiento" : "Buscar alojamiento"}</button>
-      ${
-        edreamsURL(o)
-          ? `<a class="btn ghost" href="${escURL(edreamsURL(o))}" target="_blank" rel="noopener"
-               title="Se abre con tu sesión: si tienes Prime, verás tu precio de socio"
-               >Comparar en eDreams</a>`
-          : ""
-      }
-      ${botonesHTML(o)}
+      <div class="det-mas">
+        <button type="button" class="det-accion${conCama(o.id) ? " hecha" : ""}" data-stay="${esc(o.id)}"
+          >${ico(ICO.cama)}<span>${conCama(o.id) ? "Ver el alojamiento" : "Buscar alojamiento"}</span></button>
+        ${
+          edreamsURL(o)
+            ? `<a class="det-accion" href="${escURL(edreamsURL(o))}" target="_blank" rel="noopener"
+                 title="Se abre con tu sesión: si tienes Prime, verás tu precio de socio"
+                 >${ico(ICO.lupa)}<span>Comparar en eDreams</span></a>`
+            : ""
+        }
+        <button type="button" class="det-accion" data-ics="${esc(o.id)}">${ico(ICO.cal)}<span>Al calendario</span></button>
+        <button type="button" class="det-accion" data-share="${esc(o.id)}">${ico(ICO.comp)}<span>Compartir</span></button>
+      </div>
     </div>`;
 }
 

@@ -223,7 +223,8 @@ async function vistaLista(app, pendiente) {
         hops.length
           ? hops.map((j) => tarjetaHop(j, s)).join("")
           : `<div class="hop-vacio"><b>Todavía no estás en ningún HOP.</b>
-               ${premium ? "Crea el primero aquí abajo." : "Pide a quien lo organice el enlace para unirte."}</div>`
+               ${premium ? "Crea el primero aquí abajo." : "Pide a quien lo organice el enlace para unirte."}</div>
+             ${pasosHTML()}`
       }
     </div>
     <details class="hop-crear" id="hopCrearCaja" ${hops.length ? "" : "open"}>
@@ -256,7 +257,7 @@ async function vistaLista(app, pendiente) {
       const r = await nubeHopCrear({
         nombre: form.elements.nombre.value,
         descripcion: form.elements.descripcion.value,
-        fin: form.elements.fin.value,
+        fin: sumarDiasISO(hoyISO(), DURA_HOP),
       });
       boton.disabled = false;
       if (!r.ok) {
@@ -268,18 +269,41 @@ async function vistaLista(app, pendiente) {
   }
 }
 
+/* CUÁNDO ES EL VIAJE, dicho como se dice: las fechas elegidas en la fase 1 si
+   ya las hay; si no, que aún está por decidir. El HOP ya no pregunta «hasta
+   cuándo» al crearlo: dura seis meses (`DURA_HOP`) y se puede alargar. */
+const DURA_HOP = 180;
+function cuandoHop(j) {
+  const f = j.fechas;
+  if (f && f.ida && f.vuelta) return `${fmtDate(f.ida, true)} → ${fmtDate(f.vuelta, true)}`;
+  return "fechas por decidir";
+}
+
+/* Cómo va un HOP, en cinco pasos con su icono: lo primero que ve quien llega
+   sin ninguno (muchos llegarán a la web así, por un enlace de un amigo). */
+const PASOS = [
+  ["Cuándo", "Cada uno propone fechas en el calendario y se votan."],
+  ["Dónde no", "Cada cual tacha hasta tres sitios a los que no iría."],
+  ["Buscar", "Se buscan vuelos para todos y se guarda lo que convence."],
+  ["Votar", "Arriba o abajo, como en Reddit. Gana lo que más gusta."],
+  ["El plan", "El viaje elegido, con su vuelo y dónde dormir."],
+];
+function pasosHTML() {
+  return `<ol class="hop-pasos" aria-label="Cómo va un HOP">${PASOS.map(
+    ([t, d], i) => `<li style="--i:${i}"><span class="hop-paso-ico" aria-hidden="true">${ico(FASES[i][2], 18)}</span>
+      <span><b>${t}</b><small>${d}</small></span></li>`
+  ).join("")}</ol>`;
+}
+
 function formCrear() {
-  const min = hoyISO();
   return `<form id="hopCrear" class="hop-form" novalidate>
-      <label><span>Nombre</span>
-        <input name="nombre" maxlength="60" required placeholder="Escapada de primavera"></label>
-      <label><span>¿Hasta cuándo puede ser el viaje?</span>
-        <input name="fin" type="date" required min="${min}"></label>
+      <label><span>¿Cómo se llama el viaje?</span>
+        <input name="nombre" maxlength="60" required placeholder="Escapada de primavera" enterkeyhint="go"></label>
       <label class="ancha"><span>Para qué es <i>(opcional)</i></span>
         <input name="descripcion" maxlength="300" placeholder="Algo de 3-4 días, que no pase de 200 € por cabeza"></label>
       <div class="hop-form-pie ancha">
         <button class="btn primary" type="submit">Crear el HOP</button>
-        <p class="hop-msg" role="status">Cuando pase esa fecha, el HOP se borra solo con todo lo de dentro.</p>
+        <p class="hop-msg" role="status">Las fechas, el destino y el plan se deciden dentro, entre todos.</p>
       </div>
     </form>`;
 }
@@ -356,7 +380,6 @@ function tarjetaHop(j, s) {
   const { f, txt, toca } = estadoHop(j);
   const nov = novedadesHop(j);
   const n = nov.mensajes + nov.props;
-  const quedan = Math.max(0, Math.ceil((parseISO(j.fin) - parseISO(hoyISO())) / 864e5));
   const nuevo = [
     nov.mensajes ? `${nov.mensajes} mensaje${nov.mensajes === 1 ? "" : "s"}` : "",
     nov.props ? `${nov.props} propuesta${nov.props === 1 ? "" : "s"}` : "",
@@ -366,7 +389,7 @@ function tarjetaHop(j, s) {
   return `<a class="hop-tarjeta hopv${n || toca ? " con-aviso" : ""}" href="?j=${encodeURIComponent(j.id)}">
       <span class="hopv-cab">
         <span class="hopv-tit">
-          <small>${quedan > 0 ? `quedan ${quedan} día${quedan === 1 ? "" : "s"}` : "hoy es el último día"} · hasta el ${esc(fmtDate(j.fin))}</small>
+          <small>${esc(cuandoHop(j))}</small>
           <b>${esc(j.nombre)}</b>
         </span>
         ${n ? `<span class="hopv-badge" aria-label="${n} novedad${n === 1 ? "" : "es"}">${n}</span>` : ""}
@@ -512,7 +535,7 @@ function vistaUnirse(app, hop) {
       ${hop.descripcion ? `<p>${esc(hop.descripcion)}</p>` : ""}
       <p class="hop-letra">Lo organiza ${esc(nombres[hop.creador] || "alguien")} · ${miembros.length} persona${
         miembros.length === 1 ? "" : "s"
-      } · hasta el ${esc(fmtDate(hop.fin))}</p>
+      } · ${esc(cuandoHop(hop))}</p>
       <div class="hop-avs grande">${miembros.map((u) => avatar(u, nombres[u] || "?")).join("")}</div>
       <div class="hop-acc">
         <button class="btn primary" type="button" id="hopUnirme">Unirme al HOP</button>
@@ -543,13 +566,13 @@ function abrirEditar(app) {
   if (caja.hidden) return;
   caja.innerHTML = `<form class="hop-form" id="hopEditarForm">
       <label><span>Nombre</span><input name="nombre" maxlength="60" value="${esc(hop.nombre)}"></label>
-      <label><span>¿Hasta cuándo puede ser el viaje?</span>
+      <label><span>El HOP se borra solo el</span>
         <input name="fin" type="date" min="${hoyISO()}" value="${esc(hop.fin)}"></label>
       <label class="ancha"><span>Para qué es</span>
         <input name="descripcion" maxlength="300" value="${esc(hop.descripcion || "")}"></label>
       <div class="hop-form-pie ancha">
         <button class="btn primary small" type="submit">Guardar</button>
-        <p class="hop-msg" role="status">Si alargas la fecha, el HOP dura hasta entonces.</p>
+        <p class="hop-msg" role="status">Con todo lo de dentro. Si lo alargas, dura hasta entonces.</p>
       </div>
     </form>`;
   caja.querySelector("form").addEventListener("submit", async (e) => {
@@ -797,7 +820,6 @@ function pintarHop(app, pendiente) {
   const miembros = hop.miembros || [];
   const mia = hop.creador === miUid();
   const nueva = new URLSearchParams(location.search).get("nueva") === "1";
-  const quedan = Math.max(0, Math.ceil((parseISO(hop.fin) - parseISO(hoyISO())) / 864e5));
   const gente =
     miembros.length <= 3
       ? miembros.map((u) => nombres[u] || "?").join(", ")
@@ -809,9 +831,7 @@ function pintarHop(app, pendiente) {
     <a class="hop-volver" href="hop">← Tus HOP</a>
     <header class="hopx-portada">
       <div class="hopx-portada-velo">
-        <p class="hopx-kicker">HOP · ${
-          quedan > 0 ? `quedan ${quedan} día${quedan === 1 ? "" : "s"} para decidir` : "hoy es el último día"
-        } · hasta el ${esc(fmtDate(hop.fin, true))}</p>
+        <p class="hopx-kicker">HOP · ${esc(cuandoHop(hop))}</p>
         <h2>${esc(hop.nombre)}</h2>
         ${hop.descripcion ? `<p class="hop-desc">${esc(hop.descripcion)}</p>` : ""}
         <details class="hopx-gente" id="hopGente">
@@ -1068,17 +1088,28 @@ function esqueleto(n) {
   const cuerpo = {
     1: `<div id="f1Fijadas"></div>
         <div class="hopx-cuando">
-          <div class="hopx-cal" id="f1Cal"></div>
+          <div class="hopx-cal-col">
+            <div class="hopx-cal" id="f1Cal"></div>
+            <!-- PROPONER, DESDE EL CALENDARIO. Se tocan la ida y la vuelta y
+                 aquí se ve el viaje («vie 13 nov → dom 15 nov · 2 noches») con
+                 su botón. Escribirlas a mano queda plegado debajo. -->
+            <form class="hopx-proponer" id="f1Form" novalidate>
+              <p class="hopx-prop-resumen" id="f1Resumen" aria-live="polite"></p>
+              <label class="hopx-prop-nombre"><span>Un nombre <i>(opcional)</i></span>
+                <input name="titulo" maxlength="80" placeholder="Puente de diciembre" enterkeyhint="send"></label>
+              <button class="btn primary" type="submit">Proponer estas fechas</button>
+              <details class="hopx-a-mano">
+                <summary>Escribir las fechas a mano</summary>
+                <div class="hopx-a-mano-campos">
+                  <label><span>Ida</span><input type="date" name="ida" min="${manana()}" max="${esc(estado.hop.fin)}" required></label>
+                  <label><span>Vuelta</span><input type="date" name="vuelta" min="${manana()}" max="${esc(estado.hop.fin)}" required></label>
+                </div>
+              </details>
+              <p class="hop-msg" role="status"></p>
+            </form>
+          </div>
           <div class="hopx-mazo fechas" id="f1Lista"></div>
-        </div>
-        <form class="hopx-proponer" id="f1Form" novalidate>
-          <p class="hopx-proponer-tit">Proponer unas fechas</p>
-          <label><span>Ida</span><input type="date" name="ida" min="${manana()}" max="${esc(estado.hop.fin)}" required></label>
-          <label><span>Vuelta</span><input type="date" name="vuelta" min="${manana()}" max="${esc(estado.hop.fin)}" required></label>
-          <label class="ancho"><span>Un nombre <i>(opcional)</i></span><input name="titulo" maxlength="80" placeholder="Puente de diciembre"></label>
-          <button class="btn primary small" type="submit">Proponer</button>
-          <p class="hop-msg" role="status"></p>
-        </form>`,
+        </div>`,
     2: `<div class="hopx-vetos">
           <figure class="hopx-mapa" id="f2Mapa" aria-label="Mapa de las ciudades tachadas"><p class="meta"><span class="spin"></span>Cargando el mapa…</p></figure>
           <div class="hopx-vetos-lado">
@@ -1647,6 +1678,8 @@ function formBuscar(atascada, ultima) {
             ? `<div class="hop-aviso">La última búsqueda no encontró nada dentro del tope. Probad con más presupuesto.</div>`
             : ""
       }
+      <p class="hopx-buscar-cab">${ico("lupa", 15)} <span>Buscar para el grupo</span>
+        <small>todas las compañías, no solo las low cost</small></p>
       <p class="hopx-frase">
         Salimos de ${sel("origen", ORIGENES.map(([c, nom]) => [c, nom]), "MAD", "De dónde salís")}
         ${cuando}
@@ -1665,8 +1698,8 @@ function formBuscar(atascada, ultima) {
       </div>
       <div class="hop-horas" id="hopHorasWrap"><input type="hidden" id="hopHoras"></div>
       <div class="hopx-buscar-pie">
-        <button class="btn primary hopx-lanzar" type="submit">${ico("lupa")} Buscar para el grupo</button>
-        <span class="hop-letra">Miramos todas las compañías. Tarda unos minutos y lo veis todos.</span>
+        <button class="btn primary hopx-lanzar" type="submit">${ico("lupa")} Buscar vuelos${n > 1 ? ` para los ${n}` : ""}</button>
+        <span class="hop-letra">Tarda unos minutos y os llega a todos: podéis cerrar y volver.</span>
         ${estado.resultados ? `<button class="btn ghost small" type="button" data-hop-cerrar-buscar>Cancelar</button>` : ""}
         <p class="hop-msg" role="status"></p>
       </div>
@@ -2383,7 +2416,9 @@ function elegirDiaCal(app, k) {
     f.vuelta.value = "";
   } else f.vuelta.value = k;
   marcarCal(app);
-  (f.vuelta.value ? f.titulo : f.vuelta).focus({ preventScroll: true });
+  // Con las dos puestas, el botón a la vista (en el móvil queda bajo el
+  // calendario y podía no verse).
+  if (f.vuelta.value) form.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function marcarCal(app) {
@@ -2396,6 +2431,19 @@ function marcarCal(app) {
     b.classList.toggle("elegido", k === ida || k === vuelta);
     b.classList.toggle("entre", !!(ida && vuelta && k > ida && k < vuelta));
   });
+  // Lo que se va eligiendo, dicho: qué falta tocar, o el viaje entero.
+  const listo = !!(ida && vuelta && vuelta > ida);
+  const n = listo ? noches(ida, vuelta) : 0;
+  const resumen = $("#f1Resumen", app);
+  if (resumen) {
+    resumen.innerHTML = listo
+      ? `<b>${esc(fmtDate(ida, true))}</b><span aria-hidden="true">→</span><b>${esc(fmtDate(vuelta, true))}</b><small>${n} noche${n === 1 ? "" : "s"}</small>`
+      : ida
+        ? `<b>${esc(fmtDate(ida, true))}</b><span aria-hidden="true">→</span><i>toca la vuelta</i>`
+        : `<i>Toca en el calendario el día de ida y el de vuelta</i>`;
+  }
+  form.classList.toggle("lista", listo);
+  form.querySelector("button[type=submit]").disabled = !listo;
 }
 
 async function vetar(app, lista) {
