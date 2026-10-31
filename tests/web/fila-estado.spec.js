@@ -64,7 +64,9 @@ test.describe("una fila del feed", () => {
     expect(cerrada).not.toBe("none");
     await fila.click();
     await expect(fila).toHaveAttribute("aria-expanded", "true");
-    expect(await giro()).not.toBe(cerrada);
+    // El giro es una transición: con la suite entera en paralelo, leerlo justo
+    // al hacer clic podía pillarlo todavía sin empezar.
+    await expect.poll(giro).not.toBe(cerrada);
   });
 
   test("la flecha se queda en su renglón con el detalle abierto", async ({ page }) => {

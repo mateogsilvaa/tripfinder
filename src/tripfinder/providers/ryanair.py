@@ -292,9 +292,9 @@ class RyanairProvider(FlightProvider):
         # fallo que se arreglo en Wizz, y el mismo cero silencioso.
         summary_price = (fare.get("summary") or {}).get("price") or {}
         price = summary_price.get("value")
+        ida = (out.get("price") or {}).get("value")
+        vuelta = (back.get("price") or {}).get("value")
         if price is None:
-            ida = (out.get("price") or {}).get("value")
-            vuelta = (back.get("price") or {}).get("value")
             price = ida + vuelta if ida and vuelta else None
         if not price:
             return None
@@ -330,6 +330,8 @@ class RyanairProvider(FlightProvider):
             return_arrive_time=return_arrive_time,
             stops=0,  # Ryanair no opera vuelos con escala
             price=round(float(price), 2),
+            price_out=round(float(ida), 2) if ida else None,
+            price_back=round(float(vuelta), 2) if vuelta else None,
             currency=summary_price.get("currencyCode", currency),
             airline="Ryanair",
             adults=adultos,
