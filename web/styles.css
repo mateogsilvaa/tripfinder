@@ -6417,3 +6417,10 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
   #searches > .tv, #watches > .tv { grid-column: auto; }
   #searches > .tv:has(> .saved-rows:not([hidden])), #watches > .tv:has(> .watch-rows:not([hidden])) { grid-column: 1 / -1; }
 }
+/* «a mano» y «Quitar todas» se tocan con el dedo: el área llega a los 44 px
+   aunque el texto sea pequeño. */
+@media (max-width: 760px) {
+  .horas-otra, .horas-borrar { min-height: var(--tap-min, 44px); min-width: 44px; padding: 0 6px; }
+  .horas-cab { align-items: center; }
+  .tv-pie .quitar { min-height: var(--tap-min, 44px); }
+}
