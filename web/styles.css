@@ -4284,6 +4284,13 @@ body:has(.privacidad) .masthead .lede { margin-inline: auto; }
   .feed > .controls .switch { width: 100%; min-width: 0; flex: none; }
   .feed > .controls .switch { justify-content: flex-start; }
   .feed > .tabla, .feed > :not(.feed-head):not(.controls):not(.filtros-movil):not(.backdrop) { grid-column: 2; }
+  /* Que empiecen y acaben a la vez: la cartelera llevaba su margen de arriba
+     (el de una sola columna) y el filtro no, así que empezaba unos píxeles
+     más arriba; y la cartelera corta acababa antes que el filtro. Ahora los
+     dos van en la misma fila, sin margen, y la cartelera mide al menos lo que
+     el filtro (al bajar, el filtro pegajoso se para justo donde ella acaba). */
+  .feed > .controls, .feed > .tabla { margin-top: 0; grid-row: 2; }
+  .feed > .tabla { align-self: stretch; }
 }
 
 /* ---- EL MÓVIL, COMO UNA APP. Arriba vuelve el nombre, y el botón del test
@@ -6060,3 +6067,124 @@ html.tf-volviendo .tf-trozo { animation: tf-vuelve 0.85s cubic-bezier(0.2, 0.8, 
 @media (prefers-reduced-motion: reduce) {
   .zonas .tab-brillo { transition: none; }
 }
+
+/* EL SELECTOR DE ZONA, como los ajustes del móvil (`mundo.js`). Filas anchas,
+   una línea por zona o país, con su bandera, cuántos vuelos hay y una marca
+   redonda a la derecha que se llena al elegirlo. */
+.modal { z-index: 60; }  /* por encima de la hoja de filtros del móvil */
+.mundo { display: grid; gap: 14px; }
+.mundo-buscar {
+  width: 100%; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--field); color: var(--ink); font: inherit; font-size: var(--fs-ui);
+}
+.mundo-grupo { display: grid; gap: 6px; }
+.mundo-grupo[hidden] { display: none; }
+.mundo-rot { margin: 0; font: 400 var(--fs-caps, 11px) / 1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+summary.mundo-rot { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; list-style: none; }
+summary.mundo-rot::-webkit-details-marker { display: none; }
+summary.mundo-rot::after { content: "›"; font-family: var(--font-sans); font-size: 16px; transition: transform 0.25s var(--ease); }
+details[open] > summary.mundo-rot::after { transform: rotate(90deg); }
+summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
+.mundo-lista { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; background: var(--surface); }
+.mundo-lista li + li { border-top: 1px solid var(--hair); }
+.mundo-lista li[hidden] { display: none; }
+.mundo-fila {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 0 14px;
+  border: 0; background: none; color: var(--ink); font: inherit; font-size: var(--fs-ui); text-align: left; cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+.mundo-fila:hover { background: var(--surface2); }
+.mundo-fila .mundo-bandera { margin: 0; font-size: 18px; width: 24px; text-align: center; }
+.mundo-nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mundo-n { font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); }
+.mundo-marca {
+  flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--line);
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.mundo-fila.sel .mundo-marca {
+  border-color: var(--deep); transform: scale(1.06);
+  background: var(--deep) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 12.5 4 4 8-9'/%3E%3C/svg%3E") center / 14px no-repeat;
+}
+.mundo-fila.sel { font-weight: 600; }
+.mundo-nada { margin: 0; color: var(--muted); font-size: var(--fs-body-s); }
+.mundo-pie {
+  position: sticky; bottom: -1px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 12px 0 2px; background: var(--surface); border-top: 1px solid var(--hair);
+}
+/* En el móvil, una hoja que sube desde abajo y ocupa casi toda la pantalla. */
+@media (max-width: 760px) {
+  .modal:has(.mundo) { place-items: end stretch; padding: 0; }
+  .modal:has(.mundo) > .modal-caja {
+    width: 100%; max-height: 92dvh; border-radius: var(--r) var(--r) 0 0; border-bottom: 0;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .mundo-pie .btn.primary { flex: 1; }
+}
+
+/* EL DETALLE DE UN VUELO (`ofertas.js`, detalleHTML): cada tramo como un
+   trayecto, una línea con lo demás y los botones ordenados. */
+.det-viaje { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px 24px; margin-top: 4px; }
+.det-tramo { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r); background: color-mix(in srgb, var(--surface2) 55%, transparent); }
+.det-rot { font: 400 var(--fs-caps, 11px) / 1 var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.det-linea { display: grid; grid-template-columns: auto minmax(40px, 1fr) auto; align-items: center; gap: 12px; }
+.det-punto { display: grid; gap: 2px; }
+.det-punto.fin { text-align: right; }
+.det-punto b { font: 600 22px / 1 var(--font-mono); letter-spacing: -0.02em; color: var(--ink); }
+.det-punto small { font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); letter-spacing: 0.08em; }
+.det-raya { position: relative; display: grid; justify-items: center; gap: 2px; color: var(--deep); }
+.det-raya::before {
+  content: ""; position: absolute; left: 0; right: 0; top: 10px; height: 0;
+  border-top: 1.5px dashed color-mix(in srgb, var(--ink) 30%, transparent);
+}
+.det-raya svg { position: relative; padding: 0 6px; background: var(--surface); border-radius: 50%; width: 30px; height: 22px; transform: rotate(45deg); }
+.det-raya em { font: 400 var(--fs-meta, 11px) var(--font-mono); font-style: normal; color: var(--muted); }
+.det-sin-hora { margin: 0; font-size: var(--fs-body-s); color: var(--muted); }
+.det-nota { margin: 10px 0 0; font-size: var(--fs-body-s); color: var(--muted); }
+.det-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 16px; }
+.det-ver { min-width: 150px; }
+.det-mas { display: flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.det-accion {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px;
+  border: 0; border-radius: var(--r-s); background: none; color: var(--ink); font: inherit; font-size: var(--fs-ui-s);
+  text-decoration: none; cursor: pointer; transition: background-color 0.15s ease, transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1);
+}
+.det-accion svg { color: var(--muted); flex: none; }
+.det-accion:hover { background: var(--surface2); }
+.det-accion:hover svg { color: var(--ink); }
+.det-accion:active { transform: scale(0.95); }
+.det-accion.hecha svg { color: var(--deep); }
+@media (max-width: 760px) {
+  .det-viaje { grid-template-columns: 1fr; }
+  .det-acciones { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .det-ver { width: 100%; justify-content: center; }
+  /* Los cuatro accesos, en rejilla: icono arriba y su nombre debajo. */
+  .det-mas { display: grid; grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); gap: 6px; margin: 0; }
+  .det-accion {
+    display: grid; justify-items: center; align-content: center; gap: 6px; min-height: 68px; padding: 8px 4px;
+    border: 1px solid var(--hair); border-radius: var(--r); text-align: center; font-size: 11.5px; line-height: 1.2;
+    background: color-mix(in srgb, var(--surface2) 50%, transparent);
+  }
+  .det-accion svg { width: 22px; height: 22px; color: var(--ink); }
+}
+
+/* SEGUIR UN VUELO (`favoritos.js`, volarAAvisos): la campanita se agita y el
+   vuelo, hecho etiqueta y luego avión de papel, vuela a «Mis avisos». */
+.fav.suena svg { animation: tf-campana 0.7s cubic-bezier(0.3, 1.6, 0.5, 1); transform-origin: 50% 12%; }
+@keyframes tf-campana {
+  0% { transform: rotate(0); } 18% { transform: rotate(-22deg); } 36% { transform: rotate(18deg); }
+  54% { transform: rotate(-12deg); } 72% { transform: rotate(7deg); } 100% { transform: rotate(0); }
+}
+.vuela-aviso {
+  position: fixed; z-index: 120; transform: translate(-50%, -50%); pointer-events: none;
+  display: flex; align-items: center; justify-content: center; overflow: hidden; white-space: nowrap;
+  padding: 0 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3); font-size: var(--fs-ui-s);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.vuela-txt { transition: opacity 0.15s ease; }
+.vuela-txt b { font-weight: 600; }
+.vuela-avion { position: absolute; inset: 0; display: grid; place-items: center; color: var(--accent); opacity: 0; transform: scale(0.4); transition: opacity 0.18s ease, transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.vuela-aviso.doblada { background: transparent; border-color: transparent; box-shadow: none; }
+.vuela-aviso.doblada .vuela-txt { opacity: 0; }
+.vuela-aviso.doblada .vuela-avion { opacity: 1; transform: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35)); }
+.recibe, .recibe .zona-ico { color: var(--accent) !important; transition: color 0.2s ease; }

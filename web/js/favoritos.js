@@ -133,9 +133,98 @@ export function wireFavs(raiz = document) {
       if (!tfUid()) return tfAbrirLogin();
       const id = b.dataset.fav;
       const o = OFFERS.find((x) => x.id === id) || SEARCH_OFFERS[id] || FAVS[id];
-      if (o) alternar(o);
+      if (!o) return;
+      const empieza = !esFav(id);
+      alternar(o);
+      if (empieza) volarAAvisos(b, o);
     });
   });
+}
+
+/* AL SEGUIR UN VUELO, SE VA VOLANDO A «MIS AVISOS». La campanita se agita; del
+   vuelo sale una etiqueta con el destino y el precio, que se dobla en el avión
+   de papel del logo y vuela en arco hasta «Mis avisos» (la pestaña de abajo en
+   el móvil, la zona de arriba en el ordenador), que da un salto al recibirlo.
+   Con «menos movimiento» en el sistema, solo la campanita, sin que se mueva. */
+const AVION =
+  '<svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><path d="M7 18.5 25 7l-5.2 18-4.1-6.1-2.9 4.6-.6-5.2z" fill="currentColor"></path></svg>';
+
+function volarAAvisos(boton, o) {
+  boton.classList.remove("suena");
+  void boton.offsetWidth;
+  boton.classList.add("suena");
+  setTimeout(() => boton.classList.remove("suena"), 800);
+  const quieto = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (quieto || !document.body.animate) return;
+  const destino = [...document.querySelectorAll('.tabbar [data-zona="follows"], .topbar .zonas [data-zona="follows"]')].find(
+    (el) => el.getBoundingClientRect().width > 0
+  );
+  if (!destino) return;
+  const fila = boton.closest(".brow, .ticket, .fav-item, li") || boton;
+  const r = fila.getBoundingClientRect();
+  const d = destino.getBoundingClientRect();
+  const etiqueta = document.createElement("div");
+  etiqueta.className = "vuela-aviso";
+  etiqueta.setAttribute("aria-hidden", "true");
+  etiqueta.innerHTML = `<span class="vuela-txt"><b>${esc(o.destination_name || o.destination || "")}</b>${
+    o.price ? ` ${Math.round(porPersona(o))} €` : ""
+  }</span><span class="vuela-avion">${AVION}</span>`;
+  document.body.appendChild(etiqueta);
+  // 1. Del vuelo a una etiqueta, en su sitio.
+  const ancho = Math.min(220, r.width);
+  const x0 = r.left + r.width / 2;
+  const y0 = r.top + r.height / 2;
+  const x1 = d.left + d.width / 2;
+  const y1 = d.top + d.height / 2;
+  etiqueta.style.left = `${x0}px`;
+  etiqueta.style.top = `${y0}px`;
+  const paso1 = etiqueta.animate(
+    [
+      { width: `${r.width}px`, height: `${r.height}px`, opacity: 0.2, borderRadius: "10px" },
+      { width: `${ancho}px`, height: "40px", opacity: 1, borderRadius: "999px" },
+    ],
+    { duration: 260, easing: "cubic-bezier(0.3, 0.8, 0.3, 1)", fill: "forwards" }
+  );
+  paso1.finished
+    .then(() => {
+      // 2. La etiqueta se dobla en el avión.
+      etiqueta.classList.add("doblada");
+      return etiqueta.animate([{ width: `${ancho}px` }, { width: "44px" }], {
+        duration: 220,
+        easing: "cubic-bezier(0.5, 0, 0.5, 1)",
+        fill: "forwards",
+      }).finished;
+    })
+    .then(() => {
+      // 3. Y vuela en arco, girando según la curva, hasta «Mis avisos».
+      const cx = (x0 + x1) / 2 + (x1 > x0 ? -1 : 1) * 60;
+      const cy = Math.min(y0, y1) - 90;
+      const pasos = [];
+      for (let k = 0; k <= 12; k++) {
+        const t = k / 12;
+        const x = (1 - t) * (1 - t) * x0 + 2 * (1 - t) * t * cx + t * t * x1;
+        const y = (1 - t) * (1 - t) * y0 + 2 * (1 - t) * t * cy + t * t * y1;
+        const dx = 2 * (1 - t) * (cx - x0) + 2 * t * (x1 - cx);
+        const dy = 2 * (1 - t) * (cy - y0) + 2 * t * (y1 - cy);
+        const giro = (Math.atan2(dy, dx) * 180) / Math.PI + 45;
+        pasos.push({
+          transform: `translate(calc(-50% + ${x - x0}px), calc(-50% + ${y - y0}px)) rotate(${giro}deg) scale(${1 - t * 0.45})`,
+          opacity: t > 0.92 ? 0 : 1,
+        });
+      }
+      return etiqueta.animate(pasos, { duration: 820, easing: "cubic-bezier(0.45, 0.05, 0.4, 1)", fill: "forwards" })
+        .finished;
+    })
+    .then(() => {
+      etiqueta.remove();
+      destino.animate(
+        [{ transform: "scale(1)" }, { transform: "scale(1.22)", offset: 0.35 }, { transform: "scale(1)" }],
+        { duration: 520, easing: "cubic-bezier(0.3, 1.6, 0.5, 1)" }
+      );
+      destino.classList.add("recibe");
+      setTimeout(() => destino.classList.remove("recibe"), 900);
+    })
+    .catch(() => etiqueta.remove());
 }
 
 /* El corazon del asunto: comparar lo que vale hoy con lo ultimo que se vio.
