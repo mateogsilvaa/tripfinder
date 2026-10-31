@@ -160,6 +160,15 @@ def destinos_desde(origen: str) -> list[str]:
     return []
 
 
+def _hora(vuelo: dict) -> str:
+    """HH:MM del primer vuelo del dia, de `departureDates`; "" si no viene."""
+    for d in vuelo.get("departureDates") or []:
+        hora = str(d)[11:16]
+        if len(hora) == 5 and hora != "00:00":
+            return hora
+    return ""
+
+
 def precios_por_dia(
     origen: str, destino: str, desde: date, hasta: date, cfg: dict | None = None
 ) -> dict[str, dict]:
@@ -183,10 +192,9 @@ def precios_por_dia(
         precio = _importe(vuelo)
         if precio is None or not (desde.isoformat() <= dia <= hasta.isoformat()):
             continue
-        horas = vuelo.get("departureDates") or []
         salida[dia] = {
             "price": round(precio, 2),
-            "time": str(horas[0])[11:16] if horas else "",
+            "time": _hora(vuelo),
             "origin": origen,
             "destination": destino,
             "airline": "Wizz Air",
@@ -354,6 +362,10 @@ class WizzairProvider(FlightProvider):
             return None
         precio = (precio_ida + precio_vuelta) * adultos
         ciudad, pais = _nombre(destino)
+        # La hora de cada vuelo viene en `departureDates` y se tiraba: todo Wizz
+        # salia en la web con «hora en el enlace», y no se podia filtrar por
+        # mañana o tarde. Si ese dia hay varios, el primero.
+        hora_ida, hora_vuelta = _hora(ida), _hora(vuelta)
         return FlightOffer(
             provider="wizzair",
             origin=route.origin,
@@ -370,6 +382,10 @@ class WizzairProvider(FlightProvider):
             airline="Wizz Air",
             stops=0,
             adults=adultos,
+            depart_time=hora_ida,
+            return_time=hora_vuelta,
+            price_out=round(precio_ida * adultos, 2),
+            price_back=round(precio_vuelta * adultos, 2),
             deep_link=links.wizzair(route.origin, destino, iso, regreso, adultos),
         )
 

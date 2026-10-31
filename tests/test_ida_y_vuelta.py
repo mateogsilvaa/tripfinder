@@ -158,3 +158,20 @@ def test_ryanair_con_resumen_sigue_usando_el_resumen():
     fare = _fare(summary={"price": {"value": 59.98, "currencyCode": "EUR"}})
     oferta = RyanairProvider._parse(fare, Route(origin="MAD"), "EUR")
     assert oferta is not None and oferta.price == 59.98
+
+
+def test_wizz_guarda_la_hora_de_cada_vuelo():
+    """`departureDates` trae la hora de cada vuelo del día: sin guardarla, todo
+    Wizz salía con «hora en el enlace» y no se podía filtrar por la mañana."""
+    ida = {**vuelo("2026-12-11", 19.99), "departureDates": ["2026-12-11T17:35:00", "2026-12-11T21:10:00"]}
+    vuelta = {**vuelo("2026-12-13", 24.99), "departureDates": ["2026-12-13T20:05:00"]}
+    [o] = wizz()._casar(RUTA, "MXP", {"2026-12-11": ida}, {"2026-12-13": vuelta}, 2)
+    assert (o.depart_time, o.return_time) == ("17:35", "20:05")
+
+
+def test_wizz_sin_hora_no_se_inventa_una():
+    [o] = wizz()._casar(
+        RUTA, "MXP", {"2026-12-11": vuelo("2026-12-11", 19.99)},
+        {"2026-12-13": {**vuelo("2026-12-13", 9.99), "departureDates": ["2026-12-13T00:00:00"]}}, 2,
+    )
+    assert (o.depart_time, o.return_time) == ("", "")
