@@ -6188,3 +6188,97 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
 .vuela-aviso.doblada .vuela-txt { opacity: 0; }
 .vuela-aviso.doblada .vuela-avion { opacity: 1; transform: none; filter: drop-shadow(0 6px 8px rgba(0, 0, 0, 0.35)); }
 .recibe, .recibe .zona-ico { color: var(--accent) !important; transition: color 0.2s ease; }
+
+/* HOP · PROPONER FECHAS, desde el calendario (`hop.js`, marcarCal). Debajo del
+   calendario, el viaje que se va eligiendo y su botón; a mano, plegado. */
+.hopx-cal-col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.hopx-proponer {
+  display: grid; gap: 12px; padding: 16px; border: 1px solid var(--line); border-radius: var(--r);
+  background: var(--surface); transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+.hopx-proponer.lista { border-color: color-mix(in srgb, var(--deep) 55%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--deep) 14%, transparent); }
+.hopx-prop-resumen { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; margin: 0; min-height: 28px; font-size: var(--fs-ui); }
+.hopx-prop-resumen b { font: 600 19px / 1.1 var(--font-sans); letter-spacing: -0.01em; color: var(--ink); }
+.hopx-prop-resumen span { color: var(--deep); }
+.hopx-prop-resumen small { margin-left: auto; font: 400 var(--fs-meta, 11px) var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.hopx-prop-resumen i { font-style: normal; color: var(--muted); font-size: var(--fs-body-s); }
+.hopx-proponer label { display: grid; gap: 4px; }
+.hopx-proponer label > span { font-size: var(--fs-ui-s); color: var(--muted); }
+.hopx-proponer input {
+  width: 100%; min-height: var(--tap-min); padding: 0 12px; border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--field); color: var(--ink); font: inherit;
+}
+.hopx-proponer button[type="submit"] { width: 100%; justify-content: center; }
+.hopx-proponer button[type="submit"]:disabled { opacity: 0.45; cursor: default; }
+.hopx-prop-nombre { display: none !important; }
+.hopx-proponer.lista .hopx-prop-nombre { display: grid !important; }
+.hopx-a-mano summary { cursor: pointer; color: var(--muted); font-size: var(--fs-ui-s); list-style: none; min-height: 32px; display: flex; align-items: center; }
+.hopx-a-mano summary::-webkit-details-marker { display: none; }
+.hopx-a-mano summary::before { content: "+"; margin-right: 6px; font-family: var(--font-mono); }
+.hopx-a-mano[open] summary::before { content: "–"; }
+.hopx-a-mano-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 6px; }
+.hopx-proponer .hop-msg { margin: 0; }
+.hopx-proponer .hop-msg:empty { display: none; }
+
+/* HOP · EL BUSCADOR (fase 3), rehecho alrededor de la frase: una tarjeta con su
+   cabecera, la frase grande, los ajustes (lo tachado, las horas) como una fila
+   discreta y el botón ancho abajo. */
+.hopx-buscar {
+  gap: 18px; padding: 22px 22px 18px; border: 1px solid var(--line); border-radius: calc(var(--r) + 4px);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface2) 70%, transparent), var(--surface));
+}
+.hopx-buscar-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0; color: var(--deep); font-size: var(--fs-ui-s); font-weight: 600; }
+.hopx-buscar-cab small { margin-left: auto; color: var(--muted); font-weight: 400; }
+.hopx-buscar p.hopx-frase { color: color-mix(in srgb, var(--ink) 62%, transparent); }
+.hopx-afinar:empty { display: none; }
+.hopx-buscar .hop-horas { margin: 0; }
+.hopx-buscar .hop-horas .horas-resumen, .hopx-buscar .hop-horas summary { border-radius: var(--r-s); }
+.hopx-buscar-pie { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 10px 16px; padding-top: 14px; border-top: 1px solid var(--hair); }
+.hopx-buscar-pie .hop-letra { font-size: var(--fs-body-s); }
+.hopx-buscar-pie [data-hop-cerrar-buscar] { justify-self: start; }
+@media (max-width: 760px) {
+  .hopx-buscar { padding: 18px 16px 16px; }
+  .hopx-buscar p.hopx-frase { font-size: 19px; line-height: 1.85; }
+  .hopx-buscar-cab small { margin-left: 0; flex-basis: 100%; }
+  .hopx-buscar-pie { grid-template-columns: 1fr; }
+  .hopx-lanzar { width: 100%; justify-content: center; }
+}
+
+/* HOP · votar: aire entre «Votar de una en una» y la primera opción. */
+.hopx-barra { margin-bottom: 14px; }
+@media (max-width: 760px) {
+  .hopx-barra { display: grid; gap: 10px; }
+  .hopx-barra .hopx-deslizar { justify-content: center; }
+}
+
+/* HOP · los resultados de la búsqueda, como tarjetas ordenadas: el destino y el
+   precio en grande, las fechas debajo, y las dos acciones (guardar, dónde
+   dormir) en una fila propia. */
+.hopx-res { background: var(--surface); transition: border-color 0.2s ease, transform 0.3s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.hopx-res-fila { grid-template-columns: 48px minmax(0, 1fr) auto; grid-template-areas: "iata txt precio" "acc acc acc"; row-gap: 10px; padding: 12px 14px; }
+.hopx-res-iata { grid-area: iata; height: 44px; }
+.hopx-res-txt { grid-area: txt; }
+.hopx-res-txt b { font-size: 17px; font-weight: 600; }
+.hopx-res-precio { grid-area: precio; }
+.hopx-res-acc { grid-area: acc; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hopx-res-acc .btn { justify-content: center; }
+@media (min-width: 761px) {
+  .hopx-res-fila { grid-template-columns: 52px minmax(0, 1fr) auto auto; grid-template-areas: "iata txt precio acc"; }
+  .hopx-res-acc { display: flex; }
+}
+
+/* HOP · cómo va, en cinco pasos (lo que ve quien llega sin ningún HOP). */
+.hop-pasos { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.hop-pasos li { display: grid; gap: 10px; align-content: start; padding: 14px; border: 1px solid var(--hair); border-radius: var(--r); background: var(--surface); }
+.hop-pasos li > span:last-child { display: grid; gap: 4px; }
+.hop-pasos b { font-weight: 600; }
+.hop-pasos small { color: var(--muted); font-size: var(--fs-body-s); line-height: 1.4; }
+.hop-paso-ico { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: color-mix(in srgb, var(--deep) 14%, transparent); color: var(--deep); }
+@media (prefers-reduced-motion: no-preference) {
+  .hop-pasos li { animation: tf-entra-fila 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) calc(var(--i) * 60ms) both; }
+}
+@media (max-width: 900px) {
+  .hop-pasos { grid-template-columns: 1fr; gap: 0; border: 1px solid var(--hair); border-radius: var(--r); overflow: hidden; }
+  .hop-pasos li { grid-template-columns: auto 1fr; align-items: center; border: 0; border-radius: 0; }
+  .hop-pasos li + li { border-top: 1px solid var(--hair); }
+}
