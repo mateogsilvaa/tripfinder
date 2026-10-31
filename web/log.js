@@ -536,16 +536,18 @@ window.addEventListener("load", () => {
    fondo de la pestaña activa (ver `.tabbar:not(.con-lente)` en la hoja). */
 const tfSinMovimiento = () => window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-function tfLente() {
-  const barra = document.querySelector(".tabbar");
-  if (!barra || getComputedStyle(barra).display === "none" || barra.querySelector(".tab-lente")) return;
+/* La misma lente para las dos barras: la de abajo del móvil (`.tabbar`, con
+   el dedo) y la de zonas del ordenador (`.topbar .zonas`, con el ratón, que
+   además lleva un brillo que sigue al puntero de una zona a otra). */
+function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
+  if (!barra || barra.querySelector(".tab-lente")) return;
   const lente = document.createElement("span");
   lente.className = "tab-lente";
   lente.setAttribute("aria-hidden", "true");
   barra.prepend(lente);
   barra.classList.add("con-lente");
-  const tabs = () => [...barra.querySelectorAll(".tab")];
-  const activa = () => barra.querySelector(".tab.activa");
+  const tabs = () => [...barra.querySelectorAll(sel)];
+  const activa = () => barra.querySelector(`${sel}.activa`);
   let x = 0;
   let w = 0;
   let animacion = null;
@@ -555,27 +557,30 @@ function tfLente() {
     lente.style.width = `${nw}px`;
     lente.style.transform = `translateX(${nx}px)`;
   };
-  const enTab = (tab) => fijar(tab.offsetLeft, tab.offsetWidth);
+  const enTab = (tab) => tab && tab.offsetWidth && fijar(tab.offsetLeft, tab.offsetWidth);
   const marcar = (tab) => tabs().forEach((t) => t.classList.toggle("activa", t === tab));
 
   /* EL MOVIMIENTO, COMO UNA GOTA. De una zona a otra la lente se estira hasta
      cubrir las dos, se aplasta un poco al ir y llega con un rebote. */
+  const gota = (pieza, de, a, duracion = 520) =>
+    pieza.animate(
+      [
+        { transform: `translateX(${de.x}px) scaleY(1)`, width: `${de.w}px` },
+        {
+          transform: `translateX(${Math.min(de.x, a.x)}px) scaleY(0.86)`,
+          width: `${Math.max(de.x + de.w, a.x + a.w) - Math.min(de.x, a.x)}px`,
+          offset: 0.45,
+        },
+        { transform: `translateX(${a.x}px) scaleY(1)`, width: `${a.w}px` },
+      ],
+      { duration: duracion, easing: "cubic-bezier(0.3, 1.25, 0.4, 1)" }
+    );
   const ir = (tab) => {
     if (animacion) animacion.cancel();
-    const x1 = tab.offsetLeft;
-    const w1 = tab.offsetWidth;
-    if (tfSinMovimiento() || !lente.animate) return fijar(x1, w1);
-    const desde = Math.min(x, x1);
-    const largo = Math.max(x + w, x1 + w1) - desde;
-    animacion = lente.animate(
-      [
-        { transform: `translateX(${x}px) scaleY(1)`, width: `${w}px` },
-        { transform: `translateX(${desde}px) scaleY(0.86)`, width: `${largo}px`, offset: 0.45 },
-        { transform: `translateX(${x1}px) scaleY(1)`, width: `${w1}px` },
-      ],
-      { duration: 520, easing: "cubic-bezier(0.3, 1.25, 0.4, 1)" }
-    );
-    fijar(x1, w1);
+    const a = { x: tab.offsetLeft, w: tab.offsetWidth };
+    if (tfSinMovimiento() || !lente.animate || !w) return fijar(a.x, a.w);
+    animacion = gota(lente, { x, w }, a);
+    fijar(a.x, a.w);
   };
 
   enTab(activa() || tabs()[0]);
@@ -592,7 +597,7 @@ function tfLente() {
     setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 320);
   };
 
-  /* ARRASTRARLA: con el dedo sobre la barra, la lente lo sigue (algo
+  /* ARRASTRARLA (móvil): con el dedo sobre la barra, la lente lo sigue (algo
      agrandada, como una lupa) y al soltar se queda en la zona de debajo. */
   let dedo = null;
   const bajoDedo = (cx) =>
@@ -601,63 +606,104 @@ function tfLente() {
       const d = Math.abs(cx - (r.left + r.width / 2));
       return !mejor || d < mejor.d ? { t, d } : mejor;
     }, null).t;
-  barra.addEventListener("pointerdown", (e) => {
-    if (e.button) return;
-    dedo = { x0: e.clientX, arrastra: false, id: e.pointerId };
-    lente.classList.add("pulsada");
-  });
-  barra.addEventListener("pointermove", (e) => {
-    if (!dedo || e.pointerId !== dedo.id) return;
-    if (!dedo.arrastra && Math.abs(e.clientX - dedo.x0) < 8) return;
-    if (!dedo.arrastra) {
-      dedo.arrastra = true;
-      try {
-        barra.setPointerCapture(e.pointerId);
-      } catch {
-        /* sin captura, sigue igual */
+  if (conDedo) {
+    barra.addEventListener("pointerdown", (e) => {
+      if (e.button) return;
+      dedo = { x0: e.clientX, arrastra: false, id: e.pointerId };
+      lente.classList.add("pulsada");
+    });
+    barra.addEventListener("pointermove", (e) => {
+      if (!dedo || e.pointerId !== dedo.id) return;
+      if (!dedo.arrastra && Math.abs(e.clientX - dedo.x0) < 8) return;
+      if (!dedo.arrastra) {
+        dedo.arrastra = true;
+        try {
+          barra.setPointerCapture(e.pointerId);
+        } catch {
+          /* sin captura, sigue igual */
+        }
+        if (animacion) animacion.cancel();
       }
-      if (animacion) animacion.cancel();
-    }
-    const caja = barra.getBoundingClientRect();
-    const nx = Math.max(4, Math.min(caja.width - w - 4, e.clientX - caja.left - w / 2));
-    fijar(nx, w);
-    tabs().forEach((t) => t.classList.toggle("bajo", t === bajoDedo(e.clientX)));
-  });
-  const soltar = (e) => {
-    if (!dedo) return;
-    lente.classList.remove("pulsada");
-    tabs().forEach((t) => t.classList.remove("bajo"));
-    if (dedo.arrastra && e.type === "pointerup") {
-      dedo.sinClic = true;
-      irA(bajoDedo(e.clientX));
-    }
-    const fue = dedo;
-    setTimeout(() => {
-      if (dedo === fue) dedo = null;
-    }, 0);
-  };
-  barra.addEventListener("pointerup", soltar);
-  barra.addEventListener("pointercancel", soltar);
+      const caja = barra.getBoundingClientRect();
+      const nx = Math.max(4, Math.min(caja.width - w - 4, e.clientX - caja.left - w / 2));
+      fijar(nx, w);
+      tabs().forEach((t) => t.classList.toggle("bajo", t === bajoDedo(e.clientX)));
+    });
+    const soltar = (e) => {
+      if (!dedo) return;
+      lente.classList.remove("pulsada");
+      tabs().forEach((t) => t.classList.remove("bajo"));
+      if (dedo.arrastra && e.type === "pointerup") {
+        dedo.sinClic = true;
+        irA(bajoDedo(e.clientX));
+      }
+      const fue = dedo;
+      setTimeout(() => {
+        if (dedo === fue) dedo = null;
+      }, 0);
+    };
+    barra.addEventListener("pointerup", soltar);
+    barra.addEventListener("pointercancel", soltar);
+  }
+
+  /* EL BRILLO QUE SIGUE AL RATÓN (ordenador): una segunda lente, más tenue,
+     que va de zona en zona con el mismo movimiento de gota, y se apaga al
+     salir de la barra. */
+  if (raton) {
+    const brillo = document.createElement("span");
+    brillo.className = "tab-brillo";
+    brillo.setAttribute("aria-hidden", "true");
+    barra.prepend(brillo);
+    let b = null;
+    let animB = null;
+    const ponerB = (c) => {
+      b = c;
+      brillo.style.width = `${c.w}px`;
+      brillo.style.transform = `translateX(${c.x}px)`;
+    };
+    barra.addEventListener("pointerover", (e) => {
+      if (e.pointerType && e.pointerType !== "mouse") return;
+      const tab = e.target.closest(sel);
+      if (!tab || !barra.contains(tab)) return;
+      const a = { x: tab.offsetLeft, w: tab.offsetWidth };
+      if (animB) animB.cancel();
+      if (b && brillo.classList.contains("visible") && !tfSinMovimiento() && brillo.animate) {
+        animB = gota(brillo, b, a, 420);
+      }
+      ponerB(a);
+      brillo.classList.add("visible");
+    });
+    barra.addEventListener("pointerleave", () => brillo.classList.remove("visible"));
+  }
 
   barra.addEventListener("click", (e) => {
-    const tab = e.target.closest(".tab");
+    const tab = e.target.closest(sel);
     if (!tab || e.metaKey || e.ctrlKey || e.shiftKey || e.button) return;
     e.preventDefault();
     // Tras arrastrar, el clic que llega ya está atendido.
     if (dedo && dedo.sinClic) return;
     irA(tab);
   });
-  window.addEventListener("resize", () => activa() && enTab(activa()));
+  // Al cambiar de tamaño (o al aparecer, que en el ordenador la de abajo no se
+  // ve y en el móvil la de arriba tampoco), la lente se recoloca sin animar.
+  const recolocar = () => enTab(activa());
+  window.addEventListener("resize", recolocar);
+  if (typeof ResizeObserver === "function") new ResizeObserver(recolocar).observe(barra);
   // Volver con «atrás» deja la página como estaba al irse: la lente, en su sitio.
   window.addEventListener("pageshow", (ev) => {
     if (!ev.persisted) return;
-    const aqui = barra.querySelector('.tab[aria-current="page"]');
+    const aqui = barra.querySelector(`${sel}[aria-current="page"]`);
     if (aqui) marcar(aqui);
-    if (activa()) enTab(activa());
+    recolocar();
   });
 }
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tfLente);
-else tfLente();
+
+function tfLentes() {
+  tfLente(document.querySelector(".tabbar"), ".tab", { dedo: true });
+  tfLente(document.querySelector(".topbar .zonas"), ".zona", { raton: true });
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tfLentes);
+else tfLentes();
 
 /* ------------------------------------------------ ¡que es para el vertical!
    En la app instalada en el móvil, al ponerlo de lado la web se cae a trozos,

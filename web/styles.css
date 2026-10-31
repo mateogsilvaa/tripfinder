@@ -6039,3 +6039,24 @@ html.tf-volviendo .tf-trozo { animation: tf-vuelve 0.85s cubic-bezier(0.2, 0.8, 
   }
   details[open]::details-content { height: auto; }
 }
+
+/* LA LENTE EN EL ORDENADOR: las zonas de arriba con la misma lente que la barra
+   del móvil (`log.js`, tfLente). La lente es la zona en la que estás; el brillo,
+   más tenue, sigue al ratón de una a otra. Las zonas ya no pintan su propio
+   fondo: lo pintan ellas dos, que son las que se mueven. */
+.zonas.con-lente { position: relative; isolation: isolate; }
+.zonas .tab-lente, .zonas .tab-brillo {
+  position: absolute; top: 3px; bottom: 3px; left: 0; z-index: -1; pointer-events: none;
+  border-radius: var(--r-pill); transform-origin: center; will-change: transform, width;
+}
+.zonas .tab-lente {
+  background: var(--surface2);
+  box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 color-mix(in srgb, var(--ink) 7%, transparent), 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+.zonas .tab-brillo { background: color-mix(in srgb, var(--ink) 6%, transparent); opacity: 0; transition: opacity 0.2s ease; }
+.zonas .tab-brillo.visible { opacity: 1; }
+.zonas.con-lente .zona.activa, .zonas.con-lente .zona:hover { background: transparent; box-shadow: none; }
+.zonas.con-lente .zona { transition: color 0.2s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .zonas .tab-brillo { transition: none; }
+}
