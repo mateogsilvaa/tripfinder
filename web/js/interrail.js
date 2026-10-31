@@ -928,6 +928,12 @@ function precioHTML(r, ctx) {
       ${desglose}
       ${grupo}
       <p class="ir-veredicto">${esc(VEREDICTOS[v])}</p>
+      ${
+        // Comprar el pase, justo donde se decide que sale a cuenta.
+        v !== "sin"
+          ? `<a class="btn ghost small ir-comprar" href="https://www.interrail.eu/es" target="_blank" rel="noopener">Comprar el pase en interrail.eu ↗</a>`
+          : ""
+      }
     </div>`;
 }
 
@@ -1190,6 +1196,18 @@ const px = (cod) => PUNTOS[cod][0];
 const py = (cod) => PUNTOS[cod][1];
 const ANCHO_MAPA = ANCHO_EU;
 const ALTO_MAPA = ALTO_EU;
+/* El encuadre: lo que ocupan las ciudades y un margen, no el lienzo entero. Así
+   el mapa llena su caja de lado a lado, sin franjas vacías a los lados. */
+const ENCUADRE = (() => {
+  const xs = Object.values(PUNTOS).map((p) => p[0]);
+  const ys = Object.values(PUNTOS).map((p) => p[1]);
+  const m = 36;
+  const x0 = Math.max(0, Math.min(...xs) - m);
+  const y0 = Math.max(0, Math.min(...ys) - m);
+  const x1 = Math.min(ANCHO_MAPA, Math.max(...xs) + m + 40);
+  const y1 = Math.min(ALTO_MAPA, Math.max(...ys) + m);
+  return [Math.round(x0), Math.round(y0), Math.round(x1 - x0), Math.round(y1 - y0)];
+})();
 
 /* Por dónde pasa de verdad la ruta: las paradas y, entre cada dos, las
    ciudades que el tren atraviesa sin parar. */
@@ -1270,9 +1288,10 @@ export function mapaSVG(elegidasSet, ruta) {
       </g>`;
     })
     .join("");
-  return `<svg class="ir-mapa-svg" viewBox="0 0 ${ANCHO_MAPA} ${ALTO_MAPA}" role="group"
+  const [vx, vy, vw, vh] = ENCUADRE;
+  return `<svg class="ir-mapa-svg" viewBox="${vx} ${vy} ${vw} ${vh}" role="group"
       aria-label="Mapa de Europa: toca una ciudad para añadirla o quitarla">
-      <rect class="ir-mar" width="${ANCHO_MAPA}" height="${ALTO_MAPA}"/>
+      <rect class="ir-mar" x="${vx}" y="${vy}" width="${vw}" height="${vh}"/>
       <g class="ir-paises">${paises}</g>
       <g class="ir-mapa-lineas">${lineas}</g>
       ${camino ? `<polyline class="ir-mapa-ruta-fondo" points="${camino}"/><polyline class="ir-mapa-ruta" points="${camino}"/>` : ""}
@@ -1284,6 +1303,8 @@ function pintarMapa(ruta) {
   const caja = document.querySelector("#irMapa");
   if (!caja) return;
   caja.innerHTML = mapaSVG(new Set(elegidas()), ruta);
+  // En el móvil el mapa no se usa para elegir: sale solo con la ruta hecha.
+  caja.classList.toggle("con-ruta", !!ruta);
   iluminarDePaso(caja.querySelector("svg"));
 }
 
@@ -1304,29 +1325,85 @@ function iluminarDePaso(svg) {
   }
 }
 
+/* LA LISTA DE CIUDADES: el modo de elegir en el móvil, y en el ordenador al
+   lado del mapa. Por zonas plegables —abiertas las que tienen algo elegido—,
+   una fila por ciudad con su país y una marca, y un buscador arriba. Al tocar
+   no se repinta la lista entera: solo cambian las marcas, y no salta. */
+const ZONAS_ABIERTAS = new Set();
+const plano = (t) => String(t).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+function filaCiudadHTML(cod, c, sel) {
+  return `<button type="button" class="ir-chip ir-fila" data-ir-ciudad="${esc(cod)}" aria-pressed="${sel}"
+      data-buscar="${esc(plano(`${c.ciudad} ${c.pais}`))}">
+      <span class="ir-fila-nombre">${esc(c.ciudad)}</span><small>${esc(c.pais)}</small>
+      <i class="ir-marca" aria-hidden="true"></i>
+    </button>`;
+}
+
+function filtrarCiudades() {
+  const caja = document.querySelector("#irCiudades");
+  const q = plano(document.querySelector("#irBuscarCiudad")?.value.trim() || "");
+  if (!caja) return;
+  caja.classList.toggle("buscando", !!q);
+  caja.querySelectorAll(".ir-zona").forEach((z) => {
+    let hay = 0;
+    z.querySelectorAll(".ir-fila").forEach((b) => {
+      const si = !q || b.dataset.buscar.includes(q);
+      b.hidden = !si;
+      if (si) hay++;
+    });
+    z.hidden = !!q && !hay;
+    if (q && hay) z.open = true;
+  });
+}
+
 function pintarCiudades() {
   const caja = document.querySelector("#irCiudades");
   if (!caja) return;
   const mias = new Set(elegidas());
-  caja.innerHTML = ZONAS.map(([zona, paises]) => {
-    const suyas = Object.entries(CIUDADES)
-      .filter(([, c]) => paises.includes(c.pais))
-      .sort((a, b) => paises.indexOf(a[1].pais) - paises.indexOf(b[1].pais) || a[1].ciudad.localeCompare(b[1].ciudad, "es"));
-    return `<div class="ir-pais"><span>${esc(zona)}</span>${suyas
-      .map(
-        ([cod, c]) => `<button type="button" class="ir-chip" data-ir-ciudad="${esc(cod)}"
-          aria-pressed="${mias.has(cod)}" title="${esc(c.pais)}">${esc(c.ciudad)}</button>`
-      )
-      .join("")}</div>`;
-  }).join("");
+  if (!caja.querySelector(".ir-zona")) {
+    caja.innerHTML = ZONAS.map(([zona, paises]) => {
+      const suyas = Object.entries(CIUDADES)
+        .filter(([, c]) => paises.includes(c.pais))
+        .sort((a, b) => a[1].ciudad.localeCompare(b[1].ciudad, "es"));
+      const abierta = ZONAS_ABIERTAS.has(zona) || suyas.some(([cod]) => mias.has(cod));
+      return `<details class="ir-zona" data-zona="${esc(zona)}"${abierta ? " open" : ""}>
+          <summary><span>${esc(zona)}</span><em class="ir-zona-n"></em></summary>
+          <div class="ir-zona-filas">${suyas.map(([cod, c]) => filaCiudadHTML(cod, c, mias.has(cod))).join("")}</div>
+        </details>`;
+    }).join("");
+    caja.addEventListener(
+      "toggle",
+      (e) => {
+        const z = e.target.closest && e.target.closest(".ir-zona");
+        if (!z || caja.classList.contains("buscando")) return;
+        if (z.open) ZONAS_ABIERTAS.add(z.dataset.zona);
+        else ZONAS_ABIERTAS.delete(z.dataset.zona);
+      },
+      true
+    );
+    filtrarCiudades();
+  }
+  caja.querySelectorAll(".ir-fila").forEach((b) => b.setAttribute("aria-pressed", String(mias.has(b.dataset.irCiudad))));
+  caja.querySelectorAll(".ir-zona").forEach((z) => {
+    const n = z.querySelectorAll('.ir-fila[aria-pressed="true"]').length;
+    z.querySelector(".ir-zona-n").textContent = n ? `${n} elegida${n === 1 ? "" : "s"}` : "";
+  });
   const n = mias.size;
   const resumen = document.querySelector("#irElegidas");
   if (resumen) {
+    // Las elegidas, arriba y a mano para quitarlas: una pastilla por ciudad.
     resumen.innerHTML = n
-      ? `<b>${[...mias].map((c) => esc(CIUDADES[c].ciudad)).join(", ")}</b>${
-          n === 1 ? " · elige al menos otra para montar tu ruta" : ""
-        } · <button type="button" class="ir-limpiar" data-ir-limpiar>Quitar todas</button>`
-      : "Toca las ciudades en el mapa. Si no eliges ninguna, abajo tienes rutas hechas.";
+      ? `<ul class="ir-mias">${[...mias]
+          .map(
+            (c) => `<li><button type="button" data-ir-ciudad="${esc(c)}" aria-label="Quitar ${esc(
+              CIUDADES[c].ciudad
+            )}">${esc(CIUDADES[c].ciudad)}<span aria-hidden="true">×</span></button></li>`
+          )
+          .join("")}</ul>
+        <p>${n === 1 ? "Una sola: elige al menos otra para montar tu ruta · " : `${n} ciudades · `}<button type="button"
+          class="ir-limpiar" data-ir-limpiar>Quitar todas</button></p>`
+      : `<p>Ninguna elegida todavía: si no marcas ninguna, abajo tienes rutas hechas.</p>`;
   }
 }
 
@@ -1919,6 +1996,12 @@ export function montarInterrail() {
     }
     return false;
   };
+  const buscarCiudad = document.querySelector("#irBuscarCiudad");
+  buscarCiudad?.addEventListener("input", filtrarCiudades);
+  // Intro en el buscador no lanza el cálculo: es buscar una ciudad.
+  buscarCiudad?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") e.preventDefault();
+  });
   for (const sel of ["#irCiudades", "#irMapa", "#irElegidas"]) {
     const el = document.querySelector(sel);
     if (el) el.addEventListener("click", alTocar);
