@@ -131,6 +131,9 @@ test.describe("el selector de destino", () => {
     await abrir(page);
     // Aquí no se filtra por el tablón: esto lanza una búsqueda nueva, así que
     // pedir los Balcanes es legítimo aunque hoy no haya ninguno barato.
+    // Se espera a que estén pintadas: `allTextContents` no reintenta, y con la
+    // suite entera en paralelo la lista llegaba a leerse a medio montar.
+    await expect(page.locator("#destList .ciudad.region")).toHaveCount(4);
     const nombres = await page.locator("#destList .ciudad.region").allTextContents();
     expect(nombres.map((t) => t.trim().replace(/\s+\d+$/, ""))).toEqual([
       "El Caribe",

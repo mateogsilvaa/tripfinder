@@ -134,11 +134,21 @@ async function nubeLlamar(url, { metodo = "POST", cuerpo, form, token } = {}) {
   if (token) cabeceras.Authorization = `Bearer ${token}`;
   const opciones = { method: metodo, headers: cabeceras };
   if (body !== undefined) opciones.body = body;
+  // Un corte de red (el móvil que se duerme, un túnel) no tiene por qué ser un
+  // error: las LECTURAS se reintentan una vez, al poco. Las escrituras no: si
+  // la primera llegó, la segunda duplicaría lo que no se puede duplicar.
+  const lectura = metodo === "GET" || url.endsWith(":runQuery");
   let r;
   try {
     r = await fetch(url, opciones);
   } catch {
-    throw nubeError("red");
+    if (!lectura) throw nubeError("red");
+    await new Promise((ok) => setTimeout(ok, 800));
+    try {
+      r = await fetch(url, opciones);
+    } catch {
+      throw nubeError("red");
+    }
   }
   let datos = null;
   try {
@@ -1029,13 +1039,26 @@ async function nubeHop(id) {
 async function nubeMisHops() {
   const t = await nubeHopToken();
   if (t.error) return [];
-  return nubeConsultar(t.token, {
-    from: [{ collectionId: "hops" }],
-    where: {
-      fieldFilter: { field: { fieldPath: "miembros" }, op: "ARRAY_CONTAINS", value: { stringValue: t.s.uid } },
-    },
-    limit: 100,
-  });
+  const consulta = (token) =>
+    nubeConsultar(token, {
+      from: [{ collectionId: "hops" }],
+      where: {
+        fieldFilter: { field: { fieldPath: "miembros" }, op: "ARRAY_CONTAINS", value: { stringValue: t.s.uid } },
+      },
+      limit: 100,
+    });
+  try {
+    return await consulta(t.token);
+  } catch (e) {
+    // Un permiso denegado aquí es casi siempre un token que ya no cuadra con la
+    // sesión (de antes de unas reglas nuevas, o de otra cuenta en el mismo
+    // navegador): se pide uno nuevo y se prueba una vez más.
+    if (e.codigo !== "PERMISSION_DENIED" && e.estado !== 403) throw e;
+    const tokens = nubeTokens();
+    const nuevo = tokens ? await nubeRefrescar(tokens) : "";
+    if (!nuevo) throw e;
+    return consulta(nuevo);
+  }
 }
 
 function nubeHopCambioDeMiembro(id, uid, nombre, transformacion) {

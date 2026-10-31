@@ -65,9 +65,17 @@ window.addEventListener("unhandledrejection", (e) => {
    sobre el mismo fichero (403, 500, un Pages caido) sigue quedando apuntado. */
 const TF_ESPERADO_404 = /(^|\/)data\/[^?]*\.json(\?|$)/;
 
+/* Y dos más que no son fallos de la web:
+   · un 409 en un `:commit` de Firestore es «eso ya existe»: lo que se crea con
+     id fijo (mandar a un HOP un vuelo que ya estaba, volver a votar) lo
+     espera y lo trata quien escribe;
+   · un fallo de red con la página oculta o sin conexión es el móvil que se ha
+     dormido o se ha quedado sin cobertura, no la web. */
 function tfEsRuido(url, status) {
-  return status === 404 && TF_ESPERADO_404.test(url);
+  if (status === 404 && TF_ESPERADO_404.test(url)) return true;
+  return status === 409 && /firestore\.googleapis\.com\/.*:commit$/.test(url);
 }
+const tfRedDormida = () => document.visibilityState === "hidden" || navigator.onLine === false;
 
 const tfFetchOriginal = window.fetch;
 // Para lo que no debe apuntarse a si mismo si falla (la actividad de nube.js).
@@ -81,7 +89,7 @@ window.fetch = async function (...args) {
     }
     return r;
   } catch (err) {
-    tfApuntar("red", `fallo de red en ${url}`, err.message || "");
+    if (!tfRedDormida() && err.name !== "AbortError") tfApuntar("red", `fallo de red en ${url}`, err.message || "");
     throw err;
   }
 };
@@ -112,7 +120,7 @@ window.fetch = async function (...args) {
       .forEach((m) => m.setAttribute("content", oscuro ? "#100f0e" : "#f3f0e9"));
   };
 
-  boton.addEventListener("click", () => {
+  const cambiar = () => {
     // Sin esto, cada elemento con `transition` cruza a su propio ritmo y el
     // cambio de tema se ve como un charco de colores durante medio segundo.
     const corte = document.createElement("style");
@@ -128,7 +136,11 @@ window.fetch = async function (...args) {
       /* navegacion privada: el tema dura lo que la pestaña */
     }
     pintar();
-  });
+  };
+  // En un círculo que se abre desde el botón (más abajo, `tfTemaEnCirculo`).
+  boton.addEventListener("click", () =>
+    typeof tfTemaEnCirculo === "function" ? tfTemaEnCirculo(boton, cambiar) : cambiar()
+  );
 
   pintar();
 })();
@@ -247,6 +259,8 @@ function tfCerrarDialogo(caja) {
   document.body.style.overflow = "";
   estado.panel.removeAttribute("aria-modal");
 
+  // La salida: una copia que se va mientras el de verdad ya está cerrado.
+  if (typeof tfSalidaDialogo === "function") tfSalidaDialogo(estado.caja);
   if (estado.alCerrar) estado.alCerrar();
   // Devolver el foco al final: antes de esto el fondo todavia estaba inerte y
   // el navegador se negaria a enfocar nada de ahi.
@@ -322,8 +336,22 @@ if (
     // La version va en la URL: sin ella el navegador se queda con el sw.js
     // guardado y un despliegue nuevo no llegaria a activarse nunca.
     const v = (document.querySelector('link[rel="manifest"]')?.href.split("v=")[1] || "").trim();
-    navigator.serviceWorker
-      .register(`sw.js${v ? `?v=${encodeURIComponent(v)}` : ""}`)
+    const url = `sw.js${v ? `?v=${encodeURIComponent(v)}` : ""}`;
+    // Safari en el iPhone a veces lo rechaza («Rejected») si coincide con que
+    // la app se va a segundo plano o la página aún no está activa del todo. Se
+    // reintenta dos veces, con la página a la vista, antes de darlo por malo.
+    const registrar = (quedan) =>
+      navigator.serviceWorker.register(url).catch((err) => {
+        if (quedan > 0) {
+          return new Promise((ok) => {
+            const otra = () => setTimeout(() => ok(registrar(quedan - 1)), 3000);
+            if (document.visibilityState === "visible") otra();
+            else document.addEventListener("visibilitychange", otra, { once: true });
+          });
+        }
+        throw err;
+      });
+    registrar(2)
       .catch((err) => {
         // Que falle no rompe nada: la web funciona igual, solo que sin red no
         // abre. Se apunta porque un registro que falla siempre es un sintoma.
@@ -561,7 +589,7 @@ function tfLente() {
     marcar(tab);
     lente.style.opacity = "1";
     ir(tab);
-    setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 400);
+    setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 320);
   };
 
   /* ARRASTRARLA: con el dedo sobre la barra, la lente lo sigue (algo
@@ -718,3 +746,141 @@ if (tfApaisado) {
   else if (tfApaisado.addListener) tfApaisado.addListener(tfGiro);
   window.addEventListener("load", tfGiro);
 }
+
+/* ======================================================= LA WEB, FLUIDA
+   Lo de la barra de abajo, llevado al resto: lo que se elige se desliza en
+   vez de saltar, lo que se abre entra con un muelle y se va en vez de
+   desaparecer, y el tema cambia en un círculo desde el botón. Todo se apaga
+   con «menos movimiento» en el sistema, y en las pruebas automáticas lo que
+   deja copias en la página (el cierre de los diálogos) no se hace. */
+const tfEnPrueba = () => typeof navigator !== "undefined" && navigator.webdriver;
+
+/* --- el deslizador: la marca de la opción elegida se mueve como una gota ---
+   En las pestañas (Buscar / Seguir), en los segmentos (franja horaria, por
+   dónde avisar, el periodo del panel). Vale para cualquier grupo nuevo que se
+   pinte después: se miran los que van apareciendo. */
+const TF_GRUPOS = ".pestanas, .horas-chips, .adm-periodo";
+const TF_ELEGIDO = '[aria-selected="true"], [aria-checked="true"]';
+
+function tfDeslizador(grupo) {
+  if (grupo.dataset.desliza) return;
+  grupo.dataset.desliza = "1";
+  const marca = document.createElement("span");
+  marca.className = "tf-desliza";
+  marca.setAttribute("aria-hidden", "true");
+  grupo.prepend(marca);
+  grupo.classList.add("con-deslizador");
+  let r = null;
+  let animacion = null;
+  const caja = (el) => ({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight });
+  const fijar = (c) => {
+    r = c;
+    marca.style.width = `${c.w}px`;
+    marca.style.height = `${c.h}px`;
+    marca.style.transform = `translate(${c.x}px, ${c.y}px)`;
+  };
+  const mover = (deGolpe) => {
+    const el = grupo.querySelector(TF_ELEGIDO);
+    marca.style.opacity = el ? "1" : "0";
+    // `data-franja=""` es «cualquier hora»: no lleva marca, como antes.
+    if (!el || el.dataset.franja === "") {
+      marca.style.opacity = "0";
+      if (el) fijar(caja(el));
+      return;
+    }
+    const c = caja(el);
+    if (!c.w) return;
+    if (animacion) animacion.cancel();
+    if (!r || deGolpe || tfSinMovimiento() || !marca.animate) return fijar(c);
+    if (r.x === c.x && r.y === c.y && r.w === c.w) return;
+    const enFila = r.y === c.y;
+    const desde = Math.min(r.x, c.x);
+    const largo = Math.max(r.x + r.w, c.x + c.w) - desde;
+    const pasos = enFila
+      ? [
+          { transform: `translate(${r.x}px, ${r.y}px) scaleY(1)`, width: `${r.w}px` },
+          { transform: `translate(${desde}px, ${c.y}px) scaleY(0.88)`, width: `${largo}px`, offset: 0.45 },
+          { transform: `translate(${c.x}px, ${c.y}px) scaleY(1)`, width: `${c.w}px` },
+        ]
+      : [
+          { transform: `translate(${r.x}px, ${r.y}px)`, width: `${r.w}px`, height: `${r.h}px` },
+          { transform: `translate(${c.x}px, ${c.y}px)`, width: `${c.w}px`, height: `${c.h}px` },
+        ];
+    animacion = marca.animate(pasos, { duration: 480, easing: "cubic-bezier(0.3, 1.25, 0.4, 1)" });
+    fijar(c);
+  };
+  mover(true);
+  new MutationObserver(() => mover(false)).observe(grupo, {
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["aria-selected", "aria-checked", "hidden"],
+  });
+  if (typeof ResizeObserver === "function") new ResizeObserver(() => mover(true)).observe(grupo);
+}
+
+function tfBuscarGrupos(raiz = document) {
+  raiz.querySelectorAll(TF_GRUPOS).forEach(tfDeslizador);
+}
+
+/* --- los diálogos se van, no desaparecen ---
+   Al cerrar, una copia muda (sin ids, inerte) hace la salida mientras el de
+   verdad ya está cerrado: así cerrar sigue siendo inmediato para el código. */
+function tfSalidaDialogo(caja) {
+  if (tfSinMovimiento() || tfEnPrueba() || !caja || caja.hidden || !caja.isConnected) return;
+  const copias = [caja];
+  const velo = caja.id === "panel" ? document.getElementById("backdrop") : null;
+  if (velo && !velo.hidden) copias.unshift(velo);
+  copias.forEach((el) => {
+    const copia = el.cloneNode(true);
+    copia.removeAttribute("id");
+    copia.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+    copia.setAttribute("aria-hidden", "true");
+    copia.inert = true;
+    copia.classList.add("tf-se-va");
+    copia.hidden = false;
+    document.body.appendChild(copia);
+    const panel = copia.querySelector(".modal-caja") || copia;
+    panel.scrollTop = (el.querySelector(".modal-caja") || el).scrollTop;
+    setTimeout(() => copia.remove(), 320);
+  });
+}
+
+/* --- el tema, en un círculo que se abre desde el botón --- */
+function tfTemaEnCirculo(boton, cambiar) {
+  if (tfSinMovimiento() || !document.startViewTransition) return cambiar();
+  const r = boton.getBoundingClientRect();
+  const x = r.left + r.width / 2;
+  const y = r.top + r.height / 2;
+  const radio = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  const raiz = document.documentElement;
+  raiz.classList.add("tf-tema-vt");
+  const t = document.startViewTransition(cambiar);
+  t.ready
+    .then(() =>
+      raiz.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radio}px at ${x}px ${y}px)`] },
+        { duration: 560, easing: "cubic-bezier(0.25, 0.8, 0.3, 1)", pseudoElement: "::view-transition-new(root)" }
+      )
+    )
+    .catch(() => {});
+  t.finished.finally(() => raiz.classList.remove("tf-tema-vt"));
+}
+
+(function tfFluida() {
+  const empezar = () => {
+    tfBuscarGrupos();
+    // Lo que se pinta después (los segmentos de horas, el «por dónde» de la
+    // cuenta, el panel): se mira en el siguiente fotograma, de una vez.
+    let pendiente = false;
+    new MutationObserver(() => {
+      if (pendiente) return;
+      pendiente = true;
+      requestAnimationFrame(() => {
+        pendiente = false;
+        tfBuscarGrupos();
+      });
+    }).observe(document.body, { childList: true, subtree: true });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", empezar);
+  else empezar();
+})();
