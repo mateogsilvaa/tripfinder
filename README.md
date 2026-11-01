@@ -731,6 +731,21 @@ search:
   `adultCount` que le mandes: 1, 2 y 3 pasajeros devuelven la misma cifra. El resto
   de providers dan el total del grupo, asi que hay que multiplicarlo o Wizz sale a
   mitad de precio que nadie y se come las primeras posiciones de la lista.
+- **La tabla de horarios de Wizz no dice a que hora llegas.** Trae la salida
+  (`departureDates`) y nada mas, asi que sus ofertas no tenian «viaje real» ni horas
+  utiles. La llegada sale de `search/search`, el buscador de su web, pero es una
+  consulta por dia: en vez de eso se le pregunta **una vez por ruta y sentido**
+  cuanto tarda (llegada local menos salida local, con el cambio de huso dentro) y se
+  suma a la hora de salida de todas las ofertas de esa ruta. Se guarda en
+  `data/duraciones.json` y se vuelve a preguntar a los 45 dias. Si el buscador
+  falla tres veces seguidas se deja por ese barrido, y las ofertas salen sin llegada
+  en vez de con una inventada.
+- **Una sola ventana de diez meses trae un viaje por destino.** `roundTripFares` de
+  Ryanair devuelve el mas barato de cada destino en la ventana pedida, y Wizz
+  guardaba doce viajes por destino para todo el horizonte: casi todo caia en las
+  proximas semanas y de lo que hay a cuatro u ocho meses llegaba poco. Ahora Ryanair
+  pide mes a mes (`ryanair_window_days`), Wizz mira nueve meses y se queda los
+  mejores de cada mes (`wizz_per_month`), y el barrido de findes cubre los 300 dias.
 - **Google Flights aguanta mas de lo que ponia aqui**: 30 consultas seguidas con 4 s
   entre medias, 30 respuestas con precio (medido el 2026-08-17 desde una IP
   domestica). La busqueda a mano gasta hasta `max_queries_search` (110) porque es

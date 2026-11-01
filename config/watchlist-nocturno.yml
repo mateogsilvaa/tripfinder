@@ -21,9 +21,9 @@ search:
     # capado; bajarlo para "aprovechar la noche" seria justo lo contrario.
     min_interval_seconds: 7
 
-  # Wizz mira un mes mas lejos que de dia: los chollos de verdad estan a 4-8
-  # meses y de dia no da tiempo a asomarse tan lejos.
-  wizz_months: 5
+  # Wizz mira el horizonte entero (de dia, nueve meses): de noche no hay nadie
+  # esperando y se puede llegar hasta los diez.
+  wizz_months: 10
 
   # El barajado del resto del mapa se siembra con el dia (`date.toordinal()`),
   # asi que el trozo del miercoles no repite el del martes por si solo. Con 110
