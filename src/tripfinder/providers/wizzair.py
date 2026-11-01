@@ -299,8 +299,8 @@ class WizzairProvider(FlightProvider):
         cuerpo = {
             "isFlightChange": False,
             "flightList": [
-                {"departureStation": origen, "arrivalStation": destino, "departureDate": par[0]},
-                {"departureStation": destino, "arrivalStation": origen, "departureDate": par[1]},
+                {"departureStation": origen, "arrivalStation": destino, "date": par[0]},
+                {"departureStation": destino, "arrivalStation": origen, "date": par[1]},
             ],
             "adultCount": 1,
             "childCount": 0,
@@ -308,16 +308,26 @@ class WizzairProvider(FlightProvider):
             "wdc": True,
         }
         throttle("wizz", float(self.cfg.get("min_interval_seconds", 2)))
+        motivo = ""
         try:
             r = _post("/search/search", cuerpo)
             datos = r.json() if r.status_code == 200 else None
+            if datos is None:
+                motivo = f"HTTP {r.status_code}: {str(getattr(r, 'text', ''))[:300]}"
         except Exception as exc:  # noqa: BLE001 - sin llegada, la oferta sale igual
-            log.debug("Wizz duracion %s-%s: %s", origen, destino, exc)
+            motivo = str(exc)[:300]
             datos = None
         if not isinstance(datos, dict):
             _cache["dur_fallos"] = int(_cache.get("dur_fallos", 0)) + 1
             _cache.pop("s", None)
+            # En el log del barrido, y no en debug: es la unica forma de saber
+            # desde fuera por que Wizz no da la hora de llegada.
+            log.warning("Wizz: el buscador no dio horarios %s-%s (%s)",
+                        origen, destino, motivo or "sin datos")
             return
+        if not (datos.get("outboundFlights") or datos.get("returnFlights")):
+            log.warning("Wizz: el buscador contesto sin vuelos %s-%s (claves: %s)",
+                        origen, destino, ", ".join(sorted(datos))[:200])
         _cache["dur_fallos"] = 0
         for (a, b), lista in (
             ((origen, destino), datos.get("outboundFlights")),

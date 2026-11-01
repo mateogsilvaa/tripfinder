@@ -397,10 +397,15 @@ test("un vuelo de fuera se manda a tu HOP y pasa a votarse", async ({ browser })
   await expect(hoja).toBeVisible();
   await expect(hoja.locator(".hopx-hcama")).toContainText("Piso con vistas");
   await hoja.locator("[data-proponer-cama]").click();
-  await expect(hoja.locator("[data-proponer-cama]")).toContainText("En la votación");
+  await expect(hoja.locator("[data-proponer-cama]")).toContainText("Propuesto");
   await hoja.locator("[data-cerrar-camas]").click();
   await expect(hoja).toBeHidden();
-  // Pasa a ser otra opción, ya con su cama.
-  await expect(ana.page.locator(".hopx-carta", { hasText: "Piso con vistas" })).toBeVisible();
+  // No es otra opción: es una versión del mismo viaje, dentro de su tarjeta.
+  await expect(ana.page.locator(".hopx-carta[data-prop]")).toHaveCount(1);
+  const variante = carta.locator(".hopx-variante", { hasText: "Piso con vistas" });
+  await expect(variante).toBeVisible();
+  // Y se elige como la preferida.
+  await variante.locator("[data-variante]").click();
+  await expect(variante.locator("[data-variante]")).toHaveAttribute("aria-pressed", "true");
   await ana.ctx.close();
 });

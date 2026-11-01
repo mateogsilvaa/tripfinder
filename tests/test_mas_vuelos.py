@@ -120,7 +120,7 @@ def test_se_aprende_con_una_consulta_al_buscador(monkeypatch, libreta):
     p = wizz()
     p._aprender_duraciones("MAD", "OTP", idas, vueltas, 2)
     assert [r for r, _ in pedidas] == ["/search/search"]
-    fechas = [x["departureDate"] for x in pedidas[0][1]["flightList"]]
+    fechas = [x["date"] for x in pedidas[0][1]["flightList"]]
     assert fechas == ["2026-12-11", "2026-12-13"]
     assert (libreta.de("MAD", "OTP"), libreta.de("OTP", "MAD")) == (275, 230)
     # Sabido ya, no se vuelve a preguntar.

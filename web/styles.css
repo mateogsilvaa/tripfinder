@@ -6629,3 +6629,37 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
 .hopx-hcamas-mas { margin: 4px 0 0; padding-top: 14px; border-top: 1px solid var(--hair); font-size: var(--fs-ui-s); color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .hopx-hcamas-mas a { padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--ink); }
 .hopx-hcamas-mas a:hover { border-color: var(--ink); }
+
+/* ---- HOP · las versiones de una opción ---------------------------------
+   Los alojamientos propuestos para un vuelo, dentro de su tarjeta: cada uno
+   marca el que prefiere y el que más gusta queda resaltado (y es el que
+   cuenta en el precio y pasa al plan). */
+.hopx-variantes { display: grid; gap: 6px; }
+.hopx-variantes-tit { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0; font-size: var(--fs-ui-s); color: var(--muted); }
+.hopx-variantes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.hopx-variante {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--hair);
+  border-radius: var(--r-s);
+  font-size: var(--fs-ui-s);
+}
+.hopx-variante.preferida { border-color: var(--deep); background: color-mix(in srgb, var(--deep) 8%, transparent); }
+.hopx-variante-elegir {
+  display: flex; align-items: center; gap: 8px; min-width: 0; min-height: 32px;
+  padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.hopx-variante-nombre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hopx-variante-radio {
+  flex: none; width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid var(--muted); display: grid; place-items: center;
+}
+.hopx-variante.mia .hopx-variante-radio { border-color: var(--deep); }
+.hopx-variante.mia .hopx-variante-radio::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--deep); }
+.hopx-variante-elegir:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.hopx-variante > b { font: 600 13px / 1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.hopx-variante > a { color: var(--muted); font-size: 12px; }
+.hopx-variante .hop-avs.mini .hop-av { width: 18px; height: 18px; font-size: 9px; }
