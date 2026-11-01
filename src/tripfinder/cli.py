@@ -356,6 +356,11 @@ def cmd_scan_origenes(args: argparse.Namespace) -> int:
                 encontradas += p.search(ruta)
             except Exception as exc:  # noqa: BLE001
                 log.warning("%s desde %s: %s", p.name, origen, exc)
+        from .mixtos import mezclar
+
+        encontradas += mezclar(
+            encontradas, int(cfg.search.get("nights_min", 2)), int(cfg.search.get("nights_max", 4))
+        )
         for o in encontradas:
             score_offer(o, history, ruta, cfg.weekend)
             if not o.destination_name or o.destination_name == o.destination:
@@ -417,6 +422,16 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
                 found.append(offer)
                 if is_deal(offer, route, min_score, weekend_mode):
                     deals.append(offer)
+
+    # Ida con una compañia y vuelta con otra, con las mitades que ya han
+    # traido Ryanair y Wizz: no cuesta ni una consulta mas.
+    from .mixtos import mezclar
+
+    rutas_por_origen = {r.origin: r for r in cfg.routes}
+    for offer in mezclar(found, int(cfg.search.get("nights_min", 2)), int(cfg.search.get("nights_max", 4))):
+        route = rutas_por_origen.get(offer.origin, cfg.routes[0])
+        score_offer(offer, history, route, weekend_cfg)
+        found.append(offer)
 
     # Google Flights va al final: contrasta con el resto de aerolineas los
     # destinos y fechas que ya han salido, en vez de buscar a ciegas.

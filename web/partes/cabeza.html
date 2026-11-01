@@ -19,5 +19,7 @@
 </noscript>
 <link rel="stylesheet" href="styles.css?v={{v}}">
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
-try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}</script>
+try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}
+/* Y la barra del sistema (la franja de la hora en el móvil), del mismo color desde el primer momento: si no, con el teléfono en oscuro y la web en claro, arriba quedaba una franja negra. */
+document.querySelectorAll('meta[name="theme-color"]').forEach(function(m){m.setAttribute("content",document.documentElement.dataset.tema==="claro"?"#f3f0e9":"#100f0e")})</script>
 </head>

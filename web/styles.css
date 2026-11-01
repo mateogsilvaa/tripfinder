@@ -178,6 +178,10 @@
 [hidden] { display: none !important; }
 
 html {
+  /* El lienzo del navegador (lo que asoma al estirar la página y lo que el
+     Safari del iPhone mira para teñir la franja de arriba) va del color del
+     papel, el del tema elegido; sin esto lo ponía el sistema. */
+  background: var(--paper);
   scroll-behavior: smooth;
   /* La cabecera es pegajosa: sin esto, un ancla deja el título debajo. */
   scroll-padding-top: 76px;
@@ -6541,3 +6545,13 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
   .esc-n { grid-row: 1 / span 2; }
 }
 .iata.via::after { right: -14px; }
+
+/* LAS BARRAS NO SE SELECCIONAN. Safari (también el del iPhone) solo hace caso
+   a `-webkit-user-select`: con el `user-select` a secas, arrastrar la lente
+   dejaba texto de las pestañas seleccionado. Y la de abajo no se desplaza:
+   `touch-action: none` evita que iOS corte el gesto a medias al creer que
+   empieza un scroll, que era lo que dejaba la lente a medio camino. */
+.tabbar, .topbar .zonas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.tabbar .tab, .topbar .zonas .zona { -webkit-user-drag: none; }
+@media (max-width: 760px) { .tabbar { touch-action: none; } }
+.tf-arrastrando, .tf-arrastrando * { -webkit-user-select: none !important; user-select: none !important; }

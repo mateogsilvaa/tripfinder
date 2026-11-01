@@ -179,7 +179,7 @@ export async function init() {
   // Tocar un filtro vuelve a empezar por arriba: si no, una búsqueda que deja
   // tres resultados seguiría "ampliada" y el botón de ver más no tendría nada
   // que enseñar.
-  ["#q", "#sort", "#price", "#unique", "#onlyWeekend", "#cont"].forEach((s) =>
+  ["#q", "#sort", "#price", "#unique", "#onlyWeekend", "#cont", "#hora"].filter(existe).forEach((s) =>
     $(s).addEventListener("input", () => {
       ampliado = false;
       render();
@@ -431,6 +431,7 @@ function filtrosActivos() {
   const tope = $("#price");
   return (
     ($("#cont").value ? 1 : 0) +
+    (existe("#hora") && $("#hora").value ? 1 : 0) +
     (paisesElegidos().size ? 1 : 0) +
     ($("#onlyWeekend").checked ? 1 : 0) +
     (!$("#unique").checked ? 1 : 0) +
@@ -488,6 +489,7 @@ function montarHoja() {
   if (!hoja || !boton || !fondo || !qm) return;
 
   chipsDe($("#cont"));
+  chipsDe($("#hora"));
   chipsDe($("#sort"));
 
   // El buscador de la barra y el de la hoja son el mismo filtro escrito dos
@@ -532,6 +534,7 @@ function montarHoja() {
       qm.value = "";
       $("#price").value = $("#price").max;
       $("#cont").value = "";
+      if (existe("#hora")) $("#hora").value = "";
       $("#sort").value = "score";
       $("#unique").checked = true;
       $("#onlyWeekend").checked = false;
@@ -590,7 +593,18 @@ function montarPaises() {
   });
 }
 
+/* ¿Sale la ida dentro de la franja? «21-6» cruza la medianoche. Un vuelo sin
+   hora no se puede decir que encaje, así que con la franja puesta no sale. */
+export function enFranja(hora, franja) {
+  if (!franja) return true;
+  if (!hora) return false;
+  const [a, b] = franja.split("-").map(Number);
+  const h = Number(hora.slice(0, 2)) + Number(hora.slice(3, 5)) / 60;
+  return a < b ? h >= a && h < b : h >= a || h < b;
+}
+
 function currentList() {
+  const franja = existe("#hora") ? $("#hora").value : "";
   const q = $("#q").value.trim().toLowerCase();
   const max = Number($("#price").value);
   const sort = $("#sort").value;
@@ -604,6 +618,7 @@ function currentList() {
     (o) =>
       o.price <= max &&
       (!soloFindes || o.weekend) &&
+      enFranja(o.depart_time, franja) &&
       (lejos
         ? o.long_haul
         : !continente ||
@@ -632,6 +647,10 @@ function currentList() {
   }
   return list;
 }
+
+/* «Ryanair + Wizz Air» cuando la ida y la vuelta van con compañías distintas. */
+const mixto = (o) => !!(o.airline_back && o.airline_back !== o.airline);
+const companias = (o) => (mixto(o) ? `${o.airline} + ${o.airline_back}` : o.airline || o.provider);
 
 const horasMin = (m) => (m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ""}` : `${m} min`);
 
@@ -721,7 +740,7 @@ function heroTicket(o, compartido = false) {
   const pais = [banderaDe(o.destination_country), o.destination_country]
     .filter(Boolean)
     .join(" ");
-  const sub = [pais, o.airline, escalas(o), o.weekend ? "escapada de finde" : ""]
+  const sub = [pais, companias(o), escalas(o), o.weekend ? "escapada de finde" : ""]
     .filter(Boolean)
     .join(" · ");
   const extra = [o.hidden_city ? AVISO_HIDDEN : "", o.via ? AVISO_ESCALA(o) : "", altsHTML(o)]
@@ -786,7 +805,12 @@ function heroTicket(o, compartido = false) {
         </div>
         <div class="actions">
           ${compartirPrincipalHTML(o)}
-          <a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>
+          ${
+            mixto(o) && o.deep_link_back && !o.via
+              ? `<a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ida con ${esc(o.airline)}</a>
+                 <a class="btn ghost" href="${escURL(o.deep_link_back)}" target="_blank" rel="noopener">Vuelta con ${esc(o.airline_back)}</a>`
+              : `<a class="btn ghost" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ver vuelo</a>`
+          }
           ${
             compartido
               ? ""
@@ -857,7 +881,7 @@ export function boardRow(o, i) {
             }${cama ? '<i class="cama-ok">cama buscada</i>' : ""}</small>`
           : ""
       }</span>
-      <span class="airline">${esc(o.airline || o.provider)}<small>${escalas(o)}${
+      <span class="airline">${esc(companias(o))}<small>${escalas(o)}${
         o.useful_hours ? ` · ${Math.round(o.useful_hours)} h de viaje` : ""
       }${o.long_haul ? " · larga distancia" : ""}</small></span>
       <span class="price">${precioCorto(
@@ -918,7 +942,8 @@ function tramoHTML(rotulo, de, a, iso, sale, llega) {
 function detalleHTML(o) {
   const nota = [
     escalas(o),
-    o.airline,
+    companias(o),
+    mixto(o) && !o.via ? "dos billetes: la ida y la vuelta se compran por separado" : "",
     o.useful_hours ? `${Math.round(o.useful_hours)} h de viaje real · ${o.price_per_hour} €/h` : "",
   ].filter(Boolean);
   return `
@@ -933,9 +958,14 @@ function detalleHTML(o) {
     ${historiaHTML(o)}
     ${altsHTML(o)}
     <div class="det-acciones">
-      <a class="btn primary det-ver" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">${
-        o.via ? "Primer vuelo" : "Ver vuelo"
-      }</a>
+      ${
+        mixto(o) && o.deep_link_back && !o.via
+          ? `<a class="btn primary det-ver" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">Ida con ${esc(o.airline)}</a>
+             <a class="btn primary det-ver" href="${escURL(o.deep_link_back)}" target="_blank" rel="noopener">Vuelta con ${esc(o.airline_back)}</a>`
+          : `<a class="btn primary det-ver" href="${escURL(o.deep_link)}" target="_blank" rel="noopener">${
+              o.via ? "Primer vuelo" : "Ver vuelo"
+            }</a>`
+      }
       ${
         o.airline_link
           ? `<a class="btn ghost det-ver" href="${escURL(o.airline_link)}" target="_blank" rel="noopener">

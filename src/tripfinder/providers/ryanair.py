@@ -118,20 +118,39 @@ class RyanairProvider(FlightProvider):
         return params
 
     def _broad_search(self, route: Route) -> list[FlightOffer]:
+        """Lo mas barato de cada destino, MES A MES.
+
+        `roundTripFares` devuelve UNA tarifa por destino: la mas barata de la
+        ventana que se le pida. Con una sola ventana de diez meses salia un
+        viaje por destino en todo el horizonte, casi siempre de las proximas
+        semanas, y de lo que hay a cuatro u ocho meses —donde estan los chollos
+        de verdad— no llegaba nada. Partida en meses, cada destino trae su
+        mejor viaje de cada mes. Son diez consultas en vez de una."""
         days_ahead = int(self.cfg.get("days_ahead", 120))
         nights_min = int(self.cfg.get("nights_min", 2))
         nights_max = int(self.cfg.get("nights_max", 7))
+        tramo = max(7, int(self.cfg.get("ryanair_window_days", 31)))
         today = date.today()
-        params = {
-            **self._base_params(route),
-            "outboundDepartureDateFrom": (today + timedelta(days=1)).isoformat(),
-            "outboundDepartureDateTo": (today + timedelta(days=days_ahead)).isoformat(),
-            "inboundDepartureDateFrom": (today + timedelta(days=1 + nights_min)).isoformat(),
-            "inboundDepartureDateTo": (today + timedelta(days=days_ahead + nights_max)).isoformat(),
-            "durationFrom": nights_min,
-            "durationTo": nights_max,
-        }
-        return self._paginate(params, route, int(self.cfg.get("max_results_per_route", 100)))
+        ultimo = today + timedelta(days=days_ahead)
+        offers: list[FlightOffer] = []
+        inicio = today + timedelta(days=1)
+        while inicio <= ultimo:
+            fin = min(inicio + timedelta(days=tramo - 1), ultimo)
+            params = {
+                **self._base_params(route),
+                "outboundDepartureDateFrom": inicio.isoformat(),
+                "outboundDepartureDateTo": fin.isoformat(),
+                "inboundDepartureDateFrom": (inicio + timedelta(days=nights_min)).isoformat(),
+                "inboundDepartureDateTo": (fin + timedelta(days=nights_max)).isoformat(),
+                "durationFrom": nights_min,
+                "durationTo": nights_max,
+            }
+            try:
+                offers += self._paginate(params, route, int(self.cfg.get("max_results_per_route", 100)))
+            except Exception as exc:  # noqa: BLE001 - un mes fallido no tumba el resto
+                log.warning("Ryanair %s %s..%s: %s", route.origin, inicio, fin, exc)
+            inicio = fin + timedelta(days=1)
+        return offers
 
     def _weekend_sweep(self, route: Route, weekend: dict) -> list[FlightOffer]:
         """Una consulta por fin de semana, con filtro de hora de salida y regreso."""
@@ -292,9 +311,9 @@ class RyanairProvider(FlightProvider):
         # fallo que se arreglo en Wizz, y el mismo cero silencioso.
         summary_price = (fare.get("summary") or {}).get("price") or {}
         price = summary_price.get("value")
+        ida = (out.get("price") or {}).get("value")
+        vuelta = (back.get("price") or {}).get("value")
         if price is None:
-            ida = (out.get("price") or {}).get("value")
-            vuelta = (back.get("price") or {}).get("value")
             price = ida + vuelta if ida and vuelta else None
         if not price:
             return None
@@ -330,6 +349,8 @@ class RyanairProvider(FlightProvider):
             return_arrive_time=return_arrive_time,
             stops=0,  # Ryanair no opera vuelos con escala
             price=round(float(price), 2),
+            price_out=round(float(ida), 2) if ida else None,
+            price_back=round(float(vuelta), 2) if vuelta else None,
             currency=summary_price.get("currencyCode", currency),
             airline="Ryanair",
             adults=adultos,

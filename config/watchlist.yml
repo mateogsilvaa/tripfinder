@@ -69,15 +69,28 @@ search:
     inbound_after: "15:00"
     inbound_before: "23:59"
     bonus: 15
-    # Cuantos fines de semana barrer (uno por consulta)
-    max_weeks: 26
+    # Cuantos fines de semana barrer (uno por consulta). 42 cubre los 300 dias
+    # de `days_ahead`: con 26 se quedaba en seis meses y no se veia nada de lo
+    # que hay a siete u ocho, que es donde caen los chollos de verdad.
+    max_weeks: 42
 
   # Wizz: cuantos destinos y cuantos meses mirar (una peticion por mes y destino).
   # Antes se quedaba en 18 porque daba igual: la sesion se envenenaba con la
   # cookie de la primera respuesta y de las 72 consultas solo contestaba una.
   # Arreglado eso, cabe el mapa entero desde Madrid (28 destinos).
   wizz_max_destinations: 30
-  wizz_months: 4
+  # Nueve meses: casi todo el horizonte. Con cuatro, Wizz no pasaba de febrero
+  # y lo que hay de marzo en adelante solo lo traia Ryanair. Son ~270 consultas
+  # a 2 s, unos 9 minutos de los 90 que tiene el job (el barrido entero tardaba
+  # 15-25).
+  wizz_months: 9
+  # Cuantos viajes de cada destino se quedan por mes (los mas baratos, findes
+  # primero). Antes eran doce para toda la ventana, y se los comian los
+  # primeros meses.
+  wizz_per_month: 4
+  # Ryanair barre mes a mes: cada consulta trae el mejor viaje de cada destino
+  # en ese tramo. Con una sola ventana de 300 dias salia uno por destino.
+  ryanair_window_days: 31
 
   google:
     # Cada consulta descarga ~2,5 MB de la pagina de Google: pocas y espaciadas.

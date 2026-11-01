@@ -90,6 +90,11 @@ class FlightOffer:
     # vuelos (ida, ida, vuelta, vuelta) con su hora, su precio y su enlace, que
     # se reservan uno a uno; `escala_ida`/`escala_vuelta`, los minutos de
     # espera en el puente.
+    # Lo que cuesta cada mitad, cuando el proveedor lo dice (Ryanair y Wizz).
+    # Es lo que deja combinar la ida de una compañía con la vuelta de otra
+    # (`mixtos.py`); Google solo da el total y no entra en la mezcla.
+    price_out: float | None = None
+    price_back: float | None = None
     via: str = ""
     via_name: str = ""
     escala_ida: int = 0

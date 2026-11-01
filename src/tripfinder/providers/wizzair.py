@@ -11,7 +11,9 @@ Como funciona, que es lo interesante:
 * `asset/map` da el mapa de rutas: que destinos vuela de verdad desde Madrid.
   Sin eso se preguntaria por rutas que no existen.
 * `search/timetable` devuelve el precio mas barato de cada dia en una ventana,
-  que es exactamente lo que hace falta para buscar chollos.
+  que es exactamente lo que hace falta para buscar chollos. Trae la hora de
+  salida pero no la de llegada: esa sale de `search/search`, una vez por ruta
+  (ver `duraciones.py`).
 
 La peticion va con curl_cffi imitando el TLS de Chrome (via Scrapling): con
 `requests` pelado responde 403.
@@ -29,6 +31,7 @@ import logging
 import re
 from datetime import date, timedelta
 
+from .. import duraciones as dur
 from ..config import Route
 from ..models import FlightOffer
 from ..util import a_euros, get_text, throttle
@@ -160,6 +163,15 @@ def destinos_desde(origen: str) -> list[str]:
     return []
 
 
+def _hora(vuelo: dict) -> str:
+    """HH:MM del primer vuelo del dia, de `departureDates`; "" si no viene."""
+    for d in vuelo.get("departureDates") or []:
+        hora = str(d)[11:16]
+        if len(hora) == 5 and hora != "00:00":
+            return hora
+    return ""
+
+
 def precios_por_dia(
     origen: str, destino: str, desde: date, hasta: date, cfg: dict | None = None
 ) -> dict[str, dict]:
@@ -183,16 +195,42 @@ def precios_por_dia(
         precio = _importe(vuelo)
         if precio is None or not (desde.isoformat() <= dia <= hasta.isoformat()):
             continue
-        horas = vuelo.get("departureDates") or []
+        hora = _hora(vuelo)
         salida[dia] = {
             "price": round(precio, 2),
-            "time": str(horas[0])[11:16] if horas else "",
+            "time": hora,
+            "arrive": dur.llegada(hora, dur.duraciones().de(origen, destino)),
             "origin": origen,
             "destination": destino,
             "airline": "Wizz Air",
             "deep_link": links.wizzair(origen, destino, dia),
         }
     return salida
+
+
+def _duracion_tipica(vuelos) -> int | None:
+    """La mediana de lo que tardan los vuelos que ha devuelto el buscador.
+    Si ese dia hay dos, suelen tardar lo mismo; la mediana aparta un dato raro."""
+    minutos = sorted(
+        m
+        for f in (vuelos if isinstance(vuelos, list) else [])
+        if isinstance(f, dict)
+        and (m := dur.minutos_de_vuelo(f.get("departureDateTime") or "", f.get("arrivalDateTime") or ""))
+    )
+    return minutos[len(minutos) // 2] if minutos else None
+
+
+def _par_de_muestra(idas: dict, vueltas: dict, noches: int, noches_max: int) -> tuple[str, str] | None:
+    """Un dia de ida y uno de vuelta que existan, para preguntar al buscador."""
+    for iso in sorted(idas):
+        salida = date.fromisoformat(iso)
+        for n in range(noches, noches_max + 1):
+            regreso = (salida + timedelta(days=n)).isoformat()
+            if regreso in vueltas:
+                return iso, regreso
+    primera = min(idas)
+    despues = sorted(v for v in vueltas if v > primera)
+    return (primera, despues[0]) if despues else None
 
 
 @register("wizzair")
@@ -221,6 +259,7 @@ class WizzairProvider(FlightProvider):
             except Exception as exc:  # noqa: BLE001
                 log.debug("Wizz %s-%s: %s", route.origin, destino, exc)
         log.info("Wizz %s: %d tarifas", route.origin, len(ofertas))
+        dur.guardar()
         return ofertas
 
     def _ruta(self, route: Route, destino: str, hoy: date, dias: int, noches: int) -> list[FlightOffer]:
@@ -238,7 +277,56 @@ class WizzairProvider(FlightProvider):
             idas.update(i_idas)
             vueltas.update(i_vueltas)
 
+        self._aprender_duraciones(route.origin, destino, idas, vueltas, noches)
         return self._casar(route, destino, idas, vueltas, noches)
+
+    # -- lo que tarda cada vuelo ------------------------------------------
+    def _aprender_duraciones(self, origen: str, destino: str, idas: dict, vueltas: dict, noches: int) -> None:
+        """Pregunta a `search/search` cuanto tarda la ruta, si no se sabe ya.
+
+        Una sola consulta por ruta y por mes y medio, con un dia que tenga
+        vuelo de ida y otro de vuelta: el buscador no contesta por dias sin
+        vuelo. Si falla tres veces seguidas se deja por este barrido: un
+        endpoint cerrado no puede costar una consulta por destino."""
+        libreta = dur.duraciones()
+        if not (libreta.hace_falta(origen, destino) or libreta.hace_falta(destino, origen)):
+            return
+        if int(_cache.get("dur_fallos", 0)) >= 3 or not idas or not vueltas:
+            return
+        par = _par_de_muestra(idas, vueltas, noches, int(self.cfg.get("nights_max", 4)))
+        if par is None:
+            return
+        cuerpo = {
+            "isFlightChange": False,
+            "flightList": [
+                {"departureStation": origen, "arrivalStation": destino, "departureDate": par[0]},
+                {"departureStation": destino, "arrivalStation": origen, "departureDate": par[1]},
+            ],
+            "adultCount": 1,
+            "childCount": 0,
+            "infantCount": 0,
+            "wdc": True,
+        }
+        throttle("wizz", float(self.cfg.get("min_interval_seconds", 2)))
+        try:
+            r = _post("/search/search", cuerpo)
+            datos = r.json() if r.status_code == 200 else None
+        except Exception as exc:  # noqa: BLE001 - sin llegada, la oferta sale igual
+            log.debug("Wizz duracion %s-%s: %s", origen, destino, exc)
+            datos = None
+        if not isinstance(datos, dict):
+            _cache["dur_fallos"] = int(_cache.get("dur_fallos", 0)) + 1
+            _cache.pop("s", None)
+            return
+        _cache["dur_fallos"] = 0
+        for (a, b), lista in (
+            ((origen, destino), datos.get("outboundFlights")),
+            ((destino, origen), datos.get("returnFlights")),
+        ):
+            m = _duracion_tipica(lista)
+            if m:
+                libreta.apuntar(a, b, m)
+                log.debug("Wizz %s-%s: %d min", a, b, m)
 
     def _ventana(self, route: Route, destino: str, desde: str, hasta: str) -> tuple[dict, dict]:
         """Precio mas barato de cada dia, en las dos direcciones."""
@@ -327,6 +415,8 @@ class WizzairProvider(FlightProvider):
                     continue
                 dias_ida.update(i)
                 dias_vuelta.update(v)
+            self._aprender_duraciones(route.origin, destino, dias_ida, dias_vuelta,
+                                      int(self.cfg.get("nights_min", 2)))
             for salida, regreso in pares:
                 ida = dias_ida.get(salida.isoformat())
                 vuelta = dias_vuelta.get(regreso.isoformat())
@@ -337,6 +427,7 @@ class WizzairProvider(FlightProvider):
                 if oferta is not None:
                     ofertas.append(oferta)
         log.info("Wizz %s: %d tarifas en %d destinos", route.origin, len(ofertas), len(objetivo))
+        dur.guardar()
         return ofertas
 
     def _oferta(self, route: Route, destino: str, iso: str, regreso: str,
@@ -354,6 +445,15 @@ class WizzairProvider(FlightProvider):
             return None
         precio = (precio_ida + precio_vuelta) * adultos
         ciudad, pais = _nombre(destino)
+        # La hora de cada vuelo viene en `departureDates` y se tiraba: todo Wizz
+        # salia en la web con «hora en el enlace», y no se podia filtrar por
+        # mañana o tarde. Si ese dia hay varios, el primero.
+        hora_ida, hora_vuelta = _hora(ida), _hora(vuelta)
+        # Y la de llegada, con lo que tarda la ruta (`duraciones.py`). Sin ella
+        # no hay «viaje real» ni horas utiles: el score trataba a Wizz a ciegas.
+        libreta = dur.duraciones()
+        llega_ida = dur.llegada(hora_ida, libreta.de(route.origin, destino))
+        llega_vuelta = dur.llegada(hora_vuelta, libreta.de(destino, route.origin))
         return FlightOffer(
             provider="wizzair",
             origin=route.origin,
@@ -370,6 +470,12 @@ class WizzairProvider(FlightProvider):
             airline="Wizz Air",
             stops=0,
             adults=adultos,
+            depart_time=hora_ida,
+            arrive_time=llega_ida,
+            return_time=hora_vuelta,
+            return_arrive_time=llega_vuelta,
+            price_out=round(precio_ida * adultos, 2),
+            price_back=round(precio_vuelta * adultos, 2),
             deep_link=links.wizzair(route.origin, destino, iso, regreso, adultos),
         )
 
@@ -399,6 +505,17 @@ class WizzairProvider(FlightProvider):
                     continue
                 ofertas.append(oferta)
                 break  # con la primera duracion que cuadre basta
-        # Solo lo mas barato de cada dia de salida, y priorizando los findes.
+        # Solo lo mas barato, y priorizando los findes. POR MES y no del total:
+        # con un tope de doce para toda la ventana se quedaban los doce viajes
+        # mas baratos, que casi siempre caian en los primeros meses, y lo de
+        # dentro de medio año —donde estan los chollos de verdad— no salia.
         ofertas.sort(key=lambda o: (date.fromisoformat(o.depart_date).weekday() != dia_ida, o.price))
-        return ofertas[:12]
+        por_mes = int(self.cfg.get("wizz_per_month", 4))
+        cuenta: dict[str, int] = {}
+        salida: list[FlightOffer] = []
+        for o in ofertas:
+            mes = o.depart_date[:7]
+            if cuenta.get(mes, 0) < por_mes:
+                cuenta[mes] = cuenta.get(mes, 0) + 1
+                salida.append(o)
+        return salida
