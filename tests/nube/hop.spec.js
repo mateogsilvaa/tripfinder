@@ -391,9 +391,15 @@ test("un vuelo de fuera se manda a tu HOP y pasa a votarse", async ({ browser })
   await E.publicarResultado(`stay-${oferta}`.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 200), {
     stays: [{ name: "Piso con vistas", url: "https://www.airbnb.es/rooms/1", price_total: 180, provider: "airbnb" }],
   });
+  // Se abre en su propia hoja, no dentro de la tarjeta (la estiraba).
   await carta.locator(".hopx-carta-camas").click();
-  await expect(carta.locator(".hopx-camas")).toContainText("Piso con vistas");
-  await carta.locator(".hopx-camas [data-cama]").click();
+  const hoja = ana.page.locator("#hopCamas");
+  await expect(hoja).toBeVisible();
+  await expect(hoja.locator(".hopx-hcama")).toContainText("Piso con vistas");
+  await hoja.locator("[data-proponer-cama]").click();
+  await expect(hoja.locator("[data-proponer-cama]")).toContainText("En la votación");
+  await hoja.locator("[data-cerrar-camas]").click();
+  await expect(hoja).toBeHidden();
   // Pasa a ser otra opción, ya con su cama.
   await expect(ana.page.locator(".hopx-carta", { hasText: "Piso con vistas" })).toBeVisible();
   await ana.ctx.close();
