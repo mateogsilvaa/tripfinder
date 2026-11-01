@@ -22,7 +22,7 @@
       "nombre": "Basilea"
     },
     "CLJ": {
-      "noche": 75.45,
+      "noche": 61.0,
       "muestras": 3,
       "nombre": "Cluj"
     },
@@ -91,7 +91,7 @@
       "muestras": 3
     },
     "Rumanía": {
-      "noche": 75.45,
+      "noche": 61.0,
       "muestras": 3
     },
     "Suiza": {
