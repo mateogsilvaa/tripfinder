@@ -5,6 +5,14 @@
       "barridos": 2,
       "ultima": "2026-10-27"
     },
+    "MAD-GVA": {
+      "barridos": 1,
+      "ultima": "2026-10-31"
+    },
+    "MAD-HAJ": {
+      "barridos": 1,
+      "ultima": "2026-10-31"
+    },
     "MAD-KDL": {
       "barridos": 2,
       "ultima": "2026-10-27"
@@ -20,6 +28,10 @@
     "MAD-PLQ": {
       "barridos": 2,
       "ultima": "2026-10-27"
+    },
+    "MAD-STR": {
+      "barridos": 1,
+      "ultima": "2026-10-31"
     },
     "MAD-TAY": {
       "barridos": 2,

@@ -1,0 +1,32 @@
+{
+  "origenes": [
+    {
+      "iata": "MAD",
+      "nombre": "Madrid",
+      "count": 671,
+      "destinos": 78,
+      "generated_at": "2026-10-31"
+    },
+    {
+      "iata": "ALC",
+      "nombre": "Alicante",
+      "count": 213,
+      "destinos": 29,
+      "generated_at": "2026-10-31"
+    },
+    {
+      "iata": "BCN",
+      "nombre": "Barcelona",
+      "count": 262,
+      "destinos": 28,
+      "generated_at": "2026-10-31"
+    },
+    {
+      "iata": "AGP",
+      "nombre": "Málaga",
+      "count": 217,
+      "destinos": 30,
+      "generated_at": "2026-10-31"
+    }
+  ]
+}
