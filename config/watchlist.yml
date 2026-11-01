@@ -98,6 +98,11 @@ search:
     # 2 tarifas en 11 consultas). 40 con 4 s entre medias se mantiene sano
     # (medido: 30 consultas seguidas, 30 respuestas con precio).
     max_queries: 40
+    # De esas, que parte se gasta en repetir con Google lo que ya han traido
+    # Ryanair y Wizz (por si otra compañia lo mejora). El resto busca destinos
+    # que esas dos no vuelan: ahi salen Iberia, Vueling, easyJet, Volotea, TAP.
+    # Era la mitad, y descubria poco.
+    contraste: 0.25
     # La busqueda a mano si puede gastar mas: es una sola tirada, la lanza el
     # usuario a proposito y es la unica via para ver a Iberia, ITA o Tarom.
     # Con ~100 destinos posibles desde Madrid, esto es lo que separa "6

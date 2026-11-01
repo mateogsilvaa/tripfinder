@@ -45,7 +45,7 @@ def _shortlist(
     Tres fuentes, en este orden:
 
     1. Lo que ya han encontrado los demas providers, por si otra compania lo
-       mejora.
+       mejora. Un cuarto de las consultas (`google.contraste`).
     2. Los destinos declarados en el YAML: a esos vuelan Iberia o Vueling
        aunque Ryanair no los ofrezca.
     3. El resto del mapa de rutas del origen. Este es el que faltaba. Sin el,
@@ -66,23 +66,32 @@ def _shortlist(
     consultas = consultas or limit
     pairs: list[tuple[str, date, date]] = []
     names: dict[str, tuple[str, str]] = {}
+    google_cfg = cfg.search.get("google", {}) or {}
 
+    # CONTRASTAR ES UN CUARTO, NO LA MITAD. Repetir con Google un viaje que ya
+    # ha traido Ryanair casi siempre devuelve el mismo Ryanair: era la mitad del
+    # presupuesto para descubrir poco. Lo que trae aerolineas nuevas (Iberia,
+    # Vueling, easyJet, Volotea, TAP...) es preguntar por lo que las low cost
+    # de siempre no vuelan.
+    cuota = float(google_cfg.get("contraste", 0.25))
     vistos: dict[tuple, FlightOffer] = {}
     for o in sorted(found, key=lambda x: (not x.weekend, -x.score)):
         if o.return_date:
             vistos.setdefault((o.destination, o.depart_date, o.return_date), o)
-    for o in list(vistos.values())[: consultas // 2]:
+    for o in list(vistos.values())[: int(consultas * cuota)]:
         pairs.append((o.destination, date.fromisoformat(o.depart_date), date.fromisoformat(o.return_date)))
         names[o.destination] = (
             o.destination_name or cfg.city_names.get(o.destination, (o.destination, ""))[0],
             o.destination_country or cfg.city_names.get(o.destination, ("", ""))[1],
         )
 
+    # LOS FINDES DE TODO EL HORIZONTE, no los cuatro proximos: con esos, todo
+    # lo que Google traia era de este mes, y los chollos estan a 4-8 meses.
     weekend = cfg.weekend
     findes = _next_weekends(
         int(weekend.get("outbound_weekday", 4)),
         int(weekend.get("inbound_weekday", 6)),
-        weeks=4,
+        weeks=max(4, int(google_cfg.get("findes", weekend.get("max_weeks", 16)))),
     )
 
     declarados = [d for r in cfg.routes for d in r.dest_list]
@@ -95,15 +104,25 @@ def _shortlist(
     except Exception as exc:  # noqa: BLE001 - sin mapa se sigue con lo declarado
         log.warning("No se pudo montar el mapa de rutas de %s: %s", origen, exc)
 
+    # Primero los destinos a los que no ha llegado nadie en este barrido: ahi
+    # Google es la unica via, y es donde salen las otras aerolineas.
+    cubiertos = {o.destination for o in found}
+    semilla = random.Random(date.today().toordinal())
     resto = [d for d in universo if d not in declarados]
-    random.Random(date.today().toordinal()).shuffle(resto)
+    semilla.shuffle(resto)
+    resto.sort(key=lambda d: d in cubiertos)
     candidatos = declarados + resto
 
+    # Por rondas: en cada una, cada destino con UN finde, y destinos seguidos
+    # con findes distintos. Asi el presupuesto cubre muchos destinos repartidos
+    # por todo el horizonte en vez de cuatro findes de los mismos.
     ya = {(p[0], p[1], p[2]) for p in pairs}
-    for out_date, in_date in findes:
-        for dest in candidatos:
+    desfase = date.today().toordinal()
+    for ronda in range(len(findes)):
+        for i, dest in enumerate(candidatos):
             if len(pairs) >= limit:
-                break
+                return pairs[:limit], names
+            out_date, in_date = findes[(i + desfase + ronda * 7) % len(findes)]
             if (dest, out_date, in_date) not in ya:
                 pairs.append((dest, out_date, in_date))
                 ya.add((dest, out_date, in_date))
