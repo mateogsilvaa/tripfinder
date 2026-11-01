@@ -3,9 +3,9 @@
     {
       "iata": "MAD",
       "nombre": "Madrid",
-      "count": 671,
-      "destinos": 78,
-      "generated_at": "2026-10-31"
+      "count": 1606,
+      "destinos": 77,
+      "generated_at": "2026-11-01"
     },
     {
       "iata": "ALC",
@@ -22,11 +22,32 @@
       "generated_at": "2026-10-31"
     },
     {
+      "iata": "BIO",
+      "nombre": "Bilbao",
+      "count": 84,
+      "destinos": 12,
+      "generated_at": "2026-11-01"
+    },
+    {
+      "iata": "LPA",
+      "nombre": "Gran Canaria",
+      "count": 170,
+      "destinos": 23,
+      "generated_at": "2026-11-01"
+    },
+    {
       "iata": "AGP",
       "nombre": "Málaga",
       "count": 217,
       "destinos": 30,
       "generated_at": "2026-10-31"
+    },
+    {
+      "iata": "PMI",
+      "nombre": "Palma",
+      "count": 178,
+      "destinos": 21,
+      "generated_at": "2026-11-01"
     }
   ]
 }

@@ -1,5 +1,5 @@
 {
-  "updated": "2026-10-31",
+  "updated": "2026-11-01",
   "watches": [
     {
       "id": "narita-6-120250a6",
@@ -22,7 +22,7 @@
       "owner_name": "pdp",
       "created": "2026-09-10",
       "best_price": null,
-      "last_checked": "2026-10-31",
+      "last_checked": "2026-11-01",
       "active": true,
       "last_offers": []
     },
@@ -47,7 +47,7 @@
       "owner_name": "sara",
       "created": "2026-10-21",
       "best_price": null,
-      "last_checked": "2026-10-31",
+      "last_checked": "2026-11-01",
       "active": true,
       "last_offers": []
     },
@@ -72,7 +72,7 @@
       "owner_name": "mateoo",
       "created": "2026-10-27",
       "best_price": null,
-      "last_checked": "2026-10-31",
+      "last_checked": "2026-11-01",
       "active": true,
       "last_offers": []
     },
@@ -97,7 +97,7 @@
       "owner_name": "Alicia Vereda",
       "created": "2026-10-30",
       "best_price": null,
-      "last_checked": "2026-10-31",
+      "last_checked": "2026-11-01",
       "active": true,
       "last_offers": []
     },
@@ -122,7 +122,7 @@
       "owner_name": "LUCAS GONZALEZ SILVA",
       "created": "2026-10-31",
       "best_price": null,
-      "last_checked": "2026-10-31",
+      "last_checked": "2026-11-01",
       "active": true,
       "last_offers": []
     }
