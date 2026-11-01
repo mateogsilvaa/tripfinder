@@ -171,3 +171,39 @@ def test_ryanair_pide_el_horizonte_mes_a_mes(monkeypatch):
         fin = date.fromisoformat(a["outboundDepartureDateTo"])
         assert date.fromisoformat(b["outboundDepartureDateFrom"]) == fin + timedelta(days=1)
     assert pedidas[-1]["outboundDepartureDateTo"] == (date.today() + timedelta(days=300)).isoformat()
+
+
+# ------------------------------------------- Google, a por otras aerolineas
+def _cfg():
+    from pathlib import Path
+
+    from tripfinder.config import load_config
+
+    return load_config(Path(__file__).resolve().parent.parent / "config" / "watchlist.yml")
+
+
+def test_google_pregunta_antes_por_lo_que_no_vuela_nadie(monkeypatch):
+    """Repetir con Google un viaje que ya trajo Ryanair devuelve el mismo
+    Ryanair. Las aerolineas nuevas salen de los destinos sin low cost."""
+    from tripfinder import cli
+    from tripfinder import routes as rutas
+    from tripfinder.models import FlightOffer
+
+    universo = {f"D{i:02d}": (f"Ciudad {i}", "Pais") for i in range(60)}
+    monkeypatch.setattr(rutas, "destinos", lambda origen, cfg: universo)
+    hoy = date.today()
+    cubiertos = [f"D{i:02d}" for i in range(30)]
+    found = [
+        FlightOffer(provider="ryanair", origin="MAD", destination=d, depart_date=hoy.isoformat(),
+                    return_date=(hoy + timedelta(days=2)).isoformat(), price=50.0)
+        for d in cubiertos
+    ]
+    pares, _ = cli._shortlist(found, _cfg(), 40)
+    contraste = [p for p in pares if p[1] == hoy]
+    assert len(contraste) == 10  # un cuarto de 40
+    descubrir = [p[0] for p in pares if p[1] != hoy]
+    # Los treinta primeros a descubrir son los que nadie ha traido.
+    assert all(d not in cubiertos for d in descubrir[:30])
+    # Y repartidos por el horizonte, no en los cuatro proximos findes.
+    meses = {p[1].strftime("%Y-%m") for p in pares if p[1] != hoy}
+    assert len(meses) >= 5

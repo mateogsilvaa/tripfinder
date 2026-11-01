@@ -372,7 +372,7 @@ function startPolling(id) {
 
    Y si no hay foto no se pinta un hueco gris: la ficha se queda como estaba,
    que es mejor que una caja rota. */
-function fotos(s) {
+export function fotos(s) {
   const lista = (Array.isArray(s.images) && s.images.length ? s.images : [s.image]).filter(
     (u) => typeof u === "string" && u.startsWith("https://")
   );
@@ -399,8 +399,10 @@ const FUENTES = {
   amadeus_hotels: "Amadeus",
 };
 
-function stayRow(s) {
-  const meta = [
+/* La línea de datos de una cama: de dónde sale, la nota y a qué distancia del
+   centro cae. La usan el panel y la hoja de alojamiento del HOP. */
+export function metaCama(s) {
+  return [
     FUENTES[s.provider] || s.provider,
     s.rating
       ? `${String(s.rating).replace(".", ",")}/5${s.reviews ? ` (${Number(s.reviews).toLocaleString("es-ES")} opiniones)` : ""}`
@@ -412,6 +414,10 @@ function stayRow(s) {
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+function stayRow(s) {
+  const meta = metaCama(s);
   return `
     <a class="stay${fotos(s) ? " con-foto" : ""}" href="${escURL(s.url)}" target="_blank" rel="noopener">
       ${fotos(s)}

@@ -60,6 +60,14 @@ class DeepLinksProvider(StayProvider):
                 ),
                 "Opcion mas barata para hostales",
             ),
+            (
+                "Expedia",
+                (
+                    f"https://www.expedia.es/Hotel-Search?destination={city}"
+                    f"&startDate={ci}&endDate={co}&adults={req.adults}&sort=PRICE_LOW_TO_HIGH"
+                ),
+                "Hoteles y apartamentos, por precio",
+            ),
         ]
 
         return [

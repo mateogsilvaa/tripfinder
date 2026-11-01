@@ -6555,3 +6555,77 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
 .tabbar .tab, .topbar .zonas .zona { -webkit-user-drag: none; }
 @media (max-width: 760px) { .tabbar { touch-action: none; } }
 .tf-arrastrando, .tf-arrastrando * { -webkit-user-select: none !important; user-select: none !important; }
+
+/* ---- HOP · votar: tarjetas que no se estiran ---------------------------
+   Todas las tarjetas de una fila miden lo mismo (la rejilla las iguala), así
+   que el voto va abajo del todo y el hueco, si lo hay, queda entre los datos
+   y el voto, no debajo del voto. Lo que antes alargaba una tarjeta —buscar
+   dónde dormir dentro de ella— ahora va en su propia hoja. */
+.hopx-mazo > .hopx-op { display: flex; flex-direction: column; }
+.hopx-op > .hopx-op-cuerpo { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.hopx-op .hopx-carta-voto { margin-top: auto; }
+.hopx-faltan { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.hopx-carta-camas .spin { width: 9px; height: 9px; margin-right: 5px; }
+
+/* ---- HOP · la hoja de dónde dormir -------------------------------------
+   Todas las opciones con sus fotos, en tarjetas, y cada una se propone al
+   grupo: entra en la votación con su vuelo. */
+.hopx-hcamas-modal .modal-caja { width: min(920px, 100%); gap: 16px; }
+.hopx-hcamas-cab > div { display: grid; gap: 4px; min-width: 0; }
+.hopx-hcamas-cab h2 { margin: 0; font-size: 26px; letter-spacing: -0.03em; line-height: 1.1; }
+.hopx-hcamas-cab .hop-letra { margin: 0; font-family: var(--font-mono); font-size: 12px; }
+.hopx-hcamas-kicker { font: 400 11px / 1 var(--font-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.hopx-hcamas-nota { margin: 0; font-size: var(--fs-ui-s); color: var(--muted); }
+.hopx-hcamas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  gap: 12px;
+}
+.hopx-hcama {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface2);
+}
+.hopx-hcama.propuesta { border-color: var(--deep); }
+.hopx-hcama > .stay-fotos { width: 100%; border-radius: 0; }
+.hopx-hcama > .stay-fotos img { width: 100%; aspect-ratio: 16 / 10; }
+.hopx-hcama-sinfoto {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 16 / 10;
+  background: var(--surface);
+  color: var(--muted);
+}
+.hopx-hcama-txt { display: grid; gap: 4px; padding: 12px 14px 0; min-width: 0; }
+.hopx-hcama-txt b { font: 600 15px / 1.3 var(--font-sans); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.hopx-hcama-txt .hop-letra { font-size: 12px; line-height: 1.4; }
+.hopx-hcama-pie { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: auto; padding: 12px 14px 14px; }
+.hopx-hcama-precio { display: grid; margin-right: auto; font: 600 18px / 1.1 var(--font-mono); font-variant-numeric: tabular-nums; }
+.hopx-hcama-precio small { font: 400 11px / 1.3 var(--font-sans); color: var(--muted); }
+.hopx-hcama-pie .btn { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 8px 14px; }
+@media (max-width: 760px) {
+  .hopx-hcamas { grid-template-columns: 1fr; }
+  .hopx-hcamas-cab h2 { font-size: 22px; }
+}
+.hopx-hcama-pie [data-proponer-cama] { flex-basis: 100%; justify-content: center; }
+.hopx-camas-todas { margin-top: 8px; }
+/* Con decenas de opciones, la hoja no crece: rueda por dentro y la cabecera
+   (con el «cerrar») se queda arriba. */
+.hopx-hcamas-modal .modal-caja { max-height: min(86vh, 900px); }
+.hopx-hcamas-barra { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.hopx-hcamas-filtro { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--hair); border-radius: var(--r-pill); background: var(--surface2); }
+.hopx-hcamas-filtro button {
+  padding: 7px 14px; border: 0; border-radius: var(--r-pill); background: none;
+  color: var(--muted); font: 500 var(--fs-ui-s) / 1 var(--font-sans); cursor: pointer;
+}
+.hopx-hcamas-filtro button[aria-pressed="true"] { color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.hopx-hcamas-mas { margin: 4px 0 0; padding-top: 14px; border-top: 1px solid var(--hair); font-size: var(--fs-ui-s); color: var(--muted); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.hopx-hcamas-mas a { padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-pill); color: var(--ink); }
+.hopx-hcamas-mas a:hover { border-color: var(--ink); }

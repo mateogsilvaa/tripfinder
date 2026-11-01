@@ -21,6 +21,7 @@ import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { montarHoras, textoHoras } from "./horas.js";
 import { ORIGENES } from "./opciones.js";
 import { huecoFoto, ponerFotos } from "./fotos.js";
+import { fotos as fotosCama, metaCama } from "./alojamiento.js";
 import { enlaceOk, hashCorto, pidCombo, pidVuelo, propuestaDeVuelo } from "./propuesta-vuelo.js";
 import {
   buscarCiudades,
@@ -780,7 +781,16 @@ const ESPERA_VUELOS_MS = 8 * 60e3; // lo que suele tardar un barrido
 const ESPERA_CAMA_MS = 3 * 60e3;
 const CADUCA_BUSQUEDA_MS = 35 * 60e3; // más que esto, algo ha ido mal
 const MAX_RESULTADOS = 30;
-const MAX_CAMAS = 6;
+const MAX_CAMAS = 6; // en la lista de la fase 3; la hoja las enseña todas
+// Las camas de verdad, y aparte los comparadores (Booking, Kayak...): esos son
+// enlaces con las fechas puestas, sin precio, y van al pie de la hoja.
+const camasDe = (datos) => ({
+  stays: (datos.stays || []).filter((s) => s.kind !== "link"),
+  enlaces: (datos.stays || []).filter((s) => s.kind === "link" && enlaceOk(s.url)),
+});
+// Hotel o casa entera: Google Hoteles y Amadeus traen hoteles (con el precio
+// más barato de Booking, Expedia o la web del hotel); Airbnb y Holidu, pisos.
+const esHotel = (s) => s.kind === "hotel" || /hotels?$/.test(String(s.provider || ""));
 const TOPES = [50, 80, 100, 150, 200, 300, 500, 800];
 
 const fase = () => Math.min(5, Math.max(1, Number(estado.hop.fase) || 1));
@@ -1911,7 +1921,9 @@ function camasHTML(o, camas) {
   if (!camas && c && c.oferta === o.id && c.pasado < CADUCA_BUSQUEDA_MS) return progresoHTML(c, ESPERA_CAMA_MS, "dónde dormir");
   if (!camas) return `<p class="hop-letra">Mirando…</p>`;
   if (!camas.stays.length) return `<p class="hop-letra">No se encontró alojamiento para esas fechas.</p>`;
+  const mas = camas.stays.length - MAX_CAMAS;
   return `<ul class="hopx-camas">${camas.stays
+    .slice(0, MAX_CAMAS)
     .map((s, i) => {
       const guardada = guardadaDe(pidCombo(o, s));
       const precio = Number.isFinite(Number(s.price_total)) ? Number(s.price_total) / Math.max(1, Number(o.adults) || 1) : null;
@@ -1925,7 +1937,13 @@ function camasHTML(o, camas) {
             ${guardada ? "disabled" : ""}>${guardada ? `${ico("si", 14)} Guardada` : "Guardar con este"}</button>
         </li>`;
     })
-    .join("")}</ul>`;
+    .join("")}</ul>${
+    mas > 0
+      ? `<button type="button" class="btn ghost small hopx-camas-todas" data-camas-hoja="${esc(o.id)}">Ver las ${
+          camas.stays.length
+        } con fotos</button>`
+      : ""
+  }`;
 }
 
 async function guardarOferta(app, o, stay) {
@@ -1942,15 +1960,22 @@ async function guardarOferta(app, o, stay) {
 async function verCamas(app, o) {
   estado.abierta = estado.abierta === o.id ? "" : o.id;
   pintarViaje(app);
-  if (!estado.abierta || estado.camas[o.id]) return;
+  if (estado.abierta) await pedirCamas(app, o);
+}
+
+/* El alojamiento de un vuelo: lo ya buscado (por ti o por otro del grupo) o,
+   si no hay, se lanza la búsqueda y se apunta en el HOP para que lo vean
+   todos mientras llega. */
+async function pedirCamas(app, o) {
+  if (estado.camas[o.id]) return;
   const ya = typeof nubeResultado === "function" ? await nubeResultado(`stay-${o.id}`) : null;
   if (ya) {
-    estado.camas[o.id] = { stays: (ya.stays || []).slice(0, MAX_CAMAS) };
-    pintarViaje(app);
+    estado.camas[o.id] = camasDe(ya);
+    repintar(app);
     return;
   }
   const c = enMarcha("cama");
-  if (c && c.oferta === o.id) return; // ya la está buscando alguien
+  if (c && c.oferta === String(o.id)) return; // ya la está buscando alguien
   const n = Math.max(1, Number(o.adults) || personasHop());
   const r = await dispatch("stay", {
     offer_id: o.id,
@@ -1964,7 +1989,7 @@ async function verCamas(app, o) {
   });
   if (!r.ok) {
     estado.camas[o.id] = { stays: [] };
-    pintarViaje(app);
+    repintar(app);
     return;
   }
   const s = yo();
@@ -1978,8 +2003,156 @@ async function verCamas(app, o) {
   };
   estado.hop.cama = apunte;
   estado.lanzadas = { ...estado.lanzadas, cama: { valor: apunte, hasta: Date.now() + 20000 } };
-  pintarViaje(app);
+  repintar(app);
   nubeHopApuntar(estado.id, "cama", apunte);
+}
+
+function repintar(app) {
+  pintarViaje(app);
+  pintarHojaCamas();
+}
+
+/* ------------------------------------------- la hoja de dónde dormir
+   Desde la votación, el alojamiento de un vuelo guardado se abre en una hoja
+   aparte y no dentro de su tarjeta: metido en la tarjeta la estiraba, y con
+   ella toda la fila (las demás se quedaban altas y huecas). En la hoja caben
+   todas las opciones con sus fotos, y cada una se propone al grupo: entra en
+   la votación junto con su vuelo, como una opción más. */
+function hojaCamas() {
+  let caja = document.getElementById("hopCamas");
+  if (caja) return caja;
+  caja = document.createElement("div");
+  caja.id = "hopCamas";
+  caja.className = "modal hopx-hcamas-modal";
+  caja.hidden = true;
+  caja.innerHTML = `<div class="modal-caja hopx-hcamas-caja" role="dialog" aria-labelledby="hopCamasTit"></div>`;
+  document.body.appendChild(caja);
+  return caja;
+}
+
+function abrirHojaCamas(app, o) {
+  const caja = hojaCamas();
+  estado.hojaCamas = String(o.id);
+  caja._app = app;
+  if (!caja.dataset.cableada) {
+    caja.dataset.cableada = "1";
+    caja.addEventListener("click", (e) => {
+      if (e.target === caja || e.target.closest("[data-cerrar-camas]")) {
+        if (typeof tfCerrarDialogo === "function") tfCerrarDialogo(caja);
+        return;
+      }
+      const filtro = e.target.closest("[data-camas-ver]");
+      if (filtro) {
+        estado.camasVer = filtro.dataset.camasVer;
+        pintarHojaCamas();
+        return;
+      }
+      const b = e.target.closest("[data-proponer-cama]");
+      if (!b || b.disabled) return;
+      const of = ofertaDe(estado.hojaCamas);
+      const stay = of && estado.camas[of.id]?.stays[Number(b.dataset.proponerCama)];
+      if (!stay) return;
+      b.disabled = true;
+      b.textContent = "Proponiendo…";
+      guardarOferta(caja._app, of, stay).then(() => pintarHojaCamas());
+    });
+  }
+  caja.hidden = false;
+  pintarHojaCamas();
+  if (typeof tfAbrirDialogo === "function") {
+    tfAbrirDialogo(caja, {
+      alCerrar: () => {
+        caja.hidden = true;
+        estado.hojaCamas = "";
+      },
+    });
+  }
+  pedirCamas(app, o);
+}
+
+function camaCarta(o, s, i) {
+  const guardada = guardadaDe(pidCombo(o, s));
+  const gente = Math.max(1, Number(o.adults) || personasHop());
+  const precio = Number.isFinite(Number(s.price_total)) ? Number(s.price_total) / gente : null;
+  const n = noches(o.depart_date, o.return_date);
+  const foto = fotosCama(s) || `<div class="hopx-hcama-sinfoto" aria-hidden="true">${ico("cama", 28)}</div>`;
+  return `<li class="hopx-hcama${guardada ? " propuesta" : ""}">
+      ${foto}
+      <div class="hopx-hcama-txt">
+        <b>${esc(s.name || "Alojamiento")}</b>
+        <span class="hop-letra">${esc(metaCama(s))}</span>
+      </div>
+      <div class="hopx-hcama-pie">
+        <span class="hopx-hcama-precio">${precio !== null ? euros(precio) : "—"}<small>por cabeza${
+          n ? ` · ${n} noche${n === 1 ? "" : "s"}` : ""
+        }</small></span>
+        ${enlaceOk(s.url) ? `<a class="btn ghost small" href="${escURL(s.url)}" target="_blank" rel="noopener">Ver</a>` : ""}
+        <button type="button" class="btn small ${guardada ? "deep-ghost" : "primary"}" data-proponer-cama="${i}"
+          ${guardada ? "disabled" : ""}>${guardada ? `${ico("si", 14)} En la votación` : "Proponer"}</button>
+      </div>
+    </li>`;
+}
+
+function pintarHojaCamas() {
+  const caja = document.getElementById("hopCamas");
+  if (!caja || caja.hidden || !estado.hojaCamas) return;
+  const o = ofertaDe(estado.hojaCamas);
+  if (!o) return;
+  const camas = estado.camas[o.id];
+  const c = enMarcha("cama");
+  const gente = Math.max(1, Number(o.adults) || personasHop());
+  const n = noches(o.depart_date, o.return_date);
+  let cuerpo;
+  if (!camas && c && c.oferta === String(o.id) && c.pasado < CADUCA_BUSQUEDA_MS) {
+    cuerpo = progresoHTML(c, ESPERA_CAMA_MS, "dónde dormir");
+  } else if (!camas) {
+    cuerpo = `<p class="hop-letra">Mirando…</p>`;
+  } else if (!camas.stays.length) {
+    cuerpo = `<div class="hop-vacio"><b>No salió alojamiento para esas fechas.</b> Probad con otro vuelo guardado.</div>`;
+  } else {
+    const propuestas = camas.stays.filter((s) => guardadaDe(pidCombo(o, s))).length;
+    const hoteles = camas.stays.filter(esHotel).length;
+    const pisos = camas.stays.length - hoteles;
+    const ver = estado.camasVer || "todo";
+    const vale = (s) => ver === "todo" || (ver === "hoteles") === esHotel(s);
+    const chip = (clave, txt, n) =>
+      n ? `<button type="button" data-camas-ver="${clave}" aria-pressed="${ver === clave}">${txt} · ${n}</button>` : "";
+    cuerpo = `<div class="hopx-hcamas-barra">
+        ${hoteles && pisos ? `<div class="hopx-hcamas-filtro" role="group" aria-label="Qué enseñar">${chip("todo", "Todo", camas.stays.length)}${chip(
+          "hoteles",
+          "Hoteles",
+          hoteles
+        )}${chip("pisos", "Pisos", pisos)}</div>` : ""}
+        <p class="hopx-hcamas-nota">${
+          propuestas ? `${propuestas} en la votación` : "proponed las que os gusten y entran en la votación con su vuelo"
+        }</p>
+      </div>
+      <ul class="hopx-hcamas">${camas.stays.map((s, i) => (vale(s) ? camaCarta(o, s, i) : "")).join("")}</ul>
+      ${
+        (camas.enlaces || []).length
+          ? `<p class="hopx-hcamas-mas">Buscar también en ${camas.enlaces
+              .map((e) => `<a href="${escURL(e.url)}" target="_blank" rel="noopener">${esc(String(e.name).replace(/\s*\(.*\)$/, ""))}</a>`)
+              .join("")}</p>`
+          : ""
+      }`;
+  }
+  const panel = caja.querySelector(".modal-caja");
+  const html = `<header class="modal-head hopx-hcamas-cab">
+      <div>
+        <span class="hopx-hcamas-kicker">Dónde dormir</span>
+        <h2 id="hopCamasTit">${esc(o.destination_name || o.destination)}</h2>
+        <p class="hop-letra">${esc(
+          [o.depart_date && o.return_date ? `${fmtDate(o.depart_date, true)} → ${fmtDate(o.return_date, true)}` : "",
+            n ? `${n} noche${n === 1 ? "" : "s"}` : "", `${gente} pers.`].filter(Boolean).join(" · ")
+        )}</p>
+      </div>
+      <button type="button" data-cerrar-camas aria-label="Cerrar">cerrar</button>
+    </header>
+    <div class="hopx-hcamas-cuerpo">${cuerpo}</div>`;
+  if (panel.dataset.huella !== html) {
+    panel.dataset.huella = html;
+    panel.innerHTML = html;
+  }
 }
 
 /* Lo que está en marcha: si ha llegado, se apunta en el HOP y se enseña. */
@@ -2014,14 +2187,14 @@ async function comprobarBusquedas(app) {
   if (toca) {
     const datos = typeof nubeResultado === "function" ? await nubeResultado(`stay-${cama.oferta}`) : null;
     if (datos) {
-      const stays = datos.stays || [];
-      estado.camas[cama.oferta] = { stays: stays.slice(0, MAX_CAMAS) };
+      const { stays, enlaces } = camasDe(datos);
+      estado.camas[cama.oferta] = { stays, enlaces };
       if (c) {
         const lista = { ...cama, lanzada: new Date(c.desde), estado: stays.length ? "lista" : "vacia", n: stays.length };
         estado.hop.cama = lista;
         await nubeHopApuntar(estado.id, "cama", lista);
       }
-      pintarViaje(app);
+      repintar(app);
     }
   }
 }
@@ -2115,18 +2288,43 @@ function cartaGuardada(p, puesto, lider) {
               }`
             : "sin alojamiento"
         }${
-          // Dónde dormir, también con el vuelo ya guardado: con cama o sin ella.
-          camas
-            ? ` · <button type="button" class="hopx-enlace hopx-carta-camas" data-camas="${esc(p.oferta)}"
-                aria-expanded="${estado.abierta === p.oferta}">${p.cama ? "buscar otro" : "buscar"}</button>`
-            : ""
+          // Dónde dormir, también con el vuelo ya guardado: abre la hoja con
+          // todas las opciones (ver `abrirHojaCamas`).
+          camas ? ` · ${botonCamas(p)}` : ""
         }</span></p>
         ${p.nota ? `<p class="hopx-dato">${esc(p.nota)}</p>` : ""}
-        ${camas && estado.abierta === p.oferta ? `<div class="hopx-res-camas">${camasHTML(ofertaDe(p.oferta), estado.camas[p.oferta])}</div>` : ""}
         <div class="hopx-carta-voto">${votarHTML(p)}
-          <div class="hopx-carta-pie">${quienesHTML(p)}<span class="hop-letra">${faltanTxt(p)}</span>${borrarHTML(p)}</div></div>
+          <div class="hopx-carta-pie">${quienesHTML(p)}${faltanCorto(p)}${borrarHTML(p)}</div></div>
       </div>
     </article>`;
+}
+
+/* El enlace de dónde dormir de una tarjeta: dice lo que hay detrás antes de
+   pulsarlo («buscando…», «ver 6 alojamientos») en vez de abrir la búsqueda
+   dentro de la tarjeta. */
+function botonCamas(p) {
+  const camas = estado.camas[p.oferta];
+  const c = enMarcha("cama");
+  const buscando = !camas && c && c.oferta === String(p.oferta) && c.pasado < CADUCA_BUSQUEDA_MS;
+  const listas = camas ? camas.stays.length : estado.hop.cama?.oferta === String(p.oferta) && estado.hop.cama.estado === "lista" ? estado.hop.cama.n || 0 : 0;
+  const texto = buscando
+    ? `<span class="spin" aria-hidden="true"></span>buscando…`
+    : listas
+      ? `ver ${listas} alojamiento${listas === 1 ? "" : "s"}`
+      : p.cama
+        ? "buscar otro"
+        : "buscar";
+  return `<button type="button" class="hopx-enlace hopx-carta-camas" data-camas-hoja="${esc(p.oferta)}">${texto}</button>`;
+}
+
+/* Quién falta, sin una lista que ocupe cinco renglones en una tarjeta
+   estrecha: el primero y cuántos más, y la lista entera al pasar por encima. */
+function faltanCorto(p) {
+  const nombres = estado.hop.nombres || {};
+  const faltan = (estado.hop.miembros || []).filter((u) => !(p.votos || {})[u]).map((u) => nombres[u] || "?");
+  if (!faltan.length) return `<span class="hop-letra">Han votado todos</span>`;
+  const txt = faltan.length === 1 ? `Falta ${faltan[0]}` : `Faltan ${faltan[0]} y ${faltan.length - 1} más`;
+  return `<span class="hop-letra hopx-faltan" title="Faltan: ${esc(faltan.join(", "))}">${esc(txt)}</span>`;
 }
 
 function pintarFase4(app) {
@@ -2388,6 +2586,11 @@ async function alTocarFase(app, e) {
   if (b.dataset.camas) {
     const o = ofertaDe(b.dataset.camas);
     if (o) verCamas(app, o);
+    return;
+  }
+  if (b.dataset.camasHoja) {
+    const o = ofertaDe(b.dataset.camasHoja);
+    if (o) abrirHojaCamas(app, o);
     return;
   }
   if (b.hasAttribute("data-idea-mano")) return abrirFormProp(app, "viaje");
