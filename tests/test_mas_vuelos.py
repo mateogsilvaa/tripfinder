@@ -207,3 +207,49 @@ def test_google_pregunta_antes_por_lo_que_no_vuela_nadie(monkeypatch):
     # Y repartidos por el horizonte, no en los cuatro proximos findes.
     meses = {p[1].strftime("%Y-%m") for p in pares if p[1] != hoy}
     assert len(meses) >= 5
+
+
+# ---------------------------------- la llegada de Wizz, de otros directos
+def test_lo_que_tarda_una_ruta_se_aprende_de_ryanair(libreta):
+    from tripfinder.models import FlightOffer
+
+    ryanair = FlightOffer(
+        provider="ryanair", origin="MAD", destination="BUD", depart_date="2027-03-05",
+        return_date="2027-03-07", depart_time="06:30", arrive_time="10:00",
+        return_time="22:40", return_arrive_time="01:30", price=60.0,
+    )
+    wizz = FlightOffer(
+        provider="wizzair", origin="MAD", destination="BUD", depart_date="2027-04-09",
+        return_date="2027-04-11", depart_time="17:00", return_time="20:15", price=50.0,
+    )
+    assert dur.aprender_de([ryanair, wizz]) == 2
+    # La vuelta aterriza pasada la medianoche: tarda 2 h 50, no menos de cero.
+    assert (libreta.de("MAD", "BUD"), libreta.de("BUD", "MAD")) == (210, 170)
+    assert dur.completar_llegadas([ryanair, wizz]) == [wizz]
+    assert (wizz.arrive_time, wizz.return_arrive_time) == ("20:30", "23:05")
+
+
+def test_con_escala_no_se_aprende_ni_se_inventa(libreta):
+    from tripfinder.models import FlightOffer
+
+    escala = FlightOffer(
+        provider="google", origin="MAD", destination="OTP", depart_date="2027-03-05",
+        depart_time="06:30", arrive_time="15:00", price=90.0, stops=1,
+    )
+    assert dur.aprender_de([escala]) == 0
+    assert libreta.de("MAD", "OTP") is None
+
+
+def test_un_429_deja_el_buscador_de_wizz_en_paz(monkeypatch):
+    llamadas = []
+
+    class Bloqueo:
+        status_code, text = 429, ""
+
+    monkeypatch.setattr(W, "_post", lambda *a, **k: llamadas.append(1) or Bloqueo())
+    monkeypatch.setattr(W, "throttle", lambda *a, **k: None)
+    idas = {"2026-12-11": vuelo("2026-12-11", 30, "06:20")}
+    vueltas = {"2026-12-13": vuelo("2026-12-13", 30, "21:40")}
+    for destino in ["OTP", "SOF", "BUD"]:
+        wizz()._aprender_duraciones("MAD", destino, idas, vueltas, 2)
+    assert len(llamadas) == 1

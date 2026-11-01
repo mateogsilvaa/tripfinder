@@ -825,6 +825,13 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
             resultado.errors.append("Google devolvio paginas vacias: puede faltar alguna aerolinea")
 
     ofertas = list(encontradas.values())
+    # La llegada de Wizz, con lo que tarda la ruta en otros directos (ver
+    # `duraciones.py`): antes de puntuar, que las horas en destino cuentan.
+    from . import duraciones as dur
+
+    dur.aprender_de(ofertas)
+    dur.completar_llegadas(ofertas)
+    dur.guardar()
     for o in ofertas:
         score_offer(o, history, route, weekend_cfg)
         o.useful_hours = useful_hours(o)

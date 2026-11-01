@@ -380,11 +380,16 @@ def cmd_scan_origenes(args: argparse.Namespace) -> int:
         encontradas += mezclar(
             encontradas, int(cfg.search.get("nights_min", 2)), int(cfg.search.get("nights_max", 4))
         )
+        from . import duraciones as dur
+
+        dur.aprender_de(encontradas)
+        dur.completar_llegadas(encontradas)
         for o in encontradas:
             score_offer(o, history, ruta, cfg.weekend)
             if not o.destination_name or o.destination_name == o.destination:
                 o.destination_name, pais = _nombre_mundial(o.destination)
                 o.destination_country = o.destination_country or pais
+        dur.guardar()
         todo = _dedupe(encontradas)
         todo.sort(key=lambda o: (-o.score, o.price))
         print(f"{ruta.origin_name}: {len(todo)} viajes a {len({o.destination for o in todo})} destinos")
@@ -517,6 +522,21 @@ def cmd_scan_flights(args: argparse.Namespace) -> int:
         if not o.destination_name or o.destination_name == o.destination:
             o.destination_name, pais = _nombre_mundial(o.destination)
             o.destination_country = o.destination_country or pais
+
+    # LA HORA DE LLEGADA DE WIZZ. Su tabla de precios solo trae la salida; lo
+    # que tarda cada ruta se aprende de los directos de Ryanair y Google que
+    # ya tienen las dos horas, y con eso se completa (y se vuelve a puntuar:
+    # las horas utiles en destino cuentan en el score).
+    from . import duraciones as dur
+
+    aprendidas = dur.aprender_de(found)
+    completadas = dur.completar_llegadas(found)
+    for o in completadas:
+        score_offer(o, history, rutas_por_origen.get(o.origin, cfg.routes[0]), weekend_cfg)
+    dur.guardar()
+    if aprendidas or completadas:
+        log.info("Duraciones: %d rutas aprendidas, %d ofertas con la llegada puesta",
+                 aprendidas, len(completadas))
 
     if getattr(args, "nocturno", False):
         for o in found:

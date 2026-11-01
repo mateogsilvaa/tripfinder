@@ -319,6 +319,10 @@ class WizzairProvider(FlightProvider):
             datos = None
         if not isinstance(datos, dict):
             _cache["dur_fallos"] = int(_cache.get("dur_fallos", 0)) + 1
+            # 429 es que nos ha tomado por un robot: insistir no lo arregla, y
+            # las duraciones salen igual de Ryanair y Google (`aprender_de`).
+            if motivo.startswith("HTTP 429"):
+                _cache["dur_fallos"] = 99
             _cache.pop("s", None)
             # En el log del barrido, y no en debug: es la unica forma de saber
             # desde fuera por que Wizz no da la hora de llegada.
