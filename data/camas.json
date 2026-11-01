@@ -17,7 +17,7 @@
       "nombre": "Bergamo"
     },
     "BSL": {
-      "noche": 230.33,
+      "noche": 209.67,
       "muestras": 3,
       "nombre": "Basilea"
     },
@@ -95,7 +95,7 @@
       "muestras": 3
     },
     "Suiza": {
-      "noche": 230.33,
+      "noche": 209.67,
       "muestras": 3
     }
   }
