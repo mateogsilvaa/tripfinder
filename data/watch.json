@@ -125,6 +125,31 @@
       "last_checked": "2026-11-01",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "todos-6-5RDZCAZKQPMzwxX8lh3I6ZezAbQ2",
+      "label": "Donde sea · findes · 6 meses · avisa bajo 240 € · 4 pers.",
+      "destination": "",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "",
+      "horas": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 4,
+      "max_price": 240.0,
+      "source": "formulario",
+      "owner": "5RDZCAZKQPMzwxX8lh3I6ZezAbQ2",
+      "owner_name": "Paco",
+      "created": "2026-11-01",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
