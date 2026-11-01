@@ -31,6 +31,20 @@
    "noche": true
   },
   {
+   "ruta": "austria/viena",
+   "nombre": "Viena",
+   "iso": "at",
+   "aeropuertos": [
+    "VIE"
+   ],
+   "y": 45,
+   "h": {
+    "dia": "d5f3761360"
+   },
+   "dia": true,
+   "noche": false
+  },
+  {
    "ruta": "belgica/bruselas",
    "nombre": "Bruselas",
    "iso": "be",
@@ -610,6 +624,20 @@
    "noche": true
   },
   {
+   "ruta": "suiza/basilea",
+   "nombre": "Basilea",
+   "iso": "ch",
+   "aeropuertos": [
+    "BSL"
+   ],
+   "y": 65,
+   "h": {
+    "dia": "d5f3761360"
+   },
+   "dia": true,
+   "noche": false
+  },
+  {
    "ruta": "uk/edimburgo",
    "nombre": "Edimburgo",
    "iso": "gb",
@@ -668,6 +696,7 @@
   "BGY": "italia/bergamo",
   "BLQ": "italia/bolonia",
   "BRU": "belgica/bruselas",
+  "BSL": "suiza/basilea",
   "BUD": "hungria/budapest",
   "BVA": "francia/paris",
   "CDG": "francia/paris",
@@ -710,6 +739,7 @@
   "TSF": "italia/venecia",
   "TSR": "rumania/timisoara",
   "VCE": "italia/venecia",
+  "VIE": "austria/viena",
   "WAW": "polonia/varsovia",
   "WMI": "polonia/varsovia",
   "WRO": "polonia/breslavia",
