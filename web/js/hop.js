@@ -335,7 +335,12 @@ function estadoHop(j) {
   const miembros = j.miembros || [];
   const sinMiVoto = (l) => l.filter((p) => !(p.votos || {})[uid]).length;
   const fechas = props.filter((p) => p.tipo === "fechas");
-  const guardadas = props.filter((p) => p.tipo === "vuelo" || p.tipo === "viaje");
+  // Una idea por vuelo: sus alojamientos son variantes, no ideas aparte.
+  const guardadas = props.filter(
+    (p) =>
+      (p.tipo === "vuelo" || p.tipo === "viaje") &&
+      !(p.cama && p.oferta && props.some((x) => x.oferta === p.oferta && !x.cama && x.tipo === "vuelo"))
+  );
   let txt = "";
   let toca = "";
   if (f === 1) {
@@ -795,8 +800,35 @@ const TOPES = [50, 80, 100, 150, 200, 300, 500, 800];
 
 const fase = () => Math.min(5, Math.max(1, Number(estado.hop.fase) || 1));
 const deTipo = (t) =>
-  t === "guardada" ? guardadas() : estado.propuestas.filter((p) => p.tipo === t);
+  t === "guardada" ? opciones() : estado.propuestas.filter((p) => p.tipo === t);
 const guardadas = () => estado.propuestas.filter((p) => p.tipo === "vuelo" || p.tipo === "viaje");
+
+/* LAS VARIANTES. Proponer un alojamiento para un vuelo no crea otra opción
+   que compita con el vuelo: es una VARIANTE de esa opción. Se vota el viaje
+   (la opción) y, dentro, cada uno elige qué versión prefiere: un voto por
+   persona entre las variantes. Aquí se juntan: una opción por vuelo, con sus
+   variantes colgando (`p.variantes`). Si del vuelo solo hay combinaciones
+   (guardadas con cama desde la búsqueda), hace de opción la más votada. */
+function agrupar(lista) {
+  const grupos = new Map();
+  for (const p of lista) {
+    const k = p.tipo === "vuelo" && p.oferta ? `o:${p.oferta}` : `p:${p.id}`;
+    if (!grupos.has(k)) grupos.set(k, []);
+    grupos.get(k).push(p);
+  }
+  return [...grupos.values()].map((g) => {
+    const base = g.find((x) => !x.cama) || [...g].sort(porVotos)[0];
+    base.variantes = g.filter((x) => x.cama);
+    return base;
+  });
+}
+const opciones = () => agrupar(guardadas());
+// La versión que prefiere el grupo: la de más «la prefiero»; a igualdad, la
+// más barata. Null si la opción no tiene variantes.
+const preferida = (p) =>
+  [...(p.variantes || [])].sort(
+    (a, b) => puntos(b).si - puntos(a).si || (a.cama_precio ?? 1e9) - (b.cama_precio ?? 1e9)
+  )[0] || null;
 const porVotos = (a, b) => nota(b) - nota(a) || puntos(b).si - puntos(a).si || (a.precio ?? 1e9) - (b.precio ?? 1e9);
 const ordenadas = (lista) => [...lista].sort(porVotos);
 const ganadora = (t) => ordenadas(deTipo(t)).find((p) => nota(p) > 0) || null;
@@ -2088,7 +2120,7 @@ function camaCarta(o, s, i) {
         }</small></span>
         ${enlaceOk(s.url) ? `<a class="btn ghost small" href="${escURL(s.url)}" target="_blank" rel="noopener">Ver</a>` : ""}
         <button type="button" class="btn small ${guardada ? "deep-ghost" : "primary"}" data-proponer-cama="${i}"
-          ${guardada ? "disabled" : ""}>${guardada ? `${ico("si", 14)} En la votación` : "Proponer"}</button>
+          ${guardada ? "disabled" : ""}>${guardada ? `${ico("si", 14)} Propuesto` : "Proponer"}</button>
       </div>
     </li>`;
 }
@@ -2124,7 +2156,9 @@ function pintarHojaCamas() {
           hoteles
         )}${chip("pisos", "Pisos", pisos)}</div>` : ""}
         <p class="hopx-hcamas-nota">${
-          propuestas ? `${propuestas} en la votación` : "proponed las que os gusten y entran en la votación con su vuelo"
+          propuestas
+            ? `${propuestas} propuesto${propuestas === 1 ? "" : "s"} · en la tarjeta del viaje cada uno elige su preferido`
+            : "proponed los que os gusten: salen como versiones de este viaje y cada uno elige su preferido"
         }</p>
       </div>
       <ul class="hopx-hcamas">${camas.stays.map((s, i) => (vale(s) ? camaCarta(o, s, i) : "")).join("")}</ul>
@@ -2253,7 +2287,9 @@ const borrarHTML = (p) =>
     : "";
 
 function cartaGuardada(p, puesto, lider) {
-  const total = (Number.isFinite(p.precio) ? p.precio : 0) + (Number.isFinite(p.cama_precio) ? p.cama_precio : 0);
+  const pref = preferida(p);
+  const camaPrecio = pref ? pref.cama_precio : p.cama_precio;
+  const total = (Number.isFinite(p.precio) ? p.precio : 0) + (Number.isFinite(camaPrecio) ? camaPrecio : 0);
   const n = noches(p.ida, p.vuelta);
   const fechas =
     p.ida && p.vuelta
@@ -2281,7 +2317,10 @@ function cartaGuardada(p, puesto, lider) {
               }</span></p>`
             : ""
         }
-        <p class="hopx-dato">${ico("cama", 15)} <span>${
+        ${
+          (p.variantes || []).length
+            ? variantesHTML(p, camas)
+            : `<p class="hopx-dato">${ico("cama", 15)} <span>${
           p.cama
             ? `${esc(p.cama)}${Number.isFinite(p.cama_precio) ? ` · ${euros(p.cama_precio)}` : ""}${
                 enlaceOk(p.cama_url) ? ` · <a href="${escURL(p.cama_url)}" target="_blank" rel="noopener">ver</a>` : ""
@@ -2291,12 +2330,68 @@ function cartaGuardada(p, puesto, lider) {
           // Dónde dormir, también con el vuelo ya guardado: abre la hoja con
           // todas las opciones (ver `abrirHojaCamas`).
           camas ? ` · ${botonCamas(p)}` : ""
-        }</span></p>
+        }</span></p>`
+        }
         ${p.nota ? `<p class="hopx-dato">${esc(p.nota)}</p>` : ""}
         <div class="hopx-carta-voto">${votarHTML(p)}
           <div class="hopx-carta-pie">${quienesHTML(p)}${faltanCorto(p)}${borrarHTML(p)}</div></div>
       </div>
     </article>`;
+}
+
+/* Los alojamientos propuestos para el vuelo, como versiones de la misma
+   opción: cada uno marca la que prefiere (una por persona) y la que más
+   gusta es la que cuenta en el precio y la que pasa al plan. */
+function variantesHTML(p, camas) {
+  const pref = preferida(p);
+  const nombres = estado.hop.nombres || {};
+  const yoUid = miUid();
+  return `<div class="hopx-variantes" role="group" aria-label="¿Qué alojamiento preferís?">
+      <p class="hopx-variantes-tit">${ico("cama", 15)} <span>Dónde dormir · ${
+        p.variantes.length === 1 ? "una versión" : `${p.variantes.length} versiones, elegid una`
+      }</span>${camas ? ` · ${botonCamas(p)}` : ""}</p>
+      <ul>${p.variantes
+        .map((v) => {
+          const mia = (v.votos || {})[yoUid] === "si";
+          const si = Object.entries(v.votos || {}).filter(([, x]) => x === "si").map(([u]) => u);
+          return `<li class="hopx-variante${v === pref && si.length ? " preferida" : ""}${mia ? " mia" : ""}">
+              <button type="button" class="hopx-variante-elegir" data-variante="${esc(v.id)}" aria-pressed="${mia}"
+                aria-label="Prefiero ${esc(v.cama)}"><span class="hopx-variante-radio" aria-hidden="true"></span>
+                <span class="hopx-variante-nombre">${esc(v.cama)}</span></button>
+              <b>${Number.isFinite(v.cama_precio) ? euros(v.cama_precio) : "—"}</b>
+              <span class="hop-avs mini" title="${esc(si.map((u) => nombres[u] || "?").join(", ") || "Nadie todavía")}">${si
+                .slice(0, 3)
+                .map((u) => avatar(u, nombres[u] || "?"))
+                .join("")}${si.length ? "" : '<span class="hop-letra">—</span>'}</span>
+              ${enlaceOk(v.cama_url) ? `<a href="${escURL(v.cama_url)}" target="_blank" rel="noopener" aria-label="Ver ${esc(v.cama)}">ver</a>` : "<span></span>"}
+            </li>`;
+        })
+        .join("")}</ul>
+    </div>`;
+}
+
+/* Elegir una versión: tu «la prefiero» pasa a esa y sale de la que tenías.
+   Tocar la que ya es tuya la quita. */
+async function elegirVariante(app, pid) {
+  const v = estado.propuestas.find((x) => x.id === pid);
+  if (!v) return;
+  const uid = miUid();
+  const hermanas = estado.propuestas.filter((x) => x.oferta === v.oferta && x.cama && x.id !== v.id);
+  const ya = (v.votos || {})[uid] === "si";
+  const cambios = [[v, ya ? null : "si"], ...hermanas.filter((x) => (x.votos || {})[uid] === "si").map((x) => [x, null])];
+  for (const [x, voto] of cambios) {
+    x.votos = { ...x.votos };
+    if (voto) x.votos[uid] = voto;
+    else delete x.votos[uid];
+  }
+  pintarViaje(app);
+  for (const [x, voto] of cambios) {
+    const r = await nubeVotar(estado.id, x.id, voto);
+    if (!r.ok) {
+      alert(r.error);
+      return cargarPropuestas(app);
+    }
+  }
 }
 
 /* El enlace de dónde dormir de una tarjeta: dice lo que hay detrás antes de
@@ -2328,7 +2423,7 @@ function faltanCorto(p) {
 }
 
 function pintarFase4(app) {
-  const lista = ordenadas(guardadas());
+  const lista = ordenadas(opciones());
   const lider = ganadora("guardada");
   const pendientes = sinVotar(lista).length;
   $("#hopFaseEstado", app).textContent = lider ? `va ganando ${lider.titulo}` : "";
@@ -2350,7 +2445,9 @@ function pintarFase4(app) {
   pintarSi(
     $("#hopFasePie", app),
     lider
-      ? `<button class="btn primary" type="button" data-elegir="${esc(lider.id)}">Quedarnos con ${esc(lider.titulo)} →</button>`
+      ? `<button class="btn primary" type="button" data-elegir="${esc((preferida(lider) || lider).id)}">Quedarnos con ${esc(
+          lider.titulo
+        )}${preferida(lider) ? ` y ${esc(preferida(lider).cama)}` : ""} →</button>`
       : ""
   );
 }
@@ -2588,6 +2685,7 @@ async function alTocarFase(app, e) {
     if (o) verCamas(app, o);
     return;
   }
+  if (b.dataset.variante) return elegirVariante(app, b.dataset.variante);
   if (b.dataset.camasHoja) {
     const o = ofertaDe(b.dataset.camasHoja);
     if (o) abrirHojaCamas(app, o);
