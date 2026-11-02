@@ -408,7 +408,8 @@ test("un vuelo de fuera se manda a tu HOP y pasa a votarse", async ({ browser })
   await expect(hoja).toBeVisible();
   await expect(hoja.locator(".hopx-hcama")).toContainText("Piso con vistas");
   await hoja.locator("[data-proponer-cama]").click();
-  await expect(hoja.locator("[data-proponer-cama]")).toContainText("Propuesto");
+  // Propuesto, y quien lo propuso lo puede quitar si cambia de opinión.
+  await expect(hoja.locator("[data-quitar-cama]")).toContainText("Propuesto");
   await hoja.locator("[data-cerrar-camas]").click();
   await expect(hoja).toBeHidden();
   // No es otra opción: es una versión del mismo viaje, dentro de su tarjeta.
