@@ -3,9 +3,9 @@
     {
       "iata": "MAD",
       "nombre": "Madrid",
-      "count": 1606,
-      "destinos": 77,
-      "generated_at": "2026-11-01"
+      "count": 1620,
+      "destinos": 74,
+      "generated_at": "2026-11-02"
     },
     {
       "iata": "ALC",
@@ -48,6 +48,27 @@
       "count": 178,
       "destinos": 21,
       "generated_at": "2026-11-01"
+    },
+    {
+      "iata": "SCQ",
+      "nombre": "Santiago",
+      "count": 109,
+      "destinos": 18,
+      "generated_at": "2026-11-02"
+    },
+    {
+      "iata": "SVQ",
+      "nombre": "Sevilla",
+      "count": 274,
+      "destinos": 27,
+      "generated_at": "2026-11-02"
+    },
+    {
+      "iata": "TFS",
+      "nombre": "Tenerife Sur",
+      "count": 222,
+      "destinos": 24,
+      "generated_at": "2026-11-02"
     }
   ]
 }
