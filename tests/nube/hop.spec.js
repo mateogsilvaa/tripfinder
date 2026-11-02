@@ -218,18 +218,27 @@ test("por fases: fechas, vetos, buscar y guardar, votar y el plan", async ({ bro
   await opo.locator("[data-guardar]").click();
   await expect(opo.locator("[data-guardar]")).toContainText("Guardada");
 
-  // Lisboa, con alojamiento: se busca, llega y se guarda junto al vuelo.
+  // Lisboa, con alojamiento: se abre la hoja, se dice cuántos dormís (no
+  // tiene por qué ser el grupo), llega y se propone junto al vuelo.
   const lis = gus.page.locator(".hopx-res", { hasText: "Lisboa" });
-  await lis.locator("[data-camas]").click();
-  await expect(lis.locator(".hop-buscando")).toBeVisible();
+  await lis.locator("[data-camas-hoja]").click();
+  const hojaCamas = gus.page.locator("#hopCamas");
+  await expect(hojaCamas.locator("[name=camasGente]")).toHaveValue("2");
+  await hojaCamas.locator("[name=camasGente]").selectOption("3");
+  await hojaCamas.locator("[data-camas-lanzar]").click();
+  await expect(hojaCamas.locator(".hop-buscando")).toBeVisible();
   const stay = (await E.encargosDe(gus.uid)).find((e) => e.tipo === "stay");
-  expect(stay.payload).toMatchObject({ offer_id: `LIS-${tanda}`, hop: id, adults: "2" });
+  expect(stay.payload).toMatchObject({ offer_id: `LIS-${tanda}`, hop: id, adults: "3" });
   await E.publicarResultado(`stay-LIS-${tanda}`, {
     stays: [{ provider: "booking", name: "Casa do Fado", url: "https://www.booking.com/a", price_total: 120, rating: 9 }],
+    summary: { party: 3 },
   });
-  await expect(lis.locator(".hopx-camas li")).toHaveCount(1, { timeout: 20000 });
-  await lis.locator(".hopx-camas [data-guardar]").click();
-  await expect(lis.locator(".hopx-camas [data-guardar]")).toContainText("Guardada");
+  await expect(hojaCamas.locator(".hopx-hcama")).toHaveCount(1, { timeout: 20000 });
+  // El precio, en total: es para los que duermen.
+  await expect(hojaCamas.locator(".hopx-hcama-precio")).toContainText("120 €");
+  await hojaCamas.locator("[data-proponer-cama]").click();
+  await expect(hojaCamas.locator(".hopx-hcama")).toContainText("Propuesto");
+  await hojaCamas.locator("[data-cerrar-camas]").click();
 
   // 4. Votar entre las dos guardadas, deslizando: Oporto sí, Lisboa no.
   await gus.page.locator('[data-ir-fase="4"]').click();
@@ -260,7 +269,9 @@ test("por fases: fechas, vetos, buscar y guardar, votar y el plan", async ({ bro
   await ana.page.locator("#hopPlanForm [name=cama_precio]").fill("30");
   await ana.page.locator("#hopPlanForm [name=nota]").fill("T1 a las 6");
   await ana.page.locator("#hopPlanForm button[type=submit]").click();
-  await expect(ana.page.locator(".hopx-plan-total b")).toHaveText("70 €");
+  // El vuelo va por cabeza y dormir en total: no se suman.
+  await expect(ana.page.locator(".hopx-plan-total b")).toHaveText("40 €");
+  await expect(ana.page.locator(".hopx-plan-total small")).toContainText("30 €");
   await expect(ana.page.locator(".hopx-plan")).toContainText("T1 a las 6");
   // Y Gus lo ve.
   await gus.page.reload();
@@ -397,7 +408,8 @@ test("un vuelo de fuera se manda a tu HOP y pasa a votarse", async ({ browser })
   await expect(hoja).toBeVisible();
   await expect(hoja.locator(".hopx-hcama")).toContainText("Piso con vistas");
   await hoja.locator("[data-proponer-cama]").click();
-  await expect(hoja.locator("[data-proponer-cama]")).toContainText("Propuesto");
+  // Propuesto, y quien lo propuso lo puede quitar si cambia de opinión.
+  await expect(hoja.locator("[data-quitar-cama]")).toContainText("Propuesto");
   await hoja.locator("[data-cerrar-camas]").click();
   await expect(hoja).toBeHidden();
   // No es otra opción: es una versión del mismo viaje, dentro de su tarjeta.

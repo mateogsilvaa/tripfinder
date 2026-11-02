@@ -33,6 +33,7 @@ import { montarHoras, textoHoras } from "./horas.js";
 import { abrirDestinos } from "./destinos.js";
 import { CAMPOS_SEGUIR, ampliar, recogerAmpliado } from "./ampliar.js";
 import { desde } from "./alojamiento.js";
+import { tirar } from "./papelera.js";
 
 /* ------------------------------------------------------------ seguimientos
    Cosa aparte de la busqueda: no contesta ahora, se queda apuntado y lo revisa
@@ -298,16 +299,19 @@ export async function cargarWatches() {
     .forEach((b) =>
       b.addEventListener("click", async () => {
         b.disabled = true;
-        const r = await dispatch("unwatch", {
+        const fila = b.closest(".watch");
+        const pendiente = dispatch("unwatch", {
           id: b.dataset.unwatch,
           ...comoDueno(),
         });
+        await tirar(fila);
+        const r = await pendiente;
         if (r.ok) {
-          const fila = b.closest(".watch");
-          fila.style.opacity = 0.45;
-          fila.querySelector(".meta").innerHTML = '<span class="spin"></span>quitando…';
+          // A la papelera ya ha ido; el fichero se actualiza en un rato.
+          fila.hidden = true;
           esperarCambios();
         } else {
+          fila.style.visibility = "";
           b.disabled = false;
           alert("No se pudo quitar: " + r.reason);
         }

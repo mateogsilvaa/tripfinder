@@ -600,6 +600,17 @@ test("HOP: solo quien la creó cambia el nombre y la fecha, o la borra", async (
   );
 });
 
+test("HOP: solo quien la creó pone fechas límite a las votaciones, y solo fechas", async () => {
+  await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
+  const gus = como("gus", "gus@x.es");
+  await updateDoc(doc(gus, "hops/hop1"), { miembros: arrayUnion("gus"), "nombres.gus": "Gus" });
+  await assertFails(updateDoc(doc(gus, "hops/hop1"), { limites: { f4: "2027-01-10" } }));
+  const ana = como("ana", "ana@x.es");
+  await assertSucceeds(updateDoc(doc(ana, "hops/hop1"), { limites: { f1: "2027-01-05", f4: "2027-01-10" } }));
+  await assertFails(updateDoc(doc(ana, "hops/hop1"), { limites: { f9: "2027-01-10" } }));
+  await assertFails(updateDoc(doc(ana, "hops/hop1"), { limites: { f4: "mañana" } }));
+});
+
 test("HOP: las propuestas se ven con el enlace; el chat y escribir, solo dentro", async () => {
   await crearHop(como("ana", "ana@x.es"), "ana", "hop1");
   const ana = como("ana", "ana@x.es");

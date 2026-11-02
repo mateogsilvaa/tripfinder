@@ -18,6 +18,7 @@ import {
   tarjetaViaje,
 } from "./base.js";
 import { conGrupo } from "./precios.js";
+import { tirar } from "./papelera.js";
 import { CAMPOS_BUSCAR, ampliar, recogerAmpliado } from "./ampliar.js";
 import {
   BORRANDO_KEY,
@@ -28,6 +29,7 @@ import {
   cajaAcceso,
   dispatch,
   esFaltaDeAcceso,
+  deHop,
   esMio,
   wireEntrar,
   comoDueno,
@@ -429,10 +431,16 @@ async function enviarBorrados(boton) {
     loadSearches();
     return;
   }
-  // Si falla, vuelven a estar borrables: nada se ha ido.
+  // Si falla, vuelven a estar borrables (y a la vista): nada se ha ido.
   if (boton) boton.disabled = false;
   document.querySelectorAll("[data-borrar]").forEach((b) => {
-    if (ids.includes(b.dataset.borrar)) b.disabled = false;
+    if (!ids.includes(b.dataset.borrar)) return;
+    b.disabled = false;
+    const fila = b.closest(".saved");
+    if (fila) {
+      fila.hidden = false;
+      fila.style.visibility = "";
+    }
   });
   alert("No se pudo borrar: " + r.reason);
 }
@@ -463,11 +471,14 @@ export async function loadSearches() {
   } catch {
     return;
   }
-  const guardadas = (indice.searches || []).filter(esMio);
+  // Todas las tuyas para saber cuáles han llegado (también las del HOP, que
+  // se lanzan desde aquí); en la lista, las del HOP no salen.
+  const todasMias = (indice.searches || []).filter(esMio);
+  const guardadas = todasMias.filter((x) => !deHop(x));
   pintarCifras(guardadas);
 
   // Lo que ya esta en el indice deja de estar pendiente.
-  const etiquetas = new Set(guardadas.map((s) => s.label));
+  const etiquetas = new Set(todasMias.map((s) => s.label));
   const antes = pendientes();
   let pend = antes.filter((p) => !etiquetas.has(p.label));
   guardarPendientes(pend);
@@ -539,11 +550,8 @@ export async function loadSearches() {
   const borrando = JSON.parse(localStorage.getItem(BORRANDO_KEY) || "[]");
   borrando.forEach((slug) => {
     const fila = $("#searches").querySelector(`[data-slug="${slug}"]`);
-    if (fila) {
-      fila.style.opacity = 0.45;
-      const m = fila.querySelector(".meta");
-      if (m) m.innerHTML = '<span class="spin"></span>borrando…';
-    }
+    // Ya se tiró a la papelera: no vuelve a salir mientras se borra de verdad.
+    if (fila) fila.hidden = true;
   });
   const vivas = new Set(guardadas.map((s) => s.slug));
   const siguen = borrando.filter((s) => vivas.has(s));
@@ -584,10 +592,13 @@ export async function loadSearches() {
   if (pend.length) esperarCambios();
 
   document.querySelectorAll("[data-borrar]").forEach((b) =>
-    b.addEventListener("click", (ev) => {
+    b.addEventListener("click", async (ev) => {
       ev.stopPropagation();
       b.disabled = true;
       encolarBorrado(b.dataset.borrar, b);
+      const fila = b.closest(".saved");
+      await tirar(fila);
+      if (fila && b.disabled) fila.hidden = true;
     })
   );
 

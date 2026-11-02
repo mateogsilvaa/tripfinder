@@ -18,7 +18,8 @@ export const enlaceOk = (u) => !!u && escURL(u) !== "#";
 export const pidVuelo = (o) => `v-${o.id}`.slice(0, 120);
 export const pidCombo = (o, c) => `v-${o.id}-c-${hashCorto(c.url || c.name)}`.slice(0, 120);
 
-/* El precio va por persona, como se vota en el HOP: `price` es el del grupo. */
+/* El vuelo va por persona, como se vota en el HOP: `price` es el del grupo. El
+   alojamiento, en total. */
 export function propuestaDeVuelo(o, stay = null) {
   const pax = Math.max(1, Number(o.adults) || 1);
   const ida = [o.depart_time, o.arrive_time].filter(Boolean).join("–");
@@ -44,7 +45,9 @@ export function propuestaDeVuelo(o, stay = null) {
   if (stay) {
     datos.cama = String(stay.name || "Alojamiento").slice(0, 120);
     if (enlaceOk(stay.url) && String(stay.url).startsWith("https://")) datos.cama_url = stay.url;
-    if (Number.isFinite(Number(stay.price_total))) datos.cama_precio = Number(stay.price_total) / pax;
+    // El alojamiento, en TOTAL: es para los que duermen, que no tienen por qué
+    // ser los del grupo (se elige al buscarlo).
+    if (Number.isFinite(Number(stay.price_total))) datos.cama_precio = Number(stay.price_total);
     const foto = stay.image || (Array.isArray(stay.images) ? stay.images[0] : "");
     if (foto && String(foto).startsWith("https://")) datos.foto = foto;
   }

@@ -21,6 +21,7 @@ import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { montarHoras, textoHoras } from "./horas.js";
 import { ORIGENES } from "./opciones.js";
 import { huecoFoto, ponerFotos } from "./fotos.js";
+import { tirar } from "./papelera.js";
 import { fotos as fotosCama, metaCama } from "./alojamiento.js";
 import { enlaceOk, hashCorto, pidCombo, pidVuelo, propuestaDeVuelo } from "./propuesta-vuelo.js";
 import {
@@ -367,9 +368,12 @@ function estadoHop(j) {
     if (sinMiVoto(guardadas)) toca = `Te toca votar ${sinMiVoto(guardadas)}`;
   } else {
     const p = j.plan;
-    const total = p ? (Number(p.precio) || 0) + (Number(p.cama_precio) || 0) : 0;
-    txt = p ? `Plan: ${p.titulo}${total ? ` · ${Math.round(total)} € por cabeza` : ""}` : "Eligiendo el plan";
+    // El vuelo va por cabeza y el alojamiento en total (es para los que
+    // duermen, que no tienen por qué ser los del grupo): no se suman.
+    txt = p ? `Plan: ${p.titulo}${Number(p.precio) ? ` · vuelo ${Math.round(Number(p.precio))} € por cabeza` : ""}` : "Eligiendo el plan";
   }
+  const limite = (j.limites || {})[`f${f}`];
+  if (limite && toca) toca += ` · hasta el ${fmtDate(limite)}`;
   return { f, txt, toca };
 }
 
@@ -786,12 +790,13 @@ const ESPERA_VUELOS_MS = 8 * 60e3; // lo que suele tardar un barrido
 const ESPERA_CAMA_MS = 3 * 60e3;
 const CADUCA_BUSQUEDA_MS = 35 * 60e3; // más que esto, algo ha ido mal
 const MAX_RESULTADOS = 30;
-const MAX_CAMAS = 6; // en la lista de la fase 3; la hoja las enseña todas
 // Las camas de verdad, y aparte los comparadores (Booking, Kayak...): esos son
 // enlaces con las fechas puestas, sin precio, y van al pie de la hoja.
 const camasDe = (datos) => ({
   stays: (datos.stays || []).filter((s) => s.kind !== "link"),
   enlaces: (datos.stays || []).filter((s) => s.kind === "link" && enlaceOk(s.url)),
+  // Para cuántos se buscó: lo dice el resumen del resultado.
+  gente: Number((datos.summary || {}).party) || 0,
 });
 // Hotel o casa entera: Google Hoteles y Amadeus traen hoteles (con el precio
 // más barato de Booking, Expedia o la web del hotel); Airbnb y Holidu, pisos.
@@ -999,7 +1004,7 @@ function pintarHop(app, pendiente) {
 
   $("#hopFases", app).addEventListener("click", (e) => {
     const b = e.target.closest("[data-ver-fase]");
-    if (!b) return;
+    if (!b || b.disabled || Number(b.dataset.verFase) > fase()) return;
     estado.ver = Number(b.dataset.verFase);
     pintarViaje(app);
   });
@@ -1099,7 +1104,75 @@ export function pintarViaje(app) {
     montarFase(app, estado.ver);
   }
   [null, pintarFase1, pintarFase2, pintarFase3, pintarFase4, pintarFase5][estado.ver](app);
+  pintarLimite(app, estado.ver);
+  caja.classList.toggle("votacion-cerrada", cerrada(estado.ver));
   ponerFotos(caja);
+}
+
+/* ---------------------------------------- hasta cuándo se vota
+   Quien crea el HOP puede poner fecha límite a cada votación: las fechas
+   (fase 1), lo que no (fase 2) y lo guardado (fase 4). Hasta ese día
+   incluido se vota; después se ve el resultado y ya no se toca. */
+const FASES_CON_LIMITE = [1, 2, 4];
+const limiteDe = (n) => (estado.hop.limites || {})[`f${n}`] || "";
+const cerrada = (n) => !!limiteDe(n) && hoyISO() > limiteDe(n);
+const diasHasta = (iso) => Math.round((new Date(`${iso}T12:00:00`) - new Date(`${hoyISO()}T12:00:00`)) / 864e5);
+
+function pintarLimite(app, n) {
+  const caja = $("#hopFaseLimite", app);
+  if (!caja) return;
+  const mando = estado.hop.creador === miUid() && !estado.invitado;
+  if (!FASES_CON_LIMITE.includes(n) || (!limiteDe(n) && !mando)) {
+    pintarSi(caja, "");
+    return;
+  }
+  if (estado.limiteEditando === n) {
+    if (!caja.querySelector("form")) {
+      caja.dataset.huella = "";
+      caja.innerHTML = `<form class="hopx-limite-form" data-limite-form="${n}">
+          <label>Se vota hasta el <input type="date" name="dia" min="${hoyISO()}" max="${esc(estado.hop.fin || "")}"
+            value="${esc(limiteDe(n))}" required></label>
+          <button class="btn primary small" type="submit">Guardar</button>
+          ${limiteDe(n) ? `<button class="btn ghost small" type="button" data-limite-quitar="${n}">Sin fecha límite</button>` : ""}
+          <button class="btn ghost small" type="button" data-limite-cancelar>Cancelar</button>
+        </form>`;
+      caja.querySelector("form").addEventListener("submit", (e) => {
+        e.preventDefault();
+        ponerLimite(app, n, e.currentTarget.elements.dia.value);
+      });
+    }
+    return;
+  }
+  const dia = limiteDe(n);
+  const quedan = dia ? diasHasta(dia) : 0;
+  const texto = !dia
+    ? "Sin fecha límite para votar"
+    : cerrada(n)
+      ? `Votación cerrada el ${fmtDate(dia, true)}`
+      : `Se vota hasta el ${fmtDate(dia, true)} · ${quedan === 0 ? "último día" : quedan === 1 ? "queda 1 día" : `quedan ${quedan} días`}`;
+  pintarSi(
+    caja,
+    `<p class="hopx-limite-txt${cerrada(n) ? " cerrada" : dia && quedan <= 1 ? " pronto" : ""}">${ico("calendario", 15)}
+      <span>${esc(texto)}</span>${
+        mando
+          ? ` <button type="button" class="hopx-enlace" data-limite-editar="${n}">${dia ? "cambiar" : "poner fecha límite"}</button>`
+          : ""
+      }</p>`
+  );
+}
+
+async function ponerLimite(app, n, dia) {
+  const limites = { ...estado.hop.limites };
+  if (dia) limites[`f${n}`] = dia;
+  else delete limites[`f${n}`];
+  const r = await nubeHopCambiar(estado.id, { limites: Object.keys(limites).length ? limites : null });
+  if (!r.ok) {
+    alert(r.error);
+    return;
+  }
+  estado.hop.limites = limites;
+  estado.limiteEditando = 0;
+  pintarViaje(app);
 }
 
 function pintarFases(app) {
@@ -1107,8 +1180,16 @@ function pintarFases(app) {
   pintarSi(
     $("#hopFases", app),
     `<ol class="hopx-fases-lista" style="--hecho:${(actual - 1) / (FASES.length - 1)}">${FASES.map(
-      ([n, t, i]) => `<li class="${n < actual ? "hecho" : ""}${n === actual ? " actual" : ""}${n === estado.ver ? " viendo" : ""}">
-          <button type="button" data-ver-fase="${n}" ${n === estado.ver ? 'aria-current="step"' : ""}>
+      ([n, t, i]) => `<li class="${n < actual ? "hecho" : ""}${n === actual ? " actual" : ""}${n === estado.ver ? " viendo" : ""}${
+        n > actual ? " cerrada" : ""
+      }">
+          <button type="button" data-ver-fase="${n}" ${n === estado.ver ? 'aria-current="step"' : ""}${
+            // EN ORDEN. Las fases que vienen no se abren hasta que el grupo
+            // llega: buscar antes de decir qué ciudades no, o votar antes de
+            // haber buscado, deja a medio grupo decidiendo sin ver lo de los
+            // demás. Lo hecho sí se puede volver a mirar.
+            n > actual ? ` disabled title="Primero «${esc(FASES[actual - 1][1])}»"` : ""
+          }>
             <span class="hopx-fases-ico">${ico(n < actual ? "si" : i, 18)}</span>
             <span class="hopx-fases-n">${n < actual ? "hecho" : n === actual ? "ahora" : `paso ${n}`}</span><span>${t}</span>
           </button>
@@ -1178,6 +1259,7 @@ function esqueleto(n) {
       <span class="hopx-estado" id="hopFaseEstado"></span>
     </header>
     <p class="hopx-intro">${intro}</p>
+    <div class="hopx-limite" id="hopFaseLimite"></div>
     ${cuerpo}
     <div class="hopx-fase-pie" id="hopFasePie"></div>
     <div id="hopFormProp"></div>`;
@@ -1400,6 +1482,11 @@ function vetos() {
     .sort((a, b) => b.quienes.length - a.quienes.length || a.n.localeCompare(b.n, "es"));
 }
 const misVetos = () => (estado.hop.vetos || {})[miUid()] || [];
+// Quién no ha dicho todavía qué ciudades no (por nombre).
+const faltanVetos = () =>
+  (estado.hop.miembros || [])
+    .filter((u) => !Object.prototype.hasOwnProperty.call(estado.hop.vetos || {}, u))
+    .map((u) => (estado.hop.nombres || {})[u] || "?");
 
 /* Ya has votado cuando tienes tus tachadas apuntadas, aunque sean ninguna
    («no quito ninguna» guarda una lista vacía). Hasta entonces no se ve lo de
@@ -1455,8 +1542,12 @@ function pintarFase2(app) {
   pintarMapa(app, votado ? todos : todos.filter((v) => mios.includes(v.k)), mios);
   pintarSi(
     $("#hopFasePie", app),
-    `<button class="btn primary" type="button" data-ir-fase="3">Seguir a buscar →</button>
-     ${votado && fuera.length ? `<span class="hop-letra">No se buscará en: ${esc(fuera.map((v) => v.n).join(", "))}</span>` : ""}`
+    votado
+      ? `<button class="btn primary" type="button" data-ir-fase="3">Seguir a buscar →</button>
+     ${fuera.length ? `<span class="hop-letra">No se buscará en: ${esc(fuera.map((v) => v.n).join(", "))}</span>` : ""}
+     ${faltanVetos().length ? `<span class="hop-letra">Aún faltan ${esc(faltanVetos().join(", "))}.</span>` : ""}`
+      : `<button class="btn primary" type="button" disabled>Seguir a buscar →</button>
+         <span class="hop-letra">Primero tacha tus ciudades (o di que no quitas ninguna).</span>`
   );
 }
 
@@ -1677,6 +1768,16 @@ function pintarFase3(app) {
         pintarFase3(app);
       });
     }
+  } else if (!estado.invitado && !heVotadoVetos()) {
+    // Antes de buscar, lo de la fase 2: si no, se busca sin haber visto qué
+    // ciudades quiere quitar el grupo (ni dicho las tuyas).
+    caja.dataset.huella = "";
+    pintarSi(
+      caja,
+      `<div class="hopx-antes">${ico("no", 20)}<div><p><b>Antes de buscar, di qué ciudades no.</b> Así la búsqueda ya
+        sale sin lo que el grupo no quiere, y ves lo que han tachado los demás.</p>
+        <button class="btn primary small" type="button" data-ver-fase-ir="2">Ir a «Dónde no»</button></div></div>`
+    );
   } else if (!caja.querySelector("#hopBuscarForm")) {
     caja.dataset.huella = "";
     caja.innerHTML = formBuscar(b, estado.hop.busqueda);
@@ -1735,8 +1836,10 @@ function formBuscar(atascada, ultima) {
         ${
           fuera.length
             ? `<p class="hopx-tachadas">${ico("no", 14)} Sin ${esc(fuera.map((v) => v.n).join(", "))} <small>(lo tachó el grupo)</small></p>`
-            : ""
+            : `<p class="hopx-tachadas nada">${ico("si", 14)} El grupo no ha quitado ninguna ciudad</p>`
         }
+        ${faltanVetos().length ? `<p class="hop-letra">Faltan por decir qué ciudades no: ${esc(faltanVetos().join(", "))}. Lo que
+          tachen después contará en la siguiente búsqueda.</p>` : ""}
       </div>
       <div class="hop-horas" id="hopHorasWrap"><input type="hidden" id="hopHoras"></div>
       <div class="hopx-buscar-pie">
@@ -1848,7 +1951,11 @@ function montarFormBuscar(app, caja) {
       dest,
       label: `HOP ${estado.hop.nombre}: ${texto}`.slice(0, 190),
       owner: tfUid(),
-      max_price: f.tope.value,
+      // El tope se elige POR CABEZA y el buscador compara con el total del
+      // grupo (el precio de cada vuelo ya va para los que sois): sin
+      // multiplicar, «150 € por cabeza» para cuatro buscaba hasta 150 € entre
+      // los cuatro y no salía casi nada.
+      max_price: String(Number(f.tope.value) * personas),
       nights,
       months: "12",
       adults: String(personas),
@@ -1916,8 +2023,6 @@ function pintarResultados(app) {
     <ul class="hopx-resultados">${res.ofertas
       .map((o) => {
         const guardada = guardadaDe(pidVuelo(o));
-        const camas = estado.camas[o.id];
-        const abierta = estado.abierta === o.id;
         const ida = [o.depart_time, o.arrive_time].filter(Boolean).join("–");
         const vuelta = [o.return_time, o.return_arrive_time].filter(Boolean).join("–");
         return `<li class="hopx-res${guardada ? " guardada" : ""}">
@@ -1935,47 +2040,16 @@ function pintarResultados(app) {
               <div class="hopx-res-acc">
                 <button type="button" class="btn small ${guardada ? "deep-ghost" : "primary"}" data-guardar="${esc(o.id)}"
                   ${guardada ? "disabled" : ""}>${guardada ? `${ico("si", 14)} Guardada` : "Guardar"}</button>
-                <button type="button" class="btn ghost small" data-camas="${esc(o.id)}" aria-expanded="${abierta}">${ico(
+                <button type="button" class="btn ghost small" data-camas-hoja="${esc(o.id)}">${ico(
                   "cama",
                   14
                 )} Dónde dormir</button>
               </div>
             </div>
-            ${abierta ? `<div class="hopx-res-camas">${camasHTML(o, camas)}</div>` : ""}
           </li>`;
       })
       .join("")}</ul>`
   );
-}
-
-function camasHTML(o, camas) {
-  const c = enMarcha("cama");
-  if (!camas && c && c.oferta === o.id && c.pasado < CADUCA_BUSQUEDA_MS) return progresoHTML(c, ESPERA_CAMA_MS, "dónde dormir");
-  if (!camas) return `<p class="hop-letra">Mirando…</p>`;
-  if (!camas.stays.length) return `<p class="hop-letra">No se encontró alojamiento para esas fechas.</p>`;
-  const mas = camas.stays.length - MAX_CAMAS;
-  return `<ul class="hopx-camas">${camas.stays
-    .slice(0, MAX_CAMAS)
-    .map((s, i) => {
-      const guardada = guardadaDe(pidCombo(o, s));
-      const precio = Number.isFinite(Number(s.price_total)) ? Number(s.price_total) / Math.max(1, Number(o.adults) || 1) : null;
-      return `<li>
-          <div><b>${esc(s.name || "Alojamiento")}</b>
-            <span class="hop-letra">${esc([s.area, s.rating ? `nota ${s.rating}` : "", s.provider].filter(Boolean).join(" · "))}${
-              enlaceOk(s.url) ? ` · <a href="${escURL(s.url)}" target="_blank" rel="noopener">ver</a>` : ""
-            }</span></div>
-          <b>${precio !== null ? `${euros(precio)}<small> por cabeza</small>` : "—"}</b>
-          <button type="button" class="btn small ${guardada ? "deep-ghost" : "primary"}" data-guardar="${esc(o.id)}" data-cama="${i}"
-            ${guardada ? "disabled" : ""}>${guardada ? `${ico("si", 14)} Guardada` : "Guardar con este"}</button>
-        </li>`;
-    })
-    .join("")}</ul>${
-    mas > 0
-      ? `<button type="button" class="btn ghost small hopx-camas-todas" data-camas-hoja="${esc(o.id)}">Ver las ${
-          camas.stays.length
-        } con fotos</button>`
-      : ""
-  }`;
 }
 
 async function guardarOferta(app, o, stay) {
@@ -1989,26 +2063,28 @@ async function guardarOferta(app, o, stay) {
   await cargarPropuestas(app);
 }
 
-async function verCamas(app, o) {
-  estado.abierta = estado.abierta === o.id ? "" : o.id;
-  pintarViaje(app);
-  if (estado.abierta) await pedirCamas(app, o);
+/* EL ALOJAMIENTO DE UN VUELO, con la gente que DUERME, que no tiene por qué
+   ser la del HOP: dos familias con niños pequeños que no cuentan, o un amigo
+   que viene y no está en el grupo. Se pregunta al buscar (por defecto, los
+   del grupo) y los precios van en TOTAL, no por cabeza.
+
+   Lo ya buscado (por ti o por otro del grupo) se lee sin preguntar; buscar
+   otra vez, para otro número, lo pide quien quiera. */
+async function cargarCamasHechas(app, o) {
+  if (estado.camas[o.id]) return true;
+  const ya = typeof nubeResultado === "function" ? await nubeResultado(`stay-${o.id}`) : null;
+  if (!ya) return false;
+  estado.camas[o.id] = camasDe(ya);
+  repintar(app);
+  return true;
 }
 
-/* El alojamiento de un vuelo: lo ya buscado (por ti o por otro del grupo) o,
-   si no hay, se lanza la búsqueda y se apunta en el HOP para que lo vean
-   todos mientras llega. */
-async function pedirCamas(app, o) {
-  if (estado.camas[o.id]) return;
-  const ya = typeof nubeResultado === "function" ? await nubeResultado(`stay-${o.id}`) : null;
-  if (ya) {
-    estado.camas[o.id] = camasDe(ya);
-    repintar(app);
-    return;
-  }
+async function lanzarCamas(app, o, gente) {
   const c = enMarcha("cama");
   if (c && c.oferta === String(o.id)) return; // ya la está buscando alguien
-  const n = Math.max(1, Number(o.adults) || personasHop());
+  const n = Math.min(16, Math.max(1, Number(gente) || personasHop()));
+  delete estado.camas[o.id];
+  estado.camasForm = "";
   const r = await dispatch("stay", {
     offer_id: o.id,
     city: o.destination_name || o.destination,
@@ -2020,7 +2096,7 @@ async function pedirCamas(app, o) {
     hop: estado.id,
   });
   if (!r.ok) {
-    estado.camas[o.id] = { stays: [] };
+    estado.camas[o.id] = { stays: [], enlaces: [], gente: n };
     repintar(app);
     return;
   }
@@ -2073,6 +2149,27 @@ function abrirHojaCamas(app, o) {
         if (typeof tfCerrarDialogo === "function") tfCerrarDialogo(caja);
         return;
       }
+      if (e.target.closest("[data-camas-otra]")) {
+        estado.camasForm = estado.hojaCamas;
+        pintarHojaCamas();
+        return;
+      }
+      const lanzar = e.target.closest("[data-camas-lanzar]");
+      if (lanzar) {
+        const of = ofertaDe(estado.hojaCamas);
+        const gente = caja.querySelector("[name=camasGente]")?.value;
+        if (of) {
+          lanzar.disabled = true;
+          lanzarCamas(caja._app, of, gente);
+        }
+        return;
+      }
+      const quitar = e.target.closest("[data-quitar-cama]");
+      if (quitar) {
+        const v = estado.propuestas.find((x) => x.id === quitar.dataset.quitarCama);
+        if (v) quitarVariante(caja._app, v, quitar.closest(".hopx-hcama"));
+        return;
+      }
       const filtro = e.target.closest("[data-camas-ver]");
       if (filtro) {
         estado.camasVer = filtro.dataset.camasVer;
@@ -2099,15 +2196,20 @@ function abrirHojaCamas(app, o) {
       },
     });
   }
-  pedirCamas(app, o);
+  cargarCamasHechas(app, o).then((hay) => {
+    if (!hay && !estado.camas[o.id]) {
+      estado.camasForm = String(o.id);
+      pintarHojaCamas();
+    }
+  });
 }
 
 function camaCarta(o, s, i) {
   const guardada = guardadaDe(pidCombo(o, s));
-  const gente = Math.max(1, Number(o.adults) || personasHop());
-  const precio = Number.isFinite(Number(s.price_total)) ? Number(s.price_total) / gente : null;
+  const precio = Number.isFinite(Number(s.price_total)) ? Number(s.price_total) : null;
   const n = noches(o.depart_date, o.return_date);
   const foto = fotosCama(s) || `<div class="hopx-hcama-sinfoto" aria-hidden="true">${ico("cama", 28)}</div>`;
+  const puedoQuitar = guardada && (guardada.autor === miUid() || estado.hop.creador === miUid());
   return `<li class="hopx-hcama${guardada ? " propuesta" : ""}">
       ${foto}
       <div class="hopx-hcama-txt">
@@ -2115,14 +2217,36 @@ function camaCarta(o, s, i) {
         <span class="hop-letra">${esc(metaCama(s))}</span>
       </div>
       <div class="hopx-hcama-pie">
-        <span class="hopx-hcama-precio">${precio !== null ? euros(precio) : "—"}<small>por cabeza${
+        <span class="hopx-hcama-precio">${precio !== null ? euros(precio) : "—"}<small>en total${
           n ? ` · ${n} noche${n === 1 ? "" : "s"}` : ""
         }</small></span>
         ${enlaceOk(s.url) ? `<a class="btn ghost small" href="${escURL(s.url)}" target="_blank" rel="noopener">Ver</a>` : ""}
-        <button type="button" class="btn small ${guardada ? "deep-ghost" : "primary"}" data-proponer-cama="${i}"
-          ${guardada ? "disabled" : ""}>${guardada ? `${ico("si", 14)} Propuesto` : "Proponer"}</button>
+        ${
+          guardada
+            ? puedoQuitar
+              ? `<button type="button" class="btn small deep-ghost" data-quitar-cama="${esc(guardada.id)}"
+                  title="Quitarlo de las versiones del viaje">${ico("si", 14)} Propuesto · quitar</button>`
+              : `<button type="button" class="btn small deep-ghost" disabled>${ico("si", 14)} Propuesto</button>`
+            : `<button type="button" class="btn small primary" data-proponer-cama="${i}">Proponer</button>`
+        }
       </div>
     </li>`;
+}
+
+/* Cuántos dormís: se pregunta antes de buscar, con los del grupo puestos. */
+function camasFormHTML(o, antes) {
+  const n = antes || personasHop();
+  const opciones = Array.from({ length: 16 }, (_, i) => i + 1)
+    .map((x) => `<option value="${x}"${x === n ? " selected" : ""}>${x} ${x === 1 ? "persona" : "personas"}</option>`)
+    .join("");
+  return `<div class="hopx-hcamas-form">
+      <p><b>¿Cuántos vais a dormir?</b> No tiene por qué ser el grupo entero: los niños pequeños no siempre
+        cuentan, y alguien puede venir sin estar en el HOP.</p>
+      <label class="hopx-hcamas-gente"><span class="solo-lector">Personas</span>
+        <select name="camasGente">${opciones}</select></label>
+      <button type="button" class="btn primary" data-camas-lanzar>${ico("cama", 16)} Buscar alojamiento</button>
+      <p class="hop-letra">Tarda un par de minutos y le llega a todo el grupo.</p>
+    </div>`;
 }
 
 function pintarHojaCamas() {
@@ -2132,10 +2256,12 @@ function pintarHojaCamas() {
   if (!o) return;
   const camas = estado.camas[o.id];
   const c = enMarcha("cama");
-  const gente = Math.max(1, Number(o.adults) || personasHop());
+  const gente = (camas && camas.gente) || 0;
   const n = noches(o.depart_date, o.return_date);
   let cuerpo;
-  if (!camas && c && c.oferta === String(o.id) && c.pasado < CADUCA_BUSQUEDA_MS) {
+  if (estado.camasForm === String(o.id) && !(c && c.oferta === String(o.id))) {
+    cuerpo = camasFormHTML(o, gente);
+  } else if (!camas && c && c.oferta === String(o.id) && c.pasado < CADUCA_BUSQUEDA_MS) {
     cuerpo = progresoHTML(c, ESPERA_CAMA_MS, "dónde dormir");
   } else if (!camas) {
     cuerpo = `<p class="hop-letra">Mirando…</p>`;
@@ -2177,8 +2303,14 @@ function pintarHojaCamas() {
         <h2 id="hopCamasTit">${esc(o.destination_name || o.destination)}</h2>
         <p class="hop-letra">${esc(
           [o.depart_date && o.return_date ? `${fmtDate(o.depart_date, true)} → ${fmtDate(o.return_date, true)}` : "",
-            n ? `${n} noche${n === 1 ? "" : "s"}` : "", `${gente} pers.`].filter(Boolean).join(" · ")
-        )}</p>
+            n ? `${n} noche${n === 1 ? "" : "s"}` : "", gente ? `para ${gente} ${gente === 1 ? "persona" : "personas"}` : ""]
+            .filter(Boolean)
+            .join(" · ")
+        )}${
+          camas && estado.camasForm !== String(o.id)
+            ? ` · <button type="button" class="hopx-enlace" data-camas-otra>buscar para otro número</button>`
+            : ""
+        }</p>
       </div>
       <button type="button" data-cerrar-camas aria-label="Cerrar">cerrar</button>
     </header>
@@ -2221,8 +2353,8 @@ async function comprobarBusquedas(app) {
   if (toca) {
     const datos = typeof nubeResultado === "function" ? await nubeResultado(`stay-${cama.oferta}`) : null;
     if (datos) {
-      const { stays, enlaces } = camasDe(datos);
-      estado.camas[cama.oferta] = { stays, enlaces };
+      estado.camas[cama.oferta] = camasDe(datos);
+      const { stays } = estado.camas[cama.oferta];
       if (c) {
         const lista = { ...cama, lanzada: new Date(c.desde), estado: stays.length ? "lista" : "vacia", n: stays.length };
         estado.hop.cama = lista;
@@ -2287,9 +2419,9 @@ const borrarHTML = (p) =>
     : "";
 
 function cartaGuardada(p, puesto, lider) {
-  const pref = preferida(p);
-  const camaPrecio = pref ? pref.cama_precio : p.cama_precio;
-  const total = (Number.isFinite(p.precio) ? p.precio : 0) + (Number.isFinite(camaPrecio) ? camaPrecio : 0);
+  // Arriba, el vuelo por cabeza; el alojamiento va en su línea y en total:
+  // es para los que duermen, que no tienen por qué ser los del grupo.
+  const total = Number.isFinite(p.precio) ? p.precio : 0;
   const n = noches(p.ida, p.vuelta);
   const fechas =
     p.ida && p.vuelta
@@ -2322,7 +2454,7 @@ function cartaGuardada(p, puesto, lider) {
             ? variantesHTML(p, camas)
             : `<p class="hopx-dato">${ico("cama", 15)} <span>${
           p.cama
-            ? `${esc(p.cama)}${Number.isFinite(p.cama_precio) ? ` · ${euros(p.cama_precio)}` : ""}${
+            ? `${esc(p.cama)}${Number.isFinite(p.cama_precio) ? ` · ${euros(p.cama_precio)} en total` : ""}${
                 enlaceOk(p.cama_url) ? ` · <a href="${escURL(p.cama_url)}" target="_blank" rel="noopener">ver</a>` : ""
               }`
             : "sin alojamiento"
@@ -2349,7 +2481,7 @@ function variantesHTML(p, camas) {
   return `<div class="hopx-variantes" role="group" aria-label="¿Qué alojamiento preferís?">
       <p class="hopx-variantes-tit">${ico("cama", 15)} <span>Dónde dormir · ${
         p.variantes.length === 1 ? "una versión" : `${p.variantes.length} versiones, elegid una`
-      }</span>${camas ? ` · ${botonCamas(p)}` : ""}</p>
+      } · precio total</span>${camas ? ` · ${botonCamas(p)}` : ""}</p>
       <ul>${p.variantes
         .map((v) => {
           const mia = (v.votos || {})[yoUid] === "si";
@@ -2364,10 +2496,32 @@ function variantesHTML(p, camas) {
                 .map((u) => avatar(u, nombres[u] || "?"))
                 .join("")}${si.length ? "" : '<span class="hop-letra">—</span>'}</span>
               ${enlaceOk(v.cama_url) ? `<a href="${escURL(v.cama_url)}" target="_blank" rel="noopener" aria-label="Ver ${esc(v.cama)}">ver</a>` : "<span></span>"}
+              ${
+                v.autor === yoUid || estado.hop.creador === yoUid
+                  ? `<button type="button" class="hopx-variante-quitar" data-quitar-variante="${esc(v.id)}"
+                      aria-label="Quitar ${esc(v.cama)}" title="Quitar esta versión">×</button>`
+                  : "<span></span>"
+              }
             </li>`;
         })
         .join("")}</ul>
     </div>`;
+}
+
+/* Quitar un alojamiento propuesto (quien lo propuso o quien creó el HOP):
+   cambiar de opinión no puede costar borrar el viaje entero. Se va a la
+   papelera y deja de ser una versión del viaje. */
+async function quitarVariante(app, v, fila) {
+  const r = nubeBorrarPropuesta(estado.id, v.id);
+  await tirar(fila);
+  const res = await r;
+  if (!res.ok) {
+    if (fila) fila.style.visibility = "";
+    alert(res.error);
+    return;
+  }
+  estado.propuestas = estado.propuestas.filter((x) => x.id !== v.id);
+  repintar(app);
 }
 
 /* Elegir una versión: tu «la prefiero» pasa a esa y sale de la que tenías.
@@ -2488,7 +2642,7 @@ function pintarFase5(app) {
     return;
   }
   const dias = noches(plan.ida, plan.vuelta);
-  const total = (Number.isFinite(plan.precio) ? plan.precio : 0) + (Number.isFinite(plan.cama_precio) ? plan.cama_precio : 0);
+  const total = Number.isFinite(plan.precio) ? plan.precio : 0;
   const de = guardadaDe(plan.de);
   pintarSi(
     $("#f5Plan", app),
@@ -2511,11 +2665,9 @@ function pintarFase5(app) {
           ${plan.nota ? `<div class="ancho"><dt>Nota</dt><dd>${esc(plan.nota)}</dd></div>` : ""}
         </dl>
         <div class="hopx-plan-total">
-          <span>por cabeza</span>
+          <span>vuelo, por cabeza</span>
           <b>${total ? euros(total) : "—"}</b>
-          <small>vuelo ${Number.isFinite(plan.precio) ? euros(plan.precio) : "—"}${
-            Number.isFinite(plan.cama_precio) ? ` + dormir ${euros(plan.cama_precio)}` : ""
-          }</small>
+          <small>${Number.isFinite(plan.cama_precio) ? `dormir: ${euros(plan.cama_precio)} en total` : "dormir: sin elegir"}</small>
         </div>
         ${de ? `<p class="hopx-plan-apoyo">${ico("arriba", 16)} <b>${nota(de)} punto${Math.abs(nota(de)) === 1 ? "" : "s"}</b> · ${puntos(de).si} a favor de ${(estado.hop.miembros || []).length}</p>` : ""}
         <div class="hopx-plan-acc">
@@ -2549,7 +2701,7 @@ function abrirEditarPlan(app) {
       ${campo("precio", "Vuelo, € por cabeza", 'type="number" min="0" step="1"')}
       ${campo("url", "Enlace del vuelo", 'type="url" placeholder="https://…" ancho')}
       ${campo("cama", "Dónde dormimos", 'maxlength="120" ancho')}
-      ${campo("cama_precio", "Dormir, € por cabeza", 'type="number" min="0" step="1"')}
+      ${campo("cama_precio", "Dormir, € en total", 'type="number" min="0" step="1"')}
       ${campo("cama_url", "Enlace del alojamiento", 'type="url" placeholder="https://…" ancho')}
       ${campo("nota", "Nota", 'maxlength="500" placeholder="Quedamos en la T1 a las 6" ancho')}
       <div class="hop-form-pie ancha">
@@ -2619,6 +2771,21 @@ async function alTocarFase(app, e) {
       return;
     }
   }
+  if (b.dataset.limiteEditar) {
+    estado.limiteEditando = Number(b.dataset.limiteEditar);
+    return pintarViaje(app);
+  }
+  if (b.hasAttribute("data-limite-cancelar")) {
+    estado.limiteEditando = 0;
+    return pintarViaje(app);
+  }
+  if (b.dataset.limiteQuitar) return ponerLimite(app, Number(b.dataset.limiteQuitar), "");
+  // Pasada la fecha límite, esa votación ya no se toca.
+  const votar = b.dataset.voto || b.dataset.variante || b.dataset.tachar || b.dataset.destachar || b.hasAttribute("data-ninguna");
+  if (votar && cerrada(estado.ver)) {
+    if (typeof tfAnunciar === "function") tfAnunciar("La votación está cerrada: pasó la fecha límite.");
+    return;
+  }
   const s = yo();
   if (b.dataset.voto) {
     const tarjeta = b.closest("[data-prop]");
@@ -2643,11 +2810,17 @@ async function alTocarFase(app, e) {
   if (b.hasAttribute("data-borrar-prop")) {
     const p = estado.propuestas.find((x) => x.id === b.closest("[data-prop]").dataset.prop);
     if (!p || !confirm(`¿Borrar «${p.titulo}» y sus votos?`)) return;
-    const r = await nubeBorrarPropuesta(estado.id, p.id);
+    const tarjeta = b.closest("[data-prop]");
+    const pendiente = nubeBorrarPropuesta(estado.id, p.id);
+    await tirar(tarjeta);
+    const r = await pendiente;
     if (r.ok) {
       estado.propuestas = estado.propuestas.filter((x) => x.id !== p.id);
       pintarViaje(app);
-    } else alert(r.error);
+    } else {
+      if (tarjeta) tarjeta.style.visibility = "";
+      alert(r.error);
+    }
     return;
   }
   if (b.dataset.fijar) {
@@ -2682,10 +2855,19 @@ async function alTocarFase(app, e) {
   }
   if (b.dataset.camas) {
     const o = ofertaDe(b.dataset.camas);
-    if (o) verCamas(app, o);
+    if (o) abrirHojaCamas(app, o);
     return;
   }
+  if (b.dataset.verFaseIr) {
+    estado.ver = Number(b.dataset.verFaseIr);
+    return pintarViaje(app);
+  }
   if (b.dataset.variante) return elegirVariante(app, b.dataset.variante);
+  if (b.dataset.quitarVariante) {
+    const v = estado.propuestas.find((x) => x.id === b.dataset.quitarVariante);
+    if (v) quitarVariante(app, v, b.closest(".hopx-variante"));
+    return;
+  }
   if (b.dataset.camasHoja) {
     const o = ofertaDe(b.dataset.camasHoja);
     if (o) abrirHojaCamas(app, o);

@@ -79,7 +79,9 @@ def test_la_version_de_los_assets_sale_de_un_solo_sitio():
         html = (WEB / fichero).read_text(encoding="utf-8")
         versiones = set(re.findall(r"\.(?:css|js)\?v=([A-Za-z0-9.]+)", html))
         assert versiones == {str(montar.BUILD)}, f"{fichero}: {versiones}"
-        assert f"build {montar.BUILD}" in html, f"{fichero}: el pie va por otra version"
+        # La version no se enseña en el pie: «build 84a4f0b» no le dice nada a
+        # quien usa la web. Sigue en el `?v=` de los assets, que es donde sirve.
+        assert 'class="build"' not in html, f"{fichero}: el pie enseña la version"
 
 
 def test_cada_pagina_publica_dice_lo_suyo():
@@ -115,7 +117,7 @@ def test_sellar_una_version_la_pone_en_las_cinco_paginas():
         html = (WEB / fichero).read_text(encoding="utf-8")
         salida = montar.montar_texto(html, datos, sellada)
         vistas |= set(re.findall(r"\.(?:css|js)\?v=([A-Za-z0-9.]+)", salida))
-        assert f"build {sellada}" in salida, f"{fichero}: el pie no se sello"
+        assert 'class="build"' not in salida, f"{fichero}: el pie enseña la version"
         assert "?v=dev" not in salida, f"{fichero}: quedo algun ?v=dev"
     assert vistas == {sellada}, f"builds distintos entre paginas: {vistas}"
 
