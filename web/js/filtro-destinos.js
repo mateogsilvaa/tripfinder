@@ -162,6 +162,9 @@ export function engancharFiltro(select, campo, { rotulo = "unos países o region
   pintar();
 }
 
+// El mapa, solo donde cabe: en el móvil el dedo no acierta con Andorra.
+const conMapa = () => typeof matchMedia === "function" && matchMedia("(min-width: 900px)").matches;
+
 export async function abrirFiltro(campo) {
   let f = leerFiltro(campo.value);
   const caja = tfModal(`
@@ -192,6 +195,20 @@ export async function abrirFiltro(campo) {
     )}" aria-pressed="${tiene(f.si, x)}">${esc(x.n)}</button>`;
 
   cuerpo.innerHTML = `
+    ${conMapa() ? `<section class="filtro-mapa" aria-label="Marcar países en el mapa">
+      <div class="filtro-mapa-barra">
+        <div class="filtro-mapa-modo" role="group" aria-label="Qué marca un clic">
+          <button type="button" data-modo="si" aria-pressed="true">Quiero ir</button>
+          <button type="button" data-modo="no" aria-pressed="false">No quiero</button>
+        </div>
+        <div class="filtro-mapa-modo" role="group" aria-label="Qué parte del mapa">
+          <button type="button" data-vista="europa" aria-pressed="true">Europa</button>
+          <button type="button" data-vista="mundo" aria-pressed="false">Mundo</button>
+        </div>
+      </div>
+      <div class="filtro-mapa-lienzo"><p class="meta"><span class="spin"></span>Cargando el mapa…</p></div>
+      <p class="filtro-mapa-nota">Un clic marca el país; otro, lo quita. Los grises no tienen aeropuertos en la lista.</p>
+    </section>` : ""}
     <section class="filtro-parte" aria-labelledby="filtroSiTit">
       <h3 id="filtroSiTit">¿Por dónde?</h3>
       <div class="filtro-elegidos" data-elegidos="si"></div>
@@ -241,8 +258,79 @@ export async function abrirFiltro(campo) {
       : "";
     cuerpo.querySelector("[data-guardar-grupo]").hidden = !f.si.length;
     cuerpo.querySelector(".filtro-resumen").textContent = textoFiltro(JSON.stringify(f)) || "Cualquier sitio";
+    pintarMapa();
     poner();
   };
+
+  /* EL MAPA, en el ordenador: cada país es un botón. Verde lo que quieres,
+     tachado lo que no. Debajo siguen el buscador, las regiones y los grupos:
+     el mapa es otra forma de elegir, no la única. */
+  let modo = "si";
+  let vista = "europa";
+  let mapa = null;
+  const VISTAS = { europa: "400 46 240 104", mundo: "0 30 960 400" };
+  const pintarMapa = () => {
+    const lienzo = cuerpo.querySelector(".filtro-mapa-lienzo");
+    if (!lienzo || !mapa) return;
+    const si = new Set(f.si.filter((x) => x.t === "pais").map((x) => x.k));
+    const no = new Set(f.no.filter((x) => x.t === "pais").map((x) => x.k));
+    lienzo.querySelectorAll("[data-iso]").forEach((el) => {
+      const k = el.dataset.iso;
+      el.classList.toggle("si", si.has(k));
+      el.classList.toggle("no", no.has(k));
+      el.setAttribute("aria-pressed", String(si.has(k) || no.has(k)));
+    });
+    lienzo.querySelector("svg").setAttribute("viewBox", VISTAS[vista]);
+  };
+  if (conMapa()) {
+    import("./mapa-mundo.js")
+      .then((m) => {
+        mapa = m;
+        const lienzo = cuerpo.querySelector(".filtro-mapa-lienzo");
+        if (!lienzo) return;
+        lienzo.innerHTML = `<svg viewBox="${VISTAS[vista]}" preserveAspectRatio="xMidYMid slice" role="group"
+            aria-label="Mapa de países">${m.PAISES.map((p) => {
+              const pais = d.paises.get(p.iso);
+              return pais
+                ? `<path d="${p.d}" data-iso="${esc(p.iso)}" data-n="${esc(pais.n)}" tabindex="0" role="button"
+                    aria-label="${esc(pais.n)}"><title>${esc(pais.n)}</title></path>`
+                : `<path d="${p.d}" class="sin"><title>${esc(p.nombre || "")}</title></path>`;
+            }).join("")}</svg>`;
+        const tocar = (el) => {
+          const x = { t: "pais", k: el.dataset.iso, n: el.dataset.n };
+          const otro = modo === "si" ? "no" : "si";
+          f[otro] = f[otro].filter((y) => !igual(x, y));
+          if (tiene(f[modo], x)) f[modo] = f[modo].filter((y) => !igual(x, y));
+          else f[modo] = [...f[modo], x].slice(0, 40);
+          repintar();
+        };
+        lienzo.addEventListener("click", (e) => {
+          const el = e.target.closest("[data-iso]");
+          if (el) tocar(el);
+        });
+        lienzo.addEventListener("keydown", (e) => {
+          const el = e.target.closest("[data-iso]");
+          if (el && (e.key === "Enter" || e.key === " ")) {
+            e.preventDefault();
+            tocar(el);
+          }
+        });
+        pintarMapa();
+      })
+      .catch(() => {
+        const lienzo = cuerpo.querySelector(".filtro-mapa-lienzo");
+        if (lienzo) lienzo.innerHTML = "";
+      });
+    cuerpo.querySelector(".filtro-mapa-barra").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-modo], [data-vista]");
+      if (!b) return;
+      if (b.dataset.modo) modo = b.dataset.modo;
+      if (b.dataset.vista) vista = b.dataset.vista;
+      cuerpo.querySelectorAll("[data-modo]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.modo === modo)));
+      cuerpo.querySelectorAll("[data-vista]").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.vista === vista)));
+      pintarMapa();
+    });
+  }
 
   const buscar = (donde, q) => {
     const caja = cuerpo.querySelector(`[data-resultados="${donde}"]`);

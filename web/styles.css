@@ -6663,3 +6663,90 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
 .hopx-variante > b { font: 600 13px / 1 var(--font-mono); font-variant-numeric: tabular-nums; }
 .hopx-variante > a { color: var(--muted); font-size: 12px; }
 .hopx-variante .hop-avs.mini .hop-av { width: 18px; height: 18px; font-size: 9px; }
+
+/* ---- la papelera (`papelera.js`) ---------------------------------------
+   Lo que se borra se arruga y entra en una papelera que trae una mano. */
+.papelera {
+  position: fixed;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 90;
+  pointer-events: none;
+  filter: drop-shadow(0 8px 18px rgb(0 0 0 / 0.35));
+}
+@media (max-width: 760px) {
+  .papelera { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
+}
+.papelera-cubo { transform-box: fill-box; transform-origin: center; }
+.papelera-bola {
+  position: fixed;
+  z-index: 91;
+  margin: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: center;
+  box-shadow: inset 0 0 0 1px var(--line), 0 6px 14px rgb(0 0 0 / 0.3);
+  background: var(--surface);
+}
+.hopx-variante { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
+.hopx-variante-quitar {
+  display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
+  border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 16px; line-height: 1; cursor: pointer;
+  position: relative;
+}
+.hopx-variante-quitar::after { content: ""; position: absolute; inset: -10px; }
+.hopx-variante-quitar:hover { color: var(--accent-txt); background: var(--surface2); }
+.hopx-hcamas-form { display: grid; gap: 12px; justify-items: start; padding: 8px 0; max-width: 56ch; }
+.hopx-hcamas-form p { margin: 0; }
+.hopx-hcamas-gente select {
+  min-height: var(--tap-min); padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: var(--field); color: var(--ink); font: 500 15px var(--font-sans);
+}
+
+/* ---- HOP · en orden ------------------------------------------------------ */
+.hopx-fases-lista li.cerrada button { cursor: not-allowed; opacity: 0.55; }
+.hopx-antes {
+  display: flex; gap: 14px; align-items: flex-start; padding: 16px 18px;
+  border: 1px dashed var(--line); border-radius: var(--r); background: var(--surface);
+}
+.hopx-antes > svg { flex: none; color: var(--accent-txt); margin-top: 2px; }
+.hopx-antes p { margin: 0 0 12px; max-width: 60ch; }
+.hopx-tachadas.nada { color: var(--muted); }
+
+/* ---- HOP · hasta cuándo se vota ------------------------------------------ */
+.hopx-limite:empty { display: none; }
+.hopx-limite { margin: -4px 0 14px; }
+.hopx-limite-txt { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0; font-size: var(--fs-ui-s); color: var(--muted); }
+.hopx-limite-txt.pronto { color: var(--accent-txt); }
+.hopx-limite-txt.cerrada { color: var(--ink); font-weight: 600; }
+.hopx-limite-form { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-size: var(--fs-ui-s); }
+.hopx-limite-form input {
+  min-height: 36px; padding: 0 10px; margin-left: 6px; border: 1px solid var(--line); border-radius: var(--r-s);
+  background: var(--field); color: var(--ink); font: inherit;
+}
+/* Pasada la fecha, los votos se ven pero no se tocan. */
+.votacion-cerrada :is([data-voto], [data-variante], [data-tachar], [data-destachar], [data-ninguna], [data-rapido]) {
+  opacity: 0.45; pointer-events: none;
+}
+
+/* ---- Afinar el destino: el mapa (ordenador) ------------------------------ */
+.modal-caja:has(.filtro-mapa) { width: min(980px, calc(100vw - 40px)); }
+.filtro-mapa { display: grid; gap: 10px; }
+.filtro-mapa-barra { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.filtro-mapa-modo { display: flex; gap: 2px; padding: 3px; border: 1px solid var(--hair); border-radius: var(--r-pill); background: var(--surface2); }
+.filtro-mapa-modo button {
+  padding: 7px 14px; border: 0; border-radius: var(--r-pill); background: none;
+  color: var(--muted); font: 500 var(--fs-ui-s) / 1 var(--font-sans); cursor: pointer;
+}
+.filtro-mapa-modo button[aria-pressed="true"] { color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--line); }
+.filtro-mapa-lienzo { border: 1px solid var(--hair); border-radius: var(--r); background: var(--paper); overflow: hidden; }
+.filtro-mapa-lienzo svg { display: block; width: 100%; height: clamp(260px, 42vh, 420px); }
+.filtro-mapa-lienzo path { fill: var(--surface2); stroke: var(--line); stroke-width: 0.35; vector-effect: non-scaling-stroke; }
+.filtro-mapa-lienzo path[data-iso] { cursor: pointer; transition: fill var(--t) var(--ease); }
+.filtro-mapa-lienzo path[data-iso]:hover, .filtro-mapa-lienzo path[data-iso]:focus-visible { fill: color-mix(in srgb, var(--ink) 18%, var(--surface2)); outline: none; }
+.filtro-mapa-lienzo path.si { fill: var(--deep); }
+.filtro-mapa-lienzo path.no { fill: color-mix(in srgb, var(--accent) 55%, var(--surface2)); }
+.filtro-mapa-lienzo path.sin { fill: var(--surface); opacity: 0.6; }
+.filtro-mapa-nota { margin: 0; font-size: var(--fs-ui-s); color: var(--muted); }
+.filtro-mapa-lienzo path:focus { outline: none; }
+.filtro-mapa-lienzo path:focus-visible { stroke: var(--ink); stroke-width: 1.5; }

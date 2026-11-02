@@ -271,6 +271,14 @@ service cloud.firestore {
       function j() {
         return request.resource.data;
       }
+      // Hasta cuándo se vota en cada fase: las fechas (f1), lo que no (f2) y
+      // lo guardado (f4). Un día cada una, o nada.
+      function limitesOk(l) {
+        return l == null || (l is map && l.keys().hasOnly(['f1', 'f2', 'f4'])
+          && (!('f1' in l) || esFecha(l.f1))
+          && (!('f2' in l) || esFecha(l.f2))
+          && (!('f4' in l) || esFecha(l.f4)));
+      }
       function datosOk() {
         return j().nombre is string && j().nombre.size() > 0 && j().nombre.size() <= 60
           && esFecha(j().fin)
@@ -303,6 +311,10 @@ service cloud.firestore {
         (request.auth.uid == resource.data.creador
           && j().diff(resource.data).affectedKeys().hasOnly(['nombre', 'descripcion', 'fin', 'caduca'])
           && datosOk())
+        // Y las fechas límite de las votaciones.
+        || (request.auth.uid == resource.data.creador
+          && j().diff(resource.data).affectedKeys().hasOnly(['limites'])
+          && limitesOk(j().get('limites', null)))
         // Unirse: añadirse a uno mismo, y nada más. Hasta 30 por HOP.
         || (aprobado()
           && j().diff(resource.data).affectedKeys().hasOnly(['miembros', 'nombres'])

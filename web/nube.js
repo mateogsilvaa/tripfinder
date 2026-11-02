@@ -1185,7 +1185,7 @@ async function nubeHopApuntar(id, campo, valor) {
    marcha, la fase, las fechas fijadas y el plan del ganador. `null` borra el
    campo. Las reglas dicen qué va con qué (la búsqueda no se escribe a la vez
    que la fase). */
-const NUBE_HOP_CAMPOS = ["busqueda", "cama", "fase", "fechas", "plan"];
+const NUBE_HOP_CAMPOS = ["busqueda", "cama", "fase", "fechas", "plan", "limites"];
 async function nubeHopCambiar(id, cambios) {
   const t = await nubeHopToken();
   if (t.error) return { ok: false, error: t.error };

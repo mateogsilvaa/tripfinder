@@ -6,6 +6,7 @@ import { esMio } from "./disparador.js";
 import { wireCompartir } from "./compartir.js";
 import { OFFERS } from "./ofertas.js";
 import { openStays } from "./alojamiento.js";
+import { tirar } from "./papelera.js";
 
 /* ---------------------------------------------------------------- favoritos
    Marcar un vuelo con la estrella lo guarda en ESTE navegador junto con el
@@ -545,9 +546,11 @@ export function pintarListaFavs() {
     return { ...f, price: (f.precio_visto || f.precio_inicial || 0) * gente };
   });
   caja.querySelectorAll("[data-desfav]").forEach((b) =>
-    b.addEventListener("click", () => {
+    b.addEventListener("click", async () => {
+      b.disabled = true;
       delete FAVS[b.dataset.desfav];
       favGuardar(FAVS);
+      await tirar(b.closest(".favrow"));
       pintarListaFavs();
       pintarFavs();
       refrescarAvisoFavs();

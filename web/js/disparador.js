@@ -45,6 +45,13 @@ export const comoDueno = () => ({ owner: tfUid(), owner_name: tfNombre() });
    pero de quien sea. */
 export const esMio = (x) => !!x && !!x.owner && tfUids().includes(x.owner);
 
+/* Las búsquedas que lanza un HOP son del grupo, no tuyas: se lanzan a tu
+   nombre (alguien tiene que lanzarlas) pero su sitio es el HOP, y en «tus
+   búsquedas» solo estorbaban. Se reconocen por la etiqueta, que el HOP pone
+   siempre como «HOP <nombre>: …». */
+export const deHop = (x) => !!x && String(x.label || "").startsWith("HOP ");
+export const esMiaYNoDeHop = (x) => esMio(x) && !deHop(x);
+
 /* Los tres motivos por los que un encargo no sale, y todos se arreglan igual:
    entrando con una cuenta que tenga acceso. */
 export const esFaltaDeAcceso = (r) =>
