@@ -434,6 +434,31 @@
           "price_per_person": 39.98
         }
       ]
+    },
+    {
+      "id": "estonia-12-d46-h1724-sExZcFJudzd9pn8KxMagDeBO1Yi2",
+      "label": "Estonia · vie → dom · 12 meses · avisa bajo 120 € · 1 pers. · sale 17–24 h",
+      "destination": "Estonia",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "4-6",
+      "horas": "17-24,,,",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 1,
+      "max_price": 120.0,
+      "source": "formulario",
+      "owner": "sExZcFJudzd9pn8KxMagDeBO1Yi2",
+      "owner_name": "mateoo",
+      "created": "2026-11-03",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
