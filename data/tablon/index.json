@@ -3,16 +3,16 @@
     {
       "iata": "MAD",
       "nombre": "Madrid",
-      "count": 1620,
-      "destinos": 74,
-      "generated_at": "2026-11-02"
+      "count": 1638,
+      "destinos": 86,
+      "generated_at": "2026-11-03"
     },
     {
       "iata": "ALC",
       "nombre": "Alicante",
-      "count": 213,
+      "count": 325,
       "destinos": 29,
-      "generated_at": "2026-10-31"
+      "generated_at": "2026-11-03"
     },
     {
       "iata": "BCN",
@@ -38,9 +38,9 @@
     {
       "iata": "AGP",
       "nombre": "Málaga",
-      "count": 217,
+      "count": 323,
       "destinos": 30,
-      "generated_at": "2026-10-31"
+      "generated_at": "2026-11-03"
     },
     {
       "iata": "PMI",
@@ -69,6 +69,13 @@
       "count": 222,
       "destinos": 24,
       "generated_at": "2026-11-02"
+    },
+    {
+      "iata": "VLC",
+      "nombre": "Valencia",
+      "count": 284,
+      "destinos": 28,
+      "generated_at": "2026-11-03"
     }
   ]
 }
