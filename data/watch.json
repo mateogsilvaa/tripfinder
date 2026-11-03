@@ -484,6 +484,31 @@
       "last_checked": "",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "los nórdicos-12-d46-sExZcFJudzd9pn8KxMagDeBO1Yi2",
+      "label": "Los nórdicos · vie → dom · 12 meses · avisa bajo 125 € · 1 pers.",
+      "destination": "Los nórdicos",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "4-6",
+      "horas": "",
+      "months": 12,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 1,
+      "max_price": 125.0,
+      "source": "formulario",
+      "owner": "sExZcFJudzd9pn8KxMagDeBO1Yi2",
+      "owner_name": "mateoo",
+      "created": "2026-11-03",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
