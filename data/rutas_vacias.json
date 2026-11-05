@@ -1,21 +1,17 @@
 {
-  "generado": "2026-11-04",
+  "generado": "2026-11-05",
   "rutas": {
     "MAD-AAL": {
       "barridos": 1,
-      "ultima": "2026-11-04"
+      "ultima": "2026-11-05"
     },
     "MAD-AAR": {
       "barridos": 1,
-      "ultima": "2026-11-04"
+      "ultima": "2026-11-05"
     },
     "MAD-BBU": {
       "barridos": 2,
       "ultima": "2026-11-03"
-    },
-    "MAD-CPH": {
-      "barridos": 1,
-      "ultima": "2026-11-04"
     },
     "MAD-EBJ": {
       "barridos": 2,
@@ -27,15 +23,7 @@
     },
     "MAD-FAE": {
       "barridos": 1,
-      "ultima": "2026-11-04"
-    },
-    "MAD-GVA": {
-      "barridos": 1,
-      "ultima": "2026-11-04"
-    },
-    "MAD-HAJ": {
-      "barridos": 1,
-      "ultima": "2026-11-04"
+      "ultima": "2026-11-05"
     },
     "MAD-KDL": {
       "barridos": 2,
@@ -55,19 +43,19 @@
     },
     "MAD-NRT": {
       "barridos": 1,
-      "ultima": "2026-11-04"
+      "ultima": "2026-11-05"
     },
     "MAD-ODE": {
       "barridos": 2,
       "ultima": "2026-11-03"
     },
-    "MAD-OSL": {
-      "barridos": 1,
-      "ultima": "2026-11-04"
-    },
     "MAD-PLQ": {
       "barridos": 2,
       "ultima": "2026-10-27"
+    },
+    "MAD-PMI": {
+      "barridos": 1,
+      "ultima": "2026-11-05"
     },
     "MAD-RKE": {
       "barridos": 2,
@@ -81,10 +69,6 @@
       "barridos": 2,
       "ultima": "2026-11-03"
     },
-    "MAD-STR": {
-      "barridos": 1,
-      "ultima": "2026-11-04"
-    },
     "MAD-TAY": {
       "barridos": 2,
       "ultima": "2026-10-27"
@@ -92,10 +76,6 @@
     "MAD-URE": {
       "barridos": 2,
       "ultima": "2026-10-27"
-    },
-    "MAD-VNO": {
-      "barridos": 1,
-      "ultima": "2026-11-04"
     }
   }
 }
