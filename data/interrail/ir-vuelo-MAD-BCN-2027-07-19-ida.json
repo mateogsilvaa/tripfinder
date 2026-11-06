@@ -1,0 +1,14 @@
+{
+  "id": "ir-vuelo-MAD-BCN-2027-07-19-ida",
+  "origen": "MAD",
+  "aeropuertos": [
+    "BCN",
+    "GRO",
+    "REU"
+  ],
+  "fecha": "2027-07-19",
+  "sentido": "ida",
+  "generated_at": "2026-11-06",
+  "legs": [],
+  "dias": {}
+}
