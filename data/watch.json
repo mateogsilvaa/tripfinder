@@ -499,6 +499,31 @@
       "last_checked": "",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "rumanía-6-iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "label": "Rumanía · findes · 6 meses · avisa bajo 120 € · 2 pers.",
+      "destination": "Rumanía",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "",
+      "horas": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 2,
+      "max_price": 120.0,
+      "source": "formulario",
+      "owner": "iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "owner_name": "sara",
+      "created": "2026-11-06",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
