@@ -1,17 +1,17 @@
 {
-  "generado": "2026-11-05",
+  "generado": "2026-11-06",
   "rutas": {
     "MAD-AAL": {
-      "barridos": 1,
-      "ultima": "2026-11-05"
+      "barridos": 2,
+      "ultima": "2026-11-06"
     },
     "MAD-AAR": {
       "barridos": 1,
-      "ultima": "2026-11-05"
+      "ultima": "2026-11-06"
     },
     "MAD-ARN": {
       "barridos": 1,
-      "ultima": "2026-11-05"
+      "ultima": "2026-11-06"
     },
     "MAD-BBU": {
       "barridos": 2,
@@ -19,11 +19,11 @@
     },
     "MAD-BLL": {
       "barridos": 1,
-      "ultima": "2026-11-05"
+      "ultima": "2026-11-06"
     },
     "MAD-CPH": {
       "barridos": 1,
-      "ultima": "2026-11-05"
+      "ultima": "2026-11-06"
     },
     "MAD-EBJ": {
       "barridos": 2,
@@ -35,11 +35,15 @@
     },
     "MAD-FAE": {
       "barridos": 1,
-      "ultima": "2026-11-05"
+      "ultima": "2026-11-06"
+    },
+    "MAD-HAJ": {
+      "barridos": 1,
+      "ultima": "2026-11-06"
     },
     "MAD-HEL": {
       "barridos": 1,
-      "ultima": "2026-11-05"
+      "ultima": "2026-11-06"
     },
     "MAD-KDL": {
       "barridos": 2,
@@ -57,17 +61,29 @@
       "barridos": 2,
       "ultima": "2026-10-31"
     },
+    "MAD-LTN": {
+      "barridos": 1,
+      "ultima": "2026-11-06"
+    },
+    "MAD-NAP": {
+      "barridos": 1,
+      "ultima": "2026-11-06"
+    },
     "MAD-ODE": {
       "barridos": 2,
       "ultima": "2026-11-03"
     },
     "MAD-OVD": {
-      "barridos": 1,
-      "ultima": "2026-11-05"
+      "barridos": 2,
+      "ultima": "2026-11-06"
     },
     "MAD-PLQ": {
       "barridos": 2,
       "ultima": "2026-10-27"
+    },
+    "MAD-PMI": {
+      "barridos": 1,
+      "ultima": "2026-11-06"
     },
     "MAD-RKE": {
       "barridos": 2,
@@ -81,17 +97,25 @@
       "barridos": 2,
       "ultima": "2026-11-03"
     },
+    "MAD-SOF": {
+      "barridos": 1,
+      "ultima": "2026-11-06"
+    },
     "MAD-TAY": {
       "barridos": 2,
       "ultima": "2026-10-27"
     },
     "MAD-TLL": {
-      "barridos": 1,
-      "ultima": "2026-11-05"
+      "barridos": 2,
+      "ultima": "2026-11-06"
     },
     "MAD-URE": {
       "barridos": 2,
       "ultima": "2026-10-27"
+    },
+    "MAD-VNO": {
+      "barridos": 1,
+      "ultima": "2026-11-06"
     }
   }
 }
