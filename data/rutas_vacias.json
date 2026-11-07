@@ -65,10 +65,6 @@
       "barridos": 1,
       "ultima": "2026-11-07"
     },
-    "MAD-IAS": {
-      "barridos": 1,
-      "ultima": "2026-11-07"
-    },
     "MAD-IOA": {
       "barridos": 2,
       "ultima": "2026-11-07"
@@ -100,10 +96,6 @@
     "MAD-LEJ": {
       "barridos": 2,
       "ultima": "2026-10-31"
-    },
-    "MAD-LGW": {
-      "barridos": 1,
-      "ultima": "2026-11-07"
     },
     "MAD-ODE": {
       "barridos": 2,
@@ -145,17 +137,9 @@
       "barridos": 2,
       "ultima": "2026-11-07"
     },
-    "MAD-TLL": {
-      "barridos": 1,
-      "ultima": "2026-11-07"
-    },
     "MAD-URE": {
       "barridos": 2,
       "ultima": "2026-10-27"
-    },
-    "MAD-VNO": {
-      "barridos": 2,
-      "ultima": "2026-11-07"
     }
   }
 }
