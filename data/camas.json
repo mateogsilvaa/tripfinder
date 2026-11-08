@@ -36,6 +36,11 @@
       "muestras": 3,
       "nombre": "Oslo"
     },
+    "OTP": {
+      "noche": 34.67,
+      "muestras": 3,
+      "nombre": "Bucarest"
+    },
     "PRG": {
       "noche": 30.0,
       "muestras": 3,
@@ -91,8 +96,8 @@
       "muestras": 3
     },
     "Rumanía": {
-      "noche": 61.0,
-      "muestras": 3
+      "noche": 48.75,
+      "muestras": 6
     },
     "Suiza": {
       "noche": 209.67,
