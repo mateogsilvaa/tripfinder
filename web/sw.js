@@ -57,7 +57,7 @@ const PIEZAS = [
   "./js/interrail-datos.js",
   "./js/hop.js",
   "./js/fotos.js",
-  "./js/papelera.js",
+  "./js/borrar.js",
   "./js/filtro-destinos.js",
   "./js/notificaciones.js",
   "./js/propuesta-vuelo.js",

@@ -33,7 +33,7 @@ import { montarHoras, textoHoras } from "./horas.js";
 import { abrirDestinos } from "./destinos.js";
 import { CAMPOS_SEGUIR, ampliar, recogerAmpliado } from "./ampliar.js";
 import { desde } from "./alojamiento.js";
-import { tirar } from "./papelera.js";
+import { borrarConDeshacer } from "./borrar.js";
 
 /* ------------------------------------------------------------ seguimientos
    Cosa aparte de la busqueda: no contesta ahora, se queda apuntado y lo revisa
@@ -300,21 +300,12 @@ export async function cargarWatches() {
       b.addEventListener("click", async () => {
         b.disabled = true;
         const fila = b.closest(".watch");
-        const pendiente = dispatch("unwatch", {
-          id: b.dataset.unwatch,
-          ...comoDueno(),
-        });
-        await tirar(fila);
-        const r = await pendiente;
-        if (r.ok) {
-          // A la papelera ya ha ido; el fichero se actualiza en un rato.
-          fila.hidden = true;
-          esperarCambios();
-        } else {
-          fila.style.visibility = "";
-          b.disabled = false;
-          alert("No se pudo quitar: " + r.reason);
-        }
+        const nombre = fila.querySelector("b")?.textContent?.trim() || "el seguimiento";
+        const hecho = await borrarConDeshacer(fila, `Dejas de seguir «${nombre}»`, () =>
+          dispatch("unwatch", { id: b.dataset.unwatch, ...comoDueno() })
+        );
+        if (hecho) esperarCambios();
+        else b.disabled = false;
       })
     );
 }

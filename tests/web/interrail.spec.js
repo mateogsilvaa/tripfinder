@@ -242,7 +242,10 @@ test.describe("las ciudades por las que quieres pasar", () => {
     await elegir(page, "ROM", "FLR");
     await page.reload();
     await expect(chip(page, "FLR")).toHaveAttribute("aria-pressed", "true");
-    expect(await paradas(page)).toEqual(["Roma", "Florencia"]);
+    // Las ciudades se quedan; la ruta se rehace al pulsar «Calcular mi viaje»
+    // (la de antes puede no valer: se dice en la página).
+    await calcular(page);
+    await expect.poll(() => paradas(page)).toEqual(["Roma", "Florencia"]);
   });
 
   test("con la vuelta puesta, las noches se reparten entre tus paradas", async ({ page }) => {

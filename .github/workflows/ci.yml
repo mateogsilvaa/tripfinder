@@ -59,7 +59,9 @@ jobs:
 
   web:
     name: humo de frontend
-    runs-on: ubuntu-latest
+    # Fijo y no «latest»: Playwright 1.56 no trae Chromium para Ubuntu 26.04,
+    # y al cambiar GitHub la imagen por defecto el humo dejó de arrancar.
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
@@ -95,7 +97,9 @@ jobs:
   # de encargos de Python y la web entera registrando, aprobando y lanzando.
   firebase:
     name: reglas y cuentas (emulador de Firebase)
-    runs-on: ubuntu-latest
+    # Fijo y no «latest»: Playwright 1.56 no trae Chromium para Ubuntu 26.04,
+    # y al cambiar GitHub la imagen por defecto el humo dejó de arrancar.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

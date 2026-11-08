@@ -6,7 +6,7 @@ import { esMio } from "./disparador.js";
 import { wireCompartir } from "./compartir.js";
 import { OFFERS } from "./ofertas.js";
 import { openStays } from "./alojamiento.js";
-import { tirar } from "./papelera.js";
+import { avisoDeshacer, reaparecer, tachar } from "./borrar.js";
 
 /* ---------------------------------------------------------------- favoritos
    Marcar un vuelo con la estrella lo guarda en ESTE navegador junto con el
@@ -548,9 +548,19 @@ export function pintarListaFavs() {
   caja.querySelectorAll("[data-desfav]").forEach((b) =>
     b.addEventListener("click", async () => {
       b.disabled = true;
-      delete FAVS[b.dataset.desfav];
+      const id = b.dataset.desfav;
+      const fila = b.closest(".favrow");
+      const antes = FAVS[id];
+      delete FAVS[id];
       favGuardar(FAVS);
-      await tirar(b.closest(".favrow"));
+      await tachar(fila);
+      if (await avisoDeshacer(`Dejas de seguir ${antes?.destination_name || antes?.destination || "el viaje"}`)) {
+        FAVS[id] = antes;
+        favGuardar(FAVS);
+        reaparecer(fila);
+        b.disabled = false;
+        return;
+      }
       pintarListaFavs();
       pintarFavs();
       refrescarAvisoFavs();
