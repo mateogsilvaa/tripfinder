@@ -423,6 +423,10 @@
     "ryanair-MAD-FCO-20270226": {
       "price": 79.88,
       "date": "2026-11-08"
+    },
+    "ryanair-MAD-SOF-20270115": {
+      "price": 80.98,
+      "date": "2026-11-08"
     }
   },
   "digest": {
