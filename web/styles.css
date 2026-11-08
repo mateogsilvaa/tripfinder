@@ -6793,3 +6793,9 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
 }
 .hopx-atras-txt > svg { color: var(--deep); }
 .hopx-atras-txt > span { flex: 1; min-width: 200px; }
+
+/* ---- HOP · ¿sigue en pie? ------------------------------------------------ */
+.hopx-vigente { display: flex; align-items: center; gap: 6px; margin: 0; font-size: var(--fs-ui-s); color: var(--muted); }
+.hopx-vigente.bien { color: var(--deep); }
+.hopx-vigente.mal { color: var(--accent-txt); }
+.hopx-vigente small { color: var(--muted); font-size: inherit; }

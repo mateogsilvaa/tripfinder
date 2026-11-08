@@ -2489,6 +2489,7 @@ function cartaGuardada(p, puesto, lider) {
           camas ? ` · ${botonCamas(p)}` : ""
         }</span></p>`
         }
+        ${vigenteHTML(p)}
         ${p.nota ? `<p class="hopx-dato">${esc(p.nota)}</p>` : ""}
         <div class="hopx-carta-voto">${votarHTML(p)}
           <div class="hopx-carta-pie">${quienesHTML(p)}${faltanCorto(p)}${borrarHTML(p)}</div></div>
@@ -2586,6 +2587,39 @@ async function elegirVariante(app, pid) {
       return cargarPropuestas(app);
     }
   }
+}
+
+/* ¿SIGUE EN PIE? Cada barrido vuelve a mirar los vuelos guardados (los de
+   Ryanair y Wizz, ver `revisar_hop.py`) y apunta lo que ha visto en la
+   propuesta. Aquí se dice en una línea: sigue, ha subido, ha bajado o ya no
+   queda. Sin revisión (otra compañía, o aún no ha pasado el barrido), nada. */
+function haceRato(d) {
+  const t = instante(d);
+  if (!t) return "";
+  const min = Math.max(0, Math.round((Date.now() - t) / 60000));
+  if (min < 60) return min <= 1 ? "hace un momento" : `hace ${min} min`;
+  const h = Math.round(min / 60);
+  return h < 24 ? `hace ${h} h` : `hace ${Math.round(h / 24)} d`;
+}
+
+function vigenteHTML(p) {
+  const v = p.vigente;
+  if (!v || !v.estado) return "";
+  const cuando = haceRato(v.comprobado);
+  const precio = Number.isFinite(Number(v.precio)) ? euros(Number(v.precio)) : "";
+  const dif = Number.isFinite(Number(v.precio)) && Number.isFinite(Number(v.antes)) ? Math.round(Number(v.precio) - Number(v.antes)) : 0;
+  const [clase, texto] = {
+    en_pie: ["bien", "Sigue en pie"],
+    sube: ["mal", `Ha subido a ${precio}${dif ? ` (+${dif} €)` : ""}`],
+    baja: ["bien", `Ha bajado a ${precio}${dif ? ` (${dif} €)` : ""}`],
+    agotado: ["mal", "Ya no queda: ese día no hay plaza a la venta"],
+    pasado: ["", "El vuelo ya pasó"],
+  }[v.estado] || ["", ""];
+  if (!texto) return "";
+  return `<p class="hopx-vigente ${clase}" title="Se vuelve a mirar en cada barrido, dos veces al día">${ico(
+    v.estado === "en_pie" || v.estado === "baja" ? "si" : "no",
+    14
+  )} <span>${esc(texto)}${cuando ? ` <small>· revisado ${esc(cuando)}</small>` : ""}</span></p>`;
 }
 
 /* El enlace de dónde dormir de una tarjeta: dice lo que hay detrás antes de

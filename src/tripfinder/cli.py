@@ -2399,6 +2399,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("reindex", help="Rehace el indice de busquedas").set_defaults(func=cmd_reindex)
 
+    rh = sub.add_parser("revisar-hops", help="Mira si siguen en pie los vuelos guardados en los HOP")
+    rh.set_defaults(func=cmd_revisar_hops)
+
     t = sub.add_parser("test-email", help="Envia un aviso de ejemplo")
     t.add_argument("--to")
     t.add_argument("--method", choices=["resend", "smtp"])
@@ -2417,6 +2420,18 @@ def build_parser() -> argparse.ArgumentParser:
     v = sub.add_parser("vapid", help="Genera las claves de las notificaciones push")
     v.set_defaults(func=cmd_vapid)
     return p
+
+
+def cmd_revisar_hops(args: argparse.Namespace) -> int:
+    """¿Sigue en pie cada vuelo guardado en un HOP? Lo apunta en la propuesta."""
+    from . import nube, revisar_hop
+
+    if not nube.hay_firebase():
+        print("Sin FIREBASE_SERVICE_ACCOUNT: no hay HOP que revisar.")
+        return 0
+    cuenta = revisar_hop.revisar(nube.abrir_firestore())
+    print("HOP: " + ", ".join(f"{k} {v}" for k, v in cuenta.items()))
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

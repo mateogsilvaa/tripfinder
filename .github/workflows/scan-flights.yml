@@ -94,6 +94,16 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: python -m tripfinder watch run
 
+      - name: Revisar lo guardado en los HOP
+        # ¿Sigue en pie cada vuelo guardado? Se apunta en la propuesta y la
+        # tarjeta del HOP lo dice. Nunca tumba el barrido.
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          PYTHONPATH: src
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: python -m tripfinder revisar-hops
+
       - name: Escalas propias (dos low cost por un puente)
         # Los destinos sin directo desde Madrid. Va despues del barrido para
         # saber cuales SI tienen directo, y nunca lo tumba: si falla, el
