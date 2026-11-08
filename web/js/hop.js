@@ -21,7 +21,7 @@ import { cajaAcceso, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { montarHoras, textoHoras } from "./horas.js";
 import { ORIGENES } from "./opciones.js";
 import { huecoFoto, ponerFotos } from "./fotos.js";
-import { tirar } from "./papelera.js";
+import { avisoDeshacer, tachar } from "./borrar.js";
 import { fotos as fotosCama, metaCama } from "./alojamiento.js";
 import { enlaceOk, hashCorto, pidCombo, pidVuelo, propuestaDeVuelo } from "./propuesta-vuelo.js";
 import {
@@ -1058,7 +1058,8 @@ function pintarHop(app, pendiente) {
 async function cargarPropuestas(app) {
   try {
     const [props, hop] = await Promise.all([nubePropuestas(estado.id), nubeHop(estado.id).catch(() => null)]);
-    estado.propuestas = props;
+    // Lo que se está borrando (con su «Deshacer» abajo) no vuelve con el sondeo.
+    estado.propuestas = props.filter((x) => !BORRANDO.has(x.id));
     // Lo que acabas de tachar manda sobre lo que traiga el sondeo un momento:
     // si la lectura salió antes de guardarse, no se deshace a la vista.
     const local = estado.vetoLocal;
@@ -1105,6 +1106,7 @@ export function pintarViaje(app) {
   }
   [null, pintarFase1, pintarFase2, pintarFase3, pintarFase4, pintarFase5][estado.ver](app);
   pintarLimite(app, estado.ver);
+  pintarAtras(app, estado.ver);
   caja.classList.toggle("votacion-cerrada", cerrada(estado.ver));
   ponerFotos(caja);
 }
@@ -1158,6 +1160,28 @@ function pintarLimite(app, n) {
           ? ` <button type="button" class="hopx-enlace" data-limite-editar="${n}">${dia ? "cambiar" : "poner fecha límite"}</button>`
           : ""
       }</p>`
+  );
+}
+
+/* VOLVER ATRÁS. Hacia delante se va en orden; hacia atrás, cuando haga falta:
+   al mirar una fase ya hecha, cualquiera del grupo puede llevar al grupo de
+   vuelta a ella (otras fechas, tachar otra ciudad, buscar otra vez). Lo hecho
+   no se borra: lo guardado y los votos siguen ahí. */
+function pintarAtras(app, n) {
+  const caja = $("#hopFaseAtras", app);
+  if (!caja) return;
+  const actual = fase();
+  if (n >= actual || estado.invitado) {
+    pintarSi(caja, "");
+    return;
+  }
+  pintarSi(
+    caja,
+    `<p class="hopx-atras-txt">${ico("si", 15)} <span>Esta fase ya está hecha: el grupo va por «${esc(
+      FASES[actual - 1][1]
+    )}».</span>
+      <button type="button" class="btn ghost small" data-volver-fase="${n}">Volver el grupo aquí</button>
+      <button type="button" class="hopx-enlace" data-ver-fase-ir="${actual}">Ir a «${esc(FASES[actual - 1][1])}»</button></p>`
   );
 }
 
@@ -1259,6 +1283,7 @@ function esqueleto(n) {
       <span class="hopx-estado" id="hopFaseEstado"></span>
     </header>
     <p class="hopx-intro">${intro}</p>
+    <div class="hopx-atras" id="hopFaseAtras"></div>
     <div class="hopx-limite" id="hopFaseLimite"></div>
     ${cuerpo}
     <div class="hopx-fase-pie" id="hopFasePie"></div>
@@ -2508,21 +2533,36 @@ function variantesHTML(p, camas) {
     </div>`;
 }
 
-/* Quitar un alojamiento propuesto (quien lo propuso o quien creó el HOP):
-   cambiar de opinión no puede costar borrar el viaje entero. Se va a la
-   papelera y deja de ser una versión del viaje. */
-async function quitarVariante(app, v, fila) {
-  const r = nubeBorrarPropuesta(estado.id, v.id);
-  await tirar(fila);
-  const res = await r;
-  if (!res.ok) {
-    if (fila) fila.style.visibility = "";
-    alert(res.error);
+/* BORRAR UNA PROPUESTA (un viaje guardado, una versión de alojamiento, unas
+   fechas): se tacha, sale de la vista y abajo queda «Deshacer» unos segundos.
+   Solo pasado ese rato se borra de verdad; mientras, el sondeo no la trae de
+   vuelta. Sin `confirm()`: con deshacer no hace falta preguntar antes. */
+const BORRANDO = new Set();
+
+async function borrarPropuesta(app, p, el, texto) {
+  await tachar(el);
+  BORRANDO.add(p.id);
+  estado.propuestas = estado.propuestas.filter((x) => x.id !== p.id);
+  repintar(app);
+  const deshecho = await avisoDeshacer(texto);
+  if (deshecho) {
+    BORRANDO.delete(p.id);
+    estado.propuestas = [...estado.propuestas, p];
+    repintar(app);
     return;
   }
-  estado.propuestas = estado.propuestas.filter((x) => x.id !== v.id);
-  repintar(app);
+  const r = await nubeBorrarPropuesta(estado.id, p.id);
+  BORRANDO.delete(p.id);
+  if (!r.ok) {
+    estado.propuestas = [...estado.propuestas, p];
+    repintar(app);
+    alert(r.error);
+  }
 }
+
+/* Quitar un alojamiento propuesto (quien lo propuso o quien creó el HOP):
+   cambiar de opinión no puede costar borrar el viaje entero. */
+const quitarVariante = (app, v, fila) => borrarPropuesta(app, v, fila, `Quitado ${v.cama || "el alojamiento"}`);
 
 /* Elegir una versión: tu «la prefiero» pasa a esa y sale de la que tenías.
    Tocar la que ya es tuya la quita. */
@@ -2808,19 +2848,9 @@ async function alTocarFase(app, e) {
     return;
   }
   if (b.hasAttribute("data-borrar-prop")) {
-    const p = estado.propuestas.find((x) => x.id === b.closest("[data-prop]").dataset.prop);
-    if (!p || !confirm(`¿Borrar «${p.titulo}» y sus votos?`)) return;
     const tarjeta = b.closest("[data-prop]");
-    const pendiente = nubeBorrarPropuesta(estado.id, p.id);
-    await tirar(tarjeta);
-    const r = await pendiente;
-    if (r.ok) {
-      estado.propuestas = estado.propuestas.filter((x) => x.id !== p.id);
-      pintarViaje(app);
-    } else {
-      if (tarjeta) tarjeta.style.visibility = "";
-      alert(r.error);
-    }
+    const p = estado.propuestas.find((x) => x.id === tarjeta.dataset.prop);
+    if (p) borrarPropuesta(app, p, tarjeta, `Borrado «${p.titulo}»`);
     return;
   }
   if (b.dataset.fijar) {
@@ -2857,6 +2887,11 @@ async function alTocarFase(app, e) {
     const o = ofertaDe(b.dataset.camas);
     if (o) abrirHojaCamas(app, o);
     return;
+  }
+  if (b.dataset.volverFase) {
+    const n = Number(b.dataset.volverFase);
+    if (!confirm(`¿Volver el grupo a «${FASES[n - 1][1]}»? Lo guardado y los votos se quedan.`)) return;
+    return irAFase(app, n);
   }
   if (b.dataset.verFaseIr) {
     estado.ver = Number(b.dataset.verFaseIr);

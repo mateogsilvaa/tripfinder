@@ -1282,8 +1282,23 @@ test.describe("En observación", () => {
     await page.goto("/seguimientos.html");
     await expect(page.locator(".favrow")).toHaveCount(1);
     await page.locator(".favrow [data-desfav]").click();
-    await expect(page.locator(".favrow")).toHaveCount(0);
+    // Se tacha y queda «Deshacer» unos segundos; después, fuera.
+    await expect(page.locator(".deshacer")).toContainText("Bergamo");
+    await expect(page.locator(".favrow")).toHaveCount(0, { timeout: 10000 });
     await expect(page.locator(".vacio")).toContainText(/dale a seguir/i);
+  });
+
+  test("quitar uno se puede deshacer", async ({ page }) => {
+    await conSesion(page);
+    await page.goto("/seguimientos.html");
+    await page.locator(".favrow [data-desfav]").click();
+    await page.locator(".deshacer-btn").click();
+    await expect(page.locator(".favrow")).toBeVisible();
+    // Y sigue apuntado en el navegador, pasado el rato del aviso.
+    await page.waitForTimeout(5500);
+    await expect(page.locator(".favrow")).toHaveCount(1);
+    const guardado = await page.evaluate(() => localStorage.getItem("tf_favoritos:u-p") || "");
+    expect(guardado).toContain("ryanair-MAD-BGY-20270108");
   });
 
   test("sin nada apuntado, dice qué hacer en vez de quedarse en blanco", async ({ page }) => {

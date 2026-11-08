@@ -18,7 +18,7 @@ import {
   tarjetaViaje,
 } from "./base.js";
 import { conGrupo } from "./precios.js";
-import { tirar } from "./papelera.js";
+import { avisoDeshacer, reaparecer, tachar } from "./borrar.js";
 import { CAMPOS_BUSCAR, ampliar, recogerAmpliado } from "./ampliar.js";
 import {
   BORRANDO_KEY,
@@ -436,11 +436,7 @@ async function enviarBorrados(boton) {
   document.querySelectorAll("[data-borrar]").forEach((b) => {
     if (!ids.includes(b.dataset.borrar)) return;
     b.disabled = false;
-    const fila = b.closest(".saved");
-    if (fila) {
-      fila.hidden = false;
-      fila.style.visibility = "";
-    }
+    reaparecer(b.closest(".saved"));
   });
   alert("No se pudo borrar: " + r.reason);
 }
@@ -550,7 +546,7 @@ export async function loadSearches() {
   const borrando = JSON.parse(localStorage.getItem(BORRANDO_KEY) || "[]");
   borrando.forEach((slug) => {
     const fila = $("#searches").querySelector(`[data-slug="${slug}"]`);
-    // Ya se tiró a la papelera: no vuelve a salir mientras se borra de verdad.
+    // Ya se tachó: no vuelve a salir mientras se borra de verdad.
     if (fila) fila.hidden = true;
   });
   const vivas = new Set(guardadas.map((s) => s.slug));
@@ -595,10 +591,16 @@ export async function loadSearches() {
     b.addEventListener("click", async (ev) => {
       ev.stopPropagation();
       b.disabled = true;
-      encolarBorrado(b.dataset.borrar, b);
+      // Se tacha y se pliega; hasta que se va el «Deshacer» no se pide nada.
       const fila = b.closest(".saved");
-      await tirar(fila);
-      if (fila && b.disabled) fila.hidden = true;
+      await tachar(fila);
+      const nombre = fila?.querySelector(".tv-rotulo, b")?.textContent?.trim() || "la búsqueda";
+      if (await avisoDeshacer(`Quitada «${nombre}»`)) {
+        reaparecer(fila);
+        b.disabled = false;
+        return;
+      }
+      encolarBorrado(b.dataset.borrar, b);
     })
   );
 

@@ -6664,29 +6664,63 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
 .hopx-variante > a { color: var(--muted); font-size: 12px; }
 .hopx-variante .hop-avs.mini .hop-av { width: 18px; height: 18px; font-size: 9px; }
 
-/* ---- la papelera (`papelera.js`) ---------------------------------------
-   Lo que se borra se arruga y entra en una papelera que trae una mano. */
-.papelera {
-  position: fixed;
-  right: max(16px, env(safe-area-inset-right, 0px));
-  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-  z-index: 90;
+/* ---- borrar (`borrar.js`) ------------------------------------------------
+   Borrar es tachar, como las ciudades del HOP: una raya cruza la fila, se
+   pliega, y abajo queda «Deshacer» unos segundos. */
+.tachon {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform-origin: left center;
   pointer-events: none;
-  filter: drop-shadow(0 8px 18px rgb(0 0 0 / 0.35));
+  z-index: 3;
 }
-@media (max-width: 760px) {
-  .papelera { bottom: calc(96px + env(safe-area-inset-bottom, 0px)); }
-}
-.papelera-cubo { transform-box: fill-box; transform-origin: center; }
-.papelera-bola {
+.deshacer {
   position: fixed;
-  z-index: 91;
-  margin: 0;
-  overflow: hidden;
-  pointer-events: none;
-  transform-origin: center;
-  box-shadow: inset 0 0 0 1px var(--line), 0 6px 14px rgb(0 0 0 / 0.3);
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 8px 8px 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
   background: var(--surface);
+  box-shadow: var(--sombra);
+  color: var(--ink);
+  font-size: var(--fs-ui);
+  overflow: hidden;
+  transform: translateX(-50%);
+  animation: deshacer-entra var(--t-med) var(--ease);
+}
+.deshacer.sale { opacity: 0; transform: translate(-50%, 8px); transition: opacity 0.18s, transform 0.18s; }
+@keyframes deshacer-entra { from { opacity: 0; transform: translate(-50%, 8px); } }
+.deshacer-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.deshacer-btn {
+  flex: none; min-height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: none; color: var(--accent-txt); font: 600 var(--fs-ui-s) / 1 var(--font-sans); cursor: pointer;
+}
+.deshacer-btn:hover { border-color: var(--accent); }
+.deshacer-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Lo que queda para deshacer, en una raya que se acaba por abajo. */
+.deshacer-tiempo {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+  background: var(--accent); transform-origin: left center;
+  animation: deshacer-tiempo var(--dura, 5s) linear forwards;
+}
+@keyframes deshacer-tiempo { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (max-width: 760px) {
+  .deshacer { bottom: calc(88px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .deshacer, .deshacer-tiempo { animation: none; }
 }
 .hopx-variante { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
 .hopx-variante-quitar {
@@ -6750,3 +6784,12 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
 .filtro-mapa-nota { margin: 0; font-size: var(--fs-ui-s); color: var(--muted); }
 .filtro-mapa-lienzo path:focus { outline: none; }
 .filtro-mapa-lienzo path:focus-visible { stroke: var(--ink); stroke-width: 1.5; }
+.hopx-atras:empty { display: none; }
+.hopx-atras { margin: -4px 0 14px; }
+.hopx-atras-txt {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin: 0;
+  padding: 10px 14px; border: 1px dashed var(--line); border-radius: var(--r);
+  font-size: var(--fs-ui-s); color: var(--muted);
+}
+.hopx-atras-txt > svg { color: var(--deep); }
+.hopx-atras-txt > span { flex: 1; min-width: 200px; }
