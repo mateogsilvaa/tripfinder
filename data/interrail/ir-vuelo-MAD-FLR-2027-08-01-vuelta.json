@@ -1,0 +1,90 @@
+{
+  "id": "ir-vuelo-MAD-FLR-2027-08-01-vuelta",
+  "origen": "MAD",
+  "aeropuertos": [
+    "FLR",
+    "PSA"
+  ],
+  "fecha": "2027-08-01",
+  "sentido": "vuelta",
+  "generated_at": "2026-11-06",
+  "legs": [
+    {
+      "price": 59.99,
+      "time": "16:45",
+      "arrive": "19:05",
+      "origin": "PSA",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/PSA/MAD/2027-08-01/null/1/0/0/null",
+      "provider": "wizzair",
+      "date": "2027-08-01",
+      "currency": "EUR"
+    }
+  ],
+  "dias": {
+    "2027-07-29": {
+      "price": 49.99,
+      "time": "16:45",
+      "arrive": "19:05",
+      "origin": "PSA",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/PSA/MAD/2027-07-29/null/1/0/0/null"
+    },
+    "2027-07-30": {
+      "price": 65.99,
+      "time": "16:45",
+      "arrive": "19:05",
+      "origin": "PSA",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/PSA/MAD/2027-07-30/null/1/0/0/null"
+    },
+    "2027-07-31": {
+      "price": 59.99,
+      "time": "16:45",
+      "arrive": "19:05",
+      "origin": "PSA",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/PSA/MAD/2027-07-31/null/1/0/0/null"
+    },
+    "2027-08-01": {
+      "price": 59.99,
+      "time": "16:45",
+      "arrive": "19:05",
+      "origin": "PSA",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/PSA/MAD/2027-08-01/null/1/0/0/null"
+    },
+    "2027-08-02": {
+      "price": 59.99,
+      "time": "16:45",
+      "arrive": "19:05",
+      "origin": "PSA",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/PSA/MAD/2027-08-02/null/1/0/0/null"
+    },
+    "2027-08-03": {
+      "price": 45.99,
+      "time": "16:45",
+      "arrive": "19:05",
+      "origin": "PSA",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/PSA/MAD/2027-08-03/null/1/0/0/null"
+    },
+    "2027-08-04": {
+      "price": 39.99,
+      "time": "16:45",
+      "arrive": "19:05",
+      "origin": "PSA",
+      "destination": "MAD",
+      "airline": "Wizz Air",
+      "deep_link": "https://www.wizzair.com/es-es/booking/select-flight/PSA/MAD/2027-08-04/null/1/0/0/null"
+    }
+  }
+}

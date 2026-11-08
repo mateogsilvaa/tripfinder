@@ -3,79 +3,79 @@
     {
       "iata": "MAD",
       "nombre": "Madrid",
-      "count": 1626,
-      "destinos": 81,
-      "generated_at": "2026-11-03"
+      "count": 1664,
+      "destinos": 84,
+      "generated_at": "2026-11-07"
     },
     {
       "iata": "ALC",
       "nombre": "Alicante",
-      "count": 325,
+      "count": 351,
       "destinos": 29,
-      "generated_at": "2026-11-03"
+      "generated_at": "2026-11-07"
     },
     {
       "iata": "BCN",
       "nombre": "Barcelona",
-      "count": 371,
+      "count": 398,
       "destinos": 28,
-      "generated_at": "2026-11-03"
+      "generated_at": "2026-11-06"
     },
     {
       "iata": "BIO",
       "nombre": "Bilbao",
-      "count": 84,
+      "count": 106,
       "destinos": 12,
-      "generated_at": "2026-11-03"
+      "generated_at": "2026-11-06"
     },
     {
       "iata": "LPA",
       "nombre": "Gran Canaria",
-      "count": 170,
+      "count": 174,
       "destinos": 23,
-      "generated_at": "2026-11-03"
+      "generated_at": "2026-11-06"
     },
     {
       "iata": "AGP",
       "nombre": "Málaga",
-      "count": 323,
+      "count": 357,
       "destinos": 30,
-      "generated_at": "2026-11-03"
+      "generated_at": "2026-11-07"
     },
     {
       "iata": "PMI",
       "nombre": "Palma",
-      "count": 178,
+      "count": 185,
       "destinos": 21,
-      "generated_at": "2026-11-01"
+      "generated_at": "2026-11-07"
     },
     {
       "iata": "SCQ",
       "nombre": "Santiago",
-      "count": 109,
+      "count": 131,
       "destinos": 18,
-      "generated_at": "2026-11-02"
+      "generated_at": "2026-11-07"
     },
     {
       "iata": "SVQ",
       "nombre": "Sevilla",
-      "count": 274,
+      "count": 294,
       "destinos": 27,
-      "generated_at": "2026-11-02"
+      "generated_at": "2026-11-07"
     },
     {
       "iata": "TFS",
       "nombre": "Tenerife Sur",
-      "count": 222,
+      "count": 233,
       "destinos": 24,
-      "generated_at": "2026-11-02"
+      "generated_at": "2026-11-06"
     },
     {
       "iata": "VLC",
       "nombre": "Valencia",
-      "count": 284,
+      "count": 315,
       "destinos": 28,
-      "generated_at": "2026-11-03"
+      "generated_at": "2026-11-07"
     }
   ]
 }

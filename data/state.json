@@ -387,6 +387,38 @@
     "wizzair-MAD-NAP-20270115": {
       "price": 69.98,
       "date": "2026-11-02"
+    },
+    "wizzair-MAD-NAP-20270122": {
+      "price": 59.98,
+      "date": "2026-11-05"
+    },
+    "wizzair-MAD-NAP-20270129": {
+      "price": 59.98,
+      "date": "2026-11-05"
+    },
+    "ryanair-MAD-RAK-20270219": {
+      "price": 91.58,
+      "date": "2026-11-05"
+    },
+    "ryanair-MAD-TIA-20270114": {
+      "price": 44.98,
+      "date": "2026-11-05"
+    },
+    "ryanair-MAD-ACE-20270226": {
+      "price": 87.46,
+      "date": "2026-11-05"
+    },
+    "ryanair-MAD-LIS-20270226": {
+      "price": 71.86,
+      "date": "2026-11-07"
+    },
+    "ryanair-MAD-LIS-20270212": {
+      "price": 72.62,
+      "date": "2026-11-07"
+    },
+    "ryanair-MAD-OPO-20270219": {
+      "price": 64.77,
+      "date": "2026-11-07"
     }
   },
   "digest": {
@@ -398,7 +430,8 @@
     "b-19d6a9696b0fa0e4": "2026-10-26",
     "b-b8a40da8e4818f1b": "2026-10-26",
     "b-f6cf1b3febd8b845": "2026-10-26",
-    "app:b-1a742a61ca5bb363": "2026-11-02"
+    "app:b-1a742a61ca5bb363": "2026-11-05",
+    "app:b-7d06359e99ce006a": "2026-11-07"
   },
   "watch_digest": {
     "b-b66e7f56e69358ac": "2026-10-26",
