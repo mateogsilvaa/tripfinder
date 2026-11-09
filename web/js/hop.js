@@ -22,7 +22,7 @@ import { montarHoras, textoHoras } from "./horas.js";
 import { ORIGENES } from "./opciones.js";
 import { huecoFoto, ponerFotos } from "./fotos.js";
 import { avisoDeshacer, tachar } from "./borrar.js";
-import { fotos as fotosCama, metaCama } from "./alojamiento.js";
+import { fotos as fotosCama, metaCama } from "./camas-ficha.js";
 import { enlaceOk, hashCorto, pidCombo, pidVuelo, propuestaDeVuelo } from "./propuesta-vuelo.js";
 import {
   buscarCiudades,
@@ -2407,12 +2407,12 @@ async function resultadoDeBusqueda(b) {
   // Sin Firestore, lo publicado en Pages: la búsqueda con esa misma etiqueta,
   // hecha después de lanzarla.
   try {
-    const indice = await fetchJSON("data/searches/index.json");
+    const indice = await fetchJSON("data/searches/index.json", { fresco: true });
     const dia = new Date(instante(b.lanzada) || Date.now()).toISOString().slice(0, 10);
     const hecha = (indice.searches || []).find(
       (x) => x.label === `HOP ${estado.hop.nombre}: ${b.texto}`.slice(0, 190) && String(x.generated_at || "") >= dia
     );
-    return hecha ? await fetchJSON(`data/searches/${hecha.slug}.json`) : null;
+    return hecha ? await fetchJSON(`data/searches/${hecha.slug}.json`, { fresco: true }) : null;
   } catch {
     return null;
   }

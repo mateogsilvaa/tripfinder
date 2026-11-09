@@ -75,6 +75,12 @@ class Store:
             # version con sangrias ya se pasaba sin haber mas datos.
             compacto=True,
         )
+        # Lo justo para pintar "actualizado el..." sin bajarse el tablon entero.
+        self._write(
+            "frescura.json",
+            {"generated_at": date.today().isoformat(), "count": len(offers)},
+            compacto=True,
+        )
 
     # -- el tablon entero, por origen ------------------------------------
     @staticmethod

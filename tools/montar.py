@@ -251,12 +251,71 @@ NOTA_PANEL = (
     "igual que en el backend.</span>\n"
 )
 
+# LA PRECARGA DE LOS MÓDULOS. La web es ES modules sin empaquetar: el navegador
+# descubre cada módulo al leer al que lo importa, y de tres a cuatro niveles de
+# profundidad son tres o cuatro viajes seguidos a la red antes de poder arrancar.
+# Con un `<link rel="modulepreload">` por módulo en la cabecera se piden TODOS a
+# la vez, en el primer viaje. Se calcula leyendo los `import` de `web/js/`, así
+# que no hay una lista que mantener: un módulo nuevo entra solo.
+IMPORT_ESTATICO = re.compile(
+    r'^\s*(?:import|export)\b[^;]*?\bfrom\s+"\./([\w-]+\.js)"|^import\s+"\./([\w-]+\.js)"',
+    re.MULTILINE,
+)
+
+# Lo que carga cada tipo de página (ver `arranque.js`): el feed es común a las
+# tres con herramientas; el HOP y el Interrail, solo lo suyo.
+MODULOS_FEED = (
+    "tripfinder.js",
+    "disparador.js",
+    "favoritos.js",
+    "ofertas.js",
+    "busqueda.js",
+    "seguimientos.js",
+)
+MODULOS_HOP = ("tripfinder.js", "disparador.js", "frescura.js", "hop.js")
+MODULOS_INTERRAIL = ("tripfinder.js", "disparador.js", "frescura.js", "interrail.js")
+
+
+def cierre_de_modulos(entradas: tuple[str, ...]) -> list[str]:
+    """Los módulos a precargar: las entradas y todo lo que importan de forma
+    estática, en orden de profundidad (los de arriba primero)."""
+    visto: dict[str, int] = {}
+    cola = [(e, 0) for e in entradas]
+    while cola:
+        nombre, nivel = cola.pop(0)
+        if nombre in visto:
+            continue
+        visto[nombre] = nivel
+        ruta = WEB / "js" / nombre
+        if not ruta.exists():
+            continue
+        for a, b in IMPORT_ESTATICO.findall(ruta.read_text(encoding="utf-8")):
+            cola.append((a or b, nivel + 1))
+    return sorted(visto, key=lambda n: (visto[n], n))
+
+
+def precarga(entradas: tuple[str, ...], version: str) -> str:
+    """Los `<link rel="modulepreload">` de una pagina. La URL tiene que ser
+    IGUAL a la del import para que el navegador la reutilice: con la version
+    sellada, todos llevan `?v=`; en el repo, solo la puerta de entrada (los de
+    dentro se importan sin version)."""
+    if not entradas:
+        return ""
+    sellada = str(version) != BUILD
+    lineas = []
+    for nombre in cierre_de_modulos(entradas):
+        sufijo = f"?v={version}" if sellada or nombre == "tripfinder.js" else ""
+        lineas.append(f'<link rel="modulepreload" href="js/{nombre}{sufijo}">')
+    return "\n".join(lineas) + "\n"
+
+
 # Lo unico que cambia de una pagina a otra. Todo lo demas es comun y vive en
 # `web/partes/`. El nav ya no es una parte suya —va dentro de la barra— asi que
 # cambiar una entrada se hace en la constante `NAV` de aqui arriba, y aparece
 # de golpe en las cuatro paginas que lo llevan.
 PAGINAS = {
     "index.html": {
+        "modulos": MODULOS_FEED,
         "base": "",
         "manifiesto": MANIFIESTO,
         "nav": NAV,
@@ -270,6 +329,7 @@ PAGINAS = {
         "tabbar": TABBAR,
     },
     "buscar.html": {
+        "modulos": MODULOS_FEED,
         "base": "",
         "manifiesto": MANIFIESTO,
         "nav": NAV,
@@ -283,6 +343,7 @@ PAGINAS = {
         "tabbar": TABBAR,
     },
     "seguimientos.html": {
+        "modulos": MODULOS_FEED,
         "base": "",
         "manifiesto": MANIFIESTO,
         "nav": NAV,
@@ -297,6 +358,7 @@ PAGINAS = {
     },
     # El Interrail: la ruta por Europa en tren, con vuelos y alojamiento.
     "interrail.html": {
+        "modulos": MODULOS_INTERRAIL,
         "base": "",
         "manifiesto": MANIFIESTO,
         "nav": NAV,
@@ -311,6 +373,7 @@ PAGINAS = {
     },
     # El modo HOP: decidir el viaje en grupo, con votos y chat.
     "hop.html": {
+        "modulos": MODULOS_HOP,
         "base": "",
         "manifiesto": MANIFIESTO,
         "nav": NAV,
@@ -436,6 +499,7 @@ def render(nombre_parte: str, datos: dict, version: str = BUILD) -> str:
     # son valores, no partes, y `sustituir` solo mira los huecos de la plantilla.
     for clave in ("guiones", "manifiesto"):
         huecos[clave] = str(huecos.get(clave, "")).format(v=version)
+    huecos["precarga"] = precarga(datos.get("modulos", ()), version)
     huecos["nav"] = str(huecos.get("nav", "")).format(**_zonas(datos.get("zona")))
     huecos["tabbar"] = str(huecos.get("tabbar", "")).format(**_zonas(datos.get("zona"), "tab"))
 
@@ -463,7 +527,7 @@ def montar_texto(html: str, datos: dict, version: str = BUILD) -> str:
 # otro nuevo del mismo despliegue (Pages sirve los assets con max-age=600). Al
 # publicar se le pega la misma version a cada import relativo, que es lo que
 # antes hacia solo el `app.js?v=`.
-IMPORT_RELATIVO = re.compile(r'(from |import )("\./[\w-]+\.js)(")')
+IMPORT_RELATIVO = re.compile(r'(from |import |import\()("\./[\w-]+\.js)(")')
 
 
 # El service worker guarda el armazon en una caja con la version en el nombre.

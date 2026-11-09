@@ -260,3 +260,23 @@ def test_al_publicar_se_sella_cada_import(tmp_path, monkeypatch):
     assert 'import "./tres.js?v=abc1234"' in texto
     # Y no se sella dos veces si se pasa otra vez.
     assert montar.sellar_modulos("abc1234") == []
+
+
+def test_cada_pagina_precarga_lo_suyo_y_no_lo_de_otra():
+    """El Interrail y el HOP no se bajan el feed (ofertas, favoritos…): era la
+    mitad de los 800 KB que cargaba cada pagina para nada."""
+    feed = {"ofertas.js", "favoritos.js", "busqueda.js", "seguimientos.js"}
+    for pagina in ("interrail", "hop"):
+        mods = set(montar.cierre_de_modulos(montar.PAGINAS[f"{pagina}.html"]["modulos"]))
+        assert not mods & feed, f"{pagina}.html precarga el feed: {sorted(mods & feed)}"
+    portada = set(montar.cierre_de_modulos(montar.PAGINAS["index.html"]["modulos"]))
+    assert feed <= portada
+    assert "sincronia.js" in portada  # la puerta de entrada lo arrastra en todas
+
+
+def test_la_precarga_sellada_lleva_version_en_cada_modulo():
+    """Con la version sellada el import lleva `?v=`: si el link no, son dos
+    descargas distintas y la precarga no sirve de nada."""
+    texto = montar.precarga(("tripfinder.js",), "abc1234")
+    assert texto
+    assert all("?v=abc1234" in linea for linea in texto.strip().splitlines())

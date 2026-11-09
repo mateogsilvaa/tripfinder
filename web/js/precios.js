@@ -1,7 +1,11 @@
 /* precios.js — Cuanto cuesta y a cuanta gente cubre, mas la escapada completa. */
 
 import { esc, fmtEUR } from "./base.js";
-import { ESCAPADAS_REALES } from "./alojamiento.js";
+
+/* Lo que costó de verdad la escapada entera (vuelo + cama) de los viajes cuyo
+   alojamiento ya se ha buscado, por id. Lo rellena `alojamiento.js`; vive aquí,
+   que no arrastra nada, para que `precios.js` no importe medio sitio por tenerlo. */
+export const ESCAPADAS_REALES = {};
 
 /* ------------------------------------------------------------------ precios
    Cada oferta lleva a cuanta gente cubre su precio (`adults`). El scan diario

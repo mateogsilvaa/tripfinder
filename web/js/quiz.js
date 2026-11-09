@@ -17,6 +17,7 @@ import { historiaHTML } from "./historia.js";
 import { precioHTML, edreamsURL } from "./precios.js";
 import { cajaAcceso, comoDueno, dispatch, esFaltaDeAcceso } from "./disparador.js";
 import { paraGrupo, ponerPerfiles, porque, recomendar } from "./motor.js";
+import { loRecordado, marcarFlap } from "./insignias.js";
 
 /* ------------------------------------------------------------- las preguntas
    Diez, más una que solo aparece si las anteriores dejan la puerta abierta, y
@@ -212,15 +213,6 @@ function recordar(respuestas) {
     localStorage.setItem(MEMORIA, JSON.stringify({ respuestas, cuando: Date.now() }));
   } catch {
     /* navegación privada: el test funciona igual, solo que no recuerda */
-  }
-}
-
-export function loRecordado() {
-  try {
-    const d = JSON.parse(localStorage.getItem(MEMORIA) || "null");
-    return d && d.respuestas ? d : null;
-  } catch {
-    return null;
   }
 }
 
@@ -560,17 +552,6 @@ async function avisarme(i, boton) {
 }
 
 /* ------------------------------------------------------------------ la puerta */
-export function marcarFlap() {
-  const flap = document.getElementById("tfDescubrir");
-  if (!flap) return;
-  const hay = !!loRecordado();
-  flap.classList.toggle("con-memoria", hay);
-  flap.setAttribute(
-    "aria-label",
-    hay ? "Ver tus destinos, o volver a hacer el test" : "Descubrir tu destino ideal"
-  );
-}
-
 export async function abrirQuiz() {
   const guardado = loRecordado();
   RESPUESTAS = guardado ? alDia({ ...guardado.respuestas }) : {};

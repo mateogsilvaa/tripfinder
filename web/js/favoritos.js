@@ -6,6 +6,7 @@ import { esMio } from "./disparador.js";
 import { wireCompartir } from "./compartir.js";
 import { OFFERS } from "./ofertas.js";
 import { openStays } from "./alojamiento.js";
+import { refrescarObservacion } from "./insignias.js";
 import { avisoDeshacer, reaparecer, tachar } from "./borrar.js";
 
 /* ---------------------------------------------------------------- favoritos
@@ -577,8 +578,20 @@ export function pintarListaFavs() {
 /* Un favorito puede venir de una busqueda guardada o de un seguimiento, y esos
    ficheros solo se leen al desplegarlos. Sin esto, un favorito de una busqueda
    no se enteraria de que ha bajado hasta que abrieras esa busqueda a mano. */
-export async function refrescarFavsDeTodo() {
+export async function refrescarFavsDeTodo({ cadaMin = 0 } = {}) {
   if (!Object.keys(FAVS).length) return;
+  // No en cada página: repasa el barrido, los seguimientos y hasta doce
+  // búsquedas, y el precio de un vuelo no cambia entre dos clics. Se apunta
+  // cuándo fue la última vez (por cuenta) y se espera `cadaMin` minutos.
+  const marca = tfClave("tf_favs_repasados");
+  if (cadaMin) {
+    try {
+      if (Date.now() - Number(localStorage.getItem(marca) || 0) < cadaMin * 60000) return;
+      localStorage.setItem(marca, String(Date.now()));
+    } catch {
+      /* sin almacenamiento: se repasa siempre, como antes */
+    }
+  }
   const fuentes = [];
 
   fuentes.push(
@@ -618,43 +631,5 @@ export async function refrescarFavsDeTodo() {
   pintarFavs();
 }
 
-
-
-
-
-/* El número de lo que sigues, en la pestaña de «Mis avisos» (arriba y en la
-   barra del móvil). Sin nada, no sale: un 0 en rojo sería ruido. */
-export function insigniaSeguimientos(n) {
-  document.querySelectorAll('.zona[data-zona="follows"], .tab[data-zona="follows"]').forEach((a) => {
-    let b = a.querySelector(".insignia");
-    if (!n) {
-      if (b) b.remove();
-      return;
-    }
-    if (!b) {
-      b = document.createElement("span");
-      b.className = "insignia";
-      a.appendChild(b);
-    }
-    b.textContent = n > 99 ? "99+" : String(n);
-    b.setAttribute("aria-label", `${n} ${n === 1 ? "viaje" : "viajes"}`);
-  });
-}
-
-/* El contador de la portada. No es la lista —esa vive en `seguimientos.html`—:
-   es la línea que dice cuántos hay y qué se hace con ellos, para que el
-   botón de Seguir de cada fila signifique algo desde la primera vez que se pulsa. */
-export function refrescarObservacion() {
-  const n = Object.keys(favLeer()).length;
-  insigniaSeguimientos(n);
-  const num = document.getElementById("obsCuenta");
-  const txt = document.getElementById("obsTexto");
-  if (!num || !txt) return;
-  num.textContent = n === 0 ? "—" : String(n);
-  txt.textContent =
-    n === 0
-      ? "Todavía no sigues ningún viaje. Toca la campana de cualquier vuelo y aquí verás si sube o baja."
-      : n === 1
-        ? "1 viaje apuntado. Se revisa cada 12 h."
-        : `${n} viajes apuntados. Se revisan cada 12 h.`;
-}
+// Las insignias viven aparte (`insignias.js`) para no obligar a bajarse esto en todas las páginas.
+export { insigniaSeguimientos, refrescarObservacion } from "./insignias.js";

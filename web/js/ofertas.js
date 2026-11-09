@@ -1,6 +1,7 @@
 /* ofertas.js — La hoja del dia: cargar el scan, filtrar, y pintar la plancha y el indice. */
 
 import { huecoFoto, ponerFotos } from "./fotos.js";
+import { pintarFrescura } from "./frescura.js";
 import { abrirMundo, paisesElegidos, rotuloPaises } from "./mundo.js";
 import {
   $,
@@ -132,7 +133,7 @@ export async function init() {
   }
   dejarDeCargar();
   DIA_DEL_SCAN = fmtDate(payload.generated_at);
-  frescura(payload.generated_at);
+  pintarFrescura(payload.generated_at);
 
   OFFERS = payload.offers || [];
   renderStats(payload);
@@ -373,31 +374,6 @@ function pintarCompartido(id) {
   return true;
 }
 
-
-/* Cuanto hace que se actualizo: sin esto no sabes si miras datos de hoy o de
-   hace tres dias, que en precios de vuelo es toda la diferencia. */
-function frescura(iso) {
-  const el = document.getElementById("frescura");
-  if (!el) return;
-  const d = parseISO(iso);
-  if (!d) {
-    el.textContent = "sin datos todavía";
-    return;
-  }
-  const horas = Math.round((Date.now() - d.getTime()) / 3600000);
-  const texto =
-    horas < 1 ? "hace menos de una hora" : horas < 24 ? `hace ${horas} h` : `hace ${Math.round(horas / 24)} días`;
-  // Sin línea, lo que se ve es la última tanda guardada, y hay que decirlo: un
-  // precio de anteayer con el aspecto de uno de hoy es peor que no tener nada.
-  const deLaCaja = typeof tfEsDeLaCaja === "function" && tfEsDeLaCaja();
-  el.textContent = deLaCaja
-    ? `sin conexión · lo último guardado, ${texto}`
-    : `levantamiento: ${texto} · se revisa cada 12 h`;
-  el.className = deLaCaja || horas > 36 ? "viejo" : "";
-  // Y arriba, en el renglón del titular: lo primero que se lee es de cuándo es.
-  const ante = document.getElementById("antetitulo");
-  if (ante) ante.textContent = `Desde Madrid · actualizado ${texto}`;
-}
 
 function renderStats(payload) {
   // Solo el feed. `#stats` existe en las cuatro paginas, y mientras esto no

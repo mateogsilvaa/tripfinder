@@ -37,7 +37,7 @@
    `interrail-datos.js`). Los de los vuelos y el alojamiento son de verdad. */
 
 import { POLL_EVERY_MS, esc, escURL, fetchJSON, fmtDate, parseISO } from "./base.js";
-import { ORIGENES } from "./busqueda.js";
+import { ORIGENES } from "./opciones.js";
 import { cajaAcceso, dispatch, esFaltaDeAcceso, wireEntrar } from "./disparador.js";
 import { CIUDADES, CONEXIONES, ESTACIONES, NOCTURNOS, RUTAS, TIPOS, ZONAS } from "./interrail-datos.js";
 import { ALTO as ALTO_EU, ANCHO as ANCHO_EU, PAISES as PAISES_EU, PUNTOS } from "./mapa-europa.js";
@@ -1531,7 +1531,7 @@ async function cargar(lista, ctx) {
   await Promise.all(
     pedir.map(async ([cache, id, ruta]) => {
       try {
-        cache[id] = await fetchJSON(ruta);
+        cache[id] = await fetchJSON(ruta, { fresco: true });
         alguno = true;
       } catch {
         /* todavía no está: se reintenta en el siguiente sondeo */

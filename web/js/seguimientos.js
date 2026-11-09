@@ -224,7 +224,7 @@ export async function cargarWatches() {
   }
   let datos;
   try {
-    datos = await fetchJSON("data/watch.json");
+    datos = await fetchJSON("data/watch.json", { fresco: !!window.__esperando });
   } catch {
     return;
   }

@@ -8,6 +8,8 @@
                             ciudad de `interrail-datos.js` ya proyectada.
      web/js/mapa-mundo.js   el mundo para elegir países en el feed, con su
                             código ISO y su nombre en español.
+     web/js/mapa-nombres.js solo el código ISO y el nombre de cada país del mundo,
+                            sin trazos: para poner nombres sin bajar 120 KB.
      web/js/mapa-hop.js     Europa y el Magreb para el HOP, con cada
                             aeropuerto de `data/airports.json` en su sitio.
 
@@ -143,5 +145,11 @@ writeFileSync(
   cabecera("mapa-mundo.js") +
     `export const ANCHO = ${ANCHO_MU};\nexport const ALTO = ${ALTO_MU};\n` +
     `export const PAISES = ${JSON.stringify(mundo)};\n`
+);
+// Solo los nombres, para no bajar los trazos (120 KB) cuando se necesita un nombre.
+writeFileSync(
+  join(RAIZ, "web/js/mapa-nombres.js"),
+  cabecera("mapa-nombres.js") +
+    `export const NOMBRES = ${JSON.stringify(mundo.filter((p) => p.iso).map((p) => [p.iso, p.nombre]))};\n`
 );
 console.log(`Europa: ${paisesEu.length} países, ${Object.keys(puntos).length} ciudades. Mundo: ${mundo.length} países.`);

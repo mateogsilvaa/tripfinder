@@ -10,11 +10,11 @@
 
    Lo elegido se queda en este navegador. La geometría la genera una vez
    `tools/mapas.mjs` (Natural Earth): aquí solo se pintan los trazos. */
-import { PAISES } from "./mapa-mundo.js";
+import { NOMBRES } from "./mapa-nombres.js";
 import { esc } from "./base.js";
 
 const CLAVE = "tf_paises";
-const NOMBRE = Object.fromEntries(PAISES.map((p) => [p.iso, p.nombre]));
+const NOMBRE = Object.fromEntries(NOMBRES);
 
 function leer() {
   try {
@@ -72,7 +72,7 @@ export function abrirMundo(conChollo, alCambiar, { zonas = [], zona = "", alZona
         n ? `<span class="mundo-n">${n} vuelo${n === 1 ? "" : "s"}</span>` : ""
       }<span class="mundo-marca" aria-hidden="true"></span></button></li>`;
   const conVuelo = [...cuenta.keys()].filter((iso) => NOMBRE[iso]).sort((a, b) => nombrePais(a).localeCompare(nombrePais(b), "es"));
-  const resto = PAISES.map((p) => p.iso)
+  const resto = NOMBRES.map(([iso]) => iso)
     .filter((iso) => !cuenta.has(iso) && NOMBRE[iso])
     .sort((a, b) => nombrePais(a).localeCompare(nombrePais(b), "es"));
   const caja = tfModal(`

@@ -45,6 +45,8 @@
     "nubeSalir": "readonly",
     "nubeSincronizar": "readonly",
     "nubeToken": "readonly",
+    "nubeLeerDoc": "readonly",
+    "nubeSubirSincronia": "readonly",
     "nubeTokens": "readonly",
     "tfAbrirBuzon": "readonly",
     "tfAbrirDialogo": "readonly",
