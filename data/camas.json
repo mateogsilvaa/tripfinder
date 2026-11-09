@@ -31,6 +31,11 @@
       "muestras": 6,
       "nombre": "Dánzig"
     },
+    "IAS": {
+      "noche": 146.52,
+      "muestras": 3,
+      "nombre": "IASI"
+    },
     "OSL": {
       "noche": 89.67,
       "muestras": 3,
@@ -96,8 +101,8 @@
       "muestras": 3
     },
     "Rumanía": {
-      "noche": 48.75,
-      "muestras": 6
+      "noche": 61.0,
+      "muestras": 9
     },
     "Suiza": {
       "noche": 209.67,
