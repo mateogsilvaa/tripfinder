@@ -42,7 +42,14 @@ async function quiero() {
   pintar();
 }
 
+/* Con los planes apagados desde el panel no hay nada que enseñar aquí. */
+const sinPlanes = () => typeof nubePlanesActivos === "function" && !nubePlanesActivos();
+
 if (boton) {
+  if (sinPlanes()) location.replace("./");
+  document.addEventListener("tf:planes", (e) => {
+    if (e.detail && e.detail.activos === false) location.replace("./");
+  });
   if (typeof TF_PREMIUM_OBLIGATORIO !== "undefined" && TF_PREMIUM_OBLIGATORIO) {
     const estreno = $("#planesEstreno");
     if (estreno) estreno.hidden = true;

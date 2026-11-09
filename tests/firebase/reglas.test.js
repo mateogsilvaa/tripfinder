@@ -529,6 +529,15 @@ const ponerMax = () =>
     });
   });
 
+test("los planes: solo el admin los apaga, cualquiera lo lee, y apagados gratis crea un HOP", async () => {
+  await assertSucceeds(getDoc(doc(anonimo(), "ajustes/web")));
+  await assertFails(setDoc(doc(como("gus", "gus@x.es"), "ajustes/web"), { planes: false }));
+  await assertFails(setDoc(doc(como("jefe", "jefe@x.es"), "ajustes/web"), { planes: "no" }));
+  await assertSucceeds(setDoc(doc(como("jefe", "jefe@x.es"), "ajustes/web"), { planes: false }));
+  // Con los planes apagados, una cuenta gratis es Max: crea su HOP.
+  await assertSucceeds(crearHop(como("gus", "gus@x.es"), "gus", "hopGus"));
+});
+
 test("HOP: premium crea una; gratis no", async () => {
   await assertSucceeds(crearHop(como("ana", "ana@x.es"), "ana", "hop1"));
   await assertFails(crearHop(como("gus", "gus@x.es"), "gus", "hop2"));

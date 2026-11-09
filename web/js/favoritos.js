@@ -54,6 +54,9 @@ function favResumen(o) {
     return_date: o.return_date || "",
     nights: o.nights || null,
     airline: o.airline || o.provider || "",
+    // Ida con una compañía y vuelta con otra: las dos, y la web de cada una.
+    airline_back: o.airline_back && o.airline_back !== o.airline ? o.airline_back : "",
+    deep_link_back: o.deep_link_back || "",
     adults: pax(o),
     deep_link: o.deep_link || "",
     airline_link: o.airline_link || "",
@@ -472,7 +475,7 @@ function favFila(f) {
       <span class="dest-cell">
         <span class="city">${esc(f.destination_name || f.destination)}</span>
         <span class="country">${esc(f.destination_country || "")}${
-          f.airline ? ` · ${esc(f.airline)}` : ""
+          f.airline ? ` · ${esc(f.airline_back ? `${f.airline} + ${f.airline_back}` : f.airline)}` : ""
         }</span>
       </span>
       <span class="when"><b>${fmtDate(f.depart_date, true)}</b>${
@@ -493,7 +496,10 @@ function favFila(f) {
       <span class="favacc">
         ${
           enlace
-            ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
+            ? f.airline_back && f.deep_link_back
+              ? `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ida</a>
+                 <a class="btn ghost small" href="${escURL(f.deep_link_back)}" target="_blank" rel="noopener">Vuelta</a>`
+              : `<a class="btn ghost small" href="${escURL(enlace)}" target="_blank" rel="noopener">Ver vuelo</a>`
             : ""
         }
         <button class="btn ghost small" type="button" data-cama="${esc(f.id)}"

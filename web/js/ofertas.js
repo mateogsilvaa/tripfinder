@@ -102,6 +102,17 @@ async function tablonDe(iata) {
   }
 }
 
+/* El chollo del día llega con los datos, pero su sitio está reservado desde
+   el HTML (`.hero-cargando`): sin eso, al llegar empujaba el feed entero
+   hacia abajo y la página parecía montarse a trozos. */
+function soltarHero() {
+  const h = document.getElementById("hero");
+  if (!h) return;
+  h.classList.remove("hero-cargando");
+  h.removeAttribute("aria-busy");
+  if (h.querySelector(".hero-hueco")) h.hidden = true;
+}
+
 export async function init() {
   let payload;
   ORIGEN = existe("#offers") ? leerDesde() : "MAD";
@@ -112,6 +123,7 @@ export async function init() {
     payload = otro || (await fetchJSON("data/offers.json"));
   } catch {
     if (existe("#offers")) pintarStats(stat("estado", "sin datos aún"));
+    soltarHero();
     dejarDeCargar(
       "No se han podido leer los precios. Puede ser tu conexión, o que el último " +
         "scan no llegara a publicar. Vuelve a cargar en un rato."
@@ -1073,6 +1085,7 @@ export function render() {
 
   $("#hero").innerHTML = list.length ? heroTicket(list[0]) : "";
   $("#hero").hidden = !list.length;
+  soltarHero();
   ponerFotos($("#hero"));
   // La primera va arriba, en la lámina: el resto es el feed.
   const resto = list.slice(1);

@@ -534,11 +534,13 @@ function tfPintarBarra() {
   const barra = document.querySelector(".topbar-in") || document.querySelector(".topbar");
   // El panel tiene su propia puerta: un "entrar" al lado solo confundiria.
   if (!barra || document.body.dataset.sinCuenta !== undefined) return;
-  if (document.getElementById("tfCuenta")) return;
+  // Se pinta dos veces: pronto, para que la barra no salte, y otra al cargar
+  // la página, cuando `nube.js` ya ha dicho si la sesión guardada vale (una
+  // de las cuentas de antes no cuenta como haber entrado). La segunda solo
+  // rehace lo de dentro del mismo botón.
   const s = tfSesion();
-  const boton = document.createElement("button");
-  boton.id = "tfCuenta";
-  boton.type = "button";
+  const yaEsta = document.getElementById("tfCuenta");
+  const boton = yaEsta || document.createElement("button");
   boton.className = "cuenta" + (s ? " dentro" : "");
   boton.innerHTML = s
     ? `<b aria-hidden="true">${tfEsc((s.name || s.user || "?").slice(0, 1).toUpperCase())}</b>
@@ -547,6 +549,9 @@ function tfPintarBarra() {
          stroke-width="1.8" stroke-linecap="round" aria-hidden="true" focusable="false"><circle cx="12" cy="8.5" r="3.8"/>
          <path d="M4.8 20.2a7.2 7.2 0 0 1 14.4 0"/></svg><span class="cuenta-txt">Entrar</span>`;
   boton.title = s ? "Tu cuenta" : "Entrar con tu cuenta";
+  if (yaEsta) return;
+  boton.id = "tfCuenta";
+  boton.type = "button";
   boton.addEventListener("click", () => (tfSesion() ? tfAbrirCuenta() : tfAbrirLogin()));
   // Detrás del de tema: en la barra el orden es marca · zonas · en vivo ·
   // tema · entrar, y el de entrar es el único que cambia de color.
@@ -1100,8 +1105,9 @@ function tfExplicarFallo(r) {
   return "No se pudo: " + r.reason;
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", tfPintarBarra);
-} else {
-  tfPintarBarra();
-}
+/* Este fichero va al final del <body>, así que la barra ya está: se pinta YA.
+   Esperando a `DOMContentLoaded`, que llega después de cargar todos los
+   módulos, el botón de la cuenta salía el último y empujaba la barra. */
+if (document.querySelector(".topbar-in, .topbar")) tfPintarBarra();
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tfPintarBarra);
+else tfPintarBarra();

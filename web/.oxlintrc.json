@@ -10,6 +10,8 @@
     "TF_REPO": "readonly",
     "TF_SESION_KEY": "readonly",
     "nubeActiva": "readonly",
+    "nubePlanesActivos": "readonly",
+    "nubeCambiarPlanes": "readonly",
     "nubeGuardarAparato": "readonly",
     "nubeIlustracionesPendientes": "readonly",
     "nubeSubirIlustracion": "readonly",

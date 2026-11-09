@@ -143,6 +143,15 @@ def test_cuando_se_exija_una_cuenta_gratis_no_lanza_nada(monkeypatch):
     assert "premium" in a.encargos["e1"]["motivo"]
 
 
+def test_con_los_planes_apagados_una_cuenta_gratis_lanza_aunque_se_exija(monkeypatch):
+    """Desde el panel se apagan los planes: toda cuenta aprobada es Max."""
+    monkeypatch.setattr(nube, "PREMIUM_OBLIGATORIO", True)
+    a = Memoria(FICHAS, [encargo("e1", owner="gus")])
+    a.planes_activos = lambda: False
+    cuenta, _ = pasar(a)
+    assert cuenta["enviado"] == 1
+
+
 def test_cuando_se_exija_en_su_hop_busca_cualquiera_del_grupo(monkeypatch):
     monkeypatch.setattr(nube, "PREMIUM_OBLIGATORIO", True)
     hops = {"h1": {"miembros": ["pia", "gus"]}, "h2": {"miembros": ["pia"]}}

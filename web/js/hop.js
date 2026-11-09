@@ -2057,8 +2057,19 @@ function pintarResultados(app) {
                 <b>${esc(o.destination_name || o.destination)}</b> <small>${esc(o.destination_country || "")}</small>
                 <span>${esc(fmtDate(o.depart_date, true))} → ${esc(fmtDate(o.return_date, true))}${
                   ida ? ` · ida ${esc(ida)}` : ""
-                }${vuelta ? ` · vuelta ${esc(vuelta)}` : ""} · ${esc(o.airline || "")}${
-                  enlaceOk(o.deep_link) ? ` · <a href="${escURL(o.deep_link)}" target="_blank" rel="noopener">ver</a>` : ""
+                }${vuelta ? ` · vuelta ${esc(vuelta)}` : ""} · ${
+                  // Ida con una y vuelta con otra: las dos, y un enlace a cada web.
+                  o.airline_back && o.airline_back !== o.airline
+                    ? `${esc(o.airline)} + ${esc(o.airline_back)}${
+                        enlaceOk(o.deep_link) ? ` · <a href="${escURL(o.deep_link)}" target="_blank" rel="noopener">ida</a>` : ""
+                      }${
+                        enlaceOk(o.deep_link_back)
+                          ? ` · <a href="${escURL(o.deep_link_back)}" target="_blank" rel="noopener">vuelta</a>`
+                          : ""
+                      }`
+                    : `${esc(o.airline || "")}${
+                        enlaceOk(o.deep_link) ? ` · <a href="${escURL(o.deep_link)}" target="_blank" rel="noopener">ver</a>` : ""
+                      }`
                 }</span>
               </div>
               <b class="hopx-res-precio">${euros((Number(o.price) || 0) / pax(o))}<small>por cabeza</small></b>

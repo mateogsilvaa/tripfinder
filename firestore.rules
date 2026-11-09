@@ -54,13 +54,22 @@ service cloud.firestore {
     // Max es premium sin límites: lo mismo y, además, tantas HOP como quiera.
     // Quien administra la web tiene Max sin tener que ponérselo: su propia ficha
     // no la puede tocar nadie desde el navegador, ni él.
+    // Los planes, apagados desde el panel (`ajustes/web.planes == false`):
+    // entonces toda cuenta aprobada es Max.
+    function planesApagados() {
+      return exists(/databases/$(database)/documents/ajustes/web)
+        && get(/databases/$(database)/documents/ajustes/web).data.get('planes', true) == false;
+    }
+
     function premium() {
-      return aprobado() && (ficha(request.auth.uid).get('plan', 'premium') in ['premium', 'max']
+      return aprobado() && (planesApagados()
+        || ficha(request.auth.uid).get('plan', 'premium') in ['premium', 'max']
         || ficha(request.auth.uid).get('admin', false) == true);
     }
 
     function max() {
-      return aprobado() && (ficha(request.auth.uid).get('plan', 'premium') == 'max'
+      return aprobado() && (planesApagados()
+        || ficha(request.auth.uid).get('plan', 'premium') == 'max'
         || ficha(request.auth.uid).get('admin', false) == true);
     }
 
@@ -265,6 +274,16 @@ service cloud.firestore {
         && (v.size() < 1 || (v[0] is string && v[0].size() <= 80))
         && (v.size() < 2 || (v[1] is string && v[1].size() <= 80))
         && (v.size() < 3 || (v[2] is string && v[2].size() <= 80));
+    }
+
+    // Ajustes de la web que cambia el panel (de momento, si hay planes). Los
+    // lee cualquiera, también sin cuenta: deciden qué se enseña.
+    match /ajustes/{id} {
+      allow read: if true;
+      allow write: if admin()
+        && id == 'web'
+        && request.resource.data.keys().hasOnly(['planes'])
+        && request.resource.data.planes is bool;
     }
 
     match /hops/{hopId} {

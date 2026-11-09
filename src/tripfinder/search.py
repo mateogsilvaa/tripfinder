@@ -825,6 +825,22 @@ def run_search(req: SearchRequest, cfg: Config, history: dict, max_queries: int 
             resultado.errors.append("Google devolvio paginas vacias: puede faltar alguna aerolinea")
 
     ofertas = list(encontradas.values())
+    # IDA CON UNA COMPAÑÍA Y VUELTA CON OTRA, también aquí y no solo en el
+    # barrido: las mitades de Ryanair y Wizz que ya han llegado se cruzan, y
+    # si la mezcla sale más barata que lo mejor de una sola compañía para ese
+    # mismo viaje, entra como una oferta más (`mixtos.py`). No pregunta nada
+    # nuevo. Con fechas exactas, solo esas noches.
+    from .mixtos import mezclar
+
+    if req.depart and req.return_date:
+        n = (date.fromisoformat(req.return_date) - date.fromisoformat(req.depart)).days
+        noches = (n, n)
+    else:
+        noches = (req.nights_min, req.nights_max)
+    for mixta in mezclar(ofertas, *noches):
+        if req.return_date and mixta.return_date != req.return_date:
+            continue
+        ofertas.append(mixta)
     # La llegada de Wizz, con lo que tarda la ruta en otros directos (ver
     # `duraciones.py`): antes de puntuar, que las horas en destino cuentan.
     from . import duraciones as dur

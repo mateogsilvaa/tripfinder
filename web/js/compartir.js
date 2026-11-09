@@ -176,7 +176,7 @@ export function alCalendario(o) {
    portada lo pinta aunque no lo encuentre. */
 const CAMPOS_ENLACE = [
   "id", "provider", "origin", "destination", "depart_date", "return_date", "price", "currency",
-  "origin_name", "destination_name", "destination_country", "airline", "airline_back", "deep_link",
+  "origin_name", "destination_name", "destination_country", "airline", "airline_back", "deep_link", "deep_link_back",
   "airline_link", "airline_link_label", "adults", "nights", "depart_time", "arrive_time", "return_time",
   "return_arrive_time", "stops", "weekend", "baseline", "discount_pct", "useful_hours", "price_per_hour",
 ];
