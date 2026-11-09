@@ -194,7 +194,7 @@ async function lista(caja, yo, aviso = "") {
                 `<button type="button" class="adm-seg" role="radio" data-periodo="${dias}"
                   aria-checked="${dias === periodo ? "true" : "false"}">${rotulo}</button>`
             ).join("")}</div>
-            <button class="adm-planes" type="button" id="admPlanes" role="switch"
+            <button class="adm-planes" type="button" id="admInterruptorPlanes" role="switch"
               aria-checked="${nubePlanesActivos() ? "true" : "false"}"
               title="Apagados, todas las cuentas son Max y la web no habla de planes">
               <span class="adm-planes-raya" aria-hidden="true"><i></i></span>
@@ -381,7 +381,7 @@ async function lista(caja, yo, aviso = "") {
      en las reglas de la base de datos y en los encargos) y la web no habla de
      planes; encendidos, todo vuelve a como estaba: los planes de cada cuenta
      no se tocan, solo se dejan de aplicar. */
-  caja.querySelector("#admPlanes").addEventListener("click", async (e) => {
+  caja.querySelector("#admInterruptorPlanes").addEventListener("click", async (e) => {
     const b = e.currentTarget;
     const activos = b.getAttribute("aria-checked") === "true";
     const pregunta = activos
