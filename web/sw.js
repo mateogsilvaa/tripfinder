@@ -10,11 +10,25 @@
        caché. Cambia cuando cambia la versión, y la versión la sella `pages.yml`
        con el hash del commit, así que un despliegue trae caché nueva entera.
 
-     · LOS DATOS (todo lo de data/) van SIEMPRE a la red primero. `fetchJSON`
-       pide con `cache: no-store` y un `?t=<ahora>` a propósito, y eso se
-       respeta: la caché es un paracaídas, no un atajo. Solo si la red falla se
-       sirve lo guardado, y entonces la respuesta lleva una cabecera que la
-       delata para que la web lo diga en voz alta.
+     · LOS DATOS (todo lo de data/) tienen dos tratos, según de quién sean.
+
+         - Lo DEL BARRIDO (`offers.json`, los tablones, el histórico, los mapas
+           de aeropuertos…) cambia dos veces al día. Se sirve de la caché al
+           momento y se vuelve a pedir DETRÁS: «sirve ya, actualiza después».
+           Si lo guardado tiene menos de `VIDA` minutos ni se pregunta. Cuando
+           lo de detrás trae datos distintos, se avisa a las páginas abiertas
+           (`datos-nuevos`) y la web ofrece traerlos con un clic: nunca se
+           cambia la pantalla por debajo de quien está mirando.
+
+         - Lo DE CADA CUENTA (sus búsquedas, seguimientos, alojamientos) va a
+           la red primero, como siempre: es lo que alguien acaba de pedir y
+           espera ver, y mostrarle la versión de hace un rato sería mentirle.
+           También va a la red todo lo que `fetchJSON` pide con `fresco`
+           (`cache: no-store`).
+
+       En los dos casos, si la red falla se sirve lo guardado, y entonces la
+       respuesta lleva una cabecera que la delata para que la web lo diga en
+       voz alta: lo de ayer nunca se enseña como si fuera de hoy.
 
    Lo que NO se cachea: nada de api.github.com. Son escrituras y respuestas con
    token de por medio; guardar eso en disco sería regalarlo. */
@@ -57,6 +71,12 @@ const PIEZAS = [
   "./js/interrail-datos.js",
   "./js/hop.js",
   "./js/fotos.js",
+  "./js/insignias.js",
+  "./js/camas-ficha.js",
+  "./js/frescura.js",
+  "./js/avisos.js",
+  "./js/sincronia.js",
+  "./js/mapa-nombres.js",
   "./js/borrar.js",
   "./js/filtro-destinos.js",
   "./js/notificaciones.js",
@@ -155,6 +175,45 @@ const sinReloj = (url) => {
   return u.toString();
 };
 
+/* CUÁNTO VALE LO GUARDADO. Solo lo del barrido, que cambia dos veces al día:
+   quince minutos sin preguntar. Lo de cada cuenta no está aquí a propósito: va
+   a la red. */
+const VIDA = 15 * 60 * 1000;
+const DEL_BARRIDO = [
+  /\/data\/offers\.json$/,
+  /\/data\/frescura\.json$/,
+  /\/data\/tablon\//,
+  /\/data\/(camas|continentes|regiones|airports_world|history)\.json$/,
+  /\/data\/duraciones\.json$/,
+];
+const vidaDe = (p) => (DEL_BARRIDO.some((r) => r.test(p)) ? VIDA : 0);
+
+/* Se guarda con la hora a la que llegó: las respuestas no dicen cuánto hace. */
+async function conHora(respuesta) {
+  const cabeceras = new Headers(respuesta.headers);
+  cabeceras.set("X-TF-Guardado", String(Date.now()));
+  return new Response(await respuesta.blob(), {
+    status: respuesta.status,
+    statusText: respuesta.statusText,
+    headers: cabeceras,
+  });
+}
+
+/* ¿Lo de ahora es distinto de lo guardado? Por la etiqueta que da el servidor
+   (ETag o fecha de modificación); sin ninguna de las dos, no se sabe y no se
+   avisa: un aviso de más es peor que uno de menos. */
+function cambio(anterior, nueva) {
+  const marca = (r) => r.headers.get("etag") || r.headers.get("last-modified") || "";
+  const a = marca(anterior);
+  const n = marca(nueva);
+  return !!a && !!n && a !== n;
+}
+
+async function avisarAPaginas(ruta) {
+  const paginas = await self.clients.matchAll({ type: "window" });
+  paginas.forEach((p) => p.postMessage({ tipo: "datos-nuevos", ruta }));
+}
+
 /* El panel NO pasa por aquí. No es una página que se consulte en el metro: es
    la herramienta con la que se dan de alta cuentas y se cambian contraseñas, y
    servirla de la caché significa que quien la abrió una vez se queda con esa
@@ -178,17 +237,45 @@ self.addEventListener("fetch", (ev) => {
   ev.respondWith(
     (async () => {
       if (esDato) {
-        // Red primero, siempre. Con red, la red gana; sin red, lo de ayer con
-        // su etiqueta puesta.
-        try {
+        const clave = sinReloj(req.url);
+        const vida = vidaDe(url.pathname);
+        // `fetchJSON(…, { fresco: true })` pide `no-store`: eso es «de la red».
+        const deLaRed = req.cache === "no-store" || req.cache === "reload";
+
+        // Pedirlo a la red y guardarlo (con la hora, para saber su edad).
+        const pedir = async () => {
           const r = await fetch(req);
           if (r.ok) {
             const cache = await caches.open(DATOS);
-            cache.put(sinReloj(req.url), r.clone());
+            const anterior = await cache.match(clave);
+            await cache.put(clave, await conHora(r.clone()));
+            if (anterior && cambio(anterior, r)) avisarAPaginas(url.pathname);
           }
           return r;
+        };
+
+        if (vida && !deLaRed) {
+          const cache = await caches.open(DATOS);
+          const guardado = await cache.match(clave);
+          if (guardado) {
+            const edad = Date.now() - Number(guardado.headers.get("X-TF-Guardado") || 0);
+            // Reciente: ni se pregunta. Viejo: se sirve y se actualiza detrás.
+            if (edad >= vida) {
+              // Sin línea no hay «detrás»: se dice, como siempre que lo servido
+              // sale de la caja y no de la red.
+              if (self.navigator && self.navigator.onLine === false) return marcada(guardado);
+              ev.waitUntil(pedir().catch(() => {}));
+            }
+            return guardado;
+          }
+        }
+
+        // Sin caché (o de la red a propósito): red primero. Si falla, lo de
+        // ayer con su etiqueta puesta.
+        try {
+          return await pedir();
         } catch (err) {
-          const guardado = await caches.match(sinReloj(req.url));
+          const guardado = await caches.match(clave);
           if (guardado) return marcada(guardado);
           throw err;
         }

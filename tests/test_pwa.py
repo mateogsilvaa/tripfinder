@@ -86,16 +86,33 @@ def test_lo_servido_de_la_caja_va_marcado():
     mete una cabecera, `fetchJSON` la lee y el pie lo dice."""
     assert 'cabeceras.set("X-TF-Cache", "1")' in SW
     assert 'r.headers.get("X-TF-Cache")' in (WEB / "js" / "base.js").read_text(encoding="utf-8")
-    ofertas = (WEB / "js" / "ofertas.js").read_text(encoding="utf-8")
-    assert "sin conexión" in ofertas
+    # El renglón del pie vive en su propio módulo (`frescura.js`).
+    frescura = (WEB / "js" / "frescura.js").read_text(encoding="utf-8")
+    assert "sin conexión" in frescura
 
 
 def test_solo_se_marca_lo_que_de_verdad_sale_de_la_caja():
-    """`marcada()` solo se usa en el camino de respaldo. Si se marcara siempre,
-    la web diría 'sin conexión' con cobertura de sobra y nadie la creería."""
-    assert SW.count("return marcada(") == 1
+    """`marcada()` solo se usa cuando lo servido viene de la caja PORQUE falla
+    la red: con red de sobra se serviría 'sin conexión' y nadie lo creería.
+    Hay dos caminos: la red caída al pedir, y lo viejo sin línea."""
+    assert SW.count("return marcada(") == 2
     respaldo = SW[SW.index("} catch (err) {") : SW.index("// El armazón")]
     assert "return marcada(guardado)" in respaldo
+    # Lo viejo solo se marca si el navegador sabe que no hay línea.
+    assert "onLine === false" in SW
+
+
+def test_lo_del_barrido_se_sirve_ya_y_se_actualiza_detras():
+    """Los datos del barrido cambian dos veces al día: no hace falta ir a la red
+    en cada página. Lo guardado se sirve al momento, y si es viejo se vuelve a
+    pedir detrás; lo de cada cuenta va a la red."""
+    assert "VIDA = 15 * 60 * 1000" in SW
+    assert "ev.waitUntil(pedir()" in SW
+    assert "datos-nuevos" in SW
+    for de_cuenta in ("searches", "watch", "stays", "users"):
+        assert not any(de_cuenta in linea for linea in SW[SW.index("const DEL_BARRIDO") : SW.index("const vidaDe")].splitlines())
+    # Y lo pedido con `fresco` (no-store) nunca sale de la caja.
+    assert 'req.cache === "no-store"' in SW
 
 
 def test_el_cache_buster_no_se_usa_como_clave():
@@ -103,7 +120,8 @@ def test_el_cache_buster_no_se_usa_como_clave():
     nueva por petición y no se encontraría nunca la anterior."""
     assert "sinReloj" in SW
     assert "u.search = \"\"" in SW
-    assert "cache.put(sinReloj(req.url)" in SW
+    assert "cache.put(clave, await conHora(" in SW
+    assert "const clave = sinReloj(req.url)" in SW
 
 
 def test_no_se_guarda_nada_de_la_api_de_github():

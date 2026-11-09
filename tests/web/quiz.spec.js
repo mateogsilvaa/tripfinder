@@ -189,6 +189,8 @@ test.describe("el test de destinos", () => {
   test("la flecha izquierda vuelve", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await page.click("#tfDescubrir");
+    // El test se carga al pulsar: se espera a que esté antes de teclear.
+    await expect(page.locator(".quiz-cuenta")).toHaveText(/^1 de/);
     await page.keyboard.press("1");
     await expect(page.locator(".quiz-cuenta")).toHaveText(/^2 de/);
     await page.keyboard.press("ArrowLeft");
@@ -263,6 +265,7 @@ test.describe("el test de destinos", () => {
   test("«¿y algo más?» no vuelve a ofrecer lo que ya elegiste", async ({ page }) => {
     await page.goto("/index.html", { waitUntil: "domcontentloaded" });
     await page.click("#tfDescubrir");
+    await expect(page.locator(".quiz-opcion").first()).toBeVisible();
     const primeras = await page.locator(".quiz-opcion .quiz-texto b").allTextContents();
     expect(primeras).toContain("Salir de noche"); // la etiqueta que no se podía pedir
     await page.locator(".quiz-opcion").first().click(); // playa

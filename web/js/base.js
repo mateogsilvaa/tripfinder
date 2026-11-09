@@ -85,12 +85,44 @@ export function escURL(valor) {
    el worker manda el dato a la red primero y solo tira de su copia si no hay
    linea, y en ese caso lo dice con una cabecera. Enseñar precios de anteayer
    callando es el unico fallo que no nos podemos permitir (#22). */
-export const fetchJSON = (path) =>
-  fetch(`${path}${path.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" }).then((r) => {
+/* LOS DATOS, SIN PEDIRLOS DE NUEVO CADA VEZ.
+
+   Antes cada lectura iba a la red con `no-store` y un `?t=<ahora>`: nueve
+   módulos pidiendo `offers.json`, `watch.json` o el índice de búsquedas en la
+   misma carga, y la misma pantalla otra vez en cada página. Ahora:
+
+   · Por defecto se pide normal: el navegador y el service worker pueden
+     contestar con lo que ya tienen (los datos del barrido cambian dos veces al
+     día; ver `sw.js`).
+   · Lo que se pide a la vez, se pide UNA vez: dentro de `VIDA_MS` la misma
+     dirección comparte la respuesta (cada módulo recibe su propia copia, que
+     alguno la modifica).
+   · `{ fresco: true }` es para lo que alguien está esperando que cambie (una
+     búsqueda que acaba de salir, un alojamiento que se está buscando): va a la
+     red, sin caché y sin compartir. */
+const VIDA_MS = 20000;
+const COMPARTIDAS = new Map();
+
+export const fetchJSON = (path, { fresco = false } = {}) => {
+  const leer = (r) => {
     if (!r.ok) throw new Error(r.status);
     if (typeof tfMarcarCaja === "function") tfMarcarCaja(r.headers.get("X-TF-Cache") === "1");
-    return r.json();
-  });
+    return r.text();
+  };
+  if (fresco) {
+    return fetch(`${path}${path.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" })
+      .then(leer)
+      .then((t) => JSON.parse(t));
+  }
+  const ahora = Date.now();
+  const hecha = COMPARTIDAS.get(path);
+  if (hecha && ahora - hecha.t < VIDA_MS) return hecha.texto.then((t) => JSON.parse(t));
+  const texto = fetch(path).then(leer);
+  // Si falla, no se queda guardado el fallo: la siguiente lo vuelve a intentar.
+  texto.catch(() => COMPARTIDAS.delete(path));
+  COMPARTIDAS.set(path, { t: ahora, texto });
+  return texto.then((t) => JSON.parse(t));
+};
 
 /* ------------------------------------------------- los numeros de la cabecera
 

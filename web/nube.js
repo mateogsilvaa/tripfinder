@@ -231,6 +231,9 @@ function nubeCrear(ruta, campos) {
   };
 }
 
+/* Un nombre de campo en una máscara: lo raro va entre comillas invertidas. */
+const nubeCampoSeguro = (k) => (/^[A-Za-z_][A-Za-z0-9_]*$/.test(k) ? k : "`" + k.replace(/[\\`]/g, "\\$&") + "`");
+
 function nubeCambiar(ruta, campos) {
   return {
     update: { name: `${nubeBase()}/${ruta}`, fields: nubeCampos(campos) },
@@ -315,13 +318,23 @@ async function nubeToken() {
 /* ------------------------------------------------------------------- sesión
    `tf_sesion` es lo que lee el resto de la web, y tiene la misma forma de
    siempre: quién eres y cómo te llamas. Lo único nuevo es `estado`. */
+/* `prefs.sync` (lo que se comparte entre tus aparatos, ver `js/sincronia.js`) no
+   viaja en la sesión: pesa, solo lo mira el motor de sincronía, y así ningún
+   `nubeGuardarPerfil` puede devolverlo entero pisando lo que otro aparato acaba
+   de subir. */
+function nubePrefsSinSincronia(prefs) {
+  const resto = { ...(prefs || {}) };
+  delete resto.sync;
+  return resto;
+}
+
 function nubeGuardarSesion(uid, ficha) {
   const nombre = ficha.nombre || "";
   const sesion = {
     uid,
     user: nombre,
     name: nombre,
-    prefs: ficha.prefs || {},
+    prefs: nubePrefsSinSincronia(ficha.prefs),
     estado: ficha.estado || "pendiente",
     plan: nubePlan(ficha),
     admin: ficha.admin === true,
@@ -804,10 +817,33 @@ async function nubeSincronizar() {
     ficha.verificado = await nubeVerificacion(ficha);
     // Lo que solo vive en este navegador y era de la cuenta de antes.
     if (ficha.legado) nubeAdoptar(s.uid, [ficha.legado]);
-    return nubeGuardarSesion(s.uid, ficha);
+    const sesion = nubeGuardarSesion(s.uid, ficha);
+    // El motor de sincronía (módulo) escucha esto: es lo que otro aparato dejó.
+    document.dispatchEvent(new CustomEvent("tf:ficha", { detail: { sync: (ficha.prefs || {}).sync || {} } }));
+    return sesion;
   } catch {
     return s;
   }
+}
+
+/* Sube lo que este aparato ha cambiado en `prefs.sync.<clave>`. Solo toca esos
+   campos (máscara con el camino exacto), así que no pisa ni los demás ajustes ni
+   lo que otro aparato haya subido de otra clave. Sin reglas nuevas: `prefs` ya
+   se puede escribir. */
+async function nubeSubirSincronia(entradas) {
+  const s = tfSesion();
+  const token = await nubeToken();
+  if (!s || !s.nube || !token) return false;
+  const claves = Object.keys(entradas);
+  if (!claves.length) return true;
+  await nubeCommit(token, [
+    {
+      update: { name: `${nubeBase()}/usuarios/${s.uid}`, fields: nubeCampos({ prefs: { sync: entradas } }) },
+      updateMask: { fieldPaths: claves.map((k) => `prefs.sync.${nubeCampoSeguro(k)}`) },
+      currentDocument: { exists: true },
+    },
+  ]);
+  return true;
 }
 
 /* ------------------------------------------------------------------ encargos
@@ -882,8 +918,17 @@ async function nubeGuardarPerfil(nombre, prefs) {
   if (!s || !token) return { ok: false, error: "Entra primero." };
   nombre = String(nombre || "").trim() || s.name;
   try {
-    await nubeCommit(token, [nubeCambiar(`usuarios/${s.uid}`, { nombre, prefs: prefs || {} })]);
-    nubeGuardarSesion(s.uid, { ...s, nombre, prefs: prefs || {} });
+    // Cada preferencia por su camino (`prefs.avisos`…), no `prefs` entero: así
+    // no se lleva por delante `prefs.sync`. Las que ya no están se borran.
+    const nuevas = nubePrefsSinSincronia(prefs);
+    const claves = new Set([...Object.keys(nuevas), ...Object.keys(nubePrefsSinSincronia(s.prefs))]);
+    const escritura = {
+      update: { name: `${nubeBase()}/usuarios/${s.uid}`, fields: nubeCampos({ nombre, prefs: nuevas }) },
+      updateMask: { fieldPaths: ["nombre", ...[...claves].map((k) => `prefs.${nubeCampoSeguro(k)}`)] },
+      currentDocument: { exists: true },
+    };
+    await nubeCommit(token, [escritura]);
+    nubeGuardarSesion(s.uid, { ...s, nombre, prefs: nuevas });
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
@@ -982,7 +1027,7 @@ async function nubeIlustracionesPendientes() {
 async function nubeCuentas() {
   const token = await nubeToken();
   if (!token) return [];
-  const r = await nubeLlamar(nubeUrlFs("/usuarios?pageSize=300"), { metodo: "GET", token });
+  const r = await nubeLlamar(nubeUrlFs("/usuarios?pageSize=300&" + ["nombre", "correo", "estado", "plan", "admin", "creado", "verificado", "legado"].map((c) => "mask.fieldPaths=" + c).join("&")), { metodo: "GET", token });
   return (r.documents || []).map(nubeDeDocumento);
 }
 

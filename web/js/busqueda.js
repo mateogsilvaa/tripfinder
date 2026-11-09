@@ -81,7 +81,8 @@ export { ORIGENES } from "./opciones.js";
 async function busquedaYaHecha(label) {
   let indice;
   try {
-    indice = await fetchJSON("data/searches/index.json");
+    // De la red: decide si se lanza o no un barrido de ocho minutos.
+    indice = await fetchJSON("data/searches/index.json", { fresco: true });
   } catch {
     return null; // sin indice no se puede saber: que la lance
   }
@@ -463,7 +464,8 @@ export async function loadSearches() {
   if (!$("#searches")) return;
   let indice;
   try {
-    indice = await fetchJSON("data/searches/index.json");
+    // Esperando a que salga una búsqueda, siempre de la red: es justo lo que se espera.
+    indice = await fetchJSON("data/searches/index.json", { fresco: !!window.__esperando });
   } catch {
     return;
   }
