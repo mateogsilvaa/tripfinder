@@ -732,9 +732,19 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
   });
   // Al cambiar de tamaño (o al aparecer, que en el ordenador la de abajo no se
   // ve y en el móvil la de arriba tampoco), la lente se recoloca sin animar.
-  const recolocar = () => enTab(activa());
+  const recolocar = () => {
+    if (!dedo) enTab(activa());
+  };
   window.addEventListener("resize", recolocar);
-  if (typeof ResizeObserver === "function") new ResizeObserver(recolocar).observe(barra);
+  // Y cuando cambian las PESTAÑAS, no solo la barra: al llegar la fuente de
+  // verdad, cada palabra cambia de ancho y la lente se quedaba descolocada
+  // (la barra mide lo mismo, así que mirándola a ella no se enteraba).
+  if (typeof ResizeObserver === "function") {
+    const ro = new ResizeObserver(recolocar);
+    ro.observe(barra);
+    tabs().forEach((t) => ro.observe(t));
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(recolocar).catch(() => {});
   // Volver con «atrás» deja la página como estaba al irse: la lente, en su sitio.
   window.addEventListener("pageshow", (ev) => {
     if (!ev.persisted) return;

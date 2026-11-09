@@ -1100,7 +1100,10 @@ function tfExplicarFallo(r) {
   return "No se pudo: " + r.reason;
 }
 
-if (document.readyState === "loading") {
+/* Este fichero va al final del <body>, así que la barra ya está: se pinta YA.
+   Esperando a `DOMContentLoaded`, que llega después de cargar todos los
+   módulos, el botón de la cuenta salía el último y empujaba la barra. */
+if (document.readyState === "loading" && !document.querySelector(".topbar-in, .topbar")) {
   document.addEventListener("DOMContentLoaded", tfPintarBarra);
 } else {
   tfPintarBarra();

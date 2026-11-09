@@ -6799,3 +6799,47 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
 .hopx-vigente.bien { color: var(--deep); }
 .hopx-vigente.mal { color: var(--accent-txt); }
 .hopx-vigente small { color: var(--muted); font-size: inherit; }
+
+
+/* ---- la carga, sin saltos --------------------------------------------------
+   Las cifras y el chollo del día llegan con los datos, pero su sitio se
+   reserva en el HTML: al llegar se rellenan, no empujan la página. */
+.stats-hueco dt, .stats-hueco dd, .stats-hueco span, .stats-hueco b {
+  display: block; border-radius: 3px; color: transparent;
+  background: linear-gradient(90deg, var(--surface2), var(--hair), var(--surface2));
+  background-size: 200% 100%; animation: tf-barrer 1.4s infinite linear;
+}
+.stats-hueco dt { width: 60%; }
+.stats-hueco dd { width: 40%; }
+.stats-pie.stats-hueco span { width: 30%; }
+.stats-pie.stats-hueco b { width: 15%; }
+.hero.hero-cargando { min-height: 320px; }
+.hero-hueco {
+  height: 100%; min-height: inherit; border: 1px solid var(--hair); border-radius: var(--r);
+  background: linear-gradient(90deg, var(--surface), var(--surface2), var(--surface));
+  background-size: 200% 100%; animation: tf-barrer 1.6s infinite linear;
+}
+@media (max-width: 760px) {
+  .hero.hero-cargando { min-height: 620px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .stats-hueco dt, .stats-hueco dd, .stats-hueco span, .stats-hueco b, .hero-hueco { animation: none; }
+}
+
+/* ---- los planes, apagados desde el panel --------------------------------
+   Toda cuenta es Max y no se habla de planes: ni el chip de tu cuenta, ni
+   «Ver planes», ni el enlace del pie. */
+.sin-planes :is(a[href="planes"], a[href="planes.html"], .plan-chip, .cuenta-planes, [data-planes]) { display: none !important; }
+
+/* El interruptor de los planes, en la cabecera del panel. */
+.adm-planes {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px 0 8px;
+  border: 1px solid var(--line); border-radius: var(--r-pill); background: none; color: var(--muted);
+  font: 500 var(--fs-ui-s) / 1 var(--font-sans); cursor: pointer;
+}
+.adm-planes b { color: var(--ink); font-weight: 600; }
+.adm-planes-raya { position: relative; width: 30px; height: 18px; border-radius: 9px; background: var(--surface2); box-shadow: inset 0 0 0 1px var(--line); }
+.adm-planes-raya i { position: absolute; top: 3px; left: 3px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: transform var(--t) var(--ease), background var(--t) var(--ease); }
+.adm-planes[aria-checked="true"] .adm-planes-raya { background: color-mix(in srgb, var(--deep) 25%, var(--surface2)); }
+.adm-planes[aria-checked="true"] .adm-planes-raya i { transform: translateX(12px); background: var(--deep); }
+.adm-planes:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

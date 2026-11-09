@@ -155,6 +155,11 @@ class AlmacenFirestore:
     def tramitados(self) -> list[dict[str, Any]]:
         return self._por_estado(["enviado", "error", "rechazado"])
 
+    def planes_activos(self) -> bool:
+        """Lo que dice el panel (`ajustes/web.planes`); sin el ajuste, sí."""
+        d = self.db.collection("ajustes").document("web").get()
+        return not (d.exists and (d.to_dict() or {}).get("planes") is False)
+
     def ficha(self, uid: str) -> dict[str, Any] | None:
         d = self.db.collection("usuarios").document(uid).get()
         return d.to_dict() if d.exists else None
@@ -277,9 +282,12 @@ def _tramitar(
     # llegar aquí pueden haberla bloqueado o haberle quitado el premium.
     if not ficha or ficha.get("estado") != "aprobado":
         return cerrar("rechazado", "la cuenta no está aprobada")
-    if PREMIUM_OBLIGATORIO and not es_premium(ficha) and not _para_su_hop(almacen, uid, e):
+    # Con los planes apagados desde el panel, toda cuenta aprobada es Max.
+    planes = getattr(almacen, "planes_activos", lambda: True)()
+    if planes and PREMIUM_OBLIGATORIO and not es_premium(ficha) and not _para_su_hop(almacen, uid, e):
         return cerrar("rechazado", "la cuenta es gratis: lanzar búsquedas es de premium")
-    if tipo == "interrail" and (e.get("payload") or {}).get("ruta") == "tuya" and not es_premium(ficha):
+    a_medida = tipo == "interrail" and (e.get("payload") or {}).get("ruta") == "tuya"
+    if planes and a_medida and not es_premium(ficha):
         return cerrar("rechazado", "el Interrail a medida es de premium")
 
     # Lo que se acaba de mandar en esta misma pasada ya cuenta: `cerrar` lo ha

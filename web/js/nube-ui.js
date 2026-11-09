@@ -26,7 +26,12 @@ const TEXTO_ESTADO = {
 };
 
 const textoDe = (s) =>
-  s.estado === "aprobado" ? TEXTO_ESTADO[nubeEsMax(s) ? "max" : nubeEsPremium(s) ? "premium" : "gratis"] : TEXTO_ESTADO[s.estado] || TEXTO_ESTADO.pendiente;
+  s.estado === "aprobado"
+    ? // Sin planes, no se habla de planes: la cuenta está abierta y ya.
+      typeof nubePlanesActivos === "function" && !nubePlanesActivos()
+      ? "Tu cuenta está abierta: todas las herramientas, sin límites."
+      : TEXTO_ESTADO[nubeEsMax(s) ? "max" : nubeEsPremium(s) ? "premium" : "gratis"]
+    : TEXTO_ESTADO[s.estado] || TEXTO_ESTADO.pendiente;
 
 /* ------------------------------------------------------------ entrar / crear
 

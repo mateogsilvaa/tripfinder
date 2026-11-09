@@ -129,7 +129,9 @@ export function cuadrarRejilla(form) {
 
 export function pintarStats(html) {
   const caja = document.getElementById("stats");
-  if (caja) caja.innerHTML = html;
+  if (!caja) return;
+  caja.innerHTML = html;
+  caja.removeAttribute("aria-busy");
 }
 
 export let CONTINENTES = {}; // IATA -> continente, para filtrar

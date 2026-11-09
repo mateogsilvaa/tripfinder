@@ -194,6 +194,12 @@ async function lista(caja, yo, aviso = "") {
                 `<button type="button" class="adm-seg" role="radio" data-periodo="${dias}"
                   aria-checked="${dias === periodo ? "true" : "false"}">${rotulo}</button>`
             ).join("")}</div>
+            <button class="adm-planes" type="button" id="admPlanes" role="switch"
+              aria-checked="${nubePlanesActivos() ? "true" : "false"}"
+              title="Apagados, todas las cuentas son Max y la web no habla de planes">
+              <span class="adm-planes-raya" aria-hidden="true"><i></i></span>
+              <span>Planes <b id="admPlanesTxt">${nubePlanesActivos() ? "activados" : "desactivados"}</b></span>
+            </button>
             <button class="adm3-recargar" type="button" id="nubeRecargar" aria-label="Recargar" title="Recargar">${icono(
               '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
               18
@@ -371,6 +377,29 @@ async function lista(caja, yo, aviso = "") {
   actividad(caja, cuentas, filtrar);
 
   caja.querySelector("#nubeRecargar").addEventListener("click", () => lista(caja, yo));
+  /* LOS PLANES, de un toque. Apagados, toda cuenta aprobada es Max (en la web,
+     en las reglas de la base de datos y en los encargos) y la web no habla de
+     planes; encendidos, todo vuelve a como estaba: los planes de cada cuenta
+     no se tocan, solo se dejan de aplicar. */
+  caja.querySelector("#admPlanes").addEventListener("click", async (e) => {
+    const b = e.currentTarget;
+    const activos = b.getAttribute("aria-checked") === "true";
+    const pregunta = activos
+      ? "¿Desactivar los planes? Todas las cuentas pasarán a ser Max y la web dejará de hablar de planes."
+      : "¿Activar los planes? Cada cuenta vuelve a su plan (gratis, premium o Max).";
+    if (!confirm(pregunta)) return;
+    b.disabled = true;
+    const r = await nubeCambiarPlanes(!activos);
+    b.disabled = false;
+    const aviso = caja.querySelector("#nubeAviso");
+    if (!r.ok) {
+      if (aviso) aviso.textContent = `No se pudieron cambiar los planes: ${r.error}`;
+      return;
+    }
+    b.setAttribute("aria-checked", String(!activos));
+    caja.querySelector("#admPlanesTxt").textContent = !activos ? "activados" : "desactivados";
+    if (aviso) aviso.textContent = !activos ? "Planes activados: cada cuenta vuelve a su plan." : "Planes desactivados: todas las cuentas son Max.";
+  });
   caja.querySelector("#nubeAdminSalir").addEventListener("click", () => salir(caja));
   caja.querySelectorAll("[data-estado]").forEach((b) =>
     b.addEventListener("click", async () => {

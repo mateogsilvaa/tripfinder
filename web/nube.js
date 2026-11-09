@@ -346,10 +346,67 @@ function nubeGuardarSesion(uid, ficha) {
    es de antes de abrir la web —la de un conocido— y es premium, igual que en
    `firestore.rules`. */
 const nubePlan = (ficha) => (ficha && ficha.plan) || "premium";
+
+/* LOS PLANES, ENCENDIDOS O APAGADOS desde el panel (`ajustes/web.planes`).
+   Apagados, toda cuenta aprobada es Max y la web no habla de planes: ni
+   chips, ni «Ver planes», ni la página de planes. Encendidos, todo como
+   siempre. Se recuerda en este navegador para pintar sin esperar a la red, y
+   se vuelve a leer en cada carga. */
+const NUBE_PLANES_KEY = "tf_planes";
+function nubePlanesActivos() {
+  try {
+    return localStorage.getItem(NUBE_PLANES_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+function nubeMarcarPlanes() {
+  document.documentElement.classList.toggle("sin-planes", !nubePlanesActivos());
+}
+nubeMarcarPlanes();
+async function nubeLeerPlanes() {
+  if (!nubeActiva()) return;
+  try {
+    const d = await nubeLeerDoc("", "ajustes/web");
+    const apagados = !!d && d.planes === false;
+    try {
+      localStorage.setItem(NUBE_PLANES_KEY, apagados ? "off" : "on");
+    } catch {
+      /* sin almacenamiento: vale para esta carga */
+    }
+    nubeMarcarPlanes();
+    document.dispatchEvent(new CustomEvent("tf:planes", { detail: { activos: !apagados } }));
+  } catch {
+    /* sin red: se queda lo último que se supo */
+  }
+}
+// Solo el panel los cambia.
+async function nubeCambiarPlanes(activos) {
+  const token = await nubeToken();
+  if (!token) return { ok: false, error: "Entra primero." };
+  try {
+    await nubeCommit(token, [
+      {
+        update: { name: `${nubeBase()}/ajustes/web`, fields: nubeCampos({ planes: !!activos }) },
+        updateMask: { fieldPaths: ["planes"] },
+      },
+    ]);
+    try {
+      localStorage.setItem(NUBE_PLANES_KEY, activos ? "on" : "off");
+    } catch {
+      /* nada */
+    }
+    nubeMarcarPlanes();
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message || "No se pudo guardar." };
+  }
+}
 // Max es premium sin límites (más HOP a la vez): cuenta como premium en todo.
 // Quien administra la web tiene Max sin ponérselo (su ficha no se toca desde aquí).
-const nubeEsPremium = (s) => !!s && s.estado === "aprobado" && (s.plan === "premium" || s.plan === "max" || !!s.admin);
-const nubeEsMax = (s) => !!s && s.estado === "aprobado" && (s.plan === "max" || !!s.admin);
+const nubeEsPremium = (s) =>
+  !!s && s.estado === "aprobado" && (!nubePlanesActivos() || s.plan === "premium" || s.plan === "max" || !!s.admin);
+const nubeEsMax = (s) => !!s && s.estado === "aprobado" && (!nubePlanesActivos() || s.plan === "max" || !!s.admin);
 /* Premium existe pero TODAVÍA NO SE EXIGE (igual que en firestore.rules y en
    nube.py): con esto en false, cualquier cuenta aprobada lanza búsquedas. */
 const TF_PREMIUM_OBLIGATORIO = false;
@@ -1520,3 +1577,6 @@ if (nubeActiva()) {
     }, 800);
   }
 }
+
+// Los planes: si están apagados, la web no habla de ellos (ver `nubeLeerPlanes`).
+nubeLeerPlanes();
