@@ -52,7 +52,7 @@
       "nombre": "Marrakech"
     },
     "TIA": {
-      "noche": 40.67,
+      "noche": 39.67,
       "muestras": 3,
       "nombre": "Tirana"
     },
@@ -64,7 +64,7 @@
   },
   "paises": {
     "Albania": {
-      "noche": 40.67,
+      "noche": 39.67,
       "muestras": 3
     },
     "España": {
