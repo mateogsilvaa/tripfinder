@@ -6913,3 +6913,45 @@ p, li { text-wrap: pretty; }
 
 /* Tocar en el móvil no deja el destello gris de iOS. */
 a, button, label, summary { -webkit-tap-highlight-color: transparent; }
+
+/* ---- LA LENTE VIAJA DE UNA PÁGINA A OTRA --------------------------------
+   La lente de la barra de abajo viene ya en el HTML, en la pestaña de la
+   página (`--i`, la pone montar.py), así que está desde el primer fotograma.
+   Con nombre propio, el navegador la lleva él solo de la pestaña vieja a la
+   nueva mientras cambia la página: un único movimiento continuo, con su
+   muelle, en vez de animarse aquí y aparecer allí de golpe. */
+@media (max-width: 760px) {
+  .tabbar .tab-lente {
+    left: 0;
+    width: calc((100% - 10px - 8px) / 5);
+    transform: translateX(calc(5px + var(--i, 0) * (100% + 2px)));
+  }
+}
+@media (max-width: 760px) and (prefers-reduced-motion: no-preference) {
+  .tabbar .tab-lente { view-transition-name: tf-lente; }
+  ::view-transition-group(tf-lente) {
+    animation-duration: 0.52s;
+    animation-timing-function: cubic-bezier(0.3, 1.32, 0.45, 1);
+  }
+  /* La barra no se mueve de sitio: que no funda, que se quede. */
+  ::view-transition-group(tf-abajo) { animation-duration: 0.2s; }
+}
+
+/* ---- DETALLES DE SISTEMA -------------------------------------------------
+   Tocar responde al instante (sin la espera del doble toque) y quien pide
+   menos transparencia al sistema tiene barras opacas. */
+a, button, summary, label, select, [role="tab"], [role="button"] { touch-action: manipulation; }
+@media (prefers-reduced-transparency: reduce) {
+  .topbar, .tabbar { background: var(--surface) !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+}
+@media (max-width: 760px) and (prefers-reduced-motion: no-preference) {
+  /* Es la misma lente a los dos lados: se mueve una, no funden dos. */
+  ::view-transition-old(tf-lente) { display: none; }
+  ::view-transition-new(tf-lente) { animation: none; }
+}
+@media (max-width: 760px) {
+  /* Durante el cambio de página el navegador pinta el cristal de la barra en
+     su caja, que es un rectángulo: se le da la misma curva para que no asome
+     una banda cuadrada detrás de la píldora. */
+  ::view-transition-group(tf-abajo) { border-radius: 999px; }
+}

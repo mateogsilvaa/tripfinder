@@ -211,6 +211,23 @@ NAV = '      <nav class="zonas" aria-label="Zonas">\n' + _enlaces("        ") + 
 # ella, no contra la pantalla.
 TABBAR = '<nav class="tabbar" aria-label="Zonas">\n' + _enlaces("  ") + "</nav>\n"
 
+
+def _con_lente(tabbar: str, zona: str | None) -> str:
+    """La lente de la barra de abajo, YA en el HTML y en su pestaña (`--i`).
+
+    Antes la ponia `log.js` al cargar: el primer fotograma de cada pagina no la
+    tenia, asi que al cambiar de zona no habia nada que el navegador pudiera
+    llevar de una pestaña a otra (`view-transition-name: tf-lente`) y la lente
+    aparecia de golpe. Con ella en el HTML, viaja sola durante el cambio de
+    pagina. `log.js` la adopta para el dedo y el arrastre."""
+    nombres = [z for z, _, _ in ZONAS_NAV]
+    if not tabbar or zona not in nombres:
+        return tabbar
+    lente = f'  <span class="tab-lente" aria-hidden="true" style="--i:{nombres.index(zona)}"></span>\n'
+    antes = '<nav class="tabbar" aria-label="Zonas">\n'
+    return tabbar.replace(antes, '<nav class="tabbar con-lente" aria-label="Zonas">\n' + lente, 1)
+
+
 # Antes habia aqui un punto que latia con «en vivo». No decia nada que el pie no
 # dijera ya («actualizado …») y era justo el tipo de detalle que hace dudar de si
 # esto es una web de verdad: se quito.
@@ -501,7 +518,9 @@ def render(nombre_parte: str, datos: dict, version: str = BUILD) -> str:
         huecos[clave] = str(huecos.get(clave, "")).format(v=version)
     huecos["precarga"] = precarga(datos.get("modulos", ()), version)
     huecos["nav"] = str(huecos.get("nav", "")).format(**_zonas(datos.get("zona")))
-    huecos["tabbar"] = str(huecos.get("tabbar", "")).format(**_zonas(datos.get("zona"), "tab"))
+    huecos["tabbar"] = _con_lente(
+        str(huecos.get("tabbar", "")).format(**_zonas(datos.get("zona"), "tab")), datos.get("zona")
+    )
 
     def sustituir(m: re.Match) -> str:
         clave = m.group(1)
