@@ -601,21 +601,7 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
     marcar(tab);
     lente.style.opacity = "1";
     ir(tab);
-    // Se va YA: la lente empieza a moverse en este mismo cuadro y la página
-    // nueva (ya pedida de antemano, ver `speculationrules`) entra encima con
-    // la transición. Esperar a que la lente llegase hacía la barra lenta.
-    requestAnimationFrame(() => (location.href = tab.href));
-    // Si a los tres segundos seguimos aquí (sin red, o la app instalada no
-    // llegó a cambiar de página), la barra vuelve a decir dónde estás de
-    // verdad, en vez de quedarse marcando una zona a la que no se ha ido.
-    setTimeout(() => {
-      if (document.visibilityState !== "visible") return;
-      const aqui = barra.querySelector(`${sel}[aria-current="page"]`);
-      if (aqui && !aqui.classList.contains("activa")) {
-        marcar(aqui);
-        ir(aqui);
-      }
-    }, 3000);
+    setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 320);
   };
 
   /* ARRASTRARLA (móvil): con el dedo sobre la barra, la lente lo sigue (algo
@@ -627,22 +613,9 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
       const d = Math.abs(cx - (r.left + r.width / 2));
       return !mejor || d < mejor.d ? { t, d } : mejor;
     }, null).t;
-  /* Devolverla a su sitio: si el sistema corta el gesto a medias (iOS lo hace
-     al notar un desplazamiento, o al saltar una alerta), la lente se quedaba
-     donde estaba el dedo, a medio camino, y parecía rota. */
-  const aSuSitio = () => {
-    lente.classList.remove("pulsada");
-    tabs().forEach((t) => t.classList.remove("bajo"));
-    document.documentElement.classList.remove("tf-arrastrando");
-    const aqui = activa();
-    if (aqui) ir(aqui);
-  };
   if (conDedo) {
     barra.addEventListener("pointerdown", (e) => {
       if (e.button) return;
-      // Con el ratón, apretar y mover selecciona el texto de las pestañas: se
-      // evita aquí, que es donde empieza (el clic sigue llegando igual).
-      if (e.pointerType === "mouse") e.preventDefault();
       dedo = { x0: e.clientX, arrastra: false, id: e.pointerId };
       lente.classList.add("pulsada");
     });
@@ -651,13 +624,6 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
       if (!dedo.arrastra && Math.abs(e.clientX - dedo.x0) < 8) return;
       if (!dedo.arrastra) {
         dedo.arrastra = true;
-        // Mientras se arrastra no se selecciona nada de la página.
-        document.documentElement.classList.add("tf-arrastrando");
-        try {
-          window.getSelection()?.removeAllRanges();
-        } catch {
-          /* nada que quitar */
-        }
         try {
           barra.setPointerCapture(e.pointerId);
         } catch {
@@ -671,15 +637,17 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
       tabs().forEach((t) => t.classList.toggle("bajo", t === bajoDedo(e.clientX)));
     });
     const soltar = (e) => {
-      if (!dedo || (e.pointerId !== undefined && e.pointerId !== dedo.id)) return;
+      if (!dedo) return;
       lente.classList.remove("pulsada");
       tabs().forEach((t) => t.classList.remove("bajo"));
-      document.documentElement.classList.remove("tf-arrastrando");
       if (dedo.arrastra && e.type === "pointerup") {
         dedo.sinClic = true;
         irA(bajoDedo(e.clientX));
       } else if (dedo.arrastra) {
-        aSuSitio();
+        // El sistema cortó el gesto (iOS, al notar un desplazamiento): la
+        // lente vuelve a su pestaña en vez de quedarse a medio camino.
+        const aqui = activa();
+        if (aqui) ir(aqui);
       }
       const fue = dedo;
       setTimeout(() => {
@@ -688,11 +656,6 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
     };
     barra.addEventListener("pointerup", soltar);
     barra.addEventListener("pointercancel", soltar);
-    // Perder la captura sin un `pointerup` (otra app encima, una alerta) es
-    // otra forma de cortar el gesto.
-    barra.addEventListener("lostpointercapture", (e) => {
-      if (dedo && dedo.arrastra && !dedo.sinClic && e.pointerId === dedo.id) soltar({ ...e, type: "pointercancel", pointerId: e.pointerId, clientX: e.clientX });
-    });
   }
 
   /* EL BRILLO QUE SIGUE AL RATÓN (ordenador): una segunda lente, más tenue,
@@ -735,34 +698,15 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
   });
   // Al cambiar de tamaño (o al aparecer, que en el ordenador la de abajo no se
   // ve y en el móvil la de arriba tampoco), la lente se recoloca sin animar.
-  const recolocar = () => {
-    if (!dedo) enTab(activa());
-  };
+  const recolocar = () => enTab(activa());
   window.addEventListener("resize", recolocar);
-  // Y cuando cambian las PESTAÑAS, no solo la barra: al llegar la fuente de
-  // verdad, cada palabra cambia de ancho y la lente se quedaba descolocada
-  // (la barra mide lo mismo, así que mirándola a ella no se enteraba).
-  if (typeof ResizeObserver === "function") {
-    const ro = new ResizeObserver(recolocar);
-    ro.observe(barra);
-    tabs().forEach((t) => ro.observe(t));
-  }
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(recolocar).catch(() => {});
+  if (typeof ResizeObserver === "function") new ResizeObserver(recolocar).observe(barra);
   // Volver con «atrás» deja la página como estaba al irse: la lente, en su sitio.
   window.addEventListener("pageshow", (ev) => {
     if (!ev.persisted) return;
     const aqui = barra.querySelector(`${sel}[aria-current="page"]`);
     if (aqui) marcar(aqui);
-    aSuSitio();
-    tfDesbloquearBarras();
-  });
-  // Al volver a la app (del fondo, o de iniciar sesión con Google en otra
-  // ventana), la lente se recoloca y la barra no puede seguir dormida.
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
-    dedo = null;
-    aSuSitio();
-    tfDesbloquearBarras();
+    recolocar();
   });
 }
 
@@ -781,7 +725,7 @@ function tfDesbloquearBarras() {
 
 function tfLentes() {
   tfLente(document.querySelector(".tabbar"), ".tab", { dedo: true });
-  tfLente(document.querySelector(".topbar .zonas"), ".zona", { raton: true, dedo: true });
+  tfLente(document.querySelector(".topbar .zonas"), ".zona", { raton: true });
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", tfLentes);
 else tfLentes();
