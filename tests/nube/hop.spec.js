@@ -421,3 +421,20 @@ test("un vuelo de fuera se manda a tu HOP y pasa a votarse", async ({ browser })
   await expect(variante.locator("[data-variante]")).toHaveAttribute("aria-pressed", "true");
   await ana.ctx.close();
 });
+
+/* Lo que viene se puede MIRAR antes de llegar: el paso se ve entero, pero no
+   responde, y un aviso dice que es una vista previa y lleva de vuelta. */
+test("los pasos que vienen se previsualizan sin poder tocarlos", async ({ browser }) => {
+  const ana = await persona(browser, "Ana");
+  await E.hacerPremium(ana.uid);
+  await crear(ana.page, `Previa ${Date.now()}`);
+  await expect(ana.page.locator(".hopx-fase-cab h3")).toHaveText("Cuándo");
+  await ana.page.locator('[data-ver-fase="4"]').click();
+  await expect(ana.page.locator(".hopx-fase-cab h3")).toHaveText("Votar");
+  await expect(ana.page.locator("#hopFase")).toHaveClass(/hopx-previa/);
+  await expect(ana.page.locator(".hopx-previa-txt")).toContainText("Vista previa");
+  expect(await ana.page.locator("#f4Lista").evaluate((n) => n.inert)).toBe(true);
+  await ana.page.locator('.hopx-previa-txt [data-ver-fase-ir="1"]').click();
+  await expect(ana.page.locator(".hopx-fase-cab h3")).toHaveText("Cuándo");
+  await expect(ana.page.locator("#hopFase")).not.toHaveClass(/hopx-previa/);
+});
