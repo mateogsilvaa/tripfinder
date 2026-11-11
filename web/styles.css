@@ -6551,9 +6551,8 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
    dejaba texto de las pestañas seleccionado. Y la de abajo no se desplaza:
    `touch-action: none` evita que iOS corte el gesto a medias al creer que
    empieza un scroll, que era lo que dejaba la lente a medio camino. */
-.tabbar, .topbar .zonas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.tabbar .tab, .topbar .zonas .zona { -webkit-user-drag: none; }
-@media (max-width: 760px) { .tabbar { touch-action: none; } }
+.topbar .zonas { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.topbar .zonas .zona { -webkit-user-drag: none; }
 .tf-arrastrando, .tf-arrastrando * { -webkit-user-select: none !important; user-select: none !important; }
 
 /* ---- HOP · votar: tarjetas que no se estiran ---------------------------
@@ -6869,34 +6868,6 @@ summary.mundo-rot span { color: var(--ink); opacity: 0.5; }
     from { box-shadow: 0 0 0 transparent; }
     to { box-shadow: 0 10px 30px -18px rgba(0, 0, 0, 0.55); }
   }
-}
-
-/* LA BARRA DE ABAJO DEL MÓVIL. El cristal deja ver colores, no letras: más
-   cuerpo, y un velo bajo ella que funde la página antes de llegar. */
-@media (max-width: 760px) {
-  .tabbar {
-    left: 14px; right: 14px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-    padding: 6px;
-    background: color-mix(in srgb, var(--surface) 84%, rgba(0, 0, 0, 0.25));
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    backdrop-filter: blur(28px) saturate(1.8);
-  }
-  :root[data-tema="claro"] .tabbar {
-    background: color-mix(in srgb, var(--surface) 86%, transparent);
-    -webkit-backdrop-filter: blur(28px) saturate(1.8);
-    backdrop-filter: blur(28px) saturate(1.8);
-  }
-  .tab { min-height: 52px; gap: 2px; font-size: 10.5px; font-weight: 500; }
-  .tab .zona-ico { width: 22px; height: 22px; }
-  .tab.activa { font-weight: 600; }
-  .tab-lente { top: 6px; bottom: 6px; }
-  /* El velo: la página se apaga suavemente detrás de la barra. */
-  body::after {
-    content: ""; position: fixed; left: 0; right: 0; bottom: 0; z-index: 29; pointer-events: none;
-    height: calc(96px + env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(to top, var(--paper) 30%, color-mix(in srgb, var(--paper) 0%, transparent));
-  }
-  body { padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* LOS FILTROS DEL FEED en el ordenador mediano: una rejilla, no una fila que
