@@ -81,9 +81,12 @@ jobs:
         # El espejo de Ubuntu de Azure a veces no resuelve y las dependencias del
         # navegador (fuentes) no bajan: se usa el espejo principal y se reintenta.
         run: |
+          echo "http://archive.ubuntu.com/ubuntu/	priority:1" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null || true
           sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
-          for i in 1 2 3; do npx playwright install --with-deps chromium && exit 0; sleep $((i * 15)); sudo apt-get update || true; done
-          exit 1
+          sudo apt-get update -o Acquire::http::Timeout=10 || true
+          for i in 1 2; do npx playwright install --with-deps chromium && exit 0; sleep 10; done
+          # Sin las fuentes del sistema el navegador arranca igual (la imagen ya trae las librerías).
+          npx playwright install chromium
 
       - name: Humo
         run: npm run humo
@@ -137,9 +140,12 @@ jobs:
         # El espejo de Ubuntu de Azure a veces no resuelve y las dependencias del
         # navegador (fuentes) no bajan: se usa el espejo principal y se reintenta.
         run: |
+          echo "http://archive.ubuntu.com/ubuntu/	priority:1" | sudo tee /etc/apt/apt-mirrors.txt >/dev/null || true
           sudo sed -i 's#azure\.archive\.ubuntu\.com#archive.ubuntu.com#g' /etc/apt/sources.list /etc/apt/sources.list.d/*.sources 2>/dev/null || true
-          for i in 1 2 3; do npx playwright install --with-deps chromium && exit 0; sleep $((i * 15)); sudo apt-get update || true; done
-          exit 1
+          sudo apt-get update -o Acquire::http::Timeout=10 || true
+          for i in 1 2; do npx playwright install --with-deps chromium && exit 0; sleep 10; done
+          # Sin las fuentes del sistema el navegador arranca igual (la imagen ya trae las librerías).
+          npx playwright install chromium
 
       - name: Reglas, encargos y cuentas
         run: npm run todo --prefix tests/firebase
