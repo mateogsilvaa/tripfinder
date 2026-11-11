@@ -756,6 +756,31 @@
       "last_checked": "",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "tirana-6-iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "label": "Tirana · findes · 6 meses · avisa bajo 60 € · 2 pers.",
+      "destination": "Tirana",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "",
+      "horas": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 2,
+      "max_price": 60.0,
+      "source": "formulario",
+      "owner": "iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "owner_name": "sara",
+      "created": "2026-11-11",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
