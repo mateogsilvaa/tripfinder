@@ -47,6 +47,7 @@
 <link rel="modulepreload" href="js/avisos.js">
 <link rel="modulepreload" href="js/mapa-nombres.js">
 <link rel="stylesheet" href="styles.css?v=dev">
+<script type="speculationrules">{"prefetch":[{"where":{"selector_matches":".tabbar a, .zonas a"},"eagerness":"immediate"}]}</script>
 <script>/* El tema, antes de pintar: sin esto entrar de noche da un fogonazo blanco. De casa va oscuro; solo se queda en claro si lo elegiste tu. */
 try{document.documentElement.dataset.tema=localStorage.getItem("tf_tema")||"oscuro"}catch(e){document.documentElement.dataset.tema="oscuro"}
 /* Y la barra del sistema (la franja de la hora en el móvil), del mismo color desde el primer momento: si no, con el teléfono en oscuro y la web en claro, arriba quedaba una franja negra. */

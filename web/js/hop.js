@@ -759,6 +759,7 @@ const TRAZOS = {
   arriba: '<path d="M12 5 4.5 14H9v5h6v-5h4.5z"/>',
   abajo: '<path d="M12 19 4.5 10H9V5h6v5h4.5z"/>',
   ajustes: '<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  ojo: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/>',
 };
 const ico = (n, tam = 18) =>
   `<svg class="ico" viewBox="0 0 24 24" width="${tam}" height="${tam}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${TRAZOS[n] || ""}</svg>`;
@@ -1004,8 +1005,11 @@ function pintarHop(app, pendiente) {
 
   $("#hopFases", app).addEventListener("click", (e) => {
     const b = e.target.closest("[data-ver-fase]");
-    if (!b || b.disabled || Number(b.dataset.verFase) > fase()) return;
+    if (!b || b.disabled) return;
     estado.ver = Number(b.dataset.verFase);
+    // Solo es vista previa lo que se abre desde aquí por delante del grupo:
+    // `?fase=4` («Ir a votarlo» un vuelo mandado de fuera) sigue siendo de verdad.
+    estado.previa = estado.ver > fase();
     pintarViaje(app);
   });
   $("#hopFase", app).addEventListener("click", (e) => alTocarFase(app, e));
@@ -1108,6 +1112,15 @@ export function pintarViaje(app) {
   pintarLimite(app, estado.ver);
   pintarAtras(app, estado.ver);
   caja.classList.toggle("votacion-cerrada", cerrada(estado.ver));
+  // VISTA PREVIA de un paso que aún no toca: se ve entero, pero nada responde
+  // (`inert`: ni clics, ni teclado, ni lector de pantalla entrando a botones).
+  if (estado.ver <= fase()) estado.previa = false;
+  const previa = !!estado.previa && estado.ver > fase();
+  caja.classList.toggle("hopx-previa", previa);
+  [...caja.children].forEach((hijo) => {
+    const libre = hijo.matches(".hopx-fase-cab, .hopx-intro, #hopFaseAtras");
+    hijo.inert = previa && !libre;
+  });
   ponerFotos(caja);
 }
 
@@ -1171,6 +1184,15 @@ function pintarAtras(app, n) {
   const caja = $("#hopFaseAtras", app);
   if (!caja) return;
   const actual = fase();
+  if (n > actual && estado.previa) {
+    pintarSi(
+      caja,
+      `<p class="hopx-atras-txt hopx-previa-txt">${ico("ojo", 15)} <span><b>Vista previa.</b> Así será el paso ${n}; se
+        podrá usar cuando el grupo termine «${esc(FASES[actual - 1][1])}».</span>
+        <button type="button" class="btn primary small" data-ver-fase-ir="${actual}">Ir a «${esc(FASES[actual - 1][1])}»</button></p>`
+    );
+    return;
+  }
   if (n >= actual || estado.invitado) {
     pintarSi(caja, "");
     return;
@@ -1212,7 +1234,9 @@ function pintarFases(app) {
             // llega: buscar antes de decir qué ciudades no, o votar antes de
             // haber buscado, deja a medio grupo decidiendo sin ver lo de los
             // demás. Lo hecho sí se puede volver a mirar.
-            n > actual ? ` disabled title="Primero «${esc(FASES[actual - 1][1])}»"` : ""
+            // Se pueden MIRAR (vista previa, sin poder tocar nada) para saber
+            // lo que viene; hacer, solo cuando el grupo llegue.
+            n > actual ? ` title="Vista previa: primero «${esc(FASES[actual - 1][1])}»"` : ""
           }>
             <span class="hopx-fases-ico">${ico(n < actual ? "si" : i, 18)}</span>
             <span class="hopx-fases-n">${n < actual ? "hecho" : n === actual ? "ahora" : `paso ${n}`}</span><span>${t}</span>

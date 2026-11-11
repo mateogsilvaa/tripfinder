@@ -601,7 +601,10 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
     marcar(tab);
     lente.style.opacity = "1";
     ir(tab);
-    setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 320);
+    // Se va YA: la lente empieza a moverse en este mismo cuadro y la página
+    // nueva (ya pedida de antemano, ver `speculationrules`) entra encima con
+    // la transición. Esperar a que la lente llegase hacía la barra lenta.
+    requestAnimationFrame(() => (location.href = tab.href));
     // Si a los tres segundos seguimos aquí (sin red, o la app instalada no
     // llegó a cambiar de página), la barra vuelve a decir dónde estás de
     // verdad, en vez de quedarse marcando una zona a la que no se ha ido.
