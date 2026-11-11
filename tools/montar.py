@@ -224,7 +224,8 @@ def _con_lente(tabbar: str, zona: str | None) -> str:
     if not tabbar or zona not in nombres:
         return tabbar
     lente = f'  <span class="tab-lente" aria-hidden="true" style="--i:{nombres.index(zona)}"></span>\n'
-    return tabbar.replace('<nav class="tabbar" aria-label="Zonas">\n', '<nav class="tabbar con-lente" aria-label="Zonas">\n' + lente, 1)
+    antes = '<nav class="tabbar" aria-label="Zonas">\n'
+    return tabbar.replace(antes, '<nav class="tabbar con-lente" aria-label="Zonas">\n' + lente, 1)
 
 
 # Antes habia aqui un punto que latia con «en vivo». No decia nada que el pie no
