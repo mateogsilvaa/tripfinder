@@ -547,11 +547,17 @@ const tfSinMovimiento = () => window.matchMedia && window.matchMedia("(prefers-r
    el dedo) y la de zonas del ordenador (`.topbar .zonas`, con el ratón, que
    además lleva un brillo que sigue al puntero de una zona a otra). */
 function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
-  if (!barra || barra.querySelector(".tab-lente")) return;
-  const lente = document.createElement("span");
-  lente.className = "tab-lente";
-  lente.setAttribute("aria-hidden", "true");
-  barra.prepend(lente);
+  if (!barra || barra.dataset.lente) return;
+  barra.dataset.lente = "1";
+  // La de la barra de abajo ya viene en el HTML, en su sitio (ver `_con_lente`
+  // en montar.py): se adopta. La de arriba se crea aquí.
+  let lente = barra.querySelector(".tab-lente");
+  if (!lente) {
+    lente = document.createElement("span");
+    lente.className = "tab-lente";
+    lente.setAttribute("aria-hidden", "true");
+    barra.prepend(lente);
+  }
   barra.classList.add("con-lente");
   const tabs = () => [...barra.querySelectorAll(sel)];
   const activa = () => barra.querySelector(`${sel}.activa`);
@@ -600,6 +606,19 @@ function tfLente(barra, sel, { dedo: conDedo = false, raton = false } = {}) {
     }
     marcar(tab);
     lente.style.opacity = "1";
+    // Donde el navegador sabe llevar la lente de una página a la siguiente
+    // (`view-transition-name: tf-lente`, ver la hoja), se cambia YA: la lente
+    // hace el viaje entero, de un tirón, mientras entra la página nueva. Si la
+    // página tarda (sin red, sin precarga), la lente se mueve aquí para que el
+    // toque no se quede sin respuesta.
+    const viaja =
+      typeof CSSViewTransitionRule !== "undefined" && barra.classList.contains("tabbar") && !tfSinMovimiento();
+    if (viaja) {
+      location.href = tab.href;
+      setTimeout(() => ir(tab), 280);
+      return;
+    }
+    // Donde no, como siempre: primero llega la lente, luego se cambia.
     ir(tab);
     setTimeout(() => (location.href = tab.href), tfSinMovimiento() ? 0 : 320);
   };
