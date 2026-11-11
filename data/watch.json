@@ -731,6 +731,31 @@
           "price_per_person": 42.98
         }
       ]
+    },
+    {
+      "id": "todos-2027-02-05-iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "label": "Donde sea · 5 feb → 7 feb · avisa bajo 80 € · 2 pers.",
+      "destination": "",
+      "depart": "2027-02-05",
+      "return_date": "2027-02-07",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "",
+      "horas": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": false,
+      "adults": 2,
+      "max_price": 80.0,
+      "source": "formulario",
+      "owner": "iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "owner_name": "sara",
+      "created": "2026-11-11",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
