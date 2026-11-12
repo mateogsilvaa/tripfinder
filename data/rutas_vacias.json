@@ -29,7 +29,7 @@
       "barridos": 2,
       "ultima": "2026-11-07"
     },
-    "MAD-CHQ": {
+    "MAD-BLL": {
       "barridos": 1,
       "ultima": "2026-11-12"
     },
@@ -60,10 +60,6 @@
     "MAD-GHV": {
       "barridos": 2,
       "ultima": "2026-11-07"
-    },
-    "MAD-HER": {
-      "barridos": 2,
-      "ultima": "2026-11-11"
     },
     "MAD-IOA": {
       "barridos": 2,
@@ -96,10 +92,6 @@
     "MAD-LEJ": {
       "barridos": 2,
       "ultima": "2026-10-31"
-    },
-    "MAD-NRT": {
-      "barridos": 1,
-      "ultima": "2026-11-12"
     },
     "MAD-ODE": {
       "barridos": 2,
@@ -140,6 +132,10 @@
     "MAD-URE": {
       "barridos": 2,
       "ultima": "2026-10-27"
+    },
+    "MAD-VNO": {
+      "barridos": 1,
+      "ultima": "2026-11-12"
     }
   }
 }

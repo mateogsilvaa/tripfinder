@@ -4,7 +4,7 @@
       "iata": "MAD",
       "nombre": "Madrid",
       "count": 1710,
-      "destinos": 80,
+      "destinos": 85,
       "generated_at": "2026-11-12"
     },
     {
@@ -47,14 +47,14 @@
       "nombre": "Palma",
       "count": 184,
       "destinos": 21,
-      "generated_at": "2026-11-10"
+      "generated_at": "2026-11-12"
     },
     {
       "iata": "SCQ",
       "nombre": "Santiago",
-      "count": 142,
+      "count": 143,
       "destinos": 18,
-      "generated_at": "2026-11-10"
+      "generated_at": "2026-11-12"
     },
     {
       "iata": "SVQ",
@@ -66,9 +66,9 @@
     {
       "iata": "TFS",
       "nombre": "Tenerife Sur",
-      "count": 246,
+      "count": 249,
       "destinos": 24,
-      "generated_at": "2026-11-10"
+      "generated_at": "2026-11-12"
     },
     {
       "iata": "VLC",
