@@ -56,6 +56,11 @@
       "muestras": 3,
       "nombre": "Marrakech"
     },
+    "SKP": {
+      "noche": 46.67,
+      "muestras": 3,
+      "nombre": "Ilinden"
+    },
     "TIA": {
       "noche": 39.67,
       "muestras": 3,
@@ -86,6 +91,10 @@
     },
     "Marruecos": {
       "noche": 27.0,
+      "muestras": 3
+    },
+    "North Macedonia": {
+      "noche": 46.67,
       "muestras": 3
     },
     "Noruega": {
