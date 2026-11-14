@@ -62,7 +62,7 @@
       "nombre": "Ilinden"
     },
     "TIA": {
-      "noche": 25.55,
+      "noche": 32.66,
       "muestras": 6,
       "nombre": "Tirana"
     },
@@ -74,7 +74,7 @@
   },
   "paises": {
     "Albania": {
-      "noche": 25.55,
+      "noche": 32.66,
       "muestras": 6
     },
     "España": {
