@@ -507,6 +507,10 @@
     "ryanair-MAD-PSA-20270217": {
       "price": 41.98,
       "date": "2026-11-15"
+    },
+    "ryanair-MAD-OPO-20261211": {
+      "price": 64.98,
+      "date": "2026-11-15"
     }
   },
   "digest": {
