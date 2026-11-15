@@ -1,0 +1,32 @@
+{
+  "slug": "mad-todos-23-50-12m-finde-2p-qx6fgomgpeabclsjqskzngal8mk2",
+  "label": "Donde sea · findes · 12 meses · hasta 50 € · 2 pers.",
+  "request": {
+    "destination": "",
+    "label": "Donde sea · findes · 12 meses · hasta 50 € · 2 pers.",
+    "max_price": 50.0,
+    "nights_min": 2,
+    "nights_max": 3,
+    "months": 12,
+    "weekend_only": true,
+    "adults": 2,
+    "origin": "MAD",
+    "depart": "",
+    "return_date": "",
+    "desde": "",
+    "hasta": "",
+    "dias": "",
+    "horas": "",
+    "solo": "",
+    "sin": "",
+    "owner": "qX6FGOMGpEaBclSJQskzngaL8Mk2",
+    "owner_name": "Mario",
+    "slug": "mad-todos-23-50-12m-finde-2p-qx6fgomgpeabclsjqskzngal8mk2"
+  },
+  "generated_at": "2026-11-15",
+  "errors": [],
+  "count": 0,
+  "owner": "qX6FGOMGpEaBclSJQskzngaL8Mk2",
+  "owner_name": "Mario",
+  "offers": []
+}
