@@ -895,7 +895,7 @@
     },
     {
       "id": "edimburgo-6-iQ3rPhDrcRcxHWyNrDODKMJcSl82",
-      "label": "Edimburgo · findes · 6 meses · avisa bajo 120 € · 2 pers.",
+      "label": "Edimburgo · findes · 6 meses · avisa bajo 100 € · 2 pers.",
       "destination": "Edimburgo",
       "depart": "",
       "return_date": "",
@@ -908,7 +908,7 @@
       "nights": "2-3",
       "weekend_only": true,
       "adults": 2,
-      "max_price": 120.0,
+      "max_price": 100.0,
       "source": "formulario",
       "owner": "iQ3rPhDrcRcxHWyNrDODKMJcSl82",
       "owner_name": "sara",
