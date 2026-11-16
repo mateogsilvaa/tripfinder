@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-15",
+  "generated_at": "2026-11-16",
   "viajes": {
     "google-MAD-ATH-20270719": {
       "n": "Atenas",
@@ -708,6 +708,12 @@
       "d": "2027-01-29",
       "c": 16,
       "t": 337.94
+    },
+    "wizzair-MAD-SKP-20270205": {
+      "n": "Ilinden",
+      "d": "2027-02-05",
+      "c": 17,
+      "t": 307.94
     },
     "wizzair-MAD-TIA-20270122": {
       "n": "Tirana",

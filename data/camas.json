@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-15",
+  "generated_at": "2026-11-16",
   "destinos": {
     "ACE": {
       "noche": 62.0,
@@ -58,7 +58,7 @@
     },
     "SKP": {
       "noche": 46.67,
-      "muestras": 3,
+      "muestras": 6,
       "nombre": "Ilinden"
     },
     "TIA": {
@@ -95,7 +95,7 @@
     },
     "North Macedonia": {
       "noche": 46.67,
-      "muestras": 3
+      "muestras": 6
     },
     "Noruega": {
       "noche": 89.67,
