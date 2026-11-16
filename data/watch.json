@@ -892,6 +892,31 @@
           "price_per_person": 39.98
         }
       ]
+    },
+    {
+      "id": "edimburgo-6-iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "label": "Edimburgo · findes · 6 meses · avisa bajo 120 € · 2 pers.",
+      "destination": "Edimburgo",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "",
+      "horas": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 2,
+      "max_price": 120.0,
+      "source": "formulario",
+      "owner": "iQ3rPhDrcRcxHWyNrDODKMJcSl82",
+      "owner_name": "sara",
+      "created": "2026-11-16",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
