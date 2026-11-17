@@ -1,0 +1,32 @@
+{
+  "slug": "mad-berln-11-120-20261210-20261211-libre-2p-ruyjkuruwqoijlob4slest1qxqg2",
+  "label": "Berlín · 10 dic → 11 dic · hasta 120 € · 2 pers.",
+  "request": {
+    "destination": "Berlín",
+    "label": "Berlín · 10 dic → 11 dic · hasta 120 € · 2 pers.",
+    "max_price": 120.0,
+    "nights_min": 1,
+    "nights_max": 1,
+    "months": 12,
+    "weekend_only": false,
+    "adults": 2,
+    "origin": "MAD",
+    "depart": "",
+    "return_date": "",
+    "desde": "2026-12-10",
+    "hasta": "2026-12-11",
+    "dias": "",
+    "horas": "",
+    "solo": "",
+    "sin": "",
+    "owner": "RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+    "owner_name": "Alicia Vereda",
+    "slug": "mad-berln-11-120-20261210-20261211-libre-2p-ruyjkuruwqoijlob4slest1qxqg2"
+  },
+  "generated_at": "2026-11-17",
+  "errors": [],
+  "count": 0,
+  "owner": "RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+  "owner_name": "Alicia Vereda",
+  "offers": []
+}
