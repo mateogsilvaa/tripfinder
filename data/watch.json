@@ -870,6 +870,31 @@
       "last_checked": "2026-11-18",
       "active": true,
       "last_offers": []
+    },
+    {
+      "id": "todos-6-RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+      "label": "Donde sea · findes · 6 meses · avisa bajo 120 € · 2 pers.",
+      "destination": "",
+      "depart": "",
+      "return_date": "",
+      "origin": "MAD",
+      "desde": "",
+      "hasta": "",
+      "dias": "",
+      "horas": "",
+      "months": 6,
+      "nights": "2-3",
+      "weekend_only": true,
+      "adults": 2,
+      "max_price": 120.0,
+      "source": "formulario",
+      "owner": "RuYJKuruwQOiJlOB4SLEsT1Qxqg2",
+      "owner_name": "Alicia Vereda",
+      "created": "2026-11-18",
+      "best_price": null,
+      "last_checked": "",
+      "active": true,
+      "last_offers": []
     }
   ]
 }
