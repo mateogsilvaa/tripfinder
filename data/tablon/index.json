@@ -3,9 +3,9 @@
     {
       "iata": "MAD",
       "nombre": "Madrid",
-      "count": 1756,
-      "destinos": 88,
-      "generated_at": "2026-11-17"
+      "count": 1239,
+      "destinos": 80,
+      "generated_at": "2026-11-18"
     },
     {
       "iata": "ALC",
@@ -47,14 +47,14 @@
       "nombre": "Palma",
       "count": 185,
       "destinos": 21,
-      "generated_at": "2026-11-16"
+      "generated_at": "2026-11-18"
     },
     {
       "iata": "SCQ",
       "nombre": "Santiago",
-      "count": 148,
+      "count": 150,
       "destinos": 18,
-      "generated_at": "2026-11-16"
+      "generated_at": "2026-11-18"
     },
     {
       "iata": "SVQ",
@@ -73,9 +73,9 @@
     {
       "iata": "VLC",
       "nombre": "Valencia",
-      "count": 327,
+      "count": 330,
       "destinos": 28,
-      "generated_at": "2026-11-15"
+      "generated_at": "2026-11-18"
     }
   ]
 }
