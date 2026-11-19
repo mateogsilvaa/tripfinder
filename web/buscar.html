@@ -40,6 +40,7 @@
 <link rel="modulepreload" href="js/filtro-destinos.js">
 <link rel="modulepreload" href="js/fotos.js">
 <link rel="modulepreload" href="js/frescura.js">
+<link rel="modulepreload" href="js/guardadas.js">
 <link rel="modulepreload" href="js/historia.js">
 <link rel="modulepreload" href="js/horas.js">
 <link rel="modulepreload" href="js/insignias.js">
@@ -47,6 +48,7 @@
 <link rel="modulepreload" href="js/opciones.js">
 <link rel="modulepreload" href="js/paises.js">
 <link rel="modulepreload" href="js/precios.js">
+<link rel="modulepreload" href="js/puentes.js">
 <link rel="modulepreload" href="js/semana.js">
 <link rel="modulepreload" href="js/atajos.js">
 <link rel="modulepreload" href="js/calendario.js">
@@ -116,6 +118,7 @@ try{if(localStorage.getItem("tf_planes")==="off")document.documentElement.classL
   <section class="herramienta completa">
     <div class="finder-body">
       <div class="kicker-num">01 · buscar ahora</div>
+      <div id="sugeridas" class="sugeridas" aria-label="Búsquedas listas para lanzar"></div>
       <h3 class="solo-lector">El formulario</h3>
       <form id="finderForm" class="finder-form">
         <label for="fOrigen">
@@ -137,6 +140,7 @@ try{if(localStorage.getItem("tf_planes")==="off")document.documentElement.classL
             <option value="mes-finde">Un mes, solo los findes</option>
             <option value="dias">Unos días de la semana</option>
           <option value="tramo">Entre dos fechas</option>
+            <option value="puente">Un puente</option>
             <option value="exact">Fechas exactas</option>
             <option value="anytime">Cualquier fecha</option>
           </select>
@@ -155,6 +159,10 @@ try{if(localStorage.getItem("tf_planes")==="off")document.documentElement.classL
           <label for="fDiaVuelta"><span>Vuelvo el</span>
             <select id="fDiaVuelta"><option value="0">lunes</option><option value="1">martes</option><option value="2">miércoles</option><option value="3" selected>jueves</option><option value="4">viernes</option><option value="5">sábado</option><option value="6">domingo</option></select></label>
         </div>
+        <label class="celda" id="puenteWrap" hidden>
+          <span>Puente</span>
+          <select id="fPuente"><option value="">Cargando el calendario…</option></select>
+        </label>
         <label class="celda" id="mesWrap" hidden>
           <span>Mes</span>
           <select id="fMes"></select>

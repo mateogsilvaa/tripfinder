@@ -54,8 +54,9 @@ const FUENTES = {
 export function aPie(km) {
   if (km === null || km === undefined || !Number.isFinite(Number(km))) return "";
   const n = Number(km);
-  if (n <= 3.5) return `a ${Math.max(1, Math.round((n / 4.8) * 60))} min andando del centro`;
-  return `a ${n.toFixed(1).replace(".", ",")} km del centro`;
+  // En línea recta ×1,3 de rodeo por calles; pasados 2 km nadie va andando.
+  if (n <= 2) return `a ${Math.max(1, Math.round(((n * 1.3) / 4.8) * 60))} min andando del centro`;
+  return `a ${n.toFixed(1).replace(".", ",")} km del centro, en transporte`;
 }
 
 /* La línea de datos de una cama: de dónde sale, la nota y a qué distancia del

@@ -226,8 +226,8 @@ test.describe("la hoja de alojamiento", () => {
   test("cada cama dice a qué distancia del centro cae", async ({ page }) => {
     await abrirCamas(page, CAMAS);
     // Un estudio a doce kilómetros no es más barato: es otro viaje.
-    await expect(page.locator(".stay").first()).toContainText("a 8 min andando del centro");
-    await expect(page.locator(".stay").nth(1)).toContainText("a 14 min andando del centro");
+    await expect(page.locator(".stay").first()).toContainText("a 10 min andando del centro");
+    await expect(page.locator(".stay").nth(1)).toContainText("a 18 min andando del centro");
   });
 
   test("el sello dice por qué está donde está", async ({ page }) => {

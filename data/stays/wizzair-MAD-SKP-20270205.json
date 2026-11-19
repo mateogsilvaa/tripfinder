@@ -85,7 +85,7 @@
       "note": "",
       "lat": 41.99841,
       "lon": 21.55581,
-      "km_centro": 1.87,
+      "km_centro": 10.28,
       "score": 0.813,
       "sello": "el más barato"
     },
@@ -112,7 +112,7 @@
       "note": "4 habitaciones dobles",
       "lat": 41.99674987792969,
       "lon": 21.578569412231445,
-      "km_centro": 0.34,
+      "km_centro": 12.16,
       "score": 0.7188,
       "sello": "el más céntrico"
     },
@@ -139,7 +139,7 @@
       "note": "4 habitaciones dobles",
       "lat": 41.997249603271484,
       "lon": 21.574159622192383,
-      "km_centro": 0.48,
+      "km_centro": 11.8,
       "score": 0.452,
       "sello": ""
     },
@@ -166,7 +166,7 @@
       "note": "4 habitaciones dobles",
       "lat": 41.9873142,
       "lon": 21.6004835,
-      "km_centro": 2.03,
+      "km_centro": 14.01,
       "score": 0.4063,
       "sello": ""
     },

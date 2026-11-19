@@ -52,6 +52,8 @@ import { cargarWatches } from "./seguimientos.js";
 import { desde } from "./alojamiento.js";
 import { montarSemana } from "./semana.js";
 import { montarHoras, textoHoras } from "./horas.js";
+import { calcularPuentes, festivos, puenteEnTramo } from "./puentes.js";
+import { alias, buscadorHTML, enriquecer, wireBuscador, wireRenombrar } from "./guardadas.js";
 import { CON_MES, DIAS_CORTOS, FLEXIBLES, llenarMeses, llenarOrigenes, mesEnTramo } from "./opciones.js";
 
 export { ORIGENES } from "./opciones.js";
@@ -156,7 +158,67 @@ const HINTS = {
   "one|tramo": "Ese destino, el mejor día dentro del tramo que has marcado.",
   "any|dias": "Esos dos días, cualquier semana, donde sea.",
   "one|dias": "Ese destino, saliendo y volviendo esos días, la semana que salga más barata.",
+  "any|puente": "Ese puente, donde sea: se sale la tarde de antes y se vuelve el último día libre.",
+  "one|puente": "Ese destino en ese puente, el día de salida que salga más barato.",
 };
+
+/* LOS PUENTES. Del calendario de festivos (nacionales y de Madrid) salen los
+   que quedan de aquí a un año, y se ofrecen con sus fechas y cuántos días son. */
+let PUENTES = [];
+let PIDIENDO = null;
+function llenarPuentes() {
+  if (!existe("#fPuente")) return Promise.resolve();
+  if (PIDIENDO) return PIDIENDO;
+  PIDIENDO = festivos().then((lista) => {
+    PUENTES = calcularPuentes(lista);
+    const fmt = (d) => fmtDate(d, true);
+    $("#fPuente").innerHTML = PUENTES.length
+      ? PUENTES.map(
+          (p, i) =>
+            `<option value="${i}">${esc(p.nombres.join(" + "))} · ${fmt(p.desde)} → ${fmt(p.hasta)} · ${p.dias} días${
+              p.hacePuente ? " (cogiendo 1)" : ""
+            }</option>`
+        ).join("")
+      : '<option value="">No quedan puentes este año</option>';
+    pintarSugeridas();
+  });
+  return PIDIENDO;
+}
+
+/* BÚSQUEDAS SUGERIDAS. Un clic rellena el formulario y lo lanza: para quien
+   entra sin saber qué buscar, que es casi siempre. */
+const SUGERIDAS = [
+  { id: "finde", txt: "Finde por menos de 60 €", campos: { fWhere: "any", fWhen: "weekend", fMax: 60, fNights: "2-3", fMonths: 6 } },
+  { id: "puente", txt: "El próximo puente", campos: { fWhere: "any", fWhen: "puente", fMax: 150 } },
+  { id: "chollo", txt: "Lo más barato del año", campos: { fWhere: "any", fWhen: "anytime", fMax: 40, fNights: "2-4", fMonths: 12 } },
+  { id: "largo", txt: "De lunes a jueves", campos: { fWhere: "any", fWhen: "dias", fDiaIda: 0, fDiaVuelta: 3, fMax: 90, fMonths: 6 } },
+  { id: "mes", txt: "Los findes del mes que viene", campos: { fWhere: "any", fWhen: "mes-finde", fMax: 100 } },
+];
+function pintarSugeridas() {
+  const caja = existe("#sugeridas") && $("#sugeridas");
+  if (!caja || $("#finderForm").dataset.ampliar) return;
+  caja.innerHTML =
+    '<span class="sug-rot">Ideas</span>' +
+    SUGERIDAS.filter((s) => s.id !== "puente" || PUENTES.length)
+      .map((s) => {
+        const extra = s.id === "puente" && PUENTES[0] ? ` · ${esc(PUENTES[0].nombres[0])}` : "";
+        return `<button type="button" class="sug" data-sug="${s.id}">${esc(s.txt)}${extra}</button>`;
+      })
+      .join("");
+  caja.querySelectorAll("[data-sug]").forEach((b) =>
+    b.addEventListener("click", () => {
+      const s = SUGERIDAS.find((x) => x.id === b.dataset.sug);
+      for (const [id, v] of Object.entries(s.campos)) if (existe(`#${id}`)) $(`#${id}`).value = String(v);
+      syncFinder();
+      if (s.id === "mes" && existe("#fMes")) {
+        const opts = [...$("#fMes").options];
+        if (opts[1]) $("#fMes").value = opts[1].value;
+      }
+      if (s.id === "puente" && existe("#fPuente")) $("#fPuente").value = "0";
+      $("#finderForm").requestSubmit();
+    })
+  );
+}
 
 /* Lo que comparten buscar y seguir —los orígenes, los meses, los modos de
    fecha— vive en `opciones.js`: los dos formularios hacen las mismas preguntas. */
@@ -178,6 +240,10 @@ function syncFinder() {
   // vuelta, y con un tramo marca los dos extremos de la ventana. Lo que cambia
   // es lo que significan, y eso lo dice el rótulo.
   $("#departWrap").hidden = cuando !== "exact" && cuando !== "tramo";
+  if (existe("#puenteWrap")) {
+    $("#puenteWrap").hidden = cuando !== "puente";
+    llenarPuentes();
+  }
   if (existe("#departRot")) {
     $("#departRot").textContent = cuando === "tramo" ? "Entre" : "Fechas";
     // El calendario pinta lo mismo, pero lo que pide el segundo clic no es lo
@@ -203,9 +269,9 @@ function syncFinder() {
     $("#diasWrap").hidden = cuando !== "dias";
     montarSemana($("#diasWrap"), $("#fDiaIda"), $("#fDiaVuelta"));
   }
-  $("#nightsWrap").hidden = cuando === "exact" || cuando === "dias";
+  $("#nightsWrap").hidden = cuando === "exact" || cuando === "dias" || cuando === "puente";
   // Con ventana, el horizonte sobra: ya has dicho hasta cuándo.
-  $("#monthsWrap").hidden = cuando === "exact" || FLEXIBLES.has(cuando);
+  $("#monthsWrap").hidden = cuando === "exact" || FLEXIBLES.has(cuando) || cuando === "puente";
   $("#finderHint").textContent = HINTS[`${donde}|${cuando}`] || "";
   // El calendario solo pinta cuando has dicho "fechas exactas". Esto vivia mas
   // abajo, reasignando `syncFinder` por encima de si misma: el efecto era que
@@ -254,7 +320,15 @@ on("#finderForm", "submit", async (e) => {
   /* La ventana en que se puede viajar. Un mes se convierte aquí en sus dos
      extremos —el backend solo entiende fechas— y un tramo son los dos días que
      se han marcado en el calendario. */
-  const ventana = CON_MES.has(cuando)
+  const puente = cuando === "puente" ? PUENTES[Number($("#fPuente").value)] : null;
+  if (cuando === "puente" && !puente) {
+    $("#finderHint").textContent = "Elige un puente de la lista.";
+    return;
+  }
+  const tramoPuente = puente ? puenteEnTramo(puente) : null;
+  const ventana = tramoPuente
+    ? { desde: tramoPuente.desde, hasta: tramoPuente.hasta }
+    : CON_MES.has(cuando)
     ? mesEnTramo($("#fMes").value)
     : cuando === "tramo"
     ? { desde: $("#fDepart").value, hasta: $("#fReturn").value }
@@ -275,6 +349,8 @@ on("#finderForm", "submit", async (e) => {
       ? `findes de ${mesTxt}`
       : cuando === "tramo"
       ? `${fmtDate(ventana.desde)} → ${fmtDate(ventana.hasta)}`
+      : puente
+      ? `puente de ${puente.nombres[0]} (${fmtDate(puente.desde)} → ${fmtDate(puente.hasta)})`
       : cuando === "weekend"
       ? `findes · ${$("#fMonths").value || 12} meses`
       : cuando === "dias"
@@ -301,7 +377,7 @@ on("#finderForm", "submit", async (e) => {
       .join(" · "),
     owner: tfUid(),
     max_price: $("#fMax").value,
-    nights: $("#fNights").value.trim() || "2-3",
+    nights: tramoPuente ? tramoPuente.noches : $("#fNights").value.trim() || "2-3",
     months: $("#fMonths").value || "12",
     adults: $("#fAdults").value || "2",
     weekend: cuando === "weekend" || cuando === "mes-finde" ? "si" : "no",
@@ -529,20 +605,35 @@ export async function loadSearches() {
   }
 
   $("#searches").setAttribute("aria-busy", "true");
-  $("#searches").innerHTML = cabecera + guardadas
-    .map(
-      (s) => `
-      <div class="saved tv" data-slug="${esc(s.slug)}">${tarjetaViaje({
-        rotulo: s.label,
+  $("#searches").innerHTML = cabecera + buscadorHTML(guardadas.length) + guardadas
+    .map((s) => {
+      const nombre = alias(s.slug);
+      const [sitio] = String(s.label || "").split(" · ");
+      return `
+      <div class="saved tv sv" data-slug="${esc(s.slug)}" data-original="${esc(sitio)}"
+        data-buscable="${esc(`${nombre} ${s.label}`.toLowerCase())}">${tarjetaViaje({
+        rotulo: nombre ? `${nombre} · ${s.label}` : s.label,
         precio: s.best_price,
         estado: `${s.count} viaje${s.count === 1 ? "" : "s"} · buscado ${esc(desde(s.generated_at))}`,
-        quitar: `<button class="quitar" type="button" data-borrar="${esc(s.slug)}"
+        quitar: `<button class="quitar sv-renombrar" type="button" data-renombrar="${esc(s.slug)}"
+          aria-label="Renombrar esta búsqueda" title="Renombrar"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button class="quitar" type="button" data-borrar="${esc(s.slug)}"
           aria-label="Quitar esta búsqueda">quitar</button>`,
       })}
+        <ul class="sv-destinos" data-sv-destinos hidden></ul>
+        <div class="sv-camas-hueco" data-sv-camas hidden></div>
         <div class="saved-rows" hidden></div>
-      </div>`
-    )
+      </div>`;
+    })
     .join("");
+  wireBuscador($("#searches"));
+  wireRenombrar($("#searches"), loadSearches);
+  enriquecer($("#searches"), guardadas, {
+    pintarFila: (o, i) => boardRow(conGrupo([o], o.adults)[0] || o, i),
+    wire: (det, ofertas) => {
+      ofertas.forEach((o) => (SEARCH_OFFERS[o.id] = o));
+      wireRows(det);
+    },
+  });
 
   // Lo que se ha mandado borrar sigue marcado hasta que desaparece de verdad.
   const borrando = JSON.parse(localStorage.getItem(BORRANDO_KEY) || "[]");
@@ -612,7 +703,7 @@ export async function loadSearches() {
   document.querySelectorAll(".saved[data-slug]").forEach((el) =>
     el.addEventListener("click", (ev) => {
       // Sin esto, abrir un viaje de dentro cerraba la busqueda que lo contiene.
-      if (ev.target.closest(".saved-rows") || ev.target.closest("[data-borrar]")) return;
+      if (ev.target.closest(".saved-rows, .sv-camas, [data-borrar], [data-renombrar], .sv-campo")) return;
       toggleSearch(el);
     })
   );

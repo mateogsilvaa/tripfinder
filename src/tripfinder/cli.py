@@ -923,13 +923,18 @@ def cmd_scan_stays(args: argparse.Namespace) -> int:
         return 1
 
     if offer is not None:
-        city = args.city or offer.destination_name or offer.destination
+        # La ciudad del YAML manda sobre la del vuelo: Wizz da el MUNICIPIO del
+        # aeropuerto, y con eso Skopie salia como «Ilinden» —un pueblo a 13 km—
+        # y las camas, buscadas alrededor del pueblo, «a 10 min andando del
+        # centro» cuando al de verdad hay media hora en coche.
+        fija = cfg.city_names.get(offer.destination)
+        city = args.city or (fija[0] if fija else "") or offer.destination_name or offer.destination
         iata = offer.destination
         checkin = args.checkin or offer.depart_date
         checkout = args.checkout or offer.return_date or (
             date.fromisoformat(offer.depart_date) + timedelta(days=3)
         ).isoformat()
-        country = args.country or offer.destination_country
+        country = args.country or (fija[1] if fija else "") or offer.destination_country
     else:
         city, iata = args.city, (args.iata or "")
         checkin = args.checkin

@@ -44,6 +44,9 @@ TOLERANCIA = 0.6
 # Andando, a paso normal. Sirve para decirlo en minutos, que se entiende mejor
 # que un decimal de kilómetro.
 KM_POR_HORA = 4.8
+# Las calles no van en linea recta: lo andado es ~1,3 veces la distancia en el mapa.
+RODEO = 1.3
+ANDANDO_MAX_KM = 2.0
 
 
 def _nota_precio(precio: float, barato: float) -> float:
@@ -91,10 +94,13 @@ def a_pie(km: float | None) -> str:
     """«a 12 min andando», «a 4,2 km del centro»."""
     if km is None:
         return ""
-    if km <= 3.5:
-        minutos = max(1, round(km / KM_POR_HORA * 60))
+    # `km` es en linea recta; andando por calles es un tercio mas. Y pasados
+    # ~2 km en linea recta (media hora larga a pie) nadie va andando: se dice
+    # la distancia y que hay que coger algo, no «a 40 min andando».
+    if km <= ANDANDO_MAX_KM:
+        minutos = max(1, round(km * RODEO / KM_POR_HORA * 60))
         return f"a {minutos} min andando del centro"
-    return f"a {km:.1f} km del centro".replace(".", ",")
+    return f"a {km:.1f} km del centro, en transporte".replace(".", ",", 1)
 
 
 def medir(ofertas: list[StayOffer], req: StayRequest) -> list[StayOffer]:

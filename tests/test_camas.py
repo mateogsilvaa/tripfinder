@@ -81,12 +81,12 @@ def test_no_hay_dos_mas_baratos():
 
 # -- la distancia ----------------------------------------------------------
 def test_cerca_se_dice_en_minutos_andando():
-    assert a_pie(0.8) == "a 10 min andando del centro"
+    assert a_pie(0.8) == "a 13 min andando del centro"
 
 
 def test_lejos_se_dice_en_kilometros():
     """Doce kilómetros no son «150 minutos andando»: son un taxi."""
-    assert a_pie(12.0) == "a 12,0 km del centro"
+    assert a_pie(12.0) == "a 12,0 km del centro, en transporte"
 
 
 def test_sin_distancia_no_se_dice_nada():

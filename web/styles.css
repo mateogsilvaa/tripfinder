@@ -6955,3 +6955,63 @@ a, button, summary, label, select, [role="tab"], [role="button"] { touch-action:
      una banda cuadrada detrás de la píldora. */
   ::view-transition-group(tf-abajo) { border-radius: 999px; }
 }
+
+/* --- búsquedas guardadas: nombre propio, destinos y camas ----------------
+   Mismas piezas que el resto de la web: caja de --surface con --line, el
+   código IATA como en el tablón y los precios en --deep. Sin colores propios. */
+.saved.sv { padding: 0; display: flex; flex-direction: column; align-items: stretch; gap: 0; }
+.sv-oculta { display: none !important; }
+.sv-filtro { display: block; margin: 0 0 12px; }
+.sv-filtro input {
+  width: 100%; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: var(--field); color: var(--ink); font: inherit;
+}
+.sv-campo {
+  flex: 1; min-width: 0; padding: 4px 8px; border: 1px solid var(--line);
+  border-radius: var(--r-s); background: var(--field); color: var(--ink);
+  font: 600 clamp(18px, 2.2vw, 22px) / 1.15 var(--font-sans);
+}
+.sv-renombrar { display: inline-grid; place-items: center; min-width: 36px; padding: 0 10px; }
+.sv-destinos {
+  padding-bottom: 2px;
+  grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 14px;
+  margin: 10px 0 0; padding: 0 16px; list-style: none; font-size: var(--fs-ui-s);
+}
+.sv-destinos li { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.sv-destinos li b { font: 600 var(--fs-ui-s) var(--font-mono); color: var(--deep); }
+.sv-destinos .sv-mas { color: var(--muted); }
+.sv-iata {
+  padding: 1px 5px; border: 1px solid var(--line); border-radius: var(--r-tag);
+  font: 600 11px var(--font-mono); letter-spacing: 0.04em; color: var(--muted);
+}
+.sv-camas-hueco { grid-column: 1 / -1; padding: 10px 16px 0; }
+.sv-camas { border-top: 1px solid var(--hair); }
+.sv-camas > summary {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 10px 0;
+  cursor: pointer; list-style: none; font-weight: 600; font-size: var(--fs-ui-s);
+}
+.sv-camas > summary::-webkit-details-marker { display: none; }
+.sv-camas > summary::after { content: "›"; margin-left: auto; transition: transform 0.25s var(--ease, ease); }
+.sv-camas[open] > summary::after { transform: rotate(90deg); }
+.sv-cama-ico { flex: none; align-self: center; color: var(--deep); }
+.sv-cama-resumen { font-weight: 400; color: var(--muted); font-size: var(--fs-ui-s); }
+.sv-camas-filas { padding: 0 0 8px; }
+.saved.sv > * { grid-column: 1 / -1; grid-row: auto; }
+.saved.sv > .tv-cab { order: 1; }
+.saved.sv > .tv-cond { order: 2; }
+.saved.sv > .sv-destinos { order: 3; }
+.saved.sv > .sv-camas-hueco { order: 4; }
+.saved.sv > .tv-pie { order: 5; }
+.saved.sv > .saved-rows { order: 6; }
+
+/* --- ideas: búsquedas de un clic ---------------------------------------- */
+.sugeridas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 16px; }
+.sugeridas:empty { display: none; }
+.sug-rot { font: 400 var(--fs-meta, 11px) var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.sug {
+  padding: 8px 14px; min-height: 36px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  background: var(--surface2); color: var(--ink); font: 500 var(--fs-ui-s) var(--font-sans); cursor: pointer;
+  transition: border-color var(--t, 0.2s), color var(--t, 0.2s);
+}
+.sug:hover, .sug:focus-visible { border-color: var(--accent); color: var(--accent-txt); }
+@media (prefers-reduced-motion: reduce) { .sv-camas > summary::after { transition: none; } }
