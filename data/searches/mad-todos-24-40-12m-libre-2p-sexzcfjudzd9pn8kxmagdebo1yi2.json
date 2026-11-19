@@ -1,0 +1,32 @@
+{
+  "slug": "mad-todos-24-40-12m-libre-2p-sexzcfjudzd9pn8kxmagdebo1yi2",
+  "label": "Donde sea · 12 meses · hasta 40 € · 2 pers.",
+  "request": {
+    "destination": "",
+    "label": "Donde sea · 12 meses · hasta 40 € · 2 pers.",
+    "max_price": 40.0,
+    "nights_min": 2,
+    "nights_max": 4,
+    "months": 12,
+    "weekend_only": false,
+    "adults": 2,
+    "origin": "MAD",
+    "depart": "",
+    "return_date": "",
+    "desde": "",
+    "hasta": "",
+    "dias": "",
+    "horas": "",
+    "solo": "",
+    "sin": "",
+    "owner": "sExZcFJudzd9pn8KxMagDeBO1Yi2",
+    "owner_name": "mateo",
+    "slug": "mad-todos-24-40-12m-libre-2p-sexzcfjudzd9pn8kxmagdebo1yi2"
+  },
+  "generated_at": "2026-11-19",
+  "errors": [],
+  "count": 0,
+  "owner": "sExZcFJudzd9pn8KxMagDeBO1Yi2",
+  "owner_name": "mateo",
+  "offers": []
+}
