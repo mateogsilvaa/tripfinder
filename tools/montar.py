@@ -338,7 +338,8 @@ PAGINAS = {
         "nav": NAV,
         "descubrir": DESCUBRIR,
         "titulo": "TripFinder · escapadas desde Madrid",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["index.html"]}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["index.html"]}">'
+                '\n<link rel="canonical" href="https://tripfinder.es/">',
         "vivo": VIVO,
         "zona": "promos",
         "nota": NOTA_WEB,
@@ -352,7 +353,8 @@ PAGINAS = {
         "nav": NAV,
         "descubrir": DESCUBRIR,
         "titulo": "TripFinder · trazar un viaje",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["buscar.html"]}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["buscar.html"]}">'
+                '\n<link rel="canonical" href="https://tripfinder.es/buscar.html">',
         "vivo": VIVO,
         "zona": "buscar",
         "nota": NOTA_WEB,
@@ -366,7 +368,8 @@ PAGINAS = {
         "nav": NAV,
         "descubrir": DESCUBRIR,
         "titulo": "TripFinder · vuelos que sigues",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["seguimientos.html"]}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["seguimientos.html"]}">'
+                '\n<link rel="canonical" href="https://tripfinder.es/seguimientos.html">',
         "vivo": VIVO,
         "zona": "follows",
         "nota": NOTA_WEB,
@@ -381,7 +384,8 @@ PAGINAS = {
         "nav": NAV,
         "descubrir": DESCUBRIR,
         "titulo": "TripFinder · tu Interrail",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["interrail.html"]}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["interrail.html"]}">'
+                '\n<link rel="canonical" href="https://tripfinder.es/interrail.html">',
         "vivo": "",
         "zona": "interrail",
         "nota": NOTA_WEB,
@@ -396,7 +400,8 @@ PAGINAS = {
         "nav": NAV,
         "descubrir": DESCUBRIR,
         "titulo": "TripFinder · modo HOP",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["hop.html"]}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["hop.html"]}">'
+                '\n<link rel="canonical" href="https://tripfinder.es/hop.html">',
         "vivo": "",
         "zona": "hop",
         "nota": NOTA_WEB,
@@ -411,7 +416,8 @@ PAGINAS = {
         "descubrir": "",
         "base": "",
         "titulo": "TripFinder · privacidad",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["privacidad.html"]}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["privacidad.html"]}">'
+                '\n<link rel="canonical" href="https://tripfinder.es/privacidad.html">',
         "vivo": "",
         "zona": None,
         "nota": NOTA_404,
@@ -425,7 +431,8 @@ PAGINAS = {
         "descubrir": "",
         "base": "",
         "titulo": "TripFinder · condiciones de uso",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["condiciones.html"]}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["condiciones.html"]}">'
+                '\n<link rel="canonical" href="https://tripfinder.es/condiciones.html">',
         "vivo": "",
         "zona": None,
         "nota": NOTA_404,
@@ -439,7 +446,8 @@ PAGINAS = {
         "nav": NAV,
         "descubrir": "",
         "titulo": "TripFinder · planes",
-        "meta": f'<meta name="description" content="{DESCRIPCIONES["planes.html"]}">',
+        "meta": f'<meta name="description" content="{DESCRIPCIONES["planes.html"]}">'
+                '\n<link rel="canonical" href="https://tripfinder.es/planes.html">',
         "vivo": "",
         "zona": None,
         "nota": NOTA_404,
