@@ -539,6 +539,14 @@
     "wizzair-MAD-VCE-20261220": {
       "price": 39.98,
       "date": "2026-11-19"
+    },
+    "wizzair-MAD-SOF-20270205": {
+      "price": 79.98,
+      "date": "2026-11-19"
+    },
+    "ryanair-MAD-BUD-20270111": {
+      "price": 43.98,
+      "date": "2026-11-19"
     }
   },
   "digest": {
