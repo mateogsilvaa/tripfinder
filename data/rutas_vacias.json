@@ -1,5 +1,5 @@
 {
-  "generado": "2026-11-20",
+  "generado": "2026-11-21",
   "rutas": {
     "MAD-AAL": {
       "barridos": 2,
@@ -7,11 +7,15 @@
     },
     "MAD-AAR": {
       "barridos": 1,
+      "ultima": "2026-11-21"
+    },
+    "MAD-ACE": {
+      "barridos": 1,
       "ultima": "2026-11-20"
     },
     "MAD-AGP": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-AOK": {
       "barridos": 2,
@@ -19,7 +23,7 @@
     },
     "MAD-ARN": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-ARW": {
       "barridos": 2,
@@ -37,20 +41,12 @@
       "barridos": 2,
       "ultima": "2026-11-07"
     },
-    "MAD-BGY": {
-      "barridos": 1,
-      "ultima": "2026-11-20"
-    },
     "MAD-BLL": {
-      "barridos": 2,
-      "ultima": "2026-11-19"
+      "barridos": 1,
+      "ultima": "2026-11-21"
     },
     "MAD-BTS": {
       "barridos": 2,
-      "ultima": "2026-11-20"
-    },
-    "MAD-BUD": {
-      "barridos": 1,
       "ultima": "2026-11-20"
     },
     "MAD-CFU": {
@@ -59,11 +55,7 @@
     },
     "MAD-CHQ": {
       "barridos": 1,
-      "ultima": "2026-11-20"
-    },
-    "MAD-CLJ": {
-      "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-CND": {
       "barridos": 2,
@@ -76,10 +68,6 @@
     "MAD-EBJ": {
       "barridos": 2,
       "ultima": "2026-11-03"
-    },
-    "MAD-EDI": {
-      "barridos": 1,
-      "ultima": "2026-11-20"
     },
     "MAD-EFL": {
       "barridos": 2,
@@ -95,19 +83,15 @@
     },
     "MAD-FCO": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-GHV": {
       "barridos": 2,
       "ultima": "2026-11-07"
     },
     "MAD-HEL": {
-      "barridos": 2,
-      "ultima": "2026-11-20"
-    },
-    "MAD-HER": {
-      "barridos": 2,
-      "ultima": "2026-11-20"
+      "barridos": 1,
+      "ultima": "2026-11-21"
     },
     "MAD-IOA": {
       "barridos": 2,
@@ -142,24 +126,20 @@
       "ultima": "2026-10-31"
     },
     "MAD-LGW": {
-      "barridos": 2,
-      "ultima": "2026-11-20"
+      "barridos": 1,
+      "ultima": "2026-11-21"
     },
     "MAD-LTN": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-MXP": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-NAP": {
       "barridos": 1,
-      "ultima": "2026-11-20"
-    },
-    "MAD-NRT": {
-      "barridos": 2,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-ODE": {
       "barridos": 2,
@@ -170,28 +150,28 @@
       "ultima": "2026-11-07"
     },
     "MAD-OSL": {
-      "barridos": 2,
-      "ultima": "2026-11-20"
+      "barridos": 1,
+      "ultima": "2026-11-21"
     },
     "MAD-OTP": {
-      "barridos": 1,
-      "ultima": "2026-11-20"
+      "barridos": 2,
+      "ultima": "2026-11-21"
     },
     "MAD-OVD": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-PLQ": {
       "barridos": 2,
       "ultima": "2026-11-18"
     },
     "MAD-PMI": {
-      "barridos": 2,
-      "ultima": "2026-11-20"
+      "barridos": 1,
+      "ultima": "2026-11-21"
     },
     "MAD-PSA": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-RKE": {
       "barridos": 2,
@@ -206,16 +186,12 @@
       "ultima": "2026-11-03"
     },
     "MAD-SOF": {
-      "barridos": 2,
-      "ultima": "2026-11-20"
+      "barridos": 1,
+      "ultima": "2026-11-21"
     },
     "MAD-SUJ": {
       "barridos": 2,
       "ultima": "2026-11-07"
-    },
-    "MAD-SVQ": {
-      "barridos": 1,
-      "ultima": "2026-11-20"
     },
     "MAD-TAY": {
       "barridos": 2,
@@ -227,7 +203,7 @@
     },
     "MAD-TLL": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     },
     "MAD-URE": {
       "barridos": 2,
@@ -235,7 +211,7 @@
     },
     "MAD-VCE": {
       "barridos": 1,
-      "ultima": "2026-11-20"
+      "ultima": "2026-11-21"
     }
   }
 }
