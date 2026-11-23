@@ -89,7 +89,7 @@ Leyenda de etiquetas: `core` `scraper` `email` `web` `infra` `ux` `nice-to-have`
 - [x] **#20 · Adapter Airbnb** `scraper`
   - Lee el estado embebido de la página de resultados; degrada a deep link si falla.
   - AC: ✅ verificado — 18 alojamientos con precio, valoración e imagen para Agadir.
-  - Ojo: sin país, Airbnb geolocaliza mal (ver README). El país viaja desde el vuelo.
+  - Ojo: sin país, Airbnb geolocaliza mal (ver GUIA.md). El país viaja desde el vuelo.
 - [x] **#21 · Adapter hoteles (Amadeus Hotel Search)** `scraper`
 - [x] **#22 · Deep links Booking/Kayak (sin scraping)** `scraper`
 - [x] **#23 · Vista de alojamientos en la web con polling** `web`

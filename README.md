@@ -1,761 +1,128 @@
-# ✈️ TripFinder
+<p align="center">
+  <img src="web/iconos/icono-192.png" alt="" width="88">
+</p>
+<h1 align="center">TripFinder</h1>
+<p align="center">
+  <b>Weekend getaways from Madrid, below their usual price.</b><br>
+  Scans flights, compares each fare with its route's history and works out what the whole trip costs.
+</p>
+<p align="center">
+  <a href="https://tripfinder.es"><b>tripfinder.es</b></a> ·
+  <a href="#features">Features</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#documentation">Docs</a>
+</p>
+<p align="center">
+  <a href="https://github.com/mateogsilvaa/tripfinder/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mateogsilvaa/tripfinder/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Python 3.12" src="https://img.shields.io/badge/python-3.12-3776ab?style=flat-square">
+  <img alt="Vanilla JavaScript" src="https://img.shields.io/badge/frontend-vanilla%20JS-f7df1e?style=flat-square">
+  <img alt="Runs on GitHub Actions" src="https://img.shields.io/badge/runs%20on-GitHub%20Actions-2088ff?style=flat-square">
+</p>
 
-Buscador automático de chollos de vuelo con aviso por email y, cuando una oferta te interesa,
-búsqueda bajo demanda de alojamiento (hoteles + Airbnb) para esas fechas exactas.
+> The app and the detailed documentation are in Spanish.
 
-Todo corre **gratis sobre GitHub**: Actions como scheduler/backend y Pages como web.
+## Features
 
+- **Deals measured against history.** Fares are compared with past prices on the same route.
+- **Useful hours.** Counts waking hours at the destination, so a cheap flight at bad times does not look like a bargain.
+- **Full trip cost.** Combines per-person flights with group accommodation.
+- **Custom search.** By city, country or continent, with exact or flexible dates.
+- **Price alerts.** Follow a trip and opt in to notifications.
+- **Interrail planner.** Builds a route with flights, trains and places to stay.
+- **HOP.** Groups decide on a trip together with proposals, votes and chat.
+
+## How it works
+
+```mermaid
+flowchart LR
+  A["Scheduled scan<br/>GitHub Actions, cron 12h"] --> B["Flight providers"]
+  B --> C["Scoring against<br/>price history"]
+  C --> D[("JSON data")]
+  C --> E["Notifications"]
+  D --> F["Static web<br/>GitHub Pages"]
+  F -- "search request" --> G[("Firestore queue")]
+  G --> H["On-demand workflow"]
+  H --> D
 ```
-                 ┌─────────────────────── GitHub Actions (cron 12h) ─────────────────────────┐
-                 │  scan-flights.yml → tripfinder scan-flights                                │
-                 │     · providers: Ryanair (sin API key) + Amadeus (opcional)                │
-                 │     · scoring vs. histórico de precios  →  data/offers.json (commit)       │
-                 │     · si hay chollo nuevo → email a mateogonsilva@gmail.com (SMTP Gmail)   │
-                 └───────────────────────────────────────────────────────────────────────────┘
-                                          │ commit
-                                          ▼
-   Email  ──►  https://mateogsilvaa.github.io/tripfinder  (Pages, lee data/*.json)
-                                          │
-                        "Me interesa → buscar alojamiento"
-                                          │  (un encargo en Firestore → encargos.yml)
-                                          ▼
-                 ┌──────────────── GitHub Actions (repository_dispatch) ─────────────────────┐
-                 │  stay-request.yml → tripfinder scan-stays --offer-id …                     │
-                 │     · Airbnb + hoteles (Amadeus) + deep links Booking/Kayak                │
-                 │     · data/stays/<offer_id>.json (commit)                                  │
-                 └───────────────────────────────────────────────────────────────────────────┘
+
+The web is static. Searches that need fresh prices are queued in Firestore and picked up by a workflow, which publishes
+the result as JSON.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Engine | Python 3.12, one adapter per provider |
+| Frontend | HTML, CSS and ES modules, no bundler. Installable as a PWA |
+| Accounts and queue | Firebase Auth and Firestore |
+| Scheduling | GitHub Actions |
+| Hosting | GitHub Pages |
+| Quality | ruff, pytest, oxlint, Playwright |
+
+## Getting started
+
+```bash
+git clone https://github.com/mateogsilvaa/tripfinder.git
+cd tripfinder
+pip install -r requirements.txt
+cp .env.example .env
 ```
 
-**Por qué hace falta disparar algo:** GitHub Pages es estático, no puede ejecutar el scraper.
-La web manda un `repository_dispatch` desde el navegador con el token de tu cuenta —que sale
-cifrado del sobre al entrar, nunca está en el HTML— y hace polling del JSON de resultados.
-
-Las issues fueron el primer disparador, cuando no había cuentas, y después el sitio donde se
-apuntaban avisos, peticiones de cuenta y búsquedas. **Ya no se usan para nada**: el repo es
-público y una issue la lee cualquiera. Nada en el código las crea, y lo que había se copió a
-Firestore (una sola vez, con `tripfinder migrar-issues`), que es donde se guarda ahora lo que es de alguien.
-
-**Lo que no se lanza:** antes de levantar nada, la web mira si esa misma búsqueda ya está
-publicada. Si lo está, te la ofrece con la fecha en que se hizo en vez de repetirla —un barrido
-"donde sea" son unos ocho minutos de scraping— y te deja repetirla a mano si quieres precios de
-hoy. Y borrar varias búsquedas seguidas manda **una** llamada con la lista, no una por fichero.
-
-## Puesta en marcha
-
-1. `pip install -r requirements.txt`
-2. Copia `.env.example` a `.env` y pon tu `RESEND_API_KEY`
-   (alta gratuita en [resend.com](https://resend.com), 3.000 emails/mes; es una API key
-   revocable, no la contraseña de tu correo).
-3. Edita `config/watchlist.yml` con tus aeropuertos y umbrales.
-4. Prueba en local:
+Set `PYTHONPATH` to `src` (bash: `export PYTHONPATH=src`, PowerShell: `$env:PYTHONPATH = "src"`). Then run a scan that
+writes nothing and sends no email:
 
 ```bash
 python -m tripfinder scan-flights --dry-run
 ```
 
-5. En GitHub: `Settings → Secrets and variables → Actions` añade `RESEND_API_KEY`
-   y opcionalmente `AMADEUS_CLIENT_ID` / `AMADEUS_CLIENT_SECRET`.
-6. `Settings → Pages → Source: GitHub Actions`.
-7. `Settings → Actions → General → Workflow permissions: Read and write`.
-8. Abre `/admin.html` en la web publicada, pon la contraseña del panel (la primera
-   vez la eliges tú) y pega ahí tu token de GitHub: se guarda cifrado y las cuentas
-   lo abren solas. Desde ahí creas las cuentas de quien vaya a usarla:
-   ver [Cuentas y panel](#cuentas-y-panel).
-
-## Dominio propio
-
-La web está lista para salir con un dominio tuyo en vez de `mateogsilvaa.github.io/tripfinder`.
-Nada del código lleva la dirección escrita: sale de dos **variables de repositorio**
-(`Settings → Secrets and variables → Actions → Variables`, no secretos).
-
-1. **DNS**, en el registrador donde compraste el dominio:
-   - dominio raíz (`tudominio.es`): cuatro registros `A` a `185.199.108.153`, `185.199.109.153`,
-     `185.199.110.153` y `185.199.111.153` (y si quieres IPv6, `AAAA` a
-     `2606:50c0:8000::153`, `…8001::153`, `…8002::153`, `…8003::153`);
-   - subdominio (`www.` o `viajes.`): un `CNAME` a `mateogsilvaa.github.io`.
-2. **GitHub**: `Settings → Pages → Custom domain` con el dominio, y cuando el certificado esté
-   listo (minutos u horas), marca *Enforce HTTPS*.
-3. **Variables**: `DOMINIO` = `tudominio.es` (pages publica el `CNAME`) y `SITE_URL` =
-   `https://tudominio.es` (los enlaces de los correos). Sin ellas, todo sigue en github.io.
-4. **Firebase**: *Authentication → Configuración → Dominios autorizados* → añade el dominio.
-   Sin esto, entrar y registrarse fallan en el dominio nuevo.
-5. **Google Cloud → Credenciales**: si restringiste la clave de la API por referente, añade
-   `https://tudominio.es/*`.
-
-De regalo: con un dominio propio sí se puede verificar en Resend (registros DKIM/SPF), y
-entonces escribe a cualquier dirección, sin el tope de ~500 correos al día de Gmail. Con la
-web abierta al público es lo recomendable.
-
-## Como te llegan los avisos
-
-`notify.method` en `config/watchlist.yml` elige el transporte, y si falla se prueba el otro. Si
-ninguno sale, el aviso no se marca como enviado y se reintenta en el siguiente barrido, así que
-no se pierde un chollo por un problema de credenciales. **No hay aviso por issue**: el repo es
-público y una issue la lee cualquiera.
-
-| Metodo | Credencial | Notas |
-|---|---|---|
-| `smtp` (por defecto) | `SMTP_USER` + `SMTP_PASSWORD` | Gmail, con **contraseña de aplicación**. Escribe a cualquier dirección, que es lo que hace falta cuando hay varias cuentas. ~500 correos al día. |
-| `resend` | `RESEND_API_KEY` | 3.000 emails/mes gratis, pero **solo escribe al dueño de la clave** mientras el dominio no esté verificado. |
-
-### Por que SMTP y no Resend
-
-Resend solo deja escribir a la direccion del dueno de la clave hasta que verificas un dominio, y
-el dominio de esta web es `mateogsilvaa.github.io`. **`github.io` es de GitHub**: no hay ningun
-registrador donde meter los registros DKIM y SPF que Resend pide, asi que esa verificacion no se
-puede hacer nunca. Con Resend solo recibe avisos una cuenta, y las demás se quedan sin ellos.
-
-Las alternativas reales son SMTP o comprar un dominio propio.
-
-### Poner el correo de Gmail
-
-1. En la cuenta de Google, **enciende la verificacion en dos pasos**
-   ([myaccount.google.com/security](https://myaccount.google.com/security)). Sin ella no existe la
-   opcion del paso siguiente.
-2. Crea una **contraseña de aplicacion** en
-   [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords). Son 16
-   caracteres y Google los ensena en cuatro grupos de cuatro: **da igual si copias los espacios**,
-   se quitan solos.
-3. En GitHub, `Settings -> Secrets and variables -> Actions`:
-
-   | Secreto | Valor |
-   |---|---|
-   | `SMTP_USER` | tu direccion de Gmail entera |
-   | `SMTP_PASSWORD` | la contraseña de aplicacion del paso 2 |
-   | `NOTIFY_TO` | *(opcional)* a donde escribir por defecto; si falta, a ti mismo |
-
-   `SMTP_HOST` y `SMTP_PORT` no hacen falta: van a `smtp.gmail.com` y `465`. Si prefieres el 587
-   tambien vale — se habla STARTTLS en vez de TLS directo.
-
-4. **Compruebalo sin esperar al barrido**: `Actions -> Probar el correo -> Run workflow`. Manda un
-   chollo de mentira y deja escrito en el resumen si salio o por que no. Se puede lanzar las veces
-   que haga falta: no toca ningun dato.
-
-No es la contraseña de entrar a Gmail, es una aparte y revocable: si se filtra, se borra desde esa
-misma pagina y no da acceso a la cuenta.
-
-## Comandos
-
-```bash
-python -m tripfinder scan-flights            # busca vuelos, guarda y notifica
-python -m tripfinder scan-flights --dry-run  # no escribe ni envía email
-python -m tripfinder scan-stays --offer-id RYR-MAD-FCO-20260910
-python -m tripfinder test-email                    # usa notify.method
-python -m tripfinder test-email --method resend
-
-python -m tripfinder users list                    # cuentas de la web
-python -m tripfinder users add --user ana --name Ana --password ... --email ana@…
-python -m tripfinder users set-admin --password ...   # la contraseña del panel
-python -m tripfinder users prefs --user ana --prefs '{"chollos":"semanal"}' 
-```
-
-## Estado
-
-Ver [docs/ROADMAP.md](docs/ROADMAP.md) para hitos e issues. Detalle técnico en
-[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
-## Cuentas y panel
-
-Los chollos del día son un tablón público: los ve igual todo el que entre. Crear
-una cuenta es libre y gratis, y con ella se guardan favoritos y llegan los chollos
-por correo. Lo demás —buscar, seguir un viaje, pedir alojamiento, el Interrail—
-es de las **cuentas premium**, que da el administrador (ver
-[Firebase](#firebase-cuentas-y-base-de-datos)). Los formularios se ven, pero salen
-apagados y con el motivo puesto: entrar, o pedir premium.
-
-**El panel** (`/admin.html`, enlazado abajo del todo en cada página) pide una
-contraseña. La primera vez que entras no hay ninguna: la pones ahí mismo. Desde
-dentro se crean las cuentas, se cambian contraseñas, se desactivan, y se ve de un
-vistazo qué tiene cada una: sus seguimientos, sus búsquedas guardadas y sus
-preferencias de correo. Sus favoritos no, y no es una decisión de diseño: viven
-en el navegador de cada uno y no se publican en ningún sitio, así que el panel no
-puede verlos.
-
-**Entrar** se hace con el botón de la barra de arriba, en cualquier página. El campo
-de la contraseña lleva un botón para verla —escribir a ciegas en un móvil una
-contraseña que te han pasado por WhatsApp es la mitad de los "no me deja entrar"— y
-si al pegarla se cuela un espacio delante o detrás, se reintenta sin él antes de dar
-error.
-
-| Qué | Sin cuenta | Con cuenta |
-|---|---|---|
-| Chollos del día | se ven | los mismos: es un tablón, no cambia |
-| Favoritos y su histórico de precio | — | uno por cuenta, en el mismo navegador |
-| Seguimientos | — | cada uno los suyos |
-| Búsquedas guardadas | — | un fichero por persona |
-| Lanzar búsquedas y alojamiento | — | sí |
-| Correos | — | los que elija cada uno |
-
-### Qué correos y cada cuánto
-
-**Apagados para todo el mundo.** Nadie recibe nada hasta que enciende «Quiero recibir correos»
-en su cuenta; las cuentas de antes tampoco, porque no lo tienen guardado. El buzón de
-`notify.to` del YAML también está apagado salvo `notify.buzon_fijo: true`.
-
-Encendido, cada cuenta elige (arriba a la derecha → tu nombre):
-
-| | Opciones |
-|---|---|
-| **Chollos del día** | en cuanto aparezca · uno al día · dos por semana (lunes y jueves) · semanal · cada dos semanas · mensual · ninguno |
-| …y solo si bajan de | un tope en € opcional, para no recibir lo que no te vas a plantear |
-| **Parte de tus seguimientos** | el de cada día · dos por semana · semanal · cada dos semanas · mensual · ninguno |
-| **Qué día** | para los semanales, quincenales y mensuales: lunes … domingo, o el que toque |
-| **A qué hora** | el barrido de la mañana, el de la tarde-noche, o me da igual |
-| Solo si hay novedades | calla el parte los días en que se ha mirado y no había nada |
-
-Con "en cuanto aparezca" llega lo que ha salido nuevo hoy. Con un resumen diario
-o semanal llega **lo mejor que hay vivo** en ese momento, no solo lo del día que
-toca: si no, un resumen de los martes se perdería los chollos de los otros seis
-días. El buzón de `notify.to` en el YAML sigue recibiendo lo de siempre, salvo
-que ya exista una cuenta con ese mismo email.
-
-### El token: uno solo, y cifrado
-
-La web escribe en el repositorio (una búsqueda es un commit), y para eso hace
-falta un token de GitHub. **No hay que repartirlo ni pegarlo en cada navegador**:
-se pega **una vez** en el panel y se publica cifrado.
-
-```
-   clave maestra K  ── AES-GCM ──►  token de GitHub        ← data/users.json
-   tu contraseña ── PBKDF2 ──► clave ── AES-GCM ──► K      ← tu "sobre"
-```
-
-Al entrar, tu contraseña abre tu sobre, el sobre da la clave maestra y esa abre
-el token. Cifrar y descifrar pasa entero en el navegador: ni el workflow ni el
-log de Actions ven nunca el token en claro, y en `data/users.json` solo hay dos
-cajas cerradas. **Quien mire el código de la web no saca el token si no tiene la
-contraseña de alguna cuenta**, y forzar un sobre cuesta lo mismo que forzar el
-login: PBKDF2-SHA256 con 210.000 vueltas y sal propia.
-
-El token descifrado vive en `sessionStorage`: al cerrar la pestaña desaparece y
-hay que volver a entrar. En disco solo queda lo cifrado.
-
-Detalles que conviene saber:
-
-- **Cambiar el token** (porque lo revocaste) es pegar el nuevo en el panel. Los
-  sobres siguen valiendo, así que nadie tiene que cambiar de contraseña.
-- **Una cuenta creada antes de guardar el token** no tiene sobre: entra y ve la
-  web, pero no puede lanzar nada. Se arregla poniéndole una contraseña nueva
-  desde el panel, que es lo que le entrega su sobre.
-- **Cambiar una contraseña desde la terminal** (`tripfinder users passwd`) deja
-  el sobre viejo, que ya no abre: el panel marca esa cuenta en rojo. Los cambios
-  de contraseña, mejor desde el panel.
-- **Si pierdes la contraseña del panel**, se pierde la clave maestra: hay que
-  poner el token otra vez y volver a dar contraseña a cada cuenta.
-
-### Hasta dónde llega esto
-
-Conviene decirlo claro: el repositorio es público y `data/users.json` se publica
-con la web, así que **los hashes y los sobres los puede leer cualquiera**. Todo
-lo de arriba se apoya en una sola cosa: que las contraseñas sean buenas. Con una
-contraseña larga y que no uses en ningún otro sitio, sacar de ahí el token o
-suplantar a alguien es carísimo; con "1234", no. Elige bien las que reparte el
-panel.
-
-Y lo que sí es un límite duro: el token es de escritura sobre el repo. Cualquiera
-que **tenga cuenta** puede, si se lo propone, usarlo para escribir en él. Está
-pensado para gente que se conoce; si un día alguien sobra, desactiva su cuenta,
-revoca el token en GitHub y pega uno nuevo en el panel.
-
-## Firebase: cuentas y base de datos
-
-El repo es público y las issues también, así que ahí no se puede guardar nada que sea de
-alguien. **Firebase** pone ese sitio: *Authentication* para entrar y *Firestore* para guardar,
-con unas reglas (`firestore.rules`) que dejan a cada persona ver solo lo suyo. La web sigue
-siendo estática y sin build: habla con Firebase por REST, sin SDK (`web/nube.js`).
-
-`NUBE_CONFIG` en `web/nube.js` lleva el `apiKey` y el `projectId` del proyecto (`trip-a9418`), y
-con eso puesto la web funciona así. Si algún día se vacían los dos, vuelve a las cuentas de
-`data/users.json`, que siguen en el repo hasta que se retire ese sistema:
-
-- **Entrar o crear, con un botón:** correo, contraseña y «Continuar». Si la cuenta existe,
-  entra; si no, se crea en ese momento y pregunta el nombre (ya relleno con lo de antes de la
-  arroba). Si el correo tiene cuenta y la contraseña no es, lo dice y resalta «¿Olvidaste la
-  contraseña?». Se recuerda el último correo.
-- **Con Google:** el botón sale en cuanto se rellena `googleClientId` en `NUBE_CONFIG`
-  (`web/nube.js`). Pasos (detalle en el comentario de ese fichero): Firebase → Authentication →
-  Método de acceso → Google → Activar y copiar el «ID de cliente web»; en Google Cloud →
-  Credenciales → ese cliente, añadir como «Origen de JavaScript autorizado» el ORIGEN de la web
-  (`https://mateogsilvaa.github.io`, sin `/tripfinder`) y el del dominio propio; y en Google
-  Auth Platform → Branding poner el nombre «TripFinder» y publicar la app, o solo entrarán los
-  usuarios de prueba. No es un secreto.
-- **Registrarse:** abierto a todo el mundo, y la cuenta nace
-  **gratis** (`estado: aprobado`, `plan: gratis`): ve los chollos, guarda favoritos y recibe
-  los chollos por correo en cuanto verifica su dirección (sin verificar no se le escribe, para
-  que nadie use la web para mandar correo al buzón de otro). Hay «¿Olvidaste la contraseña?».
-- **Premium (todavía no se exige):** el plan existe, la cuenta lo enseña y `/admin.html` lo da y
-  lo quita (*Hacer premium* / *Quitar premium* / *Bloquear*), pero de momento cualquier cuenta
-  aprobada lo usa todo. Para exigirlo hay tres interruptores que van juntos: `PREMIUM_OBLIGATORIO`
-  en `nube.py`, `TF_PREMIUM_OBLIGATORIO` en `nube.js` y, en `firestore.rules`, el `create` de
-  `encargos` de `aprobado()` a `premium()`. `planes.html` enseña los dos planes y «Me interesa»
-  apunta `quiere_premium` en la cuenta; el panel cuenta cuántos lo quieren. **Las cuentas aprobadas de antes de abrir la web no tienen
-  `plan` y cuentan como premium**: son las de los conocidos, sin migrar nada. Vincular una
-  cuenta de antes de Firebase también da premium.
-- **Resultados al momento:** cuando termina una búsqueda de alojamiento (de un vuelo o de una
-  parada del Interrail), además de commitearse en `data/stays/` se copia a Firestore
-  (`resultados/stay-<id>`, de lectura pública como el JSON de Pages). La web lo lee de ahí
-  primero, así que el resultado sale en cuanto acaba el scraper, sin esperar el uno a tres
-  minutos del despliegue de Pages. `encargos` borra los de más de tres días. Necesita el mismo
-  secreto `FIREBASE_SERVICE_ACCOUNT`; sin él, todo sigue por Pages como antes.
-- **Lo pendiente:** si queda alguna ficha `pendiente` (de antes, o de una web vieja en la caché
-  de alguien), `tripfinder encargos` la abre como gratis en su siguiente pasada.
-- **Lanzar búsquedas:** el navegador no lleva ya ningún token de GitHub. Apunta un *encargo*
-  en Firestore y `encargos.yml` lo recoge cada cinco minutos y levanta el workflow que toque,
-  **a nombre de la cuenta que lo pidió** (lo lee de su ficha, no del encargo). Una búsqueda
-  tarda en empezar lo que tarde ese cron, que con carga en GitHub son de unos minutos a un
-  cuarto de hora. A cambio no hace falta tarjeta en Firebase.
-
-### Ponerlo en marcha (una vez)
-
-Hecho: el proyecto, el acceso con correo, la configuración de la web y las reglas. **Quedan dos
-cosas, y solo se pueden hacer desde tu cuenta**: el secreto `FIREBASE_SERVICE_ACCOUNT` (paso 5) y
-hacerte administrador (paso 6). Sin el primero, las búsquedas se apuntan pero nadie las recoge; sin
-el segundo, nadie puede aprobar cuentas.
-
-1. En la [consola de Firebase](https://console.firebase.google.com): *Añadir proyecto*.
-2. *Authentication → Método de acceso → Correo/contraseña → Activar*. En *Configuración →
-   Dominios autorizados* añade `mateogsilvaa.github.io`.
-3. *Firestore Database → Crear base de datos* (modo producción, ubicación `eur3`). Después, en
-   la pestaña *Reglas*, pega el contenido de `firestore.rules` y publica.
-4. *Configuración del proyecto → Tus apps → Web (`</>`)*: copia `apiKey` y `projectId` a
-   `NUBE_CONFIG` en `web/nube.js`. No son secretos: el HTML los publica. Conviene restringir la
-   clave a `https://mateogsilvaa.github.io/*` en la consola de Google Cloud (*Credenciales*).
-5. *Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada*. El JSON
-   entero va en un secreto de GitHub llamado **`FIREBASE_SERVICE_ACCOUNT`**. Esa clave se salta
-   las reglas y abre todo: no se pega en ningún chat, ni en una issue, ni se imprime en un log.
-6. Regístrate en la web. Después, en la consola de Firestore, abre `usuarios`, busca tu ficha y
-   pon `estado: aprobado` y `admin: true`. Es la única vez que se hace a mano: a partir de ahí
-   apruebas a los demás desde el panel.
-
-### Probarlo en local
-
-Las reglas, la cola de encargos y la web entera registrando, aprobando y lanzando se prueban
-contra los **emuladores** de Firebase, sin tocar el proyecto de verdad (hace falta Java 21):
-
-```bash
-cd tests/firebase && npm ci && npm run todo
-```
-
-## Buscador personalizado
-
-Los chollos automaticos responden a "que hay barato ahora". El buscador responde a
-lo contrario: **"quiero ir a Roma un finde por menos de 120 €, avisame cuando se
-pueda"**. Recorre fin de semana a fin de semana hasta 12 meses vista y guarda el
-resultado en la web.
-
-Acepta el codigo IATA, una ciudad, **un pais entero** ("Alemania") o **un continente**
-("Asia", "America"). Para un continente no se preguntan los 956 aeropuertos que tiene
-Asia en el listado: se usan los hubs que ya estan elegidos a mano en `long_haul.destinations`
-y `city_names`. Los nombres se comparan sin acentos y con una tabla de alias, porque
-`airports_world.json` guarda los paises en español pero las ciudades en ingles a medias
-("New York", "Seoul", "Sepang" por Kuala Lumpur): sin eso, escribir "Nueva York" o "Tokio"
-no encontraba nada.
-
-Una busqueda "donde sea" tarda **unos 8 minutos**: son ~105 destinos y a Google se le
-pregunta uno a uno. La web hace polling durante 15 minutos.
-
-Desde la web se rellena el formulario (destino, tope, noches, meses, personas) y se
-apunta un encargo que acaba levantando `custom-search.yml`. En local:
+Or search for one trip:
 
 ```bash
 python -m tripfinder search --dest Roma --max-price 120 --nights 2-3 --months 12
 ```
 
-**Unos días de la semana, cualquier semana.** «Salgo un lunes y vuelvo un jueves, me da igual
-cuándo»: en *¿Cuándo?* → *Unos días de la semana*, con *Salgo el* y *Vuelvo el*. Se busca ese
-par cada semana del horizonte (o del tramo), las noches salen solas y se descarta lo que vuele
-otros días. En la CLI, `--dias 0-3` (0 es lunes).
+Airports, budgets and thresholds are set in [`config/watchlist.yml`](config/watchlist.yml).
 
-## Lo que cuesta hacer funcionar esto
-
-Actions es gratis e ilimitado en repositorios públicos, y este lo es, así que ninguno de estos
-runs se factura. Aun así conviene saber dónde está el gasto, por si algún día deja de serlo:
-
-| Workflow | Cuándo | Duración | A la semana |
-| --- | --- | ---: | ---: |
-| `scan-flights` | cron, 2 al día | ~37 min | **~520 min** |
-| `scan-nocturno` | cron, 1 a la semana (madrugada del miércoles) | ~45-60 min | ~50 min |
-| `custom-search` | cada búsqueda que se lanza | ~1-8 min | según uso |
-| `stay-request` | cada búsqueda de alojamiento | ~2 min | según uso |
-| `watch` | apuntar, quitar o borrar | ~30 s | según uso |
-| `pages` | tras cada cambio de datos | ~30 s | — |
-
-El barrido diario es el **90 %** del total, y no se puede acelerar sin más: el scraper va en
-serie a propósito, con un `throttle` por proveedor, porque paralelizarlo es la forma rápida de
-acabar baneado. Si algún día hay que recortar, la palanca es la **frecuencia del cron**, que es
-una decisión de producto: cada pasada menos son ~37 minutos menos y una oportunidad menos de
-pillar un chollo antes de que suba.
-
-Todos los workflows llevan `timeout-minutes`: sin él, uno colgado se queda hasta el límite de
-6 horas de GitHub.
-
-
-## El rediseño compacto (octubre de 2026)
-
-La misma voz con menos ruido. Lo que hay que saber antes de tocar la web:
-
-- **Las tarjetas separan, no los filos.** En claro, `--line` ya no es tinta plena: es una
-  raya suave, y lo que separa es la tarjeta (`--surface`) sobre el papel, con `--sombra`.
-  Esquinas de `--r: 10px` en tarjetas y `--r-s: 7px` en campos.
-- **Se navega como una app.** Arriba, pestañas con icono propio (`ICONOS` en
-  `tools/montar.py`, cuatro trazos a 1.8, nada de librerías ni emojis). En el móvil la
-  cabecera esconde el menú y abajo sale `.tabbar`, el mismo nav con otra maquetación; vive
-  en el pie porque la cabecera es pegajosa y translúcida, y un `position: fixed` dentro de
-  ella se colocaría contra ella.
-- **La portada es corta.** Titular de una línea con antetítulo (que dice de cuándo son los
-  datos), «cómo funciona» como franja, el chollo del día, el feed, y buscar/seguir en UNA
-  tarjeta con pestañas (`js/pestanas.js`: ratón, flechas y `#seguir`).
-- **Detalles.** Insignia verde con cuántos viajes sigues en «Mis avisos»; «/» salta al
-  buscador del feed; foco visible en todo; botones que ceden al pulsarlos; instalar como
-  app se ofrece abajo, pequeño, desde la segunda visita (`log.js`).
-- **Las reglas de siempre siguen**: el naranja es el precio, la manuscrita va contada,
-  todo texto a 4.5:1 sobre las cuatro superficies y 44 px de dedo en el móvil.
-
-La capa del rediseño va al final de `web/styles.css`, marcada: pisa lo de arriba sin tener
-que buscarlo.
-
-## El panel de salidas: una sola página que se amplía
-
-TripFinder se dibuja como el **panel de salidas** de un aeropuerto: una lista de
-sitios, una hora y un precio, ordenados para poder recorrerlos con la vista. Quien
-entra no viene a buscar, viene a ver qué hay; buscar es lo que hace después, si algo
-le ha llamado la atención.
-
-De ahí sale la estructura. **Es una sola página**: el feed arriba, y debajo las dos
-herramientas —buscar y seguir— en compacto, junto al bloque de lo que llevas en
-observación. Cuando de verdad usas una de las dos, **la ventana se amplía**: lo que
-has escrito viaja en la URL y se abre `buscar.html` o `seguimientos.html`, que es la
-herramienta entera con su calendario, sus resultados y su historial.
-
-No se lanza desde la portada porque el resultado no cabe: una búsqueda escribe una
-lista de búsquedas guardadas, un calendario, avisos de cuenta y el panel de
-alojamiento. Meter todo eso debajo del feed convierte la portada en un cajón. Y así
-la URL de una búsqueda se puede compartir y volver a abrir.
-
-**Los dos temas.** De casa se entra en oscuro (`#100f0e` con tinta marfil); con el
-botón de la esquina se pasa al claro (`#f3f0e9`). La elección se guarda en el
-navegador y se aplica en un `<script>` del `<head>`, antes de pintar, para que no
-pegue el fogonazo al entrar de noche. Por eso el claro es un estado con nombre
-(`data-tema="claro"`) y no la ausencia de atributo: si "sin atributo" siguiera
-significando claro, la primera pintada sería blanca en todas las visitas.
-
-Lo que hay que respetar al tocar `web/styles.css`:
-
-- **El naranja es el precio.** `--accent` dice "esto ha bajado", y nada más. Si además
-  pintara la ciudad o la compañía dejaría de querer decir nada. El verde (`--deep`) es
-  lo otro: lo que se queda apuntado y se vigila solo.
-- **`--accent` y `--accent-txt` son dos tokens a propósito.** El naranja del diseño pasa
-  de sobra como **relleno** (con tinta oscura encima) pero como **texto** sobre papel
-  claro se queda en 3,6:1. Oscurecerlo hasta 4,5 arreglaba el texto y rompía el botón:
-  un solo token no puede hacer los dos trabajos.
-- **Switzer lleva un respaldo medido.** Vive en un solo sitio —el CDN de
-  Fontshare, no está en Google Fonts— así que si ese dominio va lento o se lo
-  bloquean a alguien, la web pasa a la del sistema. Eso solo se evita del todo
-  auto-alojándola; lo que sí se evita es el salto de maquetación, con una
-  `@font-face` de respaldo cuyos `ascent-override`, `descent-override` y
-  `size-adjust` (104,3 %) salen de **medir** el `.woff2` contra Liberation Sans.
-  El respaldo no descarga nada: es `local()`.
-- **Tres voces tipográficas.** **Switzer** para todo lo que se lee, **IBM Plex Mono**
-  para todo lo que es un **dato** (precios, códigos IATA, horas, rótulos) y **Pinyon
-  Script** como acento manuscrito. La manuscrita aparece cinco veces contadas en toda
-  la web —el logo, dos titulares y el rótulo del chollo— y por eso significa algo;
-  `tests/test_fuentes.py` falla si se dispara.
-- **La lámina invertida.** El chollo del día y la cabecera del feed van con el fondo al
-  revés. Es lo único que los separa del resto, y por eso tienen sus propios tokens
-  (`--hero-*`, `--code-*`), que se auditan aparte.
-- **Todo texto llega a 4.5:1** sobre las **cuatro** superficies donde cae (`--paper`,
-  `--surface`, `--surface2`, `--field`), en los dos temas. Comprobar solo contra el
-  fondo de la página dejaría pasar un gris que se pierde encima de un panel;
-  `tools/contraste.py` lo comprueba leyendo los tokens del CSS, y corre en CI.
-- **44 px de área táctil** en lo pequeño (el cuadratín de observación, quitar, cerrar).
-  Se agranda dónde se acierta con un pseudoelemento centrado, no el dibujo.
-- **`[hidden]` gana siempre.** Media hoja pone `display:flex` o `display:grid` en un
-  selector de clase, y eso pisa el `display:none` que el navegador da a `[hidden]`. Sin
-  la regla `!important` del principio, el panel de alojamiento y el calendario se
-  quedan abiertos desde que carga la página.
-
-El correo (`src/tripfinder/notify/render.py`) lleva la misma paleta y las mismas
-reglas. Lo único que no viaja son las fuentes —ningún cliente de correo carga
-tipografías externas—, así que ahí van las del sistema.
-
-Los iconos de la aplicación instalable salen de esta misma paleta:
-`tools/iconos.py` los genera con `zlib` y `struct`, sin dependencias, y `--check`
-falla en CI si alguien cambia un color y no los regenera.
-
-## Antes de mezclar nada
-
-`ci.yml` corre en cada push y en cada pull request, y es lo que decide si algo
-entra. En local es lo mismo, con dos órdenes:
+## Tests
 
 ```bash
-pip install -r requirements.txt -r requirements-dev.txt
-ruff check .                      # linter de Python
-python -m pytest -q               # los tests
-python tools/montar.py --check    # las partes de la web están montadas
-python tools/contraste.py         # contraste de la paleta, en los dos temas
-
-npm ci
-npm run lint                      # linter de JS (oxlint)
-npm run humo                      # humo de frontend (Playwright)
+pip install -r requirements-dev.txt
+ruff check .
+python -m pytest -q
 ```
 
-**El humo de frontend** son nueve pruebas sobre un Chromium sin red: que la
-portada pinta la plancha del día y una fila por oferta, que el esqueleto de
-carga se quita al llegar los datos y dice lo que pasa si no llegan, que sin
-sesión los formularios salen apagados con el motivo, que una dirección
-inventada da la 404 de la web con sus estilos, y que las tres zonas montan
-cabecera, nav y pie. Los datos salen de `tests/web/datos/`, no de `data/`: ese
-cambia dos veces al día y las pruebas dirían una cosa distinta cada vez.
-
-`npm` es **solo para estas herramientas**. La web publicada sigue siendo HTML
-plano sin build ni dependencias: `node_modules/` no llega a Pages.
-
-Las reglas de ruff están elegidas a mano en `pyproject.toml` en vez de heredar
-las de la versión, y la versión va clavada en `requirements-dev.txt`. Los
-valores por defecto cambian entre releases, y con CI eso significa que el repo
-puede amanecer en rojo un martes cualquiera sin que nadie haya tocado nada.
-Las dos reglas apagadas llevan su motivo escrito al lado.
-
-
-## Tocar la web
-
-La web sigue siendo HTML plano: sin build, sin dependencias, y se abre haciendo
-doble clic en `web/index.html`. Lo que cambió es que la cabecera, el nav, las
-hojas de alojamiento y el pie ya **no están copiados en los cuatro HTML**: viven
-una sola vez en `web/partes/` y `tools/montar.py` los escribe dentro de cada
-página, entre marcas:
-
-```html
-<!-- tf:parte zonas -->
-  ...lo que escribe el montador...
-<!-- /tf:parte -->
-```
-
-Escribe en el propio fichero, no en una copia: los HTML del repositorio siguen
-siendo los que se publican y los que se abren en local. No hay generador de
-sitios; esto solo sustituye texto entre dos comentarios.
+Frontend, after `npm install` and `npx playwright install chromium`:
 
 ```bash
-python tools/montar.py            # monta y guarda
-python tools/montar.py --check    # no toca nada; falla si algo está sin montar
+npm run lint
+npm run humo
 ```
 
-- **Para cambiar una entrada del nav**, el rótulo de la barra o el pie: se toca
-  la parte en `web/partes/` y se pasa el montador. Sale en las cuatro páginas.
-- **Lo que cambia de una página a otra** (título, descripción, favicon, zona
-  activa, qué scripts carga) está en la tabla `PAGINAS` de `tools/montar.py`.
-- **La versión de los assets no se toca a mano.** En el repo vale `dev`; al
-  publicar, `pages.yml` pasa `montar.py --version <hash corto del commit>` y sella
-  el `?v=` de los cuatro HTML y el `build` del pie de una sola pasada. Así publicar
-  un cambio de CSS no es acordarse de subir un número en doce sitios, y dos páginas
-  no pueden acabar enseñando builds distintos — que es exactamente lo que había
-  pasado: el panel se quedó en `build 27` mientras las otras tres iban por la 28.
+## Project structure
 
-`pages.yml` pasa `--check` antes de publicar y `tests/test_montar.py` lo
-comprueba en la suite: si alguien edita una región a mano en vez de tocar la
-parte, se para ahí en lugar de publicar cuatro cabeceras distintas.
+| Path | Contents |
+|---|---|
+| `src/tripfinder/` | Providers, scoring, accommodation, notifications and CLI |
+| `web/` | The static site |
+| `config/` | Routes and thresholds |
+| `data/` | Published results and price history |
+| `tests/` | Python, web and Firestore rules tests |
+| `tools/` | Page assembly, contrast audit and icons |
 
-## Lo que no te da ningun comparador
+## Documentation
 
-Buscadores de vuelos hay cientos. Estas dos cosas no las hace ninguno, y son las
-que deciden si una escapada merece la pena:
+| Document | Covers |
+|---|---|
+| [Architecture](docs/ARCHITECTURE.md) | Components, workflows and design decisions |
+| [Operation guide](docs/GUIA.md) | Setup, accounts, notifications and data sources |
+| [Roadmap](docs/ROADMAP.md) | Done and planned work |
 
-**1. Horas de viaje real.** Un vuelo que aterriza a las 23:55 y vuelve el domingo a
-las 07:10 cuesta lo mismo que uno que llega el viernes a las 18:40 y vuelve el
-domingo a las 21:30 — pero el primero te deja **15 h** en destino y el segundo **35 h**.
-TripFinder calcula las horas despierto en destino (de aterrizar a despegar, menos
-8 h de sueno por noche), las puntua en el score y te deja ordenar por **euros por
-hora de viaje**. Es la diferencia entre un finde y un aeropuerto.
+## Disclaimer
 
-**3. La escapada completa, antes de buscar cama.** El vuelo es por persona y la
-cama es para el grupo: sumarlos bien da el único número que decide un viaje, y
-hasta ahora sólo salía **después** de pedir alojamiento —un workflow de varios
-minutos—, así que quien miraba el tablón no lo veía nunca. Ahora
-`data/camas.json` destila lo que costó dormir en cada sitio de las búsquedas
-que ya se hicieron, y el listado enseña `escapada ≈ X €` marcado como
-estimación. Donde no hay dato **no se estima**: un número igual para todos no
-informa y encima parece que sabe algo. La cobertura crece sola cada vez que
-alguien pide una cama. Al pedirla de verdad, el número real sustituye a la
-estimación y pierde el `≈`.
+Prices come from third parties and can change at any time. Check the final price with the airline or the accommodation
+before booking. TripFinder is an independent project.
 
-**2. Cada precio dice a cuanta gente cubre.** Cada `FlightOffer` guarda su campo
-`adults`, porque "240 €" tanto puede ser lo que pagas tu como lo que pagais los
-cuatro, y esa duda es justo la que hace perder un chollo. Cuando va mas de uno, la
-web ensena el **total** grande y el **por persona** debajo. El scan diario busca
-para una persona a proposito (asi el historico de una ruta es comparable de un dia
-para otro); el selector de personas de la portada multiplica esa cifra y lo marca
-con `≈`, que es una estimacion honesta y no un precio consultado.
+## Author
 
-**3. Favoritos que vigilan el precio.** La ☆ de cualquier vuelo lo guarda en tu
-navegador junto con lo que valia al marcarlo. Cada vez que la web vuelve a ver ese
-vuelo —en los chollos, dentro de una busqueda guardada o en lo que devolvio un
-seguimiento— compara con el ultimo precio visto y, si ha cambiado, lo canta arriba
-del todo. No hace falta servidor: el precio ya viaja en los JSON que publica
-Actions, lo unico que faltaba era acordarse.
-
-**4. Contra su propio historico.** `data/history.json` lleva meses acumulando el
-precio de cada ruta y la web no lo miraba. Ahora, al abrir un vuelo, se dibuja la
-curva de esa ruta y se dice donde cae el precio de hoy: *"barato: normalmente esta
-entre 119 y 211 €"*. Es la diferencia entre creerse un `−50%` y saber si lo es.
-
-**5. Coste real de la escapada.** El vuelo es por persona, el alojamiento es para
-todo el grupo: sumarlos bien da el unico numero que importa. Cuando pides
-alojamiento para una oferta, la web te responde con *"escapada completa para 2:
-264 €, 132 € por cabeza"*, desglosado en vuelos y cama. Ningun comparador cruza
-las dos cosas porque cada uno vive de vender una.
-
-## De donde salen los precios
-
-| Provider | Clave | Que aporta |
-|---|---|---|
-| `ryanair` | ninguna | Barrido de findes y tarifas base. Es quien mas gana en rutas low cost. |
-| `wizzair` | ninguna | Su tabla de horarios: el precio mas barato de cada dia. Es **la unica** via a Bucarest, Sofia, Tirana, Cluj o Timisoara desde Madrid. |
-| `google_flights` | ninguna | **Todas las aerolineas**: Iberia, Vueling, Air Europa, ITA, easyJet, TAP, Tarom, Aer Lingus… Es quien cubre el mapa donde no llega ninguna API. Cuando la compania tiene web propia que se puede enlazar, la oferta sale ademas con su boton de reserva. |
-| `scrapling` | ninguna | No es un provider: es el fetcher que usan los scrapers de alojamiento. Habla por curl_cffi imitando el TLS y las cabeceras de un Chrome real, que es lo que miran los antibot. Si no esta instalado, se cae a `requests` y todo sigue. |
-| `amadeus` | gratuita | Refuerzo por GDS para rutas con escala. Se desactiva solo si no hay claves. |
-
-### Primero el mapa, despues los precios
-
-El fallo gordo que tenia el buscador era el orden. **Quien decidia los destinos era
-Ryanair**: se le preguntaban las tarifas de una fecha, contestaba con doce destinos
-y solo esos doce se contrastaban despues con Google. Todo lo que Ryanair no volaba
-ese dia no es que saliera caro — es que no llegaba a existir como candidato. De ahi
-que una busqueda "donde sea" para el 6 de noviembre devolviera seis resultados
-mientras Skyscanner enseñaba Pisa, Bucarest, Milan o Turin mas baratos.
-
-Ahora `routes.py` monta primero el **mapa de destinos** desde el origen, que las
-aerolineas publican gratis y de una sola peticion:
-
-| Fuente | Peticiones | Destinos desde MAD |
-|---|---|---|
-| `searchWidget/routes` de Ryanair | 1 | 65, con ciudad y pais ya en español |
-| `asset/map` de Wizz Air | 1 | 28 (sin contar sus codigos de ciudad) |
-| `city_names` del YAML | 0 | los de bandera: Stuttgart, Ginebra, Estambul… |
-
-Union: **105 destinos**, cacheados 14 dias en `data/routes/MAD.json`. Y solo despues
-se piden precios de todos ellos. Ryanair y Wizz responden por API para sus rutas; a
-Google se le pregunta destino a destino, gastando las consultas primero en aquellos
-de los que no se tiene ni un precio (que es donde estaba el agujero) y guardando un
-cuarto del presupuesto para contrastar lo que ya ha salido barato.
-
-Cuando dos companias ofrecen el mismo viaje, gana la mas barata y **las demas se guardan
-como alternativa** en la tarjeta (`también Wizz Air 66 €`), en vez de desaparecer.
-
-Lo que **no** se puede usar, comprobado: Vueling no expone buscador publico y Kiwi
-cerro su API abierta (ahora exige clave de partner).
-
-### easyJet: precio por Google, reserva en su web
-
-easyJet esta detras de un WAF que responde **403 a cualquier peticion que no venga
-de un navegador**, y no solo a su API: tambien a su portada y a sus paginas de ruta.
-Probado con `curl_cffi` imitando el TLS de Chrome, con cookies de sesion previas y
-con la cabecera de origen correcta — 403 en los tres casos, y desde una IP de
-Actions seria peor. `GetLowestDailyFares` esta ademas bloqueado por path en el
-borde, que es la forma que tiene Akamai de decir que ese endpoint lo conoce mucha
-gente.
-
-Asi que el reparto queda:
-
-* **El precio** lo pone Google Flights, que si publica las tarifas de easyJet
-  (comprobado en MAD–BSL y MAD–GVA). Para que esas rutas se lleguen a preguntar,
-  sus destinos desde Madrid estan declarados en `city_names`.
-* **La reserva** va a `easyjet.com/es/vuelos-baratos/<ORI>/<DES>`, su pagina de
-  ruta por IATA, que abierta en un navegador funciona perfectamente. Sale como un
-  boton aparte ("Reservar en easyJet") junto al enlace de siempre: si algun dia
-  cambian el formato, el enlace normal sigue ahi.
-
-Lo mismo aplica a Vueling, Transavia y Volotea, en `providers/links.py`.
-
-### eDreams Prime y otras tarifas con login
-
-No se pueden scrapear y no se va a intentar: harian falta las credenciales del
-usuario guardadas como secreto del repo. Lo que si hace la web es ofrecer un boton
-"Comparar en eDreams" con ruta y fechas ya puestas; se abre en **tu** navegador,
-con tu sesion, y ahi si sale tu precio de socio.
-
-## Escapada de fin de semana
-
-El caso de uso principal es **salir el viernes por la tarde y volver el domingo por la tarde**.
-La búsqueda general de Ryanair devuelve la tarifa más barata por destino, que casi nunca cae en
-finde, así que el provider hace además un **barrido semana a semana**: una consulta por cada
-viernes del horizonte, con filtro de hora (`outboundDepartureTimeFrom`) en la propia API.
-
-Esos vuelos valen sistemáticamente más que uno de un martes cualquiera, así que se puntúan
-contra **su propia referencia**: `max_price_weekend` y `baseline_price_weekend` por ruta, y una
-serie de histórico separada (`MAD-OPO|finde`). Sin eso, mezclar findes y días sueltos falsearía
-las dos medias y no aparecería ninguna escapada.
-
-```yaml
-search:
-  weekend:
-    mode: prefer          # prefer = las prioriza | only = solo findes | off = ignora el día
-    outbound_weekday: 4   # viernes
-    outbound_after: "15:00"
-    outbound_before: "22:00"
-    inbound_weekday: 6    # domingo
-    inbound_after: "15:00"
-    bonus: 18             # puntos extra en el score
-```
-
-## Notas de implementacion verificadas (2026-08-15, con datos reales)
-
-- **Ryanair** rechaza `limit > 20` con `{"code":"InvalidLimit"}`: el provider pagina de 20 en 20
-  (`max_results_per_route` en el YAML). Requiere `market` y `adultPaxCount`.
-- **Airbnb** embebe los resultados en `<script id="data-deferred-state-0">` como objetos
-  `StaySearchResult`; el id del anuncio viaja en base64 en `demandStayListing.id`.
-  El pais es obligatorio para desambiguar: buscar solo "Agadir" devuelve casas en Canarias,
-  mientras que `Agadir--Marruecos` acierta. Por eso `destination_country` viaja desde el vuelo
-  hasta la busqueda de alojamiento.
-- **Google Flights** sirve los resultados renderizados en el HTML si la busqueda va
-  codificada en el parametro `tfs` (un protobuf en base64, generado a mano en
-  `providers/google_flights.py`, sin dependencias). Hace falta mandar una cookie `SOCS`
-  de consentimiento no personalizado: sin ella solo llega el muro de cookies.
-  Cada resultado trae un `aria-label` en texto plano con precio, aerolinea, hora y
-  escalas — parsear eso aguanta mucho mejor que perseguir clases CSS ofuscadas.
-- Ryanair sí acepta filtro de hora (`outboundDepartureTimeFrom` / `...TimeTo`), lo que permite
-  pedir solo salidas de viernes por la tarde sin traerse el día entero.
-- **Wizz Air envenena su propia sesion.** `search/timetable` deja puesta una cookie
-  que invalida la siguiente llamada: la segunda peticion en adelante responde
-  `400 {"handlerError":"InvalidProtocol"}`. Reutilizando la sesion, de las 72
-  consultas de un scan solo contestaba la primera y Wizz aportaba practicamente
-  nada. Con un `cookies.clear()` detras de cada peticion responden todas
-  (comprobado: 5/5 y 28/28).
-- **Wizz tiene dos formatos de enlace y solo uno funciona.** El de parametros
-  (`select-flight?departureStation=MAD&arrivalStation=OTP&...`) abre la pagina de
-  reserva con las fechas puestas pero **sin la ruta**: sale un formulario vacio y
-  parece que el boton no lleva a ningun sitio. El que hay que usar es el de por
-  path: `select-flight/MAD/OTP/2026-11-06/2026-11-09/2/0/0/null`, que llega con
-  Madrid → Bucarest ya seleccionado. Comprobado en navegador con las dos URLs.
-
-- **El precio de la tabla de horarios de Wizz es por persona** y se rie del
-  `adultCount` que le mandes: 1, 2 y 3 pasajeros devuelven la misma cifra. El resto
-  de providers dan el total del grupo, asi que hay que multiplicarlo o Wizz sale a
-  mitad de precio que nadie y se come las primeras posiciones de la lista.
-- **La tabla de horarios de Wizz no dice a que hora llegas.** Trae la salida
-  (`departureDates`) y nada mas, asi que sus ofertas no tenian «viaje real» ni horas
-  utiles. La llegada sale de `search/search`, el buscador de su web, pero es una
-  consulta por dia: en vez de eso se le pregunta **una vez por ruta y sentido**
-  cuanto tarda (llegada local menos salida local, con el cambio de huso dentro) y se
-  suma a la hora de salida de todas las ofertas de esa ruta. Se guarda en
-  `data/duraciones.json` y se vuelve a preguntar a los 45 dias. Si el buscador
-  falla tres veces seguidas se deja por ese barrido, y las ofertas salen sin llegada
-  en vez de con una inventada.
-- **Una sola ventana de diez meses trae un viaje por destino.** `roundTripFares` de
-  Ryanair devuelve el mas barato de cada destino en la ventana pedida, y Wizz
-  guardaba doce viajes por destino para todo el horizonte: casi todo caia en las
-  proximas semanas y de lo que hay a cuatro u ocho meses llegaba poco. Ahora Ryanair
-  pide mes a mes (`ryanair_window_days`), Wizz mira nueve meses y se queda los
-  mejores de cada mes (`wizz_per_month`), y el barrido de findes cubre los 300 dias.
-- **Google Flights aguanta mas de lo que ponia aqui**: 30 consultas seguidas con 4 s
-  entre medias, 30 respuestas con precio (medido el 2026-08-17 desde una IP
-  domestica). La busqueda a mano gasta hasta `max_queries_search` (110) porque es
-  una sola tirada; el scan automatico se queda en `max_queries` (40), que corre cada
-  6 h desde una IP de Actions y conviene no forzar.
-- La etiqueta `stay-request` es opcional: el workflow se dispara por el prefijo `[stay] ` del
-  titulo, asi que funciona aunque no hayas creado la etiqueta en el repo.
-
-## Aviso legal
-
-Se usan APIs públicas/oficiales siempre que existen (Amadeus, endpoints públicos de Ryanair).
-Para Booking.com **no se scrapea**: se generan deep links de búsqueda. Respeta los ToS de cada
-sitio y no bajes `min_interval_seconds` en `config/watchlist.yml`.
+Built by [Mateo González Silva](https://mateogsilvaa.es).

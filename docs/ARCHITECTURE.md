@@ -154,7 +154,7 @@ claro en un sitio público. Se guarda cifrado y solo lo abren las cuentas:
   además da versionado gratis de precios.
 - **`id` determinista.** `PROVIDER-ORIGEN-DESTINO-FECHAIDA` sin el precio, para poder seguir una
   misma ruta/fecha a lo largo del tiempo y detectar bajadas.
-- **Issues como cola de trabajo.** Ver README: es el único disparador gratis desde una web
+- **Issues como cola de trabajo.** Ver GUIA.md: es el único disparador gratis desde una web
   estática que no obliga a publicar un token.
 - **Escapada de finde como consulta, no como filtro.** Filtrar a posteriori no sirve: la API
   devuelve la tarifa mas barata por destino y esa casi nunca es de viernes. Se pregunta por cada
