@@ -3,13 +3,9 @@
   "rutas": {
     "MAD-AAL": {
       "barridos": 1,
-      "ultima": "2026-11-22"
+      "ultima": "2026-11-23"
     },
     "MAD-AAR": {
-      "barridos": 1,
-      "ultima": "2026-11-22"
-    },
-    "MAD-AGP": {
       "barridos": 1,
       "ultima": "2026-11-23"
     },
@@ -33,25 +29,17 @@
       "barridos": 2,
       "ultima": "2026-11-07"
     },
-    "MAD-BGY": {
-      "barridos": 1,
-      "ultima": "2026-11-23"
-    },
-    "MAD-BLL": {
-      "barridos": 1,
-      "ultima": "2026-11-22"
-    },
     "MAD-BTS": {
       "barridos": 2,
       "ultima": "2026-11-20"
     },
     "MAD-CFU": {
-      "barridos": 2,
-      "ultima": "2026-11-22"
+      "barridos": 1,
+      "ultima": "2026-11-23"
     },
     "MAD-CHQ": {
-      "barridos": 1,
-      "ultima": "2026-11-22"
+      "barridos": 2,
+      "ultima": "2026-11-23"
     },
     "MAD-CND": {
       "barridos": 2,
@@ -80,14 +68,6 @@
     "MAD-GHV": {
       "barridos": 2,
       "ultima": "2026-11-07"
-    },
-    "MAD-HEL": {
-      "barridos": 2,
-      "ultima": "2026-11-21"
-    },
-    "MAD-HER": {
-      "barridos": 2,
-      "ultima": "2026-11-21"
     },
     "MAD-IOA": {
       "barridos": 2,
@@ -121,18 +101,6 @@
       "barridos": 2,
       "ultima": "2026-11-22"
     },
-    "MAD-LGW": {
-      "barridos": 2,
-      "ultima": "2026-11-22"
-    },
-    "MAD-NAP": {
-      "barridos": 1,
-      "ultima": "2026-11-23"
-    },
-    "MAD-NRT": {
-      "barridos": 1,
-      "ultima": "2026-11-22"
-    },
     "MAD-ODE": {
       "barridos": 2,
       "ultima": "2026-11-03"
@@ -141,21 +109,9 @@
       "barridos": 2,
       "ultima": "2026-11-07"
     },
-    "MAD-OSL": {
-      "barridos": 2,
-      "ultima": "2026-11-21"
-    },
-    "MAD-OVD": {
-      "barridos": 1,
-      "ultima": "2026-11-23"
-    },
     "MAD-PLQ": {
       "barridos": 2,
       "ultima": "2026-11-18"
-    },
-    "MAD-PMI": {
-      "barridos": 1,
-      "ultima": "2026-11-23"
     },
     "MAD-RKE": {
       "barridos": 2,
@@ -180,10 +136,6 @@
     "MAD-TGM": {
       "barridos": 2,
       "ultima": "2026-11-07"
-    },
-    "MAD-TLL": {
-      "barridos": 1,
-      "ultima": "2026-11-22"
     },
     "MAD-URE": {
       "barridos": 2,
