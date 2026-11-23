@@ -3,9 +3,9 @@
     {
       "iata": "MAD",
       "nombre": "Madrid",
-      "count": 1743,
-      "destinos": 76,
-      "generated_at": "2026-11-22"
+      "count": 1739,
+      "destinos": 72,
+      "generated_at": "2026-11-23"
     },
     {
       "iata": "ALC",
@@ -17,23 +17,23 @@
     {
       "iata": "BCN",
       "nombre": "Barcelona",
-      "count": 424,
+      "count": 420,
       "destinos": 28,
-      "generated_at": "2026-11-21"
+      "generated_at": "2026-11-23"
     },
     {
       "iata": "BIO",
       "nombre": "Bilbao",
-      "count": 128,
+      "count": 126,
       "destinos": 12,
-      "generated_at": "2026-11-21"
+      "generated_at": "2026-11-23"
     },
     {
       "iata": "LPA",
       "nombre": "Gran Canaria",
-      "count": 178,
+      "count": 175,
       "destinos": 22,
-      "generated_at": "2026-11-21"
+      "generated_at": "2026-11-23"
     },
     {
       "iata": "AGP",
