@@ -311,8 +311,13 @@ test("sin cuenta se mira el HOP; al proponer se pide la cuenta y luego se sube s
   await expect(page.locator("#tfModal")).toContainText("Crea tu cuenta para votar");
   await page.locator("#tfModal [data-cerrar]").first().click();
   // Proponer, también, pero se queda guardado.
-  await page.locator(`[data-dia-cal="${enDias(15)}"]`).click();
-  await page.locator(`[data-dia-cal="${enDias(17)}"]`).click();
+  // El calendario enseña un mes: según el día en que corra la prueba, estos
+  // días caen en el de la primera propuesta o en el siguiente.
+  for (const dia of [enDias(15), enDias(17)]) {
+    const celda = page.locator(`[data-dia-cal="${dia}"]`);
+    if (!(await celda.count())) await page.locator('[data-cal-mes="1"]').click();
+    await celda.click();
+  }
   await expect(page.locator("#f1Form [name=vuelta]")).toHaveValue(enDias(17));
   await page.locator("#f1Form [name=titulo]").fill("El otro finde");
   await page.locator("#f1Form button[type=submit]").click();

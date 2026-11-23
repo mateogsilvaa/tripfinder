@@ -7009,7 +7009,7 @@ a, button, summary, label, select, [role="tab"], [role="button"] { touch-action:
 .sugeridas:empty { display: none; }
 .sug-rot { font: 400 var(--fs-meta, 11px) var(--font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .sug {
-  padding: 8px 14px; min-height: 36px; border: 1px solid var(--line); border-radius: var(--r-pill);
+  padding: 8px 14px; min-height: 44px; border: 1px solid var(--line); border-radius: var(--r-pill);
   background: var(--surface2); color: var(--ink); font: 500 var(--fs-ui-s) var(--font-sans); cursor: pointer;
   transition: border-color var(--t, 0.2s), color var(--t, 0.2s);
 }

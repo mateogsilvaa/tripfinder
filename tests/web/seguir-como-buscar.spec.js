@@ -33,7 +33,8 @@ test("seguir ofrece lo mismo que buscar: origen y las siete maneras de decir cu�
   const cuandoBuscar = await opciones(page, "#fWhen");
   const origenesBuscar = await opciones(page, "#fOrigen");
   await page.goto("/seguimientos.html");
-  expect(await opciones(page, "#wWhen")).toEqual(cuandoBuscar);
+  // El puente solo está en el buscador: no se puede seguir (todavía).
+  expect(await opciones(page, "#wWhen")).toEqual(cuandoBuscar.filter((o) => o !== "puente"));
   expect(await opciones(page, "#wOrigen")).toEqual(origenesBuscar);
 });
 

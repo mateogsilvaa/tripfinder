@@ -51,12 +51,12 @@ const lanzar = async (page) => {
 };
 
 test.describe("el formulario", () => {
-  test("ofrece las tres maneras de ser flexible", async ({ page }) => {
+  test("ofrece todas las maneras de decir cuándo", async ({ page }) => {
     await enBuscar(page);
     const opciones = await page.locator("#fWhen option").evaluateAll((os) =>
       os.map((o) => o.value)
     );
-    expect(opciones).toEqual(["weekend", "mes", "mes-finde", "dias", "tramo", "exact", "anytime"]);
+    expect(opciones).toEqual(["weekend", "mes", "mes-finde", "dias", "tramo", "puente", "exact", "anytime"]);
   });
 
   test("elegir un mes enseña los doce que vienen, con su año", async ({ page }) => {

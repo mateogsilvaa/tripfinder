@@ -100,6 +100,8 @@ const PIEZAS = [
   "./js/mapa-hop.js",
   "./js/ampliar.js",
   "./js/motor.js",
+  "./js/guardadas.js",
+  "./js/puentes.js",
   "./perfiles.json",
   "./manifest.webmanifest",
   "./iconos/icono-192.png",
