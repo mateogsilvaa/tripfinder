@@ -583,6 +583,30 @@
     "wizzair-MAD-KTW-20270514": {
       "price": 89.98,
       "date": "2026-11-25"
+    },
+    "wizzair-MAD-LEI-20270205": {
+      "price": 56.98,
+      "date": "2026-11-26"
+    },
+    "wizzair-MAD-LEI-20270226": {
+      "price": 58.48,
+      "date": "2026-11-26"
+    },
+    "wizzair-MAD-LEI-20270312": {
+      "price": 58.48,
+      "date": "2026-11-26"
+    },
+    "wizzair-MAD-LEI-20270129": {
+      "price": 61.48,
+      "date": "2026-11-26"
+    },
+    "wizzair-MAD-LEI-20270212": {
+      "price": 61.48,
+      "date": "2026-11-26"
+    },
+    "wizzair-MAD-LEI-20270305": {
+      "price": 62.63,
+      "date": "2026-11-26"
     }
   },
   "digest": {
@@ -595,7 +619,7 @@
     "b-b8a40da8e4818f1b": "2026-10-26",
     "b-f6cf1b3febd8b845": "2026-10-26",
     "app:b-1a742a61ca5bb363": "2026-11-26",
-    "app:b-7d06359e99ce006a": "2026-11-25"
+    "app:b-7d06359e99ce006a": "2026-11-26"
   },
   "watch_digest": {
     "b-b66e7f56e69358ac": "2026-10-26",
