@@ -3,9 +3,9 @@
     {
       "iata": "MAD",
       "nombre": "Madrid",
-      "count": 1698,
-      "destinos": 69,
-      "generated_at": "2026-11-25"
+      "count": 1704,
+      "destinos": 81,
+      "generated_at": "2026-11-26"
     },
     {
       "iata": "ALC",
@@ -17,16 +17,16 @@
     {
       "iata": "BCN",
       "nombre": "Barcelona",
-      "count": 421,
+      "count": 416,
       "destinos": 28,
-      "generated_at": "2026-11-24"
+      "generated_at": "2026-11-26"
     },
     {
       "iata": "BIO",
       "nombre": "Bilbao",
-      "count": 122,
+      "count": 117,
       "destinos": 12,
-      "generated_at": "2026-11-24"
+      "generated_at": "2026-11-26"
     },
     {
       "iata": "LPA",
@@ -66,9 +66,9 @@
     {
       "iata": "TFS",
       "nombre": "Tenerife Sur",
-      "count": 239,
+      "count": 231,
       "destinos": 24,
-      "generated_at": "2026-11-24"
+      "generated_at": "2026-11-26"
     },
     {
       "iata": "VLC",
