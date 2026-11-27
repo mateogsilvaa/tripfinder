@@ -3,9 +3,9 @@
     {
       "iata": "MAD",
       "nombre": "Madrid",
-      "count": 1665,
-      "destinos": 77,
-      "generated_at": "2026-11-26"
+      "count": 1685,
+      "destinos": 76,
+      "generated_at": "2026-11-27"
     },
     {
       "iata": "ALC",
@@ -31,9 +31,9 @@
     {
       "iata": "LPA",
       "nombre": "Gran Canaria",
-      "count": 176,
+      "count": 178,
       "destinos": 22,
-      "generated_at": "2026-11-25"
+      "generated_at": "2026-11-27"
     },
     {
       "iata": "AGP",
@@ -45,16 +45,16 @@
     {
       "iata": "PMI",
       "nombre": "Palma",
-      "count": 193,
+      "count": 197,
       "destinos": 21,
-      "generated_at": "2026-11-25"
+      "generated_at": "2026-11-27"
     },
     {
       "iata": "SCQ",
       "nombre": "Santiago",
-      "count": 150,
+      "count": 148,
       "destinos": 18,
-      "generated_at": "2026-11-25"
+      "generated_at": "2026-11-27"
     },
     {
       "iata": "SVQ",
