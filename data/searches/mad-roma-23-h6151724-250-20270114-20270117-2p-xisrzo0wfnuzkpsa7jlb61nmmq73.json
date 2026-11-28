@@ -1,0 +1,32 @@
+{
+  "slug": "mad-roma-23-h6151724-250-20270114-20270117-2p-xisrzo0wfnuzkpsa7jlb61nmmq73",
+  "label": "Roma · 14 ene → 17 ene · hasta 250 € · 2 pers. · sale 6–15 h · vuelve 17–24 h",
+  "request": {
+    "destination": "Roma",
+    "label": "Roma · 14 ene → 17 ene · hasta 250 € · 2 pers. · sale 6–15 h · vuelve 17–24 h",
+    "max_price": 250.0,
+    "nights_min": 2,
+    "nights_max": 3,
+    "months": 12,
+    "weekend_only": false,
+    "adults": 2,
+    "origin": "MAD",
+    "depart": "2027-01-14",
+    "return_date": "2027-01-17",
+    "desde": "",
+    "hasta": "",
+    "dias": "",
+    "horas": "6-15,,17-24,",
+    "solo": "",
+    "sin": "",
+    "owner": "xISRZo0WfnUzKPSA7Jlb61nMmQ73",
+    "owner_name": "Pablo",
+    "slug": "mad-roma-23-h6151724-250-20270114-20270117-2p-xisrzo0wfnuzkpsa7jlb61nmmq73"
+  },
+  "generated_at": "2026-11-28",
+  "errors": [],
+  "count": 0,
+  "owner": "xISRZo0WfnUzKPSA7Jlb61nMmQ73",
+  "owner_name": "Pablo",
+  "offers": []
+}
