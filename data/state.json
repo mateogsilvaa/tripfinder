@@ -619,6 +619,14 @@
     "ryanair-MAD-PSA-20270316": {
       "price": 48.18,
       "date": "2026-11-28"
+    },
+    "ryanair-MAD-CTA-20261212": {
+      "price": 42.98,
+      "date": "2026-11-28"
+    },
+    "ryanair-MAD-TIA-20270110": {
+      "price": 43.98,
+      "date": "2026-11-28"
     }
   },
   "digest": {
